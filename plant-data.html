@@ -2,8 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Plant Data Entry</title>
+  <title>Plant Data Entry & History</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    form > div {
+      margin-bottom: 10px;
+    }
+    table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      padding: 5px 10px;
+    }
+    table {
+      width: 100%;
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -11,7 +25,6 @@
     <p id="user-email" style="color: blue; cursor: pointer;"></p>
   </header>
 
-  <!-- Navigation Bar -->
   <nav>
     <a href="index.html">Home</a>
     <a href="about.html">About</a>
@@ -24,23 +37,66 @@
 
   <main>
     <form id="data-form">
-      <label for="date">Date:</label>
-      <input type="date" id="date" name="date" required /><br /><br />
+      <div>
+        <label for="date">Date:</label>
+        <input type="date" id="date" name="date" required />
+      </div>
 
-      <table border="1" cellpadding="6">
-        <tr><th colspan="2">Meter Readings</th></tr>
-        <tr><td>Generator Unit 1</td><td><input type="number" id="gen1" /></td></tr>
-        <tr><td>Generator Unit 2</td><td><input type="number" id="gen2" /></td></tr>
-        <tr><td>Transformer Unit 1</td><td><input type="number" id="trans1" /></td></tr>
-        <tr><td>Transformer Unit 2</td><td><input type="number" id="trans2" /></td></tr>
-        <tr><td>Station Transformer</td><td><input type="number" id="station" /></td></tr>
-        <tr><td>Outgoing Feeder</td><td><input type="number" id="feeder" /></td></tr>
-        <tr><td>Outgoing @ Balanch</td><td><input type="number" id="outBalanch" /></td></tr>
-        <tr><td>Incoming @ Balanch</td><td><input type="number" id="inBalanch" /></td></tr>
-      </table><br />
+      <div><label for="gen1">Generator Unit 1 Reading:</label>
+        <input type="number" id="gen1" /></div>
+
+      <div><label for="gen2">Generator Unit 2 Reading:</label>
+        <input type="number" id="gen2" /></div>
+
+      <div><label for="gen1hr">Hour Reading Generator Unit 1:</label>
+        <input type="number" id="gen1hr" /></div>
+
+      <div><label for="gen2hr">Hour Reading Generator Unit 2:</label>
+        <input type="number" id="gen2hr" /></div>
+
+      <div><label for="trans1">Transformer Unit 1 Reading:</label>
+        <input type="number" id="trans1" /></div>
+
+      <div><label for="trans2">Transformer Unit 2 Reading:</label>
+        <input type="number" id="trans2" /></div>
+
+      <div><label for="station">Station Transformer Reading:</label>
+        <input type="number" id="station" /></div>
+
+      <div><label for="feeder">Outgoing Feeder Reading:</label>
+        <input type="number" id="feeder" /></div>
+
+      <div><label for="outBalanch">Outgoing Meter @ Balanch:</label>
+        <input type="number" id="outBalanch" /></div>
+
+      <div><label for="inBalanch">Incoming Meter @ Balanch:</label>
+        <input type="number" id="inBalanch" /></div>
 
       <button type="submit">Submit</button>
     </form>
+
+    <h2>Last 1 Month Data</h2>
+    <table id="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Generator Unit 1</th>
+          <th>Generator Unit 2</th>
+          <th>Hour Reading Gen 1</th>
+          <th>Hour Reading Gen 2</th>
+          <th>Transformer Unit 1</th>
+          <th>Transformer Unit 2</th>
+          <th>Station Transformer</th>
+          <th>Outgoing Feeder</th>
+          <th>Outgoing @ Balanch</th>
+          <th>Incoming @ Balanch</th>
+          <th>Entered By</th>
+        </tr>
+      </thead>
+      <tbody id="data-body">
+        <!-- Filled dynamically -->
+      </tbody>
+    </table>
   </main>
 
   <footer>
@@ -50,7 +106,16 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      where,
+      getDocs,
+      addDoc,
+      orderBy,
+      Timestamp,
+    } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA8UJViacRzajLMJ0lonhrbuuEGO54uOJ4",
@@ -67,6 +132,69 @@
 
     const form = document.getElementById("data-form");
     const userEmailDisplay = document.getElementById("user-email");
+    const dataBody = document.getElementById("data-body");
+
+    let currentUserEmail = null;
+
+    // Helper: format Firestore Timestamp to yyyy-mm-dd
+    function formatDate(ts) {
+      const d = ts.toDate();
+      return d.toISOString().substr(0, 10);
+    }
+
+    // Load last 1 month of data and show in table
+    async function loadData() {
+      dataBody.innerHTML = "";
+
+      const today = new Date();
+      const lastMonth = new Date(today);
+      lastMonth.setMonth(today.getMonth() - 1);
+
+      // Firestore timestamps are stored as Timestamp
+      const q = query(
+        collection(db, "plant-data"),
+        orderBy("date", "desc")
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      // Filter to last month & sort ascending
+      let allData = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.date && data.date.toDate() >= lastMonth) {
+          allData.push({ id: doc.id, ...data });
+        }
+      });
+
+      allData.sort((a, b) => a.date.toDate() - b.date.toDate());
+
+      for (const entry of allData) {
+        const d = formatDate(entry.date);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${d}</td>
+          <td>${entry.gen1 || ""}</td>
+          <td>${entry.gen2 || ""}</td>
+          <td>${entry.gen1hr || ""}</td>
+          <td>${entry.gen2hr || ""}</td>
+          <td>${entry.trans1 || ""}</td>
+          <td>${entry.trans2 || ""}</td>
+          <td>${entry.station || ""}</td>
+          <td>${entry.feeder || ""}</td>
+          <td>${entry.outBalanch || ""}</td>
+          <td>${entry.inBalanch || ""}</td>
+          <td>${entry.email || ""}</td>
+        `;
+        dataBody.appendChild(row);
+      }
+    }
+
+    // Set date input to today
+    function setToday() {
+      const todayStr = new Date().toISOString().substr(0, 10);
+      document.getElementById("date").value = todayStr;
+    }
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -74,69 +202,51 @@
         window.location.href = "index.html";
         return;
       }
-
-      const userEmail = user.email;
-      userEmailDisplay.textContent = `Logged in as: ${userEmail}`;
+      currentUserEmail = user.email;
+      userEmailDisplay.textContent = `Logged in as: ${currentUserEmail}`;
       userEmailDisplay.onclick = async () => {
         await auth.signOut();
         window.location.href = "index.html";
       };
 
-      // Default date = today
-      const today = new Date().toISOString().substr(0, 10);
-      document.getElementById("date").value = today;
+      setToday();
+      await loadData();
+    });
 
-      // Autofill previous data if available
-      const dateInput = document.getElementById("date");
-      dateInput.addEventListener("change", async () => {
-        const date = dateInput.value;
-        const docRef = doc(db, "plant-data", date);
-        const docSnap = await getDoc(docRef);
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const inputs = ["gen1", "gen2", "trans1", "trans2", "station", "feeder", "outBalanch", "inBalanch"];
-          inputs.forEach(id => {
-            document.getElementById(id).value = data[id] || "";
-          });
-        } else {
-          // Clear inputs if no data
-          ["gen1", "gen2", "trans1", "trans2", "station", "feeder", "outBalanch", "inBalanch"].forEach(id => {
-            document.getElementById(id).value = "";
-          });
-        }
-      });
+      const dateValue = document.getElementById("date").value;
+      if (!dateValue) {
+        alert("Please select a date.");
+        return;
+      }
 
-      // Trigger change to fill today's data if exists
-      dateInput.dispatchEvent(new Event("change"));
-
-      form.onsubmit = async (e) => {
-        e.preventDefault();
-        const date = document.getElementById("date").value;
-        const data = {
-          email: userEmail,
-          gen1: document.getElementById("gen1").value || "",
-          gen2: document.getElementById("gen2").value || "",
-          trans1: document.getElementById("trans1").value || "",
-          trans2: document.getElementById("trans2").value || "",
-          station: document.getElementById("station").value || "",
-          feeder: document.getElementById("feeder").value || "",
-          outBalanch: document.getElementById("outBalanch").value || "",
-          inBalanch: document.getElementById("inBalanch").value || ""
-        };
-
-        const existing = await getDoc(doc(db, "plant-data", date));
-        if (existing.exists()) {
-          const existingData = existing.data();
-          if (existingData.email !== userEmail && userEmail !== "admin@makarigad.com") {
-            alert("You can only edit your own data.");
-            return;
-          }
-        }
-
-        await setDoc(doc(db, "plant-data", date), data);
-        alert("Data saved successfully!");
+      // Prepare data object with Timestamp for date
+      const data = {
+        email: currentUserEmail,
+        date: Timestamp.fromDate(new Date(dateValue)),
+        gen1: form.gen1.value || "",
+        gen2: form.gen2.value || "",
+        gen1hr: form.gen1hr.value || "",
+        gen2hr: form.gen2hr.value || "",
+        trans1: form.trans1.value || "",
+        trans2: form.trans2.value || "",
+        station: form.station.value || "",
+        feeder: form.feeder.value || "",
+        outBalanch: form.outBalanch.value || "",
+        inBalanch: form.inBalanch.value || "",
       };
+
+      try {
+        await addDoc(collection(db, "plant-data"), data);
+        alert("Data saved successfully!");
+        form.reset();
+        setToday();
+        await loadData();
+      } catch (err) {
+        alert("Error saving data: " + err.message);
+      }
     });
   </script>
 </body>

@@ -14,7 +14,7 @@
 <body>
   <h2 style="text-align:center;">Makari Gad Hydroelectric Project</h2>
 
-  <form id="login-form" style="display: none;">
+  <form id="login-form">
     <h3>Sign In</h3>
     <input type="email" id="email" placeholder="Email" required />
     <input type="password" id="password" placeholder="Password" required />
@@ -22,7 +22,6 @@
     <div class="message" id="message"></div>
   </form>
 
-  <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -42,12 +41,13 @@
     const form = document.getElementById("login-form");
     const message = document.getElementById("message");
 
-    // Show login form only if not logged in
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        window.location.href = "plant-data.html";
-      } else {
-        form.style.display = "block"; // Show login form only if no user is logged in
+        // Show message, not redirect immediately
+        message.textContent = "Already logged in. Redirecting...";
+        setTimeout(() => {
+          window.location.href = "plant-data.html";
+        }, 1500);
       }
     });
 
@@ -58,10 +58,12 @@
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        message.textContent = "Logging in...";
-        window.location.href = "plant-data.html";
+        message.textContent = "Login successful. Redirecting...";
+        setTimeout(() => {
+          window.location.href = "plant-data.html";
+        }, 1000);
       } catch (error) {
-        message.textContent = "Invalid login. Try again.";
+        message.textContent = "Login failed: " + error.message;
       }
     });
   </script>

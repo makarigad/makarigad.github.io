@@ -1,106 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Makari Gad Project - Home</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Login - Makari Gad Project</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    form { max-width: 400px; margin: auto; border: 1px solid #ccc; padding: 20px; border-radius: 10px; }
+    input { width: 100%; margin: 10px 0; padding: 8px; font-size: 16px; }
+    button { padding: 10px 20px; font-size: 16px; }
+    .message { text-align: center; margin-top: 10px; color: red; }
+  </style>
 </head>
-
 <body>
-  <header>
-    <h1>Makari Gad Hydroelectric Project (10 MW)</h1>
-    <h2>Apihimal-5, Darchula, Sudurpaschim Province, Nepal</h2>
+  <h2 style="text-align:center;">Makari Gad Hydroelectric Project</h2>
 
-    <!-- Login Area -->
-    <div id="login-area">
-      <h3>Operator Login</h3>
-      <input type="email" id="email" placeholder="Email"><br>
-      <input type="password" id="password" placeholder="Password"><br>
-      <button>Sign In</button>
-    </div>
+  <form id="login-form">
+    <h3>Sign In</h3>
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit">Login</button>
+    <div class="message" id="message"></div>
+  </form>
 
-    <!-- User Info After Login -->
-    <div id="user-info" style="display: none;">
-      <p id="user-email" style="cursor: pointer; color: blue;"></p>
-    </div>
-  </header>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-  <!-- Navigation Tabs -->
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="features.html">Features</a>
-    <a href="board.html">Board</a>
-    <a href="notices.html">Notices</a>
-    <a href="contacts.html">Contact</a>
-    <a href="plant-data.html">Plant Data</a>
-  </nav>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
+      authDomain: "makari-gad.firebaseapp.com",
+      projectId: "makari-gad",
+      storageBucket: "makari-gad.appspot.com",
+      messagingSenderId: "724611254155",
+      appId: "1:724611254155:web:79851f67861cee3f90918e"
+    };
 
-  <main>
-    <h3>Welcome</h3>
-    <p>This is the official site of Makari Gad Hydroelectric Project. Please use the tabs above to explore project details, contacts, board members, and notices.</p>
-  </main>
-
-  <footer>&copy; 2025 Makari Gad Project</footer>
-
-  <!-- Firebase Auth -->
-  // Import the functions you need from the SDKs you need
-    import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
-  authDomain: "makari-gad.firebaseapp.com",
-  projectId: "makari-gad",
-  storageBucket: "makari-gad.firebasestorage.app",
-  messagingSenderId: "724611254155",
-  appId: "1:724611254155:web:79851f67861cee3f90918e"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
 
-    // Login Function
-    function login() {
+    // Auto redirect if already logged in
+    onAuthStateChanged(auth, user => {
+      if (user) window.location.href = "plant-data.html";
+    });
+
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
+      const message = document.getElementById("message");
 
-      signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          alert("Login successful!");
-          window.location.href = "plant-data.html"; // Redirect
-        })
-        .catch((error) => {
-          alert("Login failed: " + error.message);
-        });
-    }
-
-    // Handle Login Button Click
-    document.getElementById("login-area").querySelector("button").addEventListener("click", login);
-
-    // Show user info after login
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        document.getElementById("login-area").style.display = "none";
-        document.getElementById("user-info").style.display = "block";
-        const userEmail = document.getElementById("user-email");
-        userEmail.textContent = user.email;
-
-        userEmail.onclick = () => {
-          signOut(auth).then(() => {
-            alert("Logged out");
-            location.reload();
-          });
-        };
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        message.textContent = "Logging in...";
+        window.location.href = "plant-data.html";
+      } catch (error) {
+        message.textContent = "Invalid login. Try again.";
       }
     });
   </script>
-
 </body>
 </html>

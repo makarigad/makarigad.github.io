@@ -14,7 +14,7 @@
 <body>
   <h2 style="text-align:center;">Makari Gad Hydroelectric Project</h2>
 
-  <form id="login-form">
+  <form id="login-form" style="display: none;">
     <h3>Sign In</h3>
     <input type="email" id="email" placeholder="Email" required />
     <input type="password" id="password" placeholder="Password" required />
@@ -39,16 +39,22 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    // Auto redirect if already logged in
-    onAuthStateChanged(auth, user => {
-      if (user) window.location.href = "plant-data.html";
+    const form = document.getElementById("login-form");
+    const message = document.getElementById("message");
+
+    // Show login form only if not logged in
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.location.href = "plant-data.html";
+      } else {
+        form.style.display = "block"; // Show login form only if no user is logged in
+      }
     });
 
-    document.getElementById("login-form").addEventListener("submit", async (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      const message = document.getElementById("message");
 
       try {
         await signInWithEmailAndPassword(auth, email, password);

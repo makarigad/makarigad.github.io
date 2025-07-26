@@ -2,163 +2,179 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Plant Data Entry</title>
+  <title>Plant Data - Makari Gad</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    input, select { width: 100%; }
+    #user-email { cursor: pointer; color: blue; margin-bottom: 10px; display: inline-block; }
+  </style>
 </head>
 <body>
+
   <header>
-    <h1>Plant Data Entry</h1>
-    <div id="user-info" style="float: right; cursor: pointer; color: blue;"></div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="features.html">Features</a>
+      <a href="board.html">Board</a>
+      <a href="notices.html">Notices</a>
+      <a href="contacts.html">Contact</a>
+      <a href="plant-data.html">Plant Data</a>
+    </nav>
+    <p id="user-email"></p>
   </header>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="features.html">Features</a>
-    <a href="board.html">Board</a>
-    <a href="notices.html">Notices</a>
-    <a href="contacts.html">Contact</a>
-    <a href="plant-data.html">Plant Data</a>
-  </nav>
+  <h2>Daily Plant Data Entry</h2>
 
-  <main>
-    <h3>Daily Metering Form</h3>
-    <form id="dataForm">
-      <label>Date: <input type="date" id="date" value="2025-07-26"></label><br>
+  <div id="form-area">
+    <table>
+      <tr><td>Date</td><td><input type="date" id="entry-date"></td></tr>
+      <tr><td>Gen Unit 1 Reading (MWh)</td><td><input type="number" step="0.01" id="gen1"></td></tr>
+      <tr><td>Gen Unit 2 Reading (MWh)</td><td><input type="number" step="0.01" id="gen2"></td></tr>
+      <tr><td>Gen Unit 1 Hour</td><td><input type="number" step="0.01" id="gen1h"></td></tr>
+      <tr><td>Gen Unit 2 Hour</td><td><input type="number" step="0.01" id="gen2h"></td></tr>
+      <tr><td>Transformer 1 Reading (MWh)</td><td><input type="number" step="0.01" id="tx1"></td></tr>
+      <tr><td>Transformer 2 Reading (MWh)</td><td><input type="number" step="0.01" id="tx2"></td></tr>
+      <tr><td>Station Transformer (MWh)</td><td><input type="number" step="0.01" id="stx"></td></tr>
+      <tr><td>Outgoing Feeder (MWh)</td><td><input type="number" step="0.01" id="ofeeder"></td></tr>
+      <tr><td>Outgoing Balanch Meter (MWh)</td><td><input type="number" step="0.01" id="obalanch"></td></tr>
+      <tr><td>Incoming Balanch Meter (MWh)</td><td><input type="number" step="0.01" id="ibalanch"></td></tr>
+      <tr><td>Unit</td>
+        <td>
+          <select id="unit">
+            <option value="MWh">MWh</option>
+            <option value="kWh">kWh</option>
+          </select>
+        </td>
+      </tr>
+    </table>
+    <br>
+    <button onclick="submitData()">Submit</button>
+  </div>
 
-      <label>Generator Unit 1 (MWh): <input type="number" step="0.01" id="gen1" required></label><br>
-      <label>Hour Reading GU1 (hr): <input type="number" step="0.01" id="hour1"></label><br>
-
-      <label>Generator Unit 2 (MWh): <input type="number" step="0.01" id="gen2"></label><br>
-      <label>Hour Reading GU2 (hr): <input type="number" step="0.01" id="hour2"></label><br>
-
-      <label>Transformer Unit 1 (MWh): <input type="number" step="0.01" id="trans1"></label><br>
-      <label>Transformer Unit 2 (MWh): <input type="number" step="0.01" id="trans2"></label><br>
-
-      <label>Station Transformer (MWh): <input type="number" step="0.01" id="station"></label><br>
-      <label>Outgoing Feeder (MWh): <input type="number" step="0.01" id="feeder"></label><br>
-      <label>Outgoing Meter (MWh): <input type="number" step="0.01" id="outgoing"></label><br>
-      <label>Incoming Meter (MWh): <input type="number" step="0.01" id="incoming"></label><br>
-
-      <button type="submit">Submit</button>
-    </form>
-
-    <h3>Last 1 Month's Data</h3>
-    <table border="1" id="dataTable">
+  <div id="data-table">
+    <h3>Last 1 Month Data</h3>
+    <table id="display-table">
       <thead>
         <tr>
           <th>Date</th>
           <th>Operator</th>
-          <th>GU1 (MWh)</th>
-          <th>GU2 (MWh)</th>
-          <th>HR1</th>
-          <th>HR2</th>
-          <th>TU1</th>
-          <th>TU2</th>
-          <th>ST</th>
-          <th>Feeder</th>
-          <th>Outgoing</th>
-          <th>Incoming</th>
+          <th>Gen1</th>
+          <th>Gen2</th>
+          <th>Gen1 Hr</th>
+          <th>Gen2 Hr</th>
+          <th>Tx1</th>
+          <th>Tx2</th>
+          <th>STx</th>
+          <th>Out Feeder</th>
+          <th>Out Balanch</th>
+          <th>In Balanch</th>
+          <th>Unit</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="data-body">
+      </tbody>
     </table>
-  </main>
+  </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyA8UJViacRzajLMJ0lonhrbuuEGO54uOJ4",
-      authDomain: "makari-c4270.firebaseapp.com",
-      projectId: "makari-c4270",
-      storageBucket: "makari-c4270.appspot.com",
-      messagingSenderId: "188970014713",
-      appId: "1:188970014713:web:980629f953af694e81cf28"
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA8UJViacRzajLMJ0lonhrbuuEGO54uOJ4",
+    authDomain: "makari-c4270.firebaseapp.com",
+    projectId: "makari-c4270",
+    storageBucket: "makari-c4270.appspot.com",
+    messagingSenderId: "188970014713",
+    appId: "1:188970014713:web:980629f953af694e81cf28"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let currentUser = null;
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      currentUser = user;
+      document.getElementById("user-email").textContent = user.email;
+      document.getElementById("user-email").onclick = () => {
+        signOut(auth).then(() => location.href = "index.html");
+      };
+      document.getElementById("entry-date").valueAsDate = new Date();
+      loadLastMonthData();
+    } else {
+      alert("You must be signed in.");
+      window.location.href = "index.html";
+    }
+  });
+
+  async function submitData() {
+    const date = document.getElementById("entry-date").value;
+    const data = {
+      gen1: parseFloat(document.getElementById("gen1").value) || 0,
+      gen2: parseFloat(document.getElementById("gen2").value) || 0,
+      gen1h: parseFloat(document.getElementById("gen1h").value) || 0,
+      gen2h: parseFloat(document.getElementById("gen2h").value) || 0,
+      tx1: parseFloat(document.getElementById("tx1").value) || 0,
+      tx2: parseFloat(document.getElementById("tx2").value) || 0,
+      stx: parseFloat(document.getElementById("stx").value) || 0,
+      ofeeder: parseFloat(document.getElementById("ofeeder").value) || 0,
+      obalanch: parseFloat(document.getElementById("obalanch").value) || 0,
+      ibalanch: parseFloat(document.getElementById("ibalanch").value) || 0,
+      unit: document.getElementById("unit").value,
+      user: currentUser.email,
+      timestamp: new Date()
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    await setDoc(doc(db, "plantData", date), data);
+    alert("Data submitted successfully!");
+    loadLastMonthData();
+  }
 
-    const userInfo = document.getElementById("user-info");
-    let currentUser = null;
+  async function loadLastMonthData() {
+    const dataBody = document.getElementById("data-body");
+    dataBody.innerHTML = "";
 
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        currentUser = user;
-        userInfo.textContent = user.email;
-        userInfo.onclick = () => {
-          auth.signOut().then(() => window.location.href = "index.html");
-        };
-        loadData();
-      } else {
-        alert("Not signed in");
-        window.location.href = "index.html";
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    const q = query(collection(db, "plantData"), orderBy("timestamp"));
+    const querySnapshot = await getDocs(q);
+
+    querySnapshot.forEach(docSnap => {
+      const d = docSnap.data();
+      const ts = d.timestamp?.toDate?.() || new Date(d.timestamp);
+
+      if (ts >= thirtyDaysAgo) {
+        const row = `
+          <tr>
+            <td>${docSnap.id}</td>
+            <td>${d.user}</td>
+            <td>${d.gen1}</td>
+            <td>${d.gen2}</td>
+            <td>${d.gen1h}</td>
+            <td>${d.gen2h}</td>
+            <td>${d.tx1}</td>
+            <td>${d.tx2}</td>
+            <td>${d.stx}</td>
+            <td>${d.ofeeder}</td>
+            <td>${d.obalanch}</td>
+            <td>${d.ibalanch}</td>
+            <td>${d.unit}</td>
+          </tr>`;
+        dataBody.innerHTML += row;
       }
     });
+  }
+</script>
 
-    document.getElementById("dataForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      const doc = {
-        date: document.getElementById("date").value,
-        gen1: parseFloat(document.getElementById("gen1").value),
-        hour1: parseFloat(document.getElementById("hour1").value) || 0,
-        gen2: parseFloat(document.getElementById("gen2").value) || 0,
-        hour2: parseFloat(document.getElementById("hour2").value) || 0,
-        trans1: parseFloat(document.getElementById("trans1").value) || 0,
-        trans2: parseFloat(document.getElementById("trans2").value) || 0,
-        station: parseFloat(document.getElementById("station").value) || 0,
-        feeder: parseFloat(document.getElementById("feeder").value) || 0,
-        outgoing: parseFloat(document.getElementById("outgoing").value) || 0,
-        incoming: parseFloat(document.getElementById("incoming").value) || 0,
-        user: currentUser.email,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      db.collection("plantData").add(doc).then(() => {
-        alert("Data saved");
-        loadData();
-        document.getElementById("dataForm").reset();
-      });
-    });
-
-    function loadData() {
-      const tbody = document.querySelector("#dataTable tbody");
-      tbody.innerHTML = "";
-
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-
-      db.collection("plantData")
-        .where("timestamp", ">=", oneMonthAgo)
-        .orderBy("timestamp", "desc")
-        .get()
-        .then(snapshot => {
-          snapshot.forEach(doc => {
-            const d = doc.data();
-            const row = `
-              <tr>
-                <td>${d.date}</td>
-                <td>${d.user}</td>
-                <td>${d.gen1}</td>
-                <td>${d.gen2}</td>
-                <td>${d.hour1}</td>
-                <td>${d.hour2}</td>
-                <td>${d.trans1}</td>
-                <td>${d.trans2}</td>
-                <td>${d.station}</td>
-                <td>${d.feeder}</td>
-                <td>${d.outgoing}</td>
-                <td>${d.incoming}</td>
-              </tr>
-            `;
-            tbody.innerHTML += row;
-          });
-        });
-    }
-  </script>
 </body>
 </html>

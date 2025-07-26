@@ -44,23 +44,27 @@
   <footer>&copy; 2025 Makari Gad Project</footer>
 
   <!-- Firebase Auth -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+  // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-    // Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyA8UJViacRzajLMJ0lonhrbuuEGO54uOJ4",
-      authDomain: "makari-c4270.firebaseapp.com",
-      projectId: "makari-c4270",
-      storageBucket: "makari-c4270.appspot.com",
-      messagingSenderId: "188970014713",
-      appId: "1:188970014713:web:980629f953af694e81cf28"
-    };
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
+  authDomain: "makari-gad.firebaseapp.com",
+  projectId: "makari-gad",
+  storageBucket: "makari-gad.firebasestorage.app",
+  messagingSenderId: "724611254155",
+  appId: "1:724611254155:web:79851f67861cee3f90918e"
+};
 
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
     // Login Function
     function login() {

@@ -1,52 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Plant Data - Makari Gad HEP</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Plant Data Entry</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <h1>Makari Gad Hydroelectric Project (10 MW)</h1>
-    <h3>Apihimal-5, Darchula, Sudurpaschim Province, Nepal</h3>
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="about.html">About</a>
-      <a href="features.html">Features</a>
-      <a href="board.html">Board</a>
-      <a href="notices.html">Notices</a>
-      <a href="contacts.html">Contact</a>
-      <a href="plant-data.html">Plant Data</a>
-    </nav>
+    <h1>Makari Gad Hydroelectric Project - Plant Data Entry</h1>
+    <p id="user-email" style="color: blue; cursor: pointer;"></p>
   </header>
 
-  <main>
-    <h2>Daily Metering Data</h2>
-    <p>This section will contain daily generation, energy sent to grid, and other operational data.</p>
+  <!-- Navigation Bar -->
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="about.html">About</a>
+    <a href="features.html">Features</a>
+    <a href="board.html">Board</a>
+    <a href="notices.html">Notices</a>
+    <a href="contacts.html">Contact</a>
+    <a href="plant-data.html">Plant Data</a>
+  </nav>
 
-    <table border="1">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Generation (kWh)</th>
-          <th>Grid Export (kWh)</th>
-          <th>Remarks</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>2025-07-26</td>
-          <td>48,120</td>
-          <td>47,980</td>
-          <td>Normal operation</td>
-        </tr>
-        <!-- Add more rows daily -->
-      </tbody>
-    </table>
+  <main>
+    <form id="data-form">
+      <label for="date">Date:</label>
+      <input type="date" id="date" name="date" required /><br /><br />
+
+      <table border="1" cellpadding="6">
+        <tr><th colspan="2">Meter Readings</th></tr>
+        <tr><td>Generator Unit 1</td><td><input type="number" id="gen1" /></td></tr>
+        <tr><td>Generator Unit 2</td><td><input type="number" id="gen2" /></td></tr>
+        <tr><td>Transformer Unit 1</td><td><input type="number" id="trans1" /></td></tr>
+        <tr><td>Transformer Unit 2</td><td><input type="number" id="trans2" /></td></tr>
+        <tr><td>Station Transformer</td><td><input type="number" id="station" /></td></tr>
+        <tr><td>Outgoing Feeder</td><td><input type="number" id="feeder" /></td></tr>
+        <tr><td>Outgoing @ Balanch</td><td><input type="number" id="outBalanch" /></td></tr>
+        <tr><td>Incoming @ Balanch</td><td><input type="number" id="inBalanch" /></td></tr>
+      </table><br />
+
+      <button type="submit">Submit</button>
+    </form>
   </main>
 
   <footer>
-    <p>&copy; 2025 Makari Gad Hydropower Pvt. Ltd.</p>
+    <p>&copy; 2025 Makari Gad Project</p>
   </footer>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA8UJViacRzajLMJ0lonhrbuuEGO54uOJ4",
+      authDomain: "makari-c4270.firebaseapp.com",
+      projectId: "makari-c4270",
+      storageBucket: "makari-c4270.appspot.com",
+      messagingSenderId: "188970014713",
+      appId: "1:188970014713:web:980629f953af694e81cf28"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const form = document.getElementById("data-form");
+    const userEmailDisplay = document.getElementById("user-email");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        alert("Please sign in first.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      const userEmail = user.email;
+      userEmailDisplay.textContent = `Logged in as: ${userEmail}`;
+      userEmailDisplay.onclick = async () => {
+        await auth.signOut();
+        window.location.href = "index.html";
+      };
+
+      // Default date = today
+      const today = new Date().toISOString().substr(0, 10);
+      document.getElementById("date").value = today;
+
+      // Autofill previous data if available
+      const dateInput = document.getElementById("date");
+      dateInput.addEventListener("change", async () => {
+        const date = dateInput.value;
+        const docRef = doc(db, "plant-data", date);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const inputs = ["gen1", "gen2", "trans1", "trans2", "station", "feeder", "outBalanch", "inBalanch"];
+          inputs.forEach(id => {
+            document.getElementById(id).value = data[id] || "";
+          });
+        } else {
+          // Clear inputs if no data
+          ["gen1", "gen2", "trans1", "trans2", "station", "feeder", "outBalanch", "inBalanch"].forEach(id => {
+            document.getElementById(id).value = "";
+          });
+        }
+      });
+
+      // Trigger change to fill today's data if exists
+      dateInput.dispatchEvent(new Event("change"));
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const date = document.getElementById("date").value;
+        const data = {
+          email: userEmail,
+          gen1: document.getElementById("gen1").value || "",
+          gen2: document.getElementById("gen2").value || "",
+          trans1: document.getElementById("trans1").value || "",
+          trans2: document.getElementById("trans2").value || "",
+          station: document.getElementById("station").value || "",
+          feeder: document.getElementById("feeder").value || "",
+          outBalanch: document.getElementById("outBalanch").value || "",
+          inBalanch: document.getElementById("inBalanch").value || ""
+        };
+
+        const existing = await getDoc(doc(db, "plant-data", date));
+        if (existing.exists()) {
+          const existingData = existing.data();
+          if (existingData.email !== userEmail && userEmail !== "admin@makarigad.com") {
+            alert("You can only edit your own data.");
+            return;
+          }
+        }
+
+        await setDoc(doc(db, "plant-data", date), data);
+        alert("Data saved successfully!");
+      };
+    });
+  </script>
 </body>
 </html>

@@ -30,6 +30,23 @@ nav a:hover {
   text-decoration: underline;
 }
 
+nav ul {
+  list-style-type: none;
+  padding: 0;
+  display: flex;
+  gap: 15px;
+}
+
+nav a {
+  text-decoration: none;
+  color: black;
+  font-weight: bold;
+}
+
+nav a:hover {
+  color: darkblue;
+}
+
 main {
   max-width: 900px;
   margin: 30px auto;

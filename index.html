@@ -5,12 +5,27 @@
   <title>Makari Gad Project - Home</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <header>
     <h1>Makari Gad Hydroelectric Project (10 MW)</h1>
     <h2>Apihimal-5, Darchula, Sudurpaschim Province, Nepal</h2>
+
+    <!-- Login Area -->
+    <div id="login-area">
+      <h3>Operator Login</h3>
+      <input type="email" id="email" placeholder="Email"><br>
+      <input type="password" id="password" placeholder="Password"><br>
+      <button>Sign In</button>
+    </div>
+
+    <!-- User Info After Login -->
+    <div id="user-info" style="display: none;">
+      <p id="user-email" style="cursor: pointer; color: blue;"></p>
+    </div>
   </header>
 
+  <!-- Navigation Tabs -->
   <nav>
     <a href="index.html">Home</a>
     <a href="about.html">About</a>
@@ -19,17 +34,7 @@
     <a href="notices.html">Notices</a>
     <a href="contacts.html">Contact</a>
     <a href="plant-data.html">Plant Data</a>
-    <a href="login.html">Operator Login</a>
-
   </nav>
-
-  <a href="signin.html">
-  <button style="padding: 10px 20px; font-size: 16px;">Operator Sign In</button>
-  </a>
-
-  <a href="login.html">
-  <button>Operator Login</button>
-  </a>
 
   <main>
     <h3>Welcome</h3>
@@ -37,5 +42,61 @@
   </main>
 
   <footer>&copy; 2025 Makari Gad Project</footer>
+
+  <!-- Firebase Auth -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyA8UJViacRzajLMJ0lonhrbuuEGO54uOJ4",
+      authDomain: "makari-c4270.firebaseapp.com",
+      projectId: "makari-c4270",
+      storageBucket: "makari-c4270.appspot.com",
+      messagingSenderId: "188970014713",
+      appId: "1:188970014713:web:980629f953af694e81cf28"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Login Function
+    function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          alert("Login successful!");
+          window.location.href = "plant-data.html"; // Redirect
+        })
+        .catch((error) => {
+          alert("Login failed: " + error.message);
+        });
+    }
+
+    // Handle Login Button Click
+    document.getElementById("login-area").querySelector("button").addEventListener("click", login);
+
+    // Show user info after login
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById("login-area").style.display = "none";
+        document.getElementById("user-info").style.display = "block";
+        const userEmail = document.getElementById("user-email");
+        userEmail.textContent = user.email;
+
+        userEmail.onclick = () => {
+          signOut(auth).then(() => {
+            alert("Logged out");
+            location.reload();
+          });
+        };
+      }
+    });
+  </script>
+
 </body>
 </html>

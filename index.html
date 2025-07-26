@@ -2,29 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Login - Makari Gad Project</title>
+  <title>Makari Gad Hydroelectric Project</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
-    form { max-width: 400px; margin: auto; border: 1px solid #ccc; padding: 20px; border-radius: 10px; }
-    input { width: 100%; margin: 10px 0; padding: 8px; font-size: 16px; }
-    button { padding: 10px 20px; font-size: 16px; }
-    .message { text-align: center; margin-top: 10px; color: red; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+
+    header {
+      background-color: #004c99;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header h2 {
+      margin: 5px 0 0;
+      font-size: 18px;
+      font-weight: normal;
+    }
+
+    nav {
+      background-color: #333;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      color: white;
+      margin: 5px 15px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    nav a:hover {
+      text-decoration: underline;
+    }
+
+    main {
+      padding: 30px;
+      text-align: center;
+    }
+
+    #login-box {
+      margin: 30px auto;
+      padding: 20px;
+      max-width: 300px;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #004c99;
+      color: white;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #003366;
+    }
+
+    #user-info {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    #user-email {
+      color: blue;
+      cursor: pointer;
+    }
+
+    footer {
+      background: #222;
+      color: #aaa;
+      text-align: center;
+      padding: 10px;
+      margin-top: 40px;
+    }
   </style>
 </head>
 <body>
-  <h2 style="text-align:center;">Makari Gad Hydroelectric Project</h2>
+  <header>
+    <h1>Makari Gad Hydroelectric Project (10 MW)</h1>
+    <h2>Apihimal-5, Makarigad, Darchula, Sudurpaschim Province, Nepal</h2>
+  </header>
 
-  <form id="login-form">
-    <h3>Sign In</h3>
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="password" id="password" placeholder="Password" required />
-    <button type="submit">Login</button>
-    <div class="message" id="message"></div>
-  </form>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="about.html">About</a>
+    <a href="features.html">Features</a>
+    <a href="board.html">Board</a>
+    <a href="notices.html">Notices</a>
+    <a href="contacts.html">Contact</a>
+    <a href="plant-data.html">Plant Data</a>
+  </nav>
 
+  <main>
+    <div id="login-box">
+      <h3>Operator Login</h3>
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <button id="login-btn">Sign In</button>
+    </div>
+
+    <div id="user-info" style="display: none;">
+      Logged in as: <span id="user-email"></span>
+    </div>
+  </main>
+
+  <footer>&copy; 2025 Makari Gad Hydroelectric Project</footer>
+
+  <!-- Firebase Scripts -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      onAuthStateChanged,
+      signOut,
+    } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
@@ -38,32 +155,43 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    const form = document.getElementById("login-form");
-    const message = document.getElementById("message");
+    const loginBox = document.getElementById("login-box");
+    const loginBtn = document.getElementById("login-btn");
+    const userInfo = document.getElementById("user-info");
+    const userEmailSpan = document.getElementById("user-email");
+
+    loginBtn.addEventListener("click", () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!email || !password) {
+        alert("Please fill in both fields.");
+        return;
+      }
+
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          window.location.href = "plant-data.html";
+        })
+        .catch((error) => {
+          alert("Login failed: " + error.message);
+        });
+    });
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        // Show message, not redirect immediately
-        message.textContent = "Already logged in. Redirecting...";
-        setTimeout(() => {
-          window.location.href = "plant-data.html";
-        }, 1500);
-      }
-    });
+        loginBox.style.display = "none";
+        userInfo.style.display = "block";
+        userEmailSpan.textContent = user.email;
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        message.textContent = "Login successful. Redirecting...";
-        setTimeout(() => {
-          window.location.href = "plant-data.html";
-        }, 1000);
-      } catch (error) {
-        message.textContent = "Login failed: " + error.message;
+        userEmailSpan.onclick = () => {
+          signOut(auth).then(() => {
+            window.location.reload();
+          });
+        };
+      } else {
+        loginBox.style.display = "block";
+        userInfo.style.display = "none";
       }
     });
   </script>

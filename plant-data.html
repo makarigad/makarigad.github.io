@@ -1,31 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Login - Makari Gad Project</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
-    form { max-width: 400px; margin: auto; border: 1px solid #ccc; padding: 20px; border-radius: 10px; }
-    input { width: 100%; margin: 10px 0; padding: 8px; font-size: 16px; }
-    button { padding: 10px 20px; font-size: 16px; }
-    .message { text-align: center; margin-top: 10px; color: red; }
-  </style>
+  <meta charset="UTF-8">
+  <title>Plant Data - Makari Gad Project</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script type="module" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 </head>
 <body>
-  <h2 style="text-align:center;">Makari Gad Hydroelectric Project</h2>
+  <header>
+    <h1>Plant Daily Meter Readings</h1>
+    <div id="user-info" style="float: right; cursor: pointer; color: blue;"></div>
+  </header>
 
-  <form id="login-form">
-    <h3>Sign In</h3>
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="password" id="password" placeholder="Password" required />
-    <button type="submit">Login</button>
-    <div class="message" id="message"></div>
-  </form>
+  <main>
+    <h2>Submit New Data</h2>
+    <form id="data-form">
+      <label>Date: <input type="date" id="entry-date" required></label><br>
+      <label>Gen1: <input type="number" id="gen1"></label>
+      <label>Gen2: <input type="number" id="gen2"></label><br>
+      <label>Gen1 Hrs: <input type="number" id="gen1h"></label>
+      <label>Gen2 Hrs: <input type="number" id="gen2h"></label><br>
+      <label>TX1: <input type="number" id="tx1"></label>
+      <label>TX2: <input type="number" id="tx2"></label>
+      <label>STX: <input type="number" id="stx"></label><br>
+      <label>Out Feeder: <input type="number" id="ofeeder"></label>
+      <label>Out Balanch: <input type="number" id="obalanch"></label>
+      <label>In Balanch: <input type="number" id="ibalanch"></label><br>
+      <label>Unit: <input type="text" id="unit"></label><br>
+      <button type="submit">Submit</button>
+    </form>
 
-  <!-- Firebase SDKs -->
+    <h2>Historical Data</h2>
+    <table border="1" id="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>User</th>
+          <th>Gen1</th><th>Gen2</th>
+          <th>Gen1 Hrs</th><th>Gen2 Hrs</th>
+          <th>TX1</th><th>TX2</th><th>STX</th>
+          <th>Out Feeder</th><th>Out Balanch</th><th>In Balanch</th>
+          <th>Unit</th>
+        </tr>
+      </thead>
+      <tbody id="data-body"></tbody>
+    </table>
+  </main>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getFirestore, collection, doc, setDoc, getDocs, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
@@ -38,26 +67,90 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    // Auto redirect if already logged in
-    onAuthStateChanged(auth, user => {
-      if (user) window.location.href = "plant-data.html";
-    });
+    let currentUser = null;
 
-    document.getElementById("login-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const message = document.getElementById("message");
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+      } else {
+        currentUser = user;
+        document.getElementById("user-info").textContent = user.email;
+        document.getElementById("entry-date").valueAsDate = new Date();
 
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-        message.textContent = "Logging in...";
-        window.location.href = "plant-data.html";
-      } catch (error) {
-        message.textContent = "Invalid login. Try again.";
+        document.getElementById("user-info").onclick = () => {
+          signOut(auth).then(() => location.href = "index.html");
+        };
+
+        loadData();
       }
     });
+
+    async function submitData(e) {
+      e.preventDefault();
+
+      const date = document.getElementById("entry-date").value;
+      if (!date) return alert("Select a date.");
+
+      const data = {
+        gen1: parseFloat(document.getElementById("gen1").value) || 0,
+        gen2: parseFloat(document.getElementById("gen2").value) || 0,
+        gen1h: parseFloat(document.getElementById("gen1h").value) || 0,
+        gen2h: parseFloat(document.getElementById("gen2h").value) || 0,
+        tx1: parseFloat(document.getElementById("tx1").value) || 0,
+        tx2: parseFloat(document.getElementById("tx2").value) || 0,
+        stx: parseFloat(document.getElementById("stx").value) || 0,
+        ofeeder: parseFloat(document.getElementById("ofeeder").value) || 0,
+        obalanch: parseFloat(document.getElementById("obalanch").value) || 0,
+        ibalanch: parseFloat(document.getElementById("ibalanch").value) || 0,
+        unit: document.getElementById("unit").value,
+        user: currentUser.email,
+        timestamp: new Date()
+      };
+
+      try {
+        await setDoc(doc(db, "plantData", date), data);
+        alert("Data saved.");
+        loadData();
+      } catch (err) {
+        console.error(err);
+        alert("Error saving data.");
+      }
+    }
+
+    document.getElementById("data-form").addEventListener("submit", submitData);
+
+    async function loadData() {
+      const dataBody = document.getElementById("data-body");
+      dataBody.innerHTML = "";
+
+      const q = query(collection(db, "plantData"), orderBy("timestamp"));
+      const querySnapshot = await getDocs(q);
+
+      const rows = [];
+
+      querySnapshot.forEach(docSnap => {
+        const d = docSnap.data();
+        const row = `
+          <tr>
+            <td>${docSnap.id}</td>
+            <td>${d.user}</td>
+            <td>${d.gen1}</td><td>${d.gen2}</td>
+            <td>${d.gen1h}</td><td>${d.gen2h}</td>
+            <td>${d.tx1}</td><td>${d.tx2}</td><td>${d.stx}</td>
+            <td>${d.ofeeder}</td><td>${d.obalanch}</td><td>${d.ibalanch}</td>
+            <td>${d.unit}</td>
+          </tr>
+        `;
+        rows.push({ date: docSnap.id, html: row });
+      });
+
+      rows.sort((a, b) => a.date.localeCompare(b.date));
+      for (const r of rows) {
+        dataBody.innerHTML += r.html;
+      }
+    }
   </script>
 </body>
 </html>

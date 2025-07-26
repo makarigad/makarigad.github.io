@@ -3,117 +3,142 @@
 <head>
   <meta charset="UTF-8" />
   <title>Plant Data - Makari Gad Project</title>
-  <link rel="stylesheet" href="style.css" />
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 0 10px;
     }
     header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 20px;
     }
-    nav a {
-      margin-right: 10px;
-    }
-    #user-email {
-      float: right;
-      color: blue;
+    #user-info {
       cursor: pointer;
+      color: blue;
+      font-weight: bold;
+    }
+    form label {
+      display: inline-block;
+      width: 140px;
+      margin-top: 10px;
+    }
+    form input, form select {
+      width: 150px;
+      padding: 5px;
+      margin-top: 10px;
+    }
+    form button {
+      margin-top: 20px;
+      padding: 8px 16px;
+      font-size: 16px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
-    }
-    table, th, td {
-      border: 1px solid #aaa;
+      margin-top: 30px;
     }
     th, td {
-      padding: 6px;
+      border: 1px solid #ccc;
+      padding: 8px;
       text-align: center;
     }
-    input[type="number"] {
-      width: 80px;
-    }
-    input, select {
-      padding: 4px;
-      margin-bottom: 4px;
-    }
-    #data-form, #data-table {
-      display: none;
+    th {
+      background-color: #f0f0f0;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Plant Metering Data Entry</h1>
-    <p><span id="user-email"></span></p>
+    <h1>Plant Daily Meter Readings</h1>
+    <div id="user-info" title="Click to logout"></div>
   </header>
 
   <main>
-    <div id="data-form">
-      <h3>Enter Daily Meter Readings</h3>
-      <label>Date: <input type="date" id="entry-date"></label><br>
+    <form id="data-form">
+      <label for="entry-date">Date:</label>
+      <input type="date" id="entry-date" required /><br />
 
-      <label>Gen1: <input type="number" id="gen1" step="0.01"></label>
-      <label>Gen2: <input type="number" id="gen2" step="0.01"></label><br>
-      <label>Gen1 Hours: <input type="number" id="gen1h" step="0.01"></label>
-      <label>Gen2 Hours: <input type="number" id="gen2h" step="0.01"></label><br>
-      <label>Tx1: <input type="number" id="tx1" step="0.01"></label>
-      <label>Tx2: <input type="number" id="tx2" step="0.01"></label><br>
-      <label>STx: <input type="number" id="stx" step="0.01"></label><br>
-      <label>Outgoing Feeder: <input type="number" id="ofeeder" step="0.01"></label>
-      <label>Out Balance: <input type="number" id="obalanch" step="0.01"></label>
-      <label>In Balance: <input type="number" id="ibalanch" step="0.01"></label><br>
-      <label>Unit: <input type="text" id="unit"></label><br>
+      <label for="gen1">Gen Unit 1 (MWh):</label>
+      <input type="number" id="gen1" step="0.01" /><br />
 
-      <button onclick="submitData()">Submit</button>
-    </div>
+      <label for="gen2">Gen Unit 2 (MWh):</label>
+      <input type="number" id="gen2" step="0.01" /><br />
 
-    <div id="data-table">
-      <h3>Historical Data</h3>
+      <label for="gen1h">Gen Unit 1 Hours:</label>
+      <input type="number" id="gen1h" step="0.01" /><br />
+
+      <label for="gen2h">Gen Unit 2 Hours:</label>
+      <input type="number" id="gen2h" step="0.01" /><br />
+
+      <label for="tx1">Transformer 1 (MWh):</label>
+      <input type="number" id="tx1" step="0.01" /><br />
+
+      <label for="tx2">Transformer 2 (MWh):</label>
+      <input type="number" id="tx2" step="0.01" /><br />
+
+      <label for="stx">Station Transformer (MWh):</label>
+      <input type="number" id="stx" step="0.01" /><br />
+
+      <label for="ofeeder">Outgoing Feeder (MWh):</label>
+      <input type="number" id="ofeeder" step="0.01" /><br />
+
+      <label for="obalanch">Outgoing Balanch Meter (MWh):</label>
+      <input type="number" id="obalanch" step="0.01" /><br />
+
+      <label for="ibalanch">Incoming Balanch Meter (MWh):</label>
+      <input type="number" id="ibalanch" step="0.01" /><br />
+
+      <label for="unit">Unit:</label>
+      <select id="unit">
+        <option value="MWh">MWh</option>
+        <option value="kWh">kWh</option>
+      </select><br />
+
+      <button type="submit">Submit</button>
+    </form>
+
+    <section>
+      <h2>Historical Data (All Dates)</h2>
       <table>
         <thead>
           <tr>
             <th>Date</th>
-            <th>User</th>
+            <th>Operator</th>
             <th>Gen1</th>
             <th>Gen2</th>
-            <th>Gen1H</th>
-            <th>Gen2H</th>
+            <th>Gen1 Hrs</th>
+            <th>Gen2 Hrs</th>
             <th>Tx1</th>
             <th>Tx2</th>
             <th>STx</th>
-            <th>OFeeder</th>
-            <th>OBalanch</th>
-            <th>IBalanch</th>
+            <th>Out Feeder</th>
+            <th>Out Balanch</th>
+            <th>In Balanch</th>
             <th>Unit</th>
-            <th>Action</th>
           </tr>
         </thead>
         <tbody id="data-body"></tbody>
       </table>
-    </div>
+    </section>
   </main>
 
-  <!-- Firebase -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import {
       getFirestore,
+      collection,
       doc,
       setDoc,
-      getDoc,
       getDocs,
-      collection,
       query,
-      orderBy
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+      orderBy,
+      Timestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
@@ -130,104 +155,112 @@
 
     let currentUser = null;
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUser = user;
-        document.getElementById("user-email").textContent = user.email + " (Click to Logout)";
-        document.getElementById("user-email").onclick = () => {
-          signOut(auth).then(() => window.location.href = "index.html");
+    // Run after DOM is loaded
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("data-form");
+      const userInfo = document.getElementById("user-info");
+      const entryDate = document.getElementById("entry-date");
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          // Not logged in, redirect to login page
+          window.location.href = "index.html";
+        } else {
+          currentUser = user;
+          userInfo.textContent = `Logged in as: ${user.email} (click to logout)`;
+          entryDate.valueAsDate = new Date();
+
+          userInfo.onclick = () => {
+            signOut(auth).then(() => {
+              window.location.href = "index.html";
+            });
+          };
+
+          loadData();
+        }
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const dateVal = entryDate.value;
+        if (!dateVal) {
+          alert("Please select a date.");
+          return;
+        }
+
+        // Prepare data object from inputs (parseFloat or 0 if empty)
+        const data = {
+          gen1: parseFloat(document.getElementById("gen1").value) || 0,
+          gen2: parseFloat(document.getElementById("gen2").value) || 0,
+          gen1h: parseFloat(document.getElementById("gen1h").value) || 0,
+          gen2h: parseFloat(document.getElementById("gen2h").value) || 0,
+          tx1: parseFloat(document.getElementById("tx1").value) || 0,
+          tx2: parseFloat(document.getElementById("tx2").value) || 0,
+          stx: parseFloat(document.getElementById("stx").value) || 0,
+          ofeeder: parseFloat(document.getElementById("ofeeder").value) || 0,
+          obalanch: parseFloat(document.getElementById("obalanch").value) || 0,
+          ibalanch: parseFloat(document.getElementById("ibalanch").value) || 0,
+          unit: document.getElementById("unit").value || "MWh",
+          user: currentUser.email,
+          timestamp: Timestamp.fromDate(new Date())
         };
 
-        document.getElementById("data-form").style.display = "block";
-        document.getElementById("data-table").style.display = "block";
-        document.getElementById("entry-date").valueAsDate = new Date();
-        await loadData();
-      } else {
-        window.location.href = "index.html";
+        try {
+          // Save document with ID as date string (YYYY-MM-DD)
+          await setDoc(doc(db, "plantData", dateVal), data);
+          alert("Data saved successfully!");
+          loadData();
+          form.reset();
+          entryDate.valueAsDate = new Date();
+        } catch (error) {
+          alert("Error saving data: " + error.message);
+          console.error(error);
+        }
+      });
+
+      async function loadData() {
+        const dataBody = document.getElementById("data-body");
+        dataBody.innerHTML = "";
+
+        const q = query(collection(db, "plantData"), orderBy("timestamp"));
+        const querySnapshot = await getDocs(q);
+
+        // Create array of rows with doc ID as date for sorting
+        const rows = [];
+
+        querySnapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          rows.push({
+            date: docSnap.id,
+            html: `
+              <tr>
+                <td>${docSnap.id}</td>
+                <td>${d.user}</td>
+                <td>${d.gen1}</td>
+                <td>${d.gen2}</td>
+                <td>${d.gen1h}</td>
+                <td>${d.gen2h}</td>
+                <td>${d.tx1}</td>
+                <td>${d.tx2}</td>
+                <td>${d.stx}</td>
+                <td>${d.ofeeder}</td>
+                <td>${d.obalanch}</td>
+                <td>${d.ibalanch}</td>
+                <td>${d.unit}</td>
+              </tr>
+            `
+          });
+        });
+
+        // Sort by date ascending (YYYY-MM-DD string)
+        rows.sort((a, b) => a.date.localeCompare(b.date));
+
+        for (const r of rows) {
+          dataBody.innerHTML += r.html;
+        }
       }
     });
-
-    async function submitData() {
-      const date = document.getElementById("entry-date").value;
-      if (!date) return alert("Select a date");
-
-      const data = {
-        gen1: parseFloat(document.getElementById("gen1").value) || 0,
-        gen2: parseFloat(document.getElementById("gen2").value) || 0,
-        gen1h: parseFloat(document.getElementById("gen1h").value) || 0,
-        gen2h: parseFloat(document.getElementById("gen2h").value) || 0,
-        tx1: parseFloat(document.getElementById("tx1").value) || 0,
-        tx2: parseFloat(document.getElementById("tx2").value) || 0,
-        stx: parseFloat(document.getElementById("stx").value) || 0,
-        ofeeder: parseFloat(document.getElementById("ofeeder").value) || 0,
-        obalanch: parseFloat(document.getElementById("obalanch").value) || 0,
-        ibalanch: parseFloat(document.getElementById("ibalanch").value) || 0,
-        unit: document.getElementById("unit").value || "",
-        user: currentUser.email,
-        timestamp: new Date()
-      };
-
-      try {
-        await setDoc(doc(db, "plantData", date), data);
-        alert("Saved successfully");
-        await loadData();
-      } catch (err) {
-        console.error("Save error:", err);
-        alert("Error saving data");
-      }
-    }
-
-    async function loadData() {
-      const dataBody = document.getElementById("data-body");
-      dataBody.innerHTML = "";
-
-      const q = query(collection(db, "plantData"), orderBy("timestamp"));
-      const snapshot = await getDocs(q);
-      snapshot.forEach(docSnap => {
-        const d = docSnap.data();
-        const canEdit = d.user === currentUser.email || currentUser.email === "admin@example.com";
-
-        const row = `
-          <tr>
-            <td>${docSnap.id}</td>
-            <td>${d.user}</td>
-            <td>${d.gen1}</td>
-            <td>${d.gen2}</td>
-            <td>${d.gen1h}</td>
-            <td>${d.gen2h}</td>
-            <td>${d.tx1}</td>
-            <td>${d.tx2}</td>
-            <td>${d.stx}</td>
-            <td>${d.ofeeder}</td>
-            <td>${d.obalanch}</td>
-            <td>${d.ibalanch}</td>
-            <td>${d.unit}</td>
-            <td>${canEdit ? `<button onclick="editEntry('${docSnap.id}')">Edit</button>` : ''}</td>
-          </tr>
-        `;
-        dataBody.innerHTML += row;
-      });
-    }
-
-    window.editEntry = async function(date) {
-      const docSnap = await getDoc(doc(db, "plantData", date));
-      if (docSnap.exists()) {
-        const d = docSnap.data();
-        document.getElementById("entry-date").value = date;
-        document.getElementById("gen1").value = d.gen1;
-        document.getElementById("gen2").value = d.gen2;
-        document.getElementById("gen1h").value = d.gen1h;
-        document.getElementById("gen2h").value = d.gen2h;
-        document.getElementById("tx1").value = d.tx1;
-        document.getElementById("tx2").value = d.tx2;
-        document.getElementById("stx").value = d.stx;
-        document.getElementById("ofeeder").value = d.ofeeder;
-        document.getElementById("obalanch").value = d.obalanch;
-        document.getElementById("ibalanch").value = d.ibalanch;
-        document.getElementById("unit").value = d.unit;
-        alert("You can now update and resubmit the form.");
-      }
-    };
   </script>
 </body>
 </html>

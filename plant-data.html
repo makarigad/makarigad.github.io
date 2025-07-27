@@ -1,266 +1,517 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Plant Data - Makari Gad Project</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 20px auto;
-      padding: 0 10px;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    #user-info {
-      cursor: pointer;
-      color: blue;
-      font-weight: bold;
-    }
-    form label {
-      display: inline-block;
-      width: 140px;
-      margin-top: 10px;
-    }
-    form input, form select {
-      width: 150px;
-      padding: 5px;
-      margin-top: 10px;
-    }
-    form button {
-      margin-top: 20px;
-      padding: 8px 16px;
-      font-size: 16px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 30px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background-color: #f0f0f0;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Data - Makari Gad Project</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+        }
+        .table-input {
+            @apply w-full p-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out text-sm;
+            min-width: 65px;
+        }
+        #notification-modal, #confirm-modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #confirm-modal {
+             transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        /* Tighter cell padding and wrapping for headers */
+        .tight-cell {
+            @apply px-2 py-2 align-top;
+        }
+        .tight-cell-input {
+             @apply px-1 py-1 align-middle;
+        }
+        th {
+            white-space: normal !important;
+        }
+    </style>
 </head>
-<body>
-  <header>
-    <h1>Plant Daily Meter Readings</h1>
-    <div id="user-info" title="Click to logout"></div>
-  </header>
+<body class="text-gray-800">
 
-  <main>
-    <form id="data-form">
-      <label for="entry-date">Date:</label>
-      <input type="date" id="entry-date" required /><br />
+    <div id="notification-modal" class="fixed top-5 right-5 bg-white border-l-4 p-4 rounded-md shadow-lg max-w-sm z-50 opacity-0 transform translate-y-[-20px] pointer-events-none">
+        <p id="notification-message" class="text-sm font-medium"></p>
+    </div>
 
-      <label for="gen1">Gen Unit 1 (MWh):</label>
-      <input type="number" id="gen1" step="0.01" /><br />
+    <div id="confirm-modal-backdrop" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-40 flex items-center justify-center">
+        <div id="confirm-modal" class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md transform scale-95 opacity-0">
+            <h3 id="confirm-title" class="text-lg font-bold text-gray-900">Confirm Action</h3>
+            <p id="confirm-message" class="mt-2 text-sm text-gray-600">Are you sure?</p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
+            </div>
+        </div>
+    </div>
 
-      <label for="gen2">Gen Unit 2 (MWh):</label>
-      <input type="number" id="gen2" step="0.01" /><br />
 
-      <label for="gen1h">Gen Unit 1 Hours:</label>
-      <input type="number" id="gen1h" step="0.01" /><br />
+    <div class="p-2 sm:p-4 lg:p-6 w-full">
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Plant Daily Meter Readings</h1>
+                <p class="text-sm text-gray-500 mt-1">Makari Gad Project | <a href="index.html" class="text-indigo-600 hover:underline">Home</a></p>
+            </div>
+            <div class="flex items-center space-x-2 mt-3 sm:mt-0">
+                 <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download as Excel</button>
+                 <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload from Excel</button>
+                 <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" />
+                 <div id="user-info" class="text-right text-sm text-indigo-600 font-semibold cursor-pointer hover:text-indigo-800" title="Click to logout"></div>
+            </div>
+        </header>
 
-      <label for="gen2h">Gen Unit 2 Hours:</label>
-      <input type="number" id="gen2h" step="0.01" /><br />
+        <main>
+            <section>
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Historical Data</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Generator</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Generator</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Transformer</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Transformer</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Transformer</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export at Plant Outgoing Feeder</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export at Substation Feeder</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outgoing</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import at Substation Feeder (MWh)</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Hour Counter</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Hour counter</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
 
-      <label for="tx1">Transformer 1 (MWh):</label>
-      <input type="number" id="tx1" step="0.01" /><br />
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-      <label for="tx2">Transformer 2 (MWh):</label>
-      <input type="number" id="tx2" step="0.01" /><br />
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
+        const adminEmail = "upenjyo@gmail.com";
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        setLogLevel('debug');
 
-      <label for="stx">Station Transformer (MWh):</label>
-      <input type="number" id="stx" step="0.01" /><br />
+        const plantDataPath = "plantData";
+        let currentUser = null;
+        let unsubscribe = null;
+        let allData = [];
+        let editingRowId = null;
 
-      <label for="ofeeder">Outgoing Feeder (MWh):</label>
-      <input type="number" id="ofeeder" step="0.01" /><br />
+        const userInfo = document.getElementById("user-info"), dataBody = document.getElementById("data-body");
+        const downloadBtn = document.getElementById("download-btn"), uploadBtn = document.getElementById("upload-btn"), fileUpload = document.getElementById("file-upload");
+        const confirmModalBackdrop = document.getElementById("confirm-modal-backdrop"), confirmTitle = document.getElementById("confirm-title"), confirmMessage = document.getElementById("confirm-message"), confirmCancelBtn = document.getElementById("confirm-cancel-btn"), confirmActionBtn = document.getElementById("confirm-action-btn");
 
-      <label for="obalanch">Outgoing Balanch Meter (MWh):</label>
-      <input type="number" id="obalanch" step="0.01" /><br />
-
-      <label for="ibalanch">Incoming Balanch Meter (MWh):</label>
-      <input type="number" id="ibalanch" step="0.01" /><br />
-
-      <label for="unit">Unit:</label>
-      <select id="unit">
-        <option value="MWh">MWh</option>
-        <option value="kWh">kWh</option>
-      </select><br />
-
-      <button type="submit">Submit</button>
-    </form>
-
-    <section>
-      <h2>Historical Data (All Dates)</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Operator</th>
-            <th>Gen1</th>
-            <th>Gen2</th>
-            <th>Gen1 Hrs</th>
-            <th>Gen2 Hrs</th>
-            <th>Tx1</th>
-            <th>Tx2</th>
-            <th>STx</th>
-            <th>Out Feeder</th>
-            <th>Out Balanch</th>
-            <th>In Balanch</th>
-            <th>Unit</th>
-          </tr>
-        </thead>
-        <tbody id="data-body"></tbody>
-      </table>
-    </section>
-  </main>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import {
-      getFirestore,
-      collection,
-      doc,
-      setDoc,
-      getDocs,
-      query,
-      orderBy,
-      Timestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
-      authDomain: "makari-gad.firebaseapp.com",
-      projectId: "makari-gad",
-      storageBucket: "makari-gad.appspot.com",
-      messagingSenderId: "724611254155",
-      appId: "1:724611254155:web:79851f67861cee3f90918e"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    let currentUser = null;
-
-    // Run after DOM is loaded
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.getElementById("data-form");
-      const userInfo = document.getElementById("user-info");
-      const entryDate = document.getElementById("entry-date");
-
-      onAuthStateChanged(auth, (user) => {
-        if (!user) {
-          // Not logged in, redirect to login page
-          window.location.href = "index.html";
-        } else {
-          currentUser = user;
-          userInfo.textContent = `Logged in as: ${user.email} (click to logout)`;
-          entryDate.valueAsDate = new Date();
-
-          userInfo.onclick = () => {
-            signOut(auth).then(() => {
-              window.location.href = "index.html";
-            });
-          };
-
-          loadData();
-        }
-      });
-
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const dateVal = entryDate.value;
-        if (!dateVal) {
-          alert("Please select a date.");
-          return;
+        function showNotification(message, isError = false) {
+            const modal = document.getElementById('notification-modal');
+            const messageEl = document.getElementById('notification-message');
+            messageEl.textContent = message;
+            modal.className = modal.className.replace(/border-(green|red)-500/, '');
+            modal.classList.add(isError ? 'border-red-500' : 'border-green-500');
+            modal.classList.remove('opacity-0', 'translate-y-[-20px]');
+            modal.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                modal.classList.remove('opacity-100', 'translate-y-0');
+                modal.classList.add('opacity-0', 'translate-y-[-20px]');
+            }, 5000);
         }
 
-        // Prepare data object from inputs (parseFloat or 0 if empty)
-        const data = {
-          gen1: parseFloat(document.getElementById("gen1").value) || 0,
-          gen2: parseFloat(document.getElementById("gen2").value) || 0,
-          gen1h: parseFloat(document.getElementById("gen1h").value) || 0,
-          gen2h: parseFloat(document.getElementById("gen2h").value) || 0,
-          tx1: parseFloat(document.getElementById("tx1").value) || 0,
-          tx2: parseFloat(document.getElementById("tx2").value) || 0,
-          stx: parseFloat(document.getElementById("stx").value) || 0,
-          ofeeder: parseFloat(document.getElementById("ofeeder").value) || 0,
-          obalanch: parseFloat(document.getElementById("obalanch").value) || 0,
-          ibalanch: parseFloat(document.getElementById("ibalanch").value) || 0,
-          unit: document.getElementById("unit").value || "MWh",
-          user: currentUser.email,
-          timestamp: Timestamp.fromDate(new Date())
-        };
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                userInfo.textContent = `Logged in as: ${user.email}`;
+                userInfo.onclick = () => signOut(auth);
+                
+                if (currentUser.email === adminEmail) {
+                    downloadBtn.classList.remove('hidden');
+                    uploadBtn.classList.remove('hidden');
+                }
 
-        try {
-          // Save document with ID as date string (YYYY-MM-DD)
-          await setDoc(doc(db, "plantData", dateVal), data);
-          alert("Data saved successfully!");
-          loadData();
-          form.reset();
-          entryDate.valueAsDate = new Date();
-        } catch (error) {
-          alert("Error saving data: " + error.message);
-          console.error(error);
-        }
-      });
-
-      async function loadData() {
-        const dataBody = document.getElementById("data-body");
-        dataBody.innerHTML = "";
-
-        const q = query(collection(db, "plantData"), orderBy("timestamp"));
-        const querySnapshot = await getDocs(q);
-
-        // Create array of rows with doc ID as date for sorting
-        const rows = [];
-
-        querySnapshot.forEach((docSnap) => {
-          const d = docSnap.data();
-          rows.push({
-            date: docSnap.id,
-            html: `
-              <tr>
-                <td>${docSnap.id}</td>
-                <td>${d.user}</td>
-                <td>${d.gen1}</td>
-                <td>${d.gen2}</td>
-                <td>${d.gen1h}</td>
-                <td>${d.gen2h}</td>
-                <td>${d.tx1}</td>
-                <td>${d.tx2}</td>
-                <td>${d.stx}</td>
-                <td>${d.ofeeder}</td>
-                <td>${d.obalanch}</td>
-                <td>${d.ibalanch}</td>
-                <td>${d.unit}</td>
-              </tr>
-            `
-          });
+                loadAndListenData();
+            } else {
+                const currentPath = window.location.pathname;
+                const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/index.html';
+                window.location.href = newPath;
+            }
         });
 
-        // Sort by date ascending (YYYY-MM-DD string)
-        rows.sort((a, b) => a.date.localeCompare(b.date));
-
-        for (const r of rows) {
-          dataBody.innerHTML += r.html;
+        function loadAndListenData() {
+            if (unsubscribe) unsubscribe();
+            const dataCollection = collection(db, plantDataPath);
+            const q = query(dataCollection);
+            unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const rows = [];
+                querySnapshot.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+                rows.sort((a, b) => a.id.localeCompare(b.id));
+                allData = rows;
+                renderTable(allData);
+            }, (error) => {
+                console.error("Error listening to data:", error);
+                showNotification("Error fetching data.", true);
+            });
         }
-      }
-    });
-  </script>
+
+        function createInputRow() {
+            const today = new Date();
+            const offset = today.getTimezoneOffset();
+            const localToday = new Date(today.getTime() - (offset*60*1000));
+            const dateString = localToday.toISOString().split('T')[0];
+
+            return `
+                <tr id="add-new-row" class="bg-indigo-50">
+                    <td class="tight-cell-input"><input type="date" id="new-entry-date" class="table-input" value="${dateString}" required /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-gen1" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-gen2" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-tx1" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-tx2" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-stx" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-ofeeder" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-obalanch" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-outgoing" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-ibalanch" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-gen1h" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-gen2h" step="0.01" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
+                    <td class="tight-cell-input">
+                        <button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        function renderTable(data) {
+            dataBody.innerHTML = createInputRow(); 
+            
+            if (data.length === 0) {
+                const noDataRow = `<tr><td colspan="14" class="text-center py-10 text-gray-500">No data submitted yet.</td></tr>`;
+                dataBody.innerHTML += noDataRow;
+            } else {
+                 data.forEach(d => {
+                    const row = document.createElement('tr');
+                    row.id = `row-${d.id}`;
+                    
+                    if (d.id === editingRowId) {
+                        row.innerHTML = createEditRowHtml(d);
+                    } else {
+                        row.innerHTML = createDisplayRowHtml(d);
+                    }
+                    dataBody.appendChild(row);
+                });
+            }
+        }
+
+        function createDisplayRowHtml(d) {
+            const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
+            const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
+            return `
+                <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.gen1 || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.gen2 || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.tx1 || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.tx2 || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.stx || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.ofeeder || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.obalanch || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.outgoing || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.ibalanch || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.gen1h || 0}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.gen2h || 0}</td>
+                <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
+                <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
+                    ${canEdit ? `
+                    <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button>
+                    <button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : `<span class="text-gray-400">-</span>`}
+                </td>`;
+        }
+
+        function createEditRowHtml(docData) {
+            return `
+                <td class="tight-cell-input"><input type="date" id="edit-${docData.id}-entry-date" class="table-input" value="${docData.id}" disabled /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-gen1" step="0.01" class="table-input" value="${docData.gen1 || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-gen2" step="0.01" class="table-input" value="${docData.gen2 || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-tx1" step="0.01" class="table-input" value="${docData.tx1 || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-tx2" step="0.01" class="table-input" value="${docData.tx2 || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-stx" step="0.01" class="table-input" value="${docData.stx || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-ofeeder" step="0.01" class="table-input" value="${docData.ofeeder || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-obalanch" step="0.01" class="table-input" value="${docData.obalanch || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-outgoing" step="0.01" class="table-input" value="${docData.outgoing || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-ibalanch" step="0.01" class="table-input" value="${docData.ibalanch || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-gen1h" step="0.01" class="table-input" value="${docData.gen1h || 0}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-gen2h" step="0.01" class="table-input" value="${docData.gen2h || 0}" /></td>
+                <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
+                <td class="tight-cell flex space-x-2 whitespace-nowrap">
+                    <button class="update-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${docData.id}">Update</button>
+                    <button class="cancel-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
+                </td>
+            `;
+        }
+        
+        async function handleAddOrUpdateEntry(docId, isUpdate = false) {
+            if (!currentUser) return showNotification("You must be logged in.", true);
+
+            const prefix = isUpdate ? `edit-${docId}-` : 'new-';
+            const dateVal = isUpdate ? docId : document.getElementById(`new-entry-date`).value;
+            if (!dateVal) return showNotification("Please select a date.", true);
+
+            const data = {
+                user: currentUser.email,
+                uid: currentUser.uid,
+                gen1: parseFloat(document.getElementById(`${prefix}gen1`).value) || 0,
+                gen2: parseFloat(document.getElementById(`${prefix}gen2`).value) || 0,
+                tx1: parseFloat(document.getElementById(`${prefix}tx1`).value) || 0,
+                tx2: parseFloat(document.getElementById(`${prefix}tx2`).value) || 0,
+                stx: parseFloat(document.getElementById(`${prefix}stx`).value) || 0,
+                ofeeder: parseFloat(document.getElementById(`${prefix}ofeeder`).value) || 0,
+                obalanch: parseFloat(document.getElementById(`${prefix}obalanch`).value) || 0,
+                outgoing: parseFloat(document.getElementById(`${prefix}outgoing`).value) || 0,
+                ibalanch: parseFloat(document.getElementById(`${prefix}ibalanch`).value) || 0,
+                gen1h: parseFloat(document.getElementById(`${prefix}gen1h`).value) || 0,
+                gen2h: parseFloat(document.getElementById(`${prefix}gen2h`).value) || 0,
+            };
+
+            try {
+                await setDoc(doc(db, plantDataPath, dateVal), data, { merge: true });
+                showNotification(`Data ${isUpdate ? 'updated' : 'saved'} successfully!`);
+                if(isUpdate) editingRowId = null;
+            } catch (error) {
+                showNotification("Error saving data: " + error.message, true);
+                console.error(error);
+            }
+        }
+
+        dataBody.addEventListener('click', e => {
+            if (e.target.id === 'add-entry-btn') handleAddOrUpdateEntry(null, false);
+            if (e.target.classList.contains('edit-btn')) {
+                const docData = JSON.parse(e.target.dataset.doc);
+                editingRowId = docData.id;
+                renderTable(allData);
+            }
+            if (e.target.classList.contains('delete-btn')) showDeleteConfirm(e.target.dataset.id);
+            if (e.target.classList.contains('update-btn')) handleAddOrUpdateEntry(e.target.dataset.id, true);
+            if (e.target.classList.contains('cancel-btn')) {
+                editingRowId = null;
+                renderTable(allData);
+            }
+        });
+
+        function showConfirmation(title, message, onConfirm) {
+            confirmTitle.textContent = title;
+            confirmMessage.textContent = message;
+            confirmActionBtn.onclick = () => {
+                onConfirm();
+                hideConfirmation();
+            };
+            confirmModalBackdrop.classList.remove('hidden');
+            confirmModalBackdrop.classList.add('opacity-100');
+            confirmModal.classList.add('opacity-100', 'scale-100');
+        }
+
+        function hideConfirmation() {
+            confirmModalBackdrop.classList.add('opacity-0');
+            confirmModal.classList.remove('opacity-100', 'scale-100');
+            setTimeout(() => confirmModalBackdrop.classList.add('hidden'), 300);
+        }
+
+        function showDeleteConfirm(docId) {
+            showConfirmation('Confirm Deletion', `Are you sure you want to delete the entry for ${docId}? This action cannot be undone.`, () => deleteEntry(docId));
+        }
+
+        confirmCancelBtn.addEventListener('click', hideConfirmation);
+        confirmModalBackdrop.addEventListener('click', (e) => { if (e.target === confirmModalBackdrop) hideConfirmation(); });
+
+        async function deleteEntry(docId) {
+            try {
+                await deleteDoc(doc(db, plantDataPath, docId));
+                showNotification("Entry deleted successfully.");
+            } catch (error) {
+                showNotification("Error deleting entry: " + error.message, true);
+                console.error("Error deleting document:", error);
+            }
+        }
+
+        // --- Excel Download/Upload Logic ---
+        downloadBtn.addEventListener('click', () => {
+            const dataToExport = allData.map(d => ({
+                'Date': d.id,
+                'Unit 1 Generator': d.gen1,
+                'Unit 2 Generator': d.gen2,
+                'Unit 1 Transformer': d.tx1,
+                'Unit 2 Transformer': d.tx2,
+                'Station Transformer': d.stx,
+                'Export at Plant Outgoing Feeder': d.ofeeder,
+                'Export at Substation Feeder': d.obalanch,
+                'Outgoing': d.outgoing,
+                'Import at Substation Feeder (MWh)': d.ibalanch,
+                'Unit 1 Hour Counter': d.gen1h,
+                'Unit 2 Hour counter': d.gen2h,
+                'Operator': d.user
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "PlantData");
+            XLSX.writeFile(workbook, "MakariGad_PlantData.xlsx");
+            showNotification("Downloading Excel file...");
+        });
+
+        uploadBtn.addEventListener('click', () => fileUpload.click());
+        
+        fileUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                    
+                    if (jsonData.length < 2) {
+                        showNotification("The uploaded file is empty or has no data rows.", true);
+                        return;
+                    }
+
+                    const validationResult = validateHeaders(jsonData[0]);
+                    if (!validationResult.isValid) {
+                        showNotification(`Invalid file format. Missing required columns: ${validationResult.missing.join(', ')}`, true);
+                        return;
+                    }
+                    
+                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Do you want to continue?`, () => processAndUploadData(jsonData));
+
+                } catch (error) {
+                    showNotification("Error reading or parsing the file. Please ensure it's a valid Excel or CSV file.", true);
+                    console.error("File read error:", error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            fileUpload.value = '';
+        });
+        
+        const expectedHeaders = [
+            'Date', 'Unit 1 Generator', 'Unit 2 Generator', 'Unit 1 Transformer', 
+            'Unit 2 Transformer', 'Station Transformer', 'Export at Plant Outgoing Feeder',
+            'Export at Substation Feeder', 'Outgoing', 'Import at Substation Feeder (MWh)', 
+            'Unit 1 Hour Counter', 'Unit 2 Hour counter'
+        ];
+
+        function validateHeaders(headerRow) {
+            const missing = [];
+            const actualHeaders = headerRow.map(h => String(h).trim());
+            
+            const outgoingFeederVariants = ['Export at Plant Outgoing Feeder', 'Export at Plant Outgoing Feeder '];
+
+            expectedHeaders.forEach(expected => {
+                if (expected === 'Export at Plant Outgoing Feeder') {
+                    if (!outgoingFeederVariants.some(v => actualHeaders.includes(v))) {
+                        missing.push(expected);
+                    }
+                } else {
+                    if (!actualHeaders.includes(expected)) {
+                        missing.push(expected);
+                    }
+                }
+            });
+            return { isValid: missing.length === 0, missing };
+        }
+
+        async function processAndUploadData(jsonData) {
+            if (!currentUser) {
+                showNotification("Authentication error. Please re-login.", true);
+                return;
+            }
+            showNotification("Starting upload...", false);
+
+            const header = jsonData.shift().map(h => String(h).trim());
+            
+            const headerMap = {
+                date: header.indexOf('Date'),
+                gen1: header.indexOf('Unit 1 Generator'),
+                gen2: header.indexOf('Unit 2 Generator'),
+                tx1: header.indexOf('Unit 1 Transformer'),
+                tx2: header.indexOf('Unit 2 Transformer'),
+                stx: header.indexOf('Station Transformer'),
+                ofeeder: header.includes('Export at Plant Outgoing Feeder') ? header.indexOf('Export at Plant Outgoing Feeder') : header.indexOf('Export at Plant Outgoing Feeder '),
+                obalanch: header.indexOf('Export at Substation Feeder'),
+                outgoing: header.indexOf('Outgoing'),
+                ibalanch: header.indexOf('Import at Substation Feeder (MWh)'),
+                gen1h: header.indexOf('Unit 1 Hour Counter'),
+                gen2h: header.indexOf('Unit 2 Hour counter'),
+            };
+
+            const batch = writeBatch(db);
+            let operationsCount = 0;
+
+            jsonData.forEach(row => {
+                const dateValue = row[headerMap.date];
+                if (!dateValue) return;
+
+                let dateStr;
+                if (dateValue instanceof Date) {
+                    const offset = dateValue.getTimezoneOffset() * 60000;
+                    const localDate = new Date(dateValue.getTime() - offset);
+                    dateStr = localDate.toISOString().split('T')[0];
+                } else {
+                    dateStr = String(dateValue).split(' ')[0];
+                }
+
+                const docRef = doc(db, plantDataPath, dateStr);
+                const docData = {
+                    user: currentUser.email,
+                    uid: currentUser.uid,
+                    gen1: parseFloat(row[headerMap.gen1]) || 0,
+                    gen2: parseFloat(row[headerMap.gen2]) || 0,
+                    tx1: parseFloat(row[headerMap.tx1]) || 0,
+                    tx2: parseFloat(row[headerMap.tx2]) || 0,
+                    stx: parseFloat(row[headerMap.stx]) || 0,
+                    ofeeder: parseFloat(row[headerMap.ofeeder]) || 0,
+                    obalanch: parseFloat(row[headerMap.obalanch]) || 0,
+                    outgoing: parseFloat(row[headerMap.outgoing]) || 0,
+                    ibalanch: parseFloat(row[headerMap.ibalanch]) || 0,
+                    gen1h: parseFloat(row[headerMap.gen1h]) || 0,
+                    gen2h: parseFloat(row[headerMap.gen2h]) || 0,
+                };
+                batch.set(docRef, docData, { merge: true });
+                operationsCount++;
+            });
+
+            if (operationsCount === 0) {
+                showNotification("No valid data rows found to upload.", true);
+                return;
+            }
+
+            try {
+                await batch.commit();
+                showNotification(`Successfully uploaded ${operationsCount} records.`, false);
+            } catch (error) {
+                showNotification("Upload failed: " + error.message, true);
+                console.error("Batch upload error:", error);
+            }
+        }
+
+    </script>
 </body>
 </html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Report - Makari Gad Project</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Nepali Date Converter Library -->
+    <script src="https://cdn.jsdelivr.net/npm/nepali-date-converter/dist/nepali-date-converter.umd.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .summary-card {
+            background-color: #f9fafb;
+            border-left: 4px solid #4f46e5;
+        }
+        .summary-label {
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500;     /* font-medium */
+            color: #6b7280;       /* text-gray-500 */
+        }
+        .summary-value {
+            font-size: 1.125rem;  /* text-lg */
+            font-weight: 600;     /* font-semibold */
+            color: #111827;       /* text-gray-900 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="header-placeholder"></div>
+
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Daily Generation Report</h1>
+                    <p class="text-sm text-gray-500 mt-1">Select a date to view the daily summary.</p>
+                </div>
+                <div class="mt-4 sm:mt-0">
+                    <label for="report-date" class="block text-sm font-medium text-gray-700">Report Date</label>
+                    <input type="date" id="report-date" class="mt-1 block w-full sm:w-auto border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            
+            <div id="report-content" class="hidden">
+                <div class="mb-6 p-4 rounded-md bg-indigo-50 border border-indigo-200">
+                    <h2 class="text-xl font-semibold text-center text-gray-800">
+                        Summary for <span id="display-date-ad" class="text-indigo-600"></span> 
+                        (<span id="display-date-bs" class="text-indigo-600"></span>)
+                    </h2>
+                    <p class="text-xs text-center text-gray-500">(Calculated from 12:00 PM previous day to 12:00 PM on selected date)</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Generation & Export -->
+                    <div class="summary-card p-4 rounded-md">
+                        <h3 class="font-bold text-lg mb-3 text-gray-800">Energy Summary</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="summary-label">Total Generation</p>
+                                <p class="summary-value"><span id="val-generation">0.00</span> MWh</p>
+                            </div>
+                            <div>
+                                <p class="summary-label">Export at Substation</p>
+                                <p class="summary-value"><span id="val-export-substation">0.00</span> MWh</p>
+                            </div>
+                            <div>
+                                <p class="summary-label">Export at Plant Outgoing</p>
+                                <p class="summary-value"><span id="val-export-plant">0.00</span> MWh</p>
+                            </div>
+                            <div>
+                                <p class="summary-label">Total Import</p>
+                                <p class="summary-value"><span id="val-import">0.00</span> kWh</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Load & Plant Factor -->
+                    <div class="summary-card p-4 rounded-md">
+                        <h3 class="font-bold text-lg mb-3 text-gray-800">Performance</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="summary-label">Average Load at Powerhouse</p>
+                                <p class="summary-value"><span id="val-avg-load-powerhouse">0.00</span> kW</p>
+                            </div>
+                            <div>
+                                <p class="summary-label">Average Load at Substation</p>
+                                <p class="summary-value"><span id="val-avg-load-substation">0.00</span> kW</p>
+                            </div>
+                            <div>
+                                <p class="summary-label">Daily Plant Factor</p>
+                                <p class="summary-value"><span id="val-plant-factor">0.00</span> %</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Unit Hours -->
+                    <div class="summary-card p-4 rounded-md">
+                        <h3 class="font-bold text-lg mb-3 text-gray-800">Unit Cumulative Hours</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <p class="summary-label">Unit 1 Hour Counter</p>
+                                <p class="summary-value"><span id="val-unit1-counter">0.00</span> hrs</p>
+                            </div>
+                            <div>
+                                <p class="summary-label">Unit 2 Hour Counter</p>
+                                <p class="summary-value"><span id="val-unit2-counter">0.00</span> hrs</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="loading-state" class="text-center p-10">
+                <p class="text-gray-600">Loading data...</p>
+            </div>
+
+            <div id="error-state" class="hidden text-center p-10 bg-red-50 border border-red-200 rounded-md">
+                <p id="error-message" class="text-red-700 font-medium"></p>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIG & INITIALIZATION ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const plantDataPath = "plantData";
+        let allData = [];
+
+        const reportDateInput = document.getElementById('report-date');
+        const reportContent = document.getElementById('report-content');
+        const loadingState = document.getElementById('loading-state');
+        const errorState = document.getElementById('error-state');
+        const errorMessage = document.getElementById('error-message');
+
+        // --- DATA FETCHING ---
+        const dataCollection = collection(db, plantDataPath);
+        const q = query(dataCollection);
+        onSnapshot(q, (querySnapshot) => {
+            const rows = [];
+            querySnapshot.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+            allData = rows.sort((a, b) => a.id.localeCompare(b.id)); // Sort ascending by date
+            
+            if (allData.length > 0) {
+                const latestDate = allData[allData.length - 1].id;
+                reportDateInput.value = latestDate;
+                reportDateInput.max = latestDate;
+                generateReport(latestDate);
+            } else {
+                showError("No data available to generate a report.");
+            }
+            loadingState.classList.add('hidden');
+        }, (error) => {
+            console.error("Error fetching data:", error);
+            showError("Error fetching data from the database.");
+        });
+
+        reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
+
+        // --- REPORT GENERATION LOGIC ---
+        function generateReport(dateStr) {
+            reportContent.classList.add('hidden');
+            errorState.classList.add('hidden');
+
+            const todayData = allData.find(d => d.id === dateStr);
+            if (!todayData) {
+                showError(`No data available for ${dateStr}. Please select another date.`);
+                return;
+            }
+
+            const yesterdayStr = getPreviousDay(dateStr);
+            const yesterdayData = allData.find(d => d.id === yesterdayStr);
+            if (!yesterdayData) {
+                showError(`Cannot generate report for ${dateStr} as data for the previous day (${yesterdayStr}) is missing.`);
+                return;
+            }
+
+            // --- CALCULATIONS ---
+            const calculations = {};
+            const todayGen = (todayData.unit1Gen || 0) + (todayData.unit2Gen || 0);
+            const yesterdayGen = (yesterdayData.unit1Gen || 0) + (yesterdayData.unit2Gen || 0);
+
+            calculations.generation = todayGen - yesterdayGen;
+            calculations.exportSubstation = (todayData.exportSubstation || 0) - (yesterdayData.exportSubstation || 0);
+            calculations.exportPlant = (todayData.exportPlant || 0) - (yesterdayData.exportPlant || 0);
+            
+            // Import is in kWh, so no need to multiply by 1000
+            calculations.import = ((todayData.importSubstation || 0) - (yesterdayData.importSubstation || 0));
+
+            calculations.avgLoadPowerhouse = (calculations.generation / 24) * 1000; // MWh to kW
+            calculations.avgLoadSubstation = (calculations.exportSubstation / 24) * 1000; // MWh to kW
+            
+            // Plant Factor = (Actual Daily Generation MWh / Max Possible Generation MWh) * 100
+            // Max Possible = 10 MW * 24 h = 240 MWh
+            calculations.plantFactor = (calculations.exportSubstation / 240) * 100;
+
+            calculations.unit1Counter = todayData.unit1Counter || 0;
+            calculations.unit2Counter = todayData.unit2Counter || 0;
+            
+            renderReport(dateStr, calculations);
+        }
+
+        // --- UI RENDERING ---
+        function renderReport(dateStr, data) {
+            const nepaliDate = new NepaliDate(new Date(dateStr)).format('YYYY-MM-DD');
+            document.getElementById('display-date-ad').textContent = dateStr;
+            document.getElementById('display-date-bs').textContent = nepaliDate;
+
+            document.getElementById('val-generation').textContent = formatNumber(data.generation);
+            document.getElementById('val-export-substation').textContent = formatNumber(data.exportSubstation);
+            document.getElementById('val-export-plant').textContent = formatNumber(data.exportPlant);
+            document.getElementById('val-import').textContent = formatNumber(data.import, 0); // kWh, no decimals
+            document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(data.avgLoadPowerhouse, 0);
+            document.getElementById('val-avg-load-substation').textContent = formatNumber(data.avgLoadSubstation, 0);
+            document.getElementById('val-plant-factor').textContent = formatNumber(data.plantFactor);
+            document.getElementById('val-unit1-counter').textContent = formatNumber(data.unit1Counter, 1);
+            document.getElementById('val-unit2-counter').textContent = formatNumber(data.unit2Counter, 1);
+            
+            reportContent.classList.remove('hidden');
+        }
+
+        // --- HELPER FUNCTIONS ---
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorState.classList.remove('hidden');
+            reportContent.classList.add('hidden');
+            loadingState.classList.add('hidden');
+        }
+
+        function getPreviousDay(dateString) {
+            const date = new Date(dateString);
+            date.setDate(date.getDate() - 1);
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatNumber(num, decimals = 2) {
+            if (isNaN(num) || num === null || num === undefined) {
+                return (0).toFixed(decimals);
+            }
+            return parseFloat(num).toFixed(decimals);
+        }
+
+    </script>
+    <script>
+        // Load header and footer
+        fetch('header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
+        fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+    </script>
+</body>
+</html>

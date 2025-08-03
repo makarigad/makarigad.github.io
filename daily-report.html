@@ -13,10 +13,14 @@
             border-left: 4px solid #4f46e5;
         }
         .summary-label {
-            @apply text-sm font-medium text-gray-500;
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500;    /* font-medium */
+            color: #6b7280;      /* text-gray-500 */
         }
         .summary-value {
-            @apply text-lg font-semibold text-gray-900;
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 600;    /* font-semibold */
+            color: #111827;      /* text-gray-900 */
         }
     </style>
 </head>
@@ -122,7 +126,6 @@
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
-    // NOTE: NepaliDate is no longer imported or used in the logic
 
     // --- CONFIG & INITIALIZATION ---
     const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
@@ -139,37 +142,39 @@
 
     // --- DATA FETCHING via CLOUD FUNCTION ---
     async function fetchData() {
-    try {
-        const getPlantData = httpsCallable(functions, 'getPlantData');
-        const result = await getPlantData();
+        try {
+            const getPlantData = httpsCallable(functions, 'getPlantData');
+            const result = await getPlantData();
+            const data = result.data.data;
 
-        // **CHANGE IS HERE**: We access result.data.data to get the array
-        const data = result.data.data;
+            // --- ADD THIS LINE FOR DEBUGGING ---
+            console.log("ALL DATA RECEIVED BY BROWSER:", data);
+            // --- END OF DEBUGGING LINE ---
 
-        if (!data) {
-             showError("Received invalid data from the server.");
-             loadingState.classList.add('hidden');
-             return;
+            if (!data) {
+                showError("Received invalid data from the server.");
+                loadingState.classList.add('hidden');
+                return;
+            }
+
+            allData = data.sort((a, b) => a.id.localeCompare(b.id));
+
+            if (allData.length > 0) {
+                const latestDate = allData[allData.length - 1].id;
+                reportDateInput.value = latestDate;
+                reportDateInput.max = latestDate;
+                generateReport(latestDate);
+            } else {
+                showError("No data available in the database.");
+            }
+            loadingState.classList.add('hidden');
+        } catch (error) {
+            console.error("Error fetching data via Cloud Function:", error);
+            showError("Error fetching data from the server. Please try again later.");
         }
-
-        allData = data.sort((a, b) => a.id.localeCompare(b.id)); 
-
-        if (allData.length > 0) {
-            const latestDate = allData[allData.length - 1].id;
-            reportDateInput.value = latestDate;
-            reportDateInput.max = latestDate;
-            generateReport(latestDate);
-        } else {
-            showError("No data available in the database.");
-        }
-        loadingState.classList.add('hidden');
-    } catch (error) {
-        console.error("Error fetching data via Cloud Function:", error);
-        showError("Error fetching data from the server. Please try again later.");
     }
-}
 
-    fetchData(); 
+    fetchData();
 
     reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
 
@@ -178,9 +183,8 @@
         reportContent.classList.add('hidden');
         errorState.classList.add('hidden');
 
-        // *** CHANGE IS HERE: Searching for the English (Gregorian) date string directly ***
         const todayData = allData.find(d => d.id === gregorianDateStr);
-        
+
         if (!todayData) {
             showError(`No data available for ${gregorianDateStr}. Please select another date.`);
             return;
@@ -188,13 +192,13 @@
 
         const gregorianYesterdayStr = getPreviousDay(gregorianDateStr);
         const yesterdayData = allData.find(d => d.id === gregorianYesterdayStr);
-        
+
         if (!yesterdayData) {
             showError(`Cannot generate report for ${gregorianDateStr} as data for the previous day (${gregorianYesterdayStr}) is missing.`);
             return;
         }
 
-        // --- CALCULATIONS (no changes here) ---
+        // --- CALCULATIONS ---
         const calculations = {};
         const todayGen = (todayData.unit1Gen || 0) + (todayData.unit2Gen || 0);
         const yesterdayGen = (yesterdayData.unit1Gen || 0) + (yesterdayData.unit2Gen || 0);
@@ -208,22 +212,15 @@
         calculations.plantFactor = (calculations.exportSubstation / 240) * 100;
         calculations.unit1Counter = todayData.unit1Counter || 0;
         calculations.unit2Counter = todayData.unit2Counter || 0;
-        
+
         renderReport(gregorianDateStr, calculations);
     }
 
     // --- UI RENDERING ---
     function renderReport(dateStr, data) {
-        // *** CHANGE IS HERE: Removed the Nepali date display ***
         const displayDateEl = document.getElementById('display-date-ad');
-        const nepaliDateEl = document.getElementById('display-date-bs');
-        displayDateEl.textContent = dateStr;
-        if(nepaliDateEl) nepaliDateEl.textContent = ""; // Clear the nepali date element
-        
-        // Hide the parenthesis if the nepali date is empty
         const dateContainer = displayDateEl.parentElement;
         dateContainer.innerHTML = `Summary for <span id="display-date-ad" class="text-indigo-600">${dateStr}</span>`;
-
 
         document.getElementById('val-generation').textContent = formatNumber(data.generation);
         document.getElementById('val-export-substation').textContent = formatNumber(data.exportSubstation);

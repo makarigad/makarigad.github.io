@@ -126,134 +126,127 @@
     <div id="footer-placeholder"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
-        // --- CONFIG & INITIALIZATION ---
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const plantDataPath = "plantData";
-        let allData = [];
+    // --- CONFIG & INITIALIZATION ---
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
+    const app = initializeApp(firebaseConfig);
+    const functions = getFunctions(app);
 
-        const reportDateInput = document.getElementById('report-date');
-        const reportContent = document.getElementById('report-content');
-        const loadingState = document.getElementById('loading-state');
-        const errorState = document.getElementById('error-state');
-        const errorMessage = document.getElementById('error-message');
+    let allData = [];
 
-        // --- DATA FETCHING ---
-        const dataCollection = collection(db, plantDataPath);
-        const q = query(dataCollection);
-        onSnapshot(q, (querySnapshot) => {
-            const rows = [];
-            querySnapshot.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-            allData = rows.sort((a, b) => a.id.localeCompare(b.id)); // Sort ascending by date
-            
+    const reportDateInput = document.getElementById('report-date');
+    const reportContent = document.getElementById('report-content');
+    const loadingState = document.getElementById('loading-state');
+    const errorState = document.getElementById('error-state');
+    const errorMessage = document.getElementById('error-message');
+
+    // --- DATA FETCHING via CLOUD FUNCTION ---
+    async function fetchData() {
+        try {
+            const getPlantData = httpsCallable(functions, 'getPlantData');
+            const result = await getPlantData();
+            const data = result.data;
+
+            // No sorting needed here as we will search by Nepali date string
+            allData = data; 
+
             if (allData.length > 0) {
-                const latestDate = allData[allData.length - 1].id;
-                reportDateInput.value = latestDate;
-                reportDateInput.max = latestDate;
-                generateReport(latestDate);
+                // Set the default date picker value to today's date
+                reportDateInput.value = new Date().toISOString().split('T')[0];
+                generateReport(reportDateInput.value);
             } else {
                 showError("No data available to generate a report.");
             }
             loadingState.classList.add('hidden');
-        }, (error) => {
-            console.error("Error fetching data:", error);
-            showError("Error fetching data from the database.");
-        });
+        } catch (error) {
+            console.error("Error fetching data via Cloud Function:", error);
+            showError("Error fetching data from the server. Please try again later.");
+        }
+    }
 
-        reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
+    fetchData(); // Fetch data when the page loads
 
-        // --- REPORT GENERATION LOGIC ---
-        function generateReport(dateStr) {
-            reportContent.classList.add('hidden');
-            errorState.classList.add('hidden');
+    reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
 
-            const todayData = allData.find(d => d.id === dateStr);
-            if (!todayData) {
-                showError(`No data available for ${dateStr}. Please select another date.`);
-                return;
-            }
+    // --- REPORT GENERATION LOGIC ---
+    function generateReport(gregorianDateStr) {
+        reportContent.classList.add('hidden');
+        errorState.classList.add('hidden');
 
-            const yesterdayStr = getPreviousDay(dateStr);
-            const yesterdayData = allData.find(d => d.id === yesterdayStr);
-            if (!yesterdayData) {
-                showError(`Cannot generate report for ${dateStr} as data for the previous day (${yesterdayStr}) is missing.`);
-                return;
-            }
-
-            // --- CALCULATIONS ---
-            const calculations = {};
-            const todayGen = (todayData.unit1Gen || 0) + (todayData.unit2Gen || 0);
-            const yesterdayGen = (yesterdayData.unit1Gen || 0) + (yesterdayData.unit2Gen || 0);
-
-            calculations.generation = todayGen - yesterdayGen;
-            calculations.exportSubstation = (todayData.exportSubstation || 0) - (yesterdayData.exportSubstation || 0);
-            calculations.exportPlant = (todayData.exportPlant || 0) - (yesterdayData.exportPlant || 0);
-            
-            // Import is in kWh, so no need to multiply by 1000
-            calculations.import = ((todayData.importSubstation || 0) - (yesterdayData.importSubstation || 0));
-
-            calculations.avgLoadPowerhouse = (calculations.generation / 24) * 1000; // MWh to kW
-            calculations.avgLoadSubstation = (calculations.exportSubstation / 24) * 1000; // MWh to kW
-            
-            // Plant Factor = (Actual Daily Generation MWh / Max Possible Generation MWh) * 100
-            // Max Possible = 10 MW * 24 h = 240 MWh
-            calculations.plantFactor = (calculations.exportSubstation / 240) * 100;
-
-            calculations.unit1Counter = todayData.unit1Counter || 0;
-            calculations.unit2Counter = todayData.unit2Counter || 0;
-            
-            renderReport(dateStr, calculations);
+        // *** CHANGE IS HERE ***
+        // Convert Gregorian dates to Nepali strings before searching
+        const nepaliTodayStr = new NepaliDate(new Date(gregorianDateStr)).format('YYYY-MM-DD');
+        const todayData = allData.find(d => d.id === nepaliTodayStr);
+        
+        if (!todayData) {
+            showError(`No data available for ${nepaliTodayStr} (${gregorianDateStr}). Please select another date.`);
+            return;
         }
 
-        // --- UI RENDERING ---
-        function renderReport(dateStr, data) {
-            const nepaliDate = new NepaliDate(new Date(dateStr)).format('YYYY-MM-DD');
-            document.getElementById('display-date-ad').textContent = dateStr;
-            document.getElementById('display-date-bs').textContent = nepaliDate;
-
-            document.getElementById('val-generation').textContent = formatNumber(data.generation);
-            document.getElementById('val-export-substation').textContent = formatNumber(data.exportSubstation);
-            document.getElementById('val-export-plant').textContent = formatNumber(data.exportPlant);
-            document.getElementById('val-import').textContent = formatNumber(data.import, 0); // kWh, no decimals
-            document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(data.avgLoadPowerhouse, 0);
-            document.getElementById('val-avg-load-substation').textContent = formatNumber(data.avgLoadSubstation, 0);
-            document.getElementById('val-plant-factor').textContent = formatNumber(data.plantFactor);
-            document.getElementById('val-unit1-counter').textContent = formatNumber(data.unit1Counter, 1);
-            document.getElementById('val-unit2-counter').textContent = formatNumber(data.unit2Counter, 1);
-            
-            reportContent.classList.remove('hidden');
+        const gregorianYesterdayStr = getPreviousDay(gregorianDateStr);
+        const nepaliYesterdayStr = new NepaliDate(new Date(gregorianYesterdayStr)).format('YYYY-MM-DD');
+        const yesterdayData = allData.find(d => d.id === nepaliYesterdayStr);
+        
+        if (!yesterdayData) {
+            showError(`Cannot generate report for ${nepaliTodayStr} as data for the previous day (${nepaliYesterdayStr}) is missing.`);
+            return;
         }
 
-        // --- HELPER FUNCTIONS ---
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorState.classList.remove('hidden');
-            reportContent.classList.add('hidden');
-            loadingState.classList.add('hidden');
-        }
+        // --- CALCULATIONS (no changes here) ---
+        const calculations = {};
+        const todayGen = (todayData.unit1Gen || 0) + (todayData.unit2Gen || 0);
+        const yesterdayGen = (yesterdayData.unit1Gen || 0) + (yesterdayData.unit2Gen || 0);
 
-        function getPreviousDay(dateString) {
-            const date = new Date(dateString);
-            date.setDate(date.getDate() - 1);
-            return date.toISOString().split('T')[0];
-        }
+        calculations.generation = todayGen - yesterdayGen;
+        calculations.exportSubstation = (todayData.exportSubstation || 0) - (yesterdayData.exportSubstation || 0);
+        calculations.exportPlant = (todayData.exportPlant || 0) - (yesterdayData.exportPlant || 0);
+        calculations.import = ((todayData.importSubstation || 0) - (yesterdayData.importSubstation || 0));
+        calculations.avgLoadPowerhouse = (calculations.generation / 24) * 1000;
+        calculations.avgLoadSubstation = (calculations.exportSubstation / 24) * 1000;
+        calculations.plantFactor = (calculations.exportSubstation / 240) * 100;
+        calculations.unit1Counter = todayData.unit1Counter || 0;
+        calculations.unit2Counter = todayData.unit2Counter || 0;
+        
+        renderReport(gregorianDateStr, calculations);
+    }
 
-        function formatNumber(num, decimals = 2) {
-            if (isNaN(num) || num === null || num === undefined) {
-                return (0).toFixed(decimals);
-            }
-            return parseFloat(num).toFixed(decimals);
-        }
+    // --- UI RENDERING (no changes here) ---
+    function renderReport(dateStr, data) {
+        const nepaliDate = new NepaliDate(new Date(dateStr)).format('YYYY-MM-DD');
+        document.getElementById('display-date-ad').textContent = dateStr;
+        document.getElementById('display-date-bs').textContent = nepaliDate;
+        document.getElementById('val-generation').textContent = formatNumber(data.generation);
+        document.getElementById('val-export-substation').textContent = formatNumber(data.exportSubstation);
+        document.getElementById('val-export-plant').textContent = formatNumber(data.exportPlant);
+        document.getElementById('val-import').textContent = formatNumber(data.import, 0);
+        document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(data.avgLoadPowerhouse, 0);
+        document.getElementById('val-avg-load-substation').textContent = formatNumber(data.avgLoadSubstation, 0);
+        document.getElementById('val-plant-factor').textContent = formatNumber(data.plantFactor);
+        document.getElementById('val-unit1-counter').textContent = formatNumber(data.unit1Counter, 1);
+        document.getElementById('val-unit2-counter').textContent = formatNumber(data.unit2Counter, 1);
+        reportContent.classList.remove('hidden');
+    }
 
-    </script>
-    <script>
-        // Load header and footer
-        fetch('header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
-        fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
-    </script>
+    // --- HELPER FUNCTIONS (no changes here) ---
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorState.classList.remove('hidden');
+        reportContent.classList.add('hidden');
+        loadingState.classList.add('hidden');
+    }
+    function getPreviousDay(dateString) {
+        const date = new Date(dateString);
+        date.setDate(date.getDate() - 1);
+        return date.toISOString().split('T')[0];
+    }
+    function formatNumber(num, decimals = 2) {
+        if (isNaN(num) || num === null || num === undefined) {
+            return (0).toFixed(decimals);
+        }
+        return parseFloat(num).toFixed(decimals);
+    }
+</script>
 </body>
 </html>

@@ -62,7 +62,7 @@ footer {
   font-size: 0.9em;
 }
 
-<style>
+/* Additional styles for tables and forms */
     /* CSS block to be replaced */
     .w-full {
         table-layout: fixed;
@@ -99,4 +99,3 @@ footer {
         padding: 2px;
         font-size: 0.75rem;
     }
-</style>

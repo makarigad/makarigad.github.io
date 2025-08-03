@@ -143,11 +143,11 @@
         const getPlantData = httpsCallable(functions, 'getPlantData');
         const result = await getPlantData();
 
-        // CHANGE IS HERE: The data is now directly in result.data
-        const data = result.data;
+        // **CHANGE IS HERE**: We access result.data.data to get the array
+        const data = result.data.data;
 
         if (!data) {
-             showError("Received no data from the server.");
+             showError("Received invalid data from the server.");
              loadingState.classList.add('hidden');
              return;
         }

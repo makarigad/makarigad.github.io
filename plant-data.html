@@ -235,6 +235,19 @@
             `;
         }
 
+        /**
+         * Formats a number to a maximum of 3 decimal places.
+         * @param {number | null | undefined} num The number to format.
+         * @returns {string | number} The formatted number or an empty string.
+         */
+        function formatNumber(num) {
+            if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
+                return '';
+            }
+            // Round to at most 3 decimal places
+            return Math.round(num * 1000) / 1000;
+        }
+
         function renderTable(data) {
             dataBody.innerHTML = createInputRow();
             data.forEach(d => {
@@ -248,20 +261,21 @@
         function createDisplayRowHtml(d) {
             const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
             const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
+            // CHANGED: Applied formatNumber function to all numeric data cells
             return `
                 <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.unit1Gen ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.unit2Gen ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.unit1Trans ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.unit2Trans ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.stationTrans ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.exportPlant ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.exportSubstation ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.importOutgoing ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.importSubstation ?? ''}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Gen)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Gen)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Trans)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Trans)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.stationTrans)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportPlant)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportSubstation)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importOutgoing)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importSubstation)}</td>
                 <td class="tight-cell text-sm text-gray-500"></td>
-                <td class="tight-cell text-sm text-gray-500">${d.unit1Counter ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.unit2Counter ?? ''}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Counter)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Counter)}</td>
                 <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
                 <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
                     ${canEdit ? `<button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}

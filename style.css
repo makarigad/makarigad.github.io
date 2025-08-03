@@ -61,3 +61,47 @@ footer {
   color: #888;
   font-size: 0.9em;
 }
+
+<style>
+    /* Make the table layout fixed to respect column widths */
+    .w-full {
+        table-layout: fixed;
+        width: 100%;
+        word-wrap: break-word; /* Helps break long text */
+    }
+
+    /* Reduce font size and padding for data cells for a tighter fit */
+    #data-body td {
+        font-size: 0.75rem; /* 12px */
+        padding: 4px 3px !important;
+    }
+
+    /* Reduce padding for header cells */
+    thead th {
+        padding: 8px 4px !important;
+    }
+    
+    /* Set specific widths for each table column */
+    thead th:nth-child(1) { width: 9%; }   /* Date */
+    thead th:nth-child(2) { width: 6.5%; } /* Unit 1 Gen */
+    thead th:nth-child(3) { width: 6.5%; } /* Unit 2 Gen */
+    thead th:nth-child(4) { width: 6.5%; } /* Unit 1 Trans */
+    thead th:nth-child(5) { width: 6.5%; } /* Unit 2 Trans */
+    thead th:nth-child(6) { width: 6%; }   /* SST */
+    thead th:n-th-child(7) { width: 7%; }   /* Outgoing */
+    thead th:nth-child(8) { width: 7.5%; } /* Substation */
+    thead th:nth-child(9) { width: 7.5%; } /* Consumption */
+    thead th:nth-child(10){ width: 1.5%; } /* Blank */
+    thead th:nth-child(11){ width: 6%; }   /* Import */
+    thead th:nth-child(12){ width: 6.5%; } /* Unit 1 counter */
+    thead th:nth-child(13){ width: 6.5%; } /* Unit 2 counter */
+    thead th:nth-child(14){ width: 8%; }   /* Operator */
+    thead th:nth-child(15){ width: 8%; }   /* Actions */
+    
+    /* Make input fields in the table smaller */
+    .table-input {
+        min-width: unset; /* Remove the minimum width */
+        padding: 2px;
+        font-size: 0.75rem; /* 12px */
+    }
+</style>

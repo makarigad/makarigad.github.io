@@ -32,40 +32,6 @@
             white-space: normal !important;
         }
     </style>
-    <style>
-        .w-full {
-            table-layout: fixed;
-            width: 100%;
-            word-wrap: break-word;
-        }
-        #data-body td {
-            font-size: 0.75rem;
-            padding: 4px 3px !important;
-        }
-        thead th {
-            padding: 8px 4px !important;
-        }
-        thead th:nth-child(1) { width: 9%; }
-        thead th:nth-child(2) { width: 6.5%; }
-        thead th:nth-child(3) { width: 6.5%; }
-        thead th:nth-child(4) { width: 6.5%; }
-        thead th:nth-child(5) { width: 6.5%; }
-        thead th:nth-child(6) { width: 6%; }
-        thead th:nth-child(7) { width: 7%; }
-        thead th:nth-child(8) { width: 7.5%; }
-        thead th:nth-child(9) { width: 7.5%; }
-        thead th:nth-child(10){ width: 1.5%; }
-        thead th:nth-child(11){ width: 6%; }
-        thead th:nth-child(12){ width: 6.5%; }
-        thead th:nth-child(13){ width: 6.5%; }
-        thead th:nth-child(14){ width: 8%; }
-        thead th:nth-child(15){ width: 8%; }
-        .table-input {
-            min-width: unset;
-            padding: 2px;
-            font-size: 0.75rem;
-        }
-    </style>
 </head>
 <body class="text-gray-800">
 
@@ -92,7 +58,7 @@
             </div>
             <div class="flex items-center space-x-2 mt-3 sm:mt-0">
                  <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download as Excel</button>
-                 <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload</button>
+                 <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload from Excel</button>
                  <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" />
                  <div id="user-info" class="text-right text-sm text-indigo-600 font-semibold cursor-pointer hover:text-indigo-800" title="Click to logout"></div>
             </div>
@@ -102,7 +68,7 @@
             <section>
                 <div class="bg-white p-4 rounded-lg shadow-md">
                     <h2 class="text-xl font-semibold mb-4 text-gray-800">Historical Data</h2>
-                    <div>
+                    <div class="overflow-x-auto">
                         <table class="w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -115,7 +81,6 @@
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outgoing</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Substation</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consumption</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 counter</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 counter</th>
@@ -135,16 +100,16 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Your Firebase config
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
         const adminEmail = "upenjyo@gmail.com";
         
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
+        setLogLevel('debug');
+
         const plantDataPath = "plantData";
         let currentUser = null;
         let unsubscribe = null;
@@ -154,7 +119,6 @@
         const userInfo = document.getElementById("user-info"), dataBody = document.getElementById("data-body");
         const downloadBtn = document.getElementById("download-btn"), uploadBtn = document.getElementById("upload-btn"), fileUpload = document.getElementById("file-upload");
         const confirmModalBackdrop = document.getElementById("confirm-modal-backdrop"), confirmTitle = document.getElementById("confirm-title"), confirmMessage = document.getElementById("confirm-message"), confirmCancelBtn = document.getElementById("confirm-cancel-btn"), confirmActionBtn = document.getElementById("confirm-action-btn");
-
 
         function showNotification(message, isError = false) {
             const modal = document.getElementById('notification-modal');
@@ -174,12 +138,13 @@
             if (user) {
                 currentUser = user;
                 userInfo.textContent = `Logged in as: ${user.email}`;
-                userInfo.onclick = () => showConfirmation('Confirm Logout', 'Are you sure you want to log out?', () => signOut(auth));
+                userInfo.onclick = () => signOut(auth);
                 
                 if (currentUser.email === adminEmail) {
                     downloadBtn.classList.remove('hidden');
                     uploadBtn.classList.remove('hidden');
                 }
+
                 loadAndListenData();
             } else {
                 const currentPath = window.location.pathname;
@@ -195,36 +160,36 @@
             unsubscribe = onSnapshot(q, (querySnapshot) => {
                 const rows = [];
                 querySnapshot.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-                rows.sort((a, b) => b.id.localeCompare(a.id));
+                rows.sort((a, b) => b.id.localeCompare(a.id)); // Sort descending by date
                 allData = rows;
                 renderTable(allData);
             }, (error) => {
-                console.error("Error fetching data:", error);
+                console.error("Error listening to data:", error);
                 showNotification("Error fetching data.", true);
             });
         }
-        
+
+        // CHANGED: This function now creates inputs that match the new data structure
         function createInputRow() {
             const today = new Date();
             const offset = today.getTimezoneOffset();
-            const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+            const localToday = new Date(today.getTime() - (offset*60*1000));
             const dateString = localToday.toISOString().split('T')[0];
 
             return `
                 <tr id="add-new-row" class="bg-indigo-50">
                     <td class="tight-cell-input"><input type="date" id="new-entry-date" class="table-input" value="${dateString}" required /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Trans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-sst" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-outgoing" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-substation" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-consumption" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"></td>
-                    <td class="tight-cell-input"><input type="number" id="new-import" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Counter" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Counter" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit2Trans" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-sst" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-outgoing" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-substation" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-consumption" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-import" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit1Counter" step="any" class="table-input" placeholder="0.00" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit2Counter" step="any" class="table-input" placeholder="0.00" /></td>
                     <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
                     <td class="tight-cell-input">
                         <button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
@@ -232,17 +197,29 @@
                 </tr>
             `;
         }
-
+        
         function renderTable(data) {
-            dataBody.innerHTML = createInputRow();
-            data.forEach(d => {
-                const row = document.createElement('tr');
-                row.id = `row-${d.id}`;
-                row.innerHTML = (d.id === editingRowId) ? createEditRowHtml(d) : createDisplayRowHtml(d);
-                dataBody.appendChild(row);
-            });
+            dataBody.innerHTML = createInputRow(); 
+            
+            if (data.length === 0) {
+                const noDataRow = `<tr><td colspan="14" class="text-center py-10 text-gray-500">No data submitted yet.</td></tr>`;
+                dataBody.innerHTML += noDataRow;
+            } else {
+                 data.forEach(d => {
+                    const row = document.createElement('tr');
+                    row.id = `row-${d.id}`;
+                    
+                    if (d.id === editingRowId) {
+                        row.innerHTML = createEditRowHtml(d);
+                    } else {
+                        row.innerHTML = createDisplayRowHtml(d);
+                    }
+                    dataBody.appendChild(row);
+                });
+            }
         }
         
+        // CHANGED: This function now displays data from the new structure
         function createDisplayRowHtml(d) {
             const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
             const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
@@ -256,16 +233,18 @@
                 <td class="tight-cell text-sm text-gray-500">${d.outgoing ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${d.substation ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${d.consumption ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500"></td>
                 <td class="tight-cell text-sm text-gray-500">${d.import ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${d.unit1Counter ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${d.unit2Counter ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
                 <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
-                    ${canEdit ? `<button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
+                    ${canEdit ? `
+                    <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button>
+                    <button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : `<span class="text-gray-400">-</span>`}
                 </td>`;
         }
 
+        // CHANGED: This function now creates an editable row based on the new structure
         function createEditRowHtml(docData) {
             return `
                 <td class="tight-cell-input"><input type="date" id="edit-${docData.id}-entry-date" class="table-input" value="${docData.id}" disabled /></td>
@@ -277,7 +256,6 @@
                 <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-outgoing" step="any" class="table-input" value="${docData.outgoing ?? ''}" /></td>
                 <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-substation" step="any" class="table-input" value="${docData.substation ?? ''}" /></td>
                 <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-consumption" step="any" class="table-input" value="${docData.consumption ?? ''}" /></td>
-                <td class="tight-cell-input"></td>
                 <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-import" step="any" class="table-input" value="${docData.import ?? ''}" /></td>
                 <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-unit1Counter" step="any" class="table-input" value="${docData.unit1Counter ?? ''}" /></td>
                 <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-unit2Counter" step="any" class="table-input" value="${docData.unit2Counter ?? ''}" /></td>
@@ -289,15 +267,17 @@
             `;
         }
         
+        // CHANGED: This function now saves data with keys matching the new structure
         async function handleAddOrUpdateEntry(docId, isUpdate = false) {
-            if (!currentUser) { showNotification("You must be logged in.", true); return; }
+            if (!currentUser) return showNotification("You must be logged in.", true);
 
             const prefix = isUpdate ? `edit-${docId}-` : 'new-';
             const dateVal = isUpdate ? docId : document.getElementById(`new-entry-date`).value;
-            if (!dateVal) { showNotification("Please select a date.", true); return; }
+            if (!dateVal) return showNotification("Please select a date.", true);
 
             const data = {
-                user: currentUser.email, uid: currentUser.uid,
+                user: currentUser.email,
+                uid: currentUser.uid,
                 unit1Gen: parseFloat(document.getElementById(`${prefix}unit1Gen`).value) || null,
                 unit2Gen: parseFloat(document.getElementById(`${prefix}unit2Gen`).value) || null,
                 unit1Trans: parseFloat(document.getElementById(`${prefix}unit1Trans`).value) || null,
@@ -313,28 +293,25 @@
 
             try {
                 await setDoc(doc(db, plantDataPath, dateVal), data, { merge: true });
-                showNotification(`Data ${isUpdate ? 'updated' : 'added'} successfully!`);
-                if (isUpdate) {
+                showNotification(`Data ${isUpdate ? 'updated' : 'saved'} successfully!`);
+                if(isUpdate) {
                     editingRowId = null;
-                    renderTable(allData);
-                } else {
-                    document.getElementById('add-new-row').reset(); // Clear the form
+                    renderTable(allData); // Re-render to exit edit mode
                 }
             } catch (error) {
-                console.error("Error saving data:", error);
                 showNotification("Error saving data: " + error.message, true);
+                console.error(error);
             }
         }
 
         dataBody.addEventListener('click', e => {
             if (e.target.id === 'add-entry-btn') handleAddOrUpdateEntry(null, false);
             if (e.target.classList.contains('edit-btn')) {
-                editingRowId = JSON.parse(e.target.dataset.doc).id;
+                const docData = JSON.parse(e.target.dataset.doc);
+                editingRowId = docData.id;
                 renderTable(allData);
             }
-            if (e.target.classList.contains('delete-btn')) {
-                showDeleteConfirm(e.target.dataset.id);
-            }
+            if (e.target.classList.contains('delete-btn')) showDeleteConfirm(e.target.dataset.id);
             if (e.target.classList.contains('update-btn')) handleAddOrUpdateEntry(e.target.dataset.id, true);
             if (e.target.classList.contains('cancel-btn')) {
                 editingRowId = null;
@@ -345,57 +322,66 @@
         function showConfirmation(title, message, onConfirm) {
             confirmTitle.textContent = title;
             confirmMessage.textContent = message;
-            confirmModalBackdrop.classList.remove('hidden');
-            document.getElementById('confirm-modal').classList.remove('opacity-0', 'scale-95');
             confirmActionBtn.onclick = () => {
                 onConfirm();
                 hideConfirmation();
             };
+            confirmModalBackdrop.classList.remove('hidden');
+            confirmModalBackdrop.classList.add('opacity-100');
+            document.getElementById('confirm-modal').classList.add('opacity-100', 'scale-100');
         }
 
         function hideConfirmation() {
-            confirmModalBackdrop.classList.add('hidden');
-            document.getElementById('confirm-modal').classList.add('opacity-0', 'scale-95');
+            confirmModalBackdrop.classList.add('opacity-0');
+            document.getElementById('confirm-modal').classList.remove('opacity-100', 'scale-100');
+            setTimeout(() => confirmModalBackdrop.classList.add('hidden'), 300);
+        }
+
+        function showDeleteConfirm(docId) {
+            showConfirmation('Confirm Deletion', `Are you sure you want to delete the entry for ${docId}? This action cannot be undone.`, () => deleteEntry(docId));
         }
 
         confirmCancelBtn.addEventListener('click', hideConfirmation);
         confirmModalBackdrop.addEventListener('click', (e) => { if (e.target === confirmModalBackdrop) hideConfirmation(); });
-
-        function showDeleteConfirm(docId) {
-            showConfirmation('Confirm Deletion', `Are you sure you want to delete the entry for ${docId}? This cannot be undone.`, () => deleteEntry(docId));
-        }
 
         async function deleteEntry(docId) {
             try {
                 await deleteDoc(doc(db, plantDataPath, docId));
                 showNotification("Entry deleted successfully.");
             } catch (error) {
-                console.error("Error deleting document:", error);
                 showNotification("Error deleting entry: " + error.message, true);
+                console.error("Error deleting document:", error);
             }
         }
 
         // --- Excel Download/Upload Logic ---
         downloadBtn.addEventListener('click', () => {
+            // CHANGED: Export data with keys matching the new structure and Excel headers
             const dataToExport = allData.map(d => ({
                 'Date': d.id,
-                'Unit 1 Gen': d.unit1Gen, 'Unit 2 Gen': d.unit2Gen,
-                'Unit 1 Trans': d.unit1Trans, 'Unit 2 Trans': d.unit2Trans,
-                'SST': d.sst, 'Outgoing': d.outgoing, 'Substation': d.substation,
+                'Unit 1 Gen': d.unit1Gen,
+                'Unit 2 Gen': d.unit2Gen,
+                'Unit 1 Trans': d.unit1Trans,
+                'Unit 2 Trans': d.unit2Trans,
+                'SST': d.sst,
+                'Outgoing': d.outgoing,
+                'Substation': d.substation,
                 'Consumption': d.consumption,
-                '': null, // Blank column
                 'Import': d.import,
-                'Unit 1 counter': d.unit1Counter, 'Unit 2 counter': d.unit2Counter,
+                'Unit 1 counter': d.unit1Counter,
+                'Unit 2 counter': d.unit2Counter,
                 'Operator': d.user
             }));
+
             const worksheet = XLSX.utils.json_to_sheet(dataToExport);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "PlantData");
-            XLSX.writeFile(workbook, "PlantData.xlsx");
+            XLSX.writeFile(workbook, "MakariGad_PlantData.xlsx");
             showNotification("Downloading Excel file...");
         });
 
         uploadBtn.addEventListener('click', () => fileUpload.click());
+        
         fileUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -405,67 +391,123 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
                     
                     if (jsonData.length < 2) {
-                        return showNotification("File is empty or has no data rows.", true);
+                        showNotification("The uploaded file is empty or has no data rows.", true);
+                        return;
                     }
-                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Continue?`, () => processAndUploadData(jsonData));
+
+                    const validationResult = validateHeaders(jsonData[0]);
+                    if (!validationResult.isValid) {
+                        showNotification(`Invalid file format. Missing required columns: ${validationResult.missing.join(', ')}`, true);
+                        return;
+                    }
+                    
+                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Do you want to continue?`, () => processAndUploadData(jsonData));
+
                 } catch (error) {
+                    showNotification("Error reading or parsing the file. Please ensure it's a valid Excel or CSV file.", true);
                     console.error("File read error:", error);
-                    showNotification("Error reading file. Please ensure it's a valid Excel file.", true);
                 }
             };
             reader.readAsArrayBuffer(file);
             fileUpload.value = '';
         });
+        
+        // CHANGED: Headers to validate against must match the Excel file
+        const expectedHeaders = [
+            'Date', 'Unit 1 Gen', 'Unit 2 Gen', 'Unit 1 Trans', 'Unit 2 Trans', 'SST',
+            'Outgoing', 'Substation', 'Consumption', 'Import', 'Unit 1 counter', 'Unit 2 counter'
+        ];
+
+        function validateHeaders(headerRow) {
+            const missing = [];
+            const actualHeaders = headerRow.map(h => String(h).trim());
+            
+            expectedHeaders.forEach(expected => {
+                if (!actualHeaders.includes(expected)) {
+                    missing.push(expected);
+                }
+            });
+            return { isValid: missing.length === 0, missing };
+        }
 
         async function processAndUploadData(jsonData) {
-            if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
+            if (!currentUser) {
+                showNotification("Authentication error. Please re-login.", true);
+                return;
+            }
             showNotification("Starting upload...", false);
 
-            const header = jsonData.shift().map(h => String(h ?? "").trim());
+            const header = jsonData.shift().map(h => String(h).trim());
+            
+            // CHANGED: Map Excel headers to the new Firestore document keys
             const headerMap = {
-                date: header.indexOf('Date'), unit1Gen: header.indexOf('Unit 1 Gen'), unit2Gen: header.indexOf('Unit 2 Gen'),
-                unit1Trans: header.indexOf('Unit 1 Trans'), unit2Trans: header.indexOf('Unit 2 Trans'), sst: header.indexOf('SST'),
-                outgoing: header.indexOf('Outgoing'), substation: header.indexOf('Substation'), consumption: header.indexOf('Consumption'),
-                import: header.indexOf('Import'), unit1Counter: header.indexOf('Unit 1 counter'), unit2Counter: header.indexOf('Unit 2 counter'),
+                date: header.indexOf('Date'),
+                unit1Gen: header.indexOf('Unit 1 Gen'),
+                unit2Gen: header.indexOf('Unit 2 Gen'),
+                unit1Trans: header.indexOf('Unit 1 Trans'),
+                unit2Trans: header.indexOf('Unit 2 Trans'),
+                sst: header.indexOf('SST'),
+                outgoing: header.indexOf('Outgoing'),
+                substation: header.indexOf('Substation'),
+                consumption: header.indexOf('Consumption'),
+                import: header.indexOf('Import'),
+                unit1Counter: header.indexOf('Unit 1 counter'),
+                unit2Counter: header.indexOf('Unit 2 counter'),
             };
-
-            if (headerMap.date === -1) { return showNotification("Upload failed. 'Date' column not found.", true); }
 
             const batch = writeBatch(db);
             let operationsCount = 0;
+
             jsonData.forEach(row => {
                 const dateValue = row[headerMap.date];
-                if (!dateValue || !(dateValue instanceof Date)) return;
+                if (!dateValue) return;
 
-                const localDate = new Date(dateValue.getTime() - (dateValue.getTimezoneOffset() * 60000));
-                const dateStr = localDate.toISOString().split('T')[0];
+                let dateStr;
+                if (dateValue instanceof Date) {
+                    const offset = dateValue.getTimezoneOffset() * 60000;
+                    const localDate = new Date(dateValue.getTime() - offset);
+                    dateStr = localDate.toISOString().split('T')[0];
+                } else {
+                    dateStr = String(dateValue).split(' ')[0];
+                }
 
                 const docRef = doc(db, plantDataPath, dateStr);
+                // CHANGED: The data object being created matches the new Firestore structure
                 const docData = {
-                    user: currentUser.email, uid: currentUser.uid,
-                    unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null, unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
-                    unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null, unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
-                    sst: parseFloat(row[headerMap.sst]) || null, outgoing: parseFloat(row[headerMap.outgoing]) || null,
-                    substation: parseFloat(row[headerMap.substation]) || null, consumption: parseFloat(row[headerMap.consumption]) || null,
-                    import: parseFloat(row[headerMap.import]) || null, unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
+                    user: currentUser.email,
+                    uid: currentUser.uid,
+                    unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
+                    unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
+                    unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
+                    unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
+                    sst: parseFloat(row[headerMap.sst]) || null,
+                    outgoing: parseFloat(row[headerMap.outgoing]) || null,
+                    substation: parseFloat(row[headerMap.substation]) || null,
+                    consumption: parseFloat(row[headerMap.consumption]) || null,
+                    import: parseFloat(row[headerMap.import]) || null,
+                    unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
                     unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
                 };
                 batch.set(docRef, docData, { merge: true });
                 operationsCount++;
             });
 
-            if (operationsCount === 0) { return showNotification("No valid data rows found to upload.", true); }
+            if (operationsCount === 0) {
+                showNotification("No valid data rows found to upload.", true);
+                return;
+            }
 
             try {
                 await batch.commit();
                 showNotification(`Successfully uploaded ${operationsCount} records.`, false);
             } catch (error) {
-                console.error("Batch upload error:", error);
                 showNotification("Upload failed: " + error.message, true);
+                console.error("Batch upload error:", error);
             }
         }
 

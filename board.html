@@ -3,29 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>Makari Gad Project - Board</title>
-  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'); body { font-family: 'Inter', sans-serif; }</style>
 </head>
-<body>
-  <header>
-    <h1>Makari Gad Hydroelectric Project (10 MW)</h1>
-    <h2>Apihimal-5, Darchula, Sudurpaschim Province, Nepal</h2>
-  </header>
+<body class="bg-gray-100">
+  <div id="header-placeholder"></div>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="features.html">Features</a>
-    <a href="board.html">Board</a>
-    <a href="notices.html">Notices</a>
-    <a href="contacts.html">Contact</a>
-    <a href="plant-data.html">Plant Data</a>
-  </nav>
-
-  <main>
-    <h3>Welcome</h3>
-    <p>This is the official site of Makari Gad Hydroelectric Project. Please use the tabs above to explore project details, contacts, board members, and notices.</p>
+  <main class="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-8 text-center">
+    <h3 class="text-2xl font-bold text-gray-800 mb-4">Board Members</h3>
+    <p class="text-gray-600">The list of board members is being finalized and will be updated here soon.</p>
   </main>
 
-  <footer>&copy; 2025 Makari Gad Project</footer>
+  <div id="footer-placeholder"></div>
+
+  <script>
+    fetch('header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
+    fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+  </script>
 </body>
 </html>

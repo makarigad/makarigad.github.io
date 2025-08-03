@@ -99,3 +99,13 @@ footer {
         padding: 2px;
         font-size: 0.75rem;
     }
+    /* Add this to your existing <style> tag in the <head> */
+body {
+    font-family: 'Inter', sans-serif;
+    /* Add these properties for the background image */
+    background-image: url('C:\Users\un_ch\OneDrive\Desktop\app-background.jpg'); /* <-- IMPORTANT: Change this to your image file path */
+    background-size: cover; /* Ensures the image covers the entire background */
+    background-position: center; /* Centers the image */
+    background-repeat: no-repeat; /* Prevents the image from tiling */
+    background-attachment: fixed; /* Makes the background static when scrolling */
+}

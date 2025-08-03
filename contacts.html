@@ -2,30 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Makari Gad Project - Home</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Makari Gad Project - Contact</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'); body { font-family: 'Inter', sans-serif; }</style>
 </head>
-<body>
-  <header>
-    <h1>Makari Gad Hydroelectric Project (10 MW)</h1>
-    <h2>Apihimal-5, Darchula, Sudurpaschim Province, Nepal</h2>
-  </header>
+<body class="bg-gray-100">
+  <div id="header-placeholder"></div>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="features.html">Features</a>
-    <a href="board.html">Board</a>
-    <a href="notices.html">Notices</a>
-    <a href="contacts.html">Contact</a>
-    <a href="plant-data.html">Plant Data</a>
-  </nav>
+  <main class="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-8">
+    <h3 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">Contact Information</h3>
+    
+    <div class="grid md:grid-cols-2 gap-8">
+      <div>
+        <div class="mb-6">
+          <h4 class="text-xl font-semibold text-gray-700 mb-2">Head Office</h4>
+          <p class="text-gray-600">Maharajgunj, Kathmandu</p>
+          <p class="text-gray-600">Phone: +977-1-4720530</p>
+          <p class="text-gray-600">Email: makarigad@gmail.com</p>
+          <a href="https://www.google.com/maps/place/P8QP+JMM,+Kathmandu+44600" target="_blank" class="text-indigo-600 hover:underline">View on Google Maps</a>
+        </div>
+        <div>
+          <h4 class="text-xl font-semibold text-gray-700 mb-2">Site Contact</h4>
+          <p class="text-gray-600">Operator Room: +9779866298728</p>
+          <p class="text-gray-600">Plant Manager: +9779851275191</p>
+        </div>
+      </div>
 
-  <main>
-    <h3>Welcome</h3>
-    <p>This is the official site of Makari Gad Hydroelectric Project. Please use the tabs above to explore project details, contacts, board members, and notices.</p>
+      <div>
+        <h4 class="text-xl font-semibold text-gray-700 mb-2">Send us a Message</h4>
+        <form id="contact-form" class="space-y-4">
+          <div>
+            <label for="visitor-email" class="block text-sm font-medium text-gray-700">Your Email</label>
+            <input type="email" id="visitor-email" name="email" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+          </div>
+          <div>
+            <label for="subject" class="block text-sm font-medium text-gray-700">Subject</label>
+            <input type="text" id="subject" name="subject" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+          </div>
+          <div>
+            <label for="message" class="block text-sm font-medium text-gray-700">Message</label>
+            <textarea id="message" name="message" rows="4" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+          </div>
+          <div>
+            <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">Send Message</button>
+          </div>
+        </form>
+        <p class="text-xs text-gray-500 mt-2"><strong>Note:</strong> Form submission requires a backend service to be functional. This is a visual template.</p>
+      </div>
+    </div>
   </main>
 
-  <footer>&copy; 2025 Makari Gad Project</footer>
+  <div id="footer-placeholder"></div>
+
+  <script>
+    fetch('header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
+    fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+    
+    // Prevent actual form submission for this template
+    document.getElementById('contact-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('This form is a template. Backend functionality is required to send the email.');
+    });
+  </script>
 </body>
 </html>

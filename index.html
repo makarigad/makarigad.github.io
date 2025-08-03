@@ -4,24 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Makari Gad Hydroelectric Project - Login</title>
-    <!-- Tailwind CSS for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        #notification-modal {
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-        }
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-gray-100">
-
-    <!-- Notification Modal -->
-    <div id="notification-modal" class="fixed top-5 right-5 bg-white border-l-4 p-4 rounded-md shadow-lg max-w-sm z-50 opacity-0 transform translate-y-[-20px] pointer-events-none">
-        <p id="notification-message" class="text-sm font-medium"></p>
-    </div>
+<body class="bg-gray-100 flex flex-col min-h-screen">
 
     <header class="bg-indigo-800 text-white p-5 text-center shadow-md">
         <h1 class="text-3xl font-bold">Makari Gad Hydroelectric Project (10 MW)</h1>
@@ -38,84 +27,48 @@
         <a href="plant-data.html" class="font-bold text-indigo-300 hover:text-indigo-100">Plant Data</a>
     </nav>
 
-    <main class="flex flex-col items-center justify-center p-6" style="min-height: calc(100vh - 230px);">
+    <main class="flex-grow flex flex-col items-center justify-center p-6">
         <div id="login-box" class="w-full max-w-sm bg-white p-8 rounded-xl shadow-lg">
             <h3 class="text-2xl font-bold text-center text-gray-800 mb-6">Operator Login</h3>
             <div class="space-y-4">
                 <input type="email" id="email" placeholder="Email" required class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                 <input type="password" id="password" placeholder="Password" required class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-                <button id="login-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                    Sign In
-                </button>
+                <button id="login-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-md hover:bg-indigo-700">Sign In</button>
             </div>
         </div>
 
         <div id="user-info" class="w-full max-w-sm text-center mt-6 hidden">
             <p class="text-gray-700">Logged in as: <span id="user-email" class="font-semibold text-indigo-700"></span></p>
-            <button id="logout-btn" class="mt-4 w-full bg-gray-500 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600 transition-colors">
-                Logout
-            </button>
+            <button id="logout-btn" class="mt-4 w-full bg-gray-500 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600">Logout</button>
         </div>
     </main>
 
-    <footer class="bg-gray-900 text-gray-400 text-center p-4">&copy; 2025 Makari Gad Hydroelectric Project</footer>
+    <div id="footer-placeholder"></div>
 
-    <!-- Firebase Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
-        
+        const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
+        // ... (rest of your existing login javascript)
         const loginBox = document.getElementById("login-box");
         const loginBtn = document.getElementById("login-btn");
         const userInfo = document.getElementById("user-info");
         const userEmailSpan = document.getElementById("user-email");
         const logoutBtn = document.getElementById("logout-btn");
 
-        function showNotification(message, isError = true) {
-            const modal = document.getElementById('notification-modal');
-            const messageEl = document.getElementById('notification-message');
-            
-            messageEl.textContent = message;
-            modal.className = modal.className.replace(/border-(green|red)-500/, '');
-            modal.classList.add(isError ? 'border-red-500' : 'border-green-500');
-            
-            modal.classList.remove('opacity-0', 'translate-y-[-20px]');
-            modal.classList.add('opacity-100', 'translate-y-0');
-
-            setTimeout(() => {
-                modal.classList.remove('opacity-100', 'translate-y-0');
-                modal.classList.add('opacity-0', 'translate-y-[-20px]');
-            }, 3000);
-        }
-
         loginBtn.addEventListener("click", () => {
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
-
-            if (!email || !password) {
-                showNotification("Please fill in both email and password.");
-                return;
-            }
-
+            if (!email || !password) return;
             signInWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    // The onAuthStateChanged listener will handle the UI update
-                    // and the user will be redirected.
-                    window.location.href = "plant-data.html";
-                })
-                .catch((error) => {
-                    showNotification("Login failed: " + error.message);
-                });
+                .then(() => { window.location.href = "plant-data.html"; })
+                .catch((error) => { alert("Login failed: " + error.message); });
         });
         
-        logoutBtn.addEventListener("click", () => {
-            signOut(auth);
-        });
+        logoutBtn.addEventListener("click", () => signOut(auth));
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -127,6 +80,9 @@
                 userInfo.style.display = "none";
             }
         });
+    </script>
+    <script>
+      fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
     </script>
 </body>
 </html>

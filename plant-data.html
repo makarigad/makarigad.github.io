@@ -45,21 +45,24 @@
         thead th {
             padding: 8px 4px !important;
         }
-        thead th:nth-child(1) { width: 9%; }
-        thead th:nth-child(2) { width: 6.5%; }
-        thead th:nth-child(3) { width: 6.5%; }
-        thead th:nth-child(4) { width: 6.5%; }
-        thead th:nth-child(5) { width: 6.5%; }
-        thead th:nth-child(6) { width: 6%; }
-        thead th:nth-child(7) { width: 7%; }
-        thead th:nth-child(8) { width: 7.5%; }
-        thead th:nth-child(9) { width: 7.5%; }
-        thead th:nth-child(10){ width: 1.5%; }
-        thead th:nth-child(11){ width: 6%; }
-        thead th:nth-child(12){ width: 6.5%; }
-        thead th:nth-child(13){ width: 6.5%; }
-        thead th:nth-child(14){ width: 8%; }
-        thead th:nth-child(15){ width: 8%; }
+        
+        /* CORRECTED: Column widths re-distributed */
+        thead th:nth-child(1) { width: 9%; }   /* Date */
+        thead th:nth-child(2) { width: 6.5%; } /* Unit 1 Gen */
+        thead th:nth-child(3) { width: 6.5%; } /* Unit 2 Gen */
+        thead th:nth-child(4) { width: 6.5%; } /* Unit 1 Trans */
+        thead th:nth-child(5) { width: 6.5%; } /* Unit 2 Trans */
+        thead th:nth-child(6) { width: 6%; }   /* SST */
+        thead th:nth-child(7) { width: 7.5%; } /* Export Plant */
+        thead th:nth-child(8) { width: 7.5%; } /* Export Substation */
+        thead th:nth-child(9) { width: 7.5%; } /* Import Outgoing */
+        thead th:nth-child(10){ width: 7.5%; } /* Import Substation */
+        thead th:nth-child(11){ width: 1.5%; } /* Blank */
+        thead th:nth-child(12){ width: 7%; }   /* Unit 1 counter */
+        thead th:nth-child(13){ width: 7%; }   /* Unit 2 counter */
+        thead th:nth-child(14){ width: 6.5%; } /* Operator */
+        thead th:nth-child(15){ width: 7%; }   /* Actions */
+        
         .table-input {
             min-width: unset;
             padding: 2px;
@@ -107,18 +110,18 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SST</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outgoing</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Substation</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Consumption</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Generator Reading</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Generator Reading</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Transformer Reading</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Transformer Reading</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Transformer Reading</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export at Plant Outgoing Feeder</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export at Substation Feeder</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import at Outgoing Feeder</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import at Substation Feeder</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 counter</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 counter</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 hour counter</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 hour counter</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -137,7 +140,6 @@
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Your Firebase config
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
         const adminEmail = "upenjyo@gmail.com";
         
@@ -212,17 +214,17 @@
 
             return `
                 <tr id="add-new-row" class="bg-indigo-50">
-                    <td class="tight-cell-input"><input type="date" id="new-entry-date" class="table-input" value="${dateString}" required /></td>
+                    <td class="tight-cell-input"><input type="date" id="new-date" class="table-input" value="${dateString}" required /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit2Trans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-sst" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-outgoing" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-substation" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-consumption" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-stationTrans" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-exportPlant" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-exportSubstation" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-importOutgoing" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-importSubstation" step="any" class="table-input" /></td>
                     <td class="tight-cell-input"></td>
-                    <td class="tight-cell-input"><input type="number" id="new-import" step="any" class="table-input" /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit1Counter" step="any" class="table-input" /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit2Counter" step="any" class="table-input" /></td>
                     <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
@@ -252,12 +254,12 @@
                 <td class="tight-cell text-sm text-gray-500">${d.unit2Gen ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${d.unit1Trans ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${d.unit2Trans ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.sst ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.outgoing ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.substation ?? ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.consumption ?? ''}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.stationTrans ?? ''}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.exportPlant ?? ''}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.exportSubstation ?? ''}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.importOutgoing ?? ''}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.importSubstation ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500"></td>
-                <td class="tight-cell text-sm text-gray-500">${d.import ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${d.unit1Counter ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${d.unit2Counter ?? ''}</td>
                 <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
@@ -268,19 +270,19 @@
 
         function createEditRowHtml(docData) {
             return `
-                <td class="tight-cell-input"><input type="date" id="edit-${docData.id}-entry-date" class="table-input" value="${docData.id}" disabled /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-unit1Gen" step="any" class="table-input" value="${docData.unit1Gen ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-unit2Gen" step="any" class="table-input" value="${docData.unit2Gen ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-unit1Trans" step="any" class="table-input" value="${docData.unit1Trans ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-unit2Trans" step="any" class="table-input" value="${docData.unit2Trans ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-sst" step="any" class="table-input" value="${docData.sst ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-outgoing" step="any" class="table-input" value="${docData.outgoing ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-substation" step="any" class="table-input" value="${docData.substation ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-consumption" step="any" class="table-input" value="${docData.consumption ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="date" class="table-input" value="${docData.id}" disabled /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit1Gen" step="any" class="table-input" value="${docData.unit1Gen ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit2Gen" step="any" class="table-input" value="${docData.unit2Gen ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit1Trans" step="any" class="table-input" value="${docData.unit1Trans ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit2Trans" step="any" class="table-input" value="${docData.unit2Trans ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-stationTrans" step="any" class="table-input" value="${docData.stationTrans ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-exportPlant" step="any" class="table-input" value="${docData.exportPlant ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-exportSubstation" step="any" class="table-input" value="${docData.exportSubstation ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-importOutgoing" step="any" class="table-input" value="${docData.importOutgoing ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-importSubstation" step="any" class="table-input" value="${docData.importSubstation ?? ''}" /></td>
                 <td class="tight-cell-input"></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-import" step="any" class="table-input" value="${docData.import ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-unit1Counter" step="any" class="table-input" value="${docData.unit1Counter ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-${docData.id}-unit2Counter" step="any" class="table-input" value="${docData.unit2Counter ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit1Counter" step="any" class="table-input" value="${docData.unit1Counter ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit2Counter" step="any" class="table-input" value="${docData.unit2Counter ?? ''}" /></td>
                 <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
                 <td class="tight-cell flex space-x-2 whitespace-nowrap">
                     <button class="update-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${docData.id}">Update</button>
@@ -292,8 +294,8 @@
         async function handleAddOrUpdateEntry(docId, isUpdate = false) {
             if (!currentUser) { showNotification("You must be logged in.", true); return; }
 
-            const prefix = isUpdate ? `edit-${docId}-` : 'new-';
-            const dateVal = isUpdate ? docId : document.getElementById(`new-entry-date`).value;
+            const prefix = isUpdate ? `edit-` : 'new-';
+            const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`).value;
             if (!dateVal) { showNotification("Please select a date.", true); return; }
 
             const data = {
@@ -302,11 +304,11 @@
                 unit2Gen: parseFloat(document.getElementById(`${prefix}unit2Gen`).value) || null,
                 unit1Trans: parseFloat(document.getElementById(`${prefix}unit1Trans`).value) || null,
                 unit2Trans: parseFloat(document.getElementById(`${prefix}unit2Trans`).value) || null,
-                sst: parseFloat(document.getElementById(`${prefix}sst`).value) || null,
-                outgoing: parseFloat(document.getElementById(`${prefix}outgoing`).value) || null,
-                substation: parseFloat(document.getElementById(`${prefix}substation`).value) || null,
-                consumption: parseFloat(document.getElementById(`${prefix}consumption`).value) || null,
-                import: parseFloat(document.getElementById(`${prefix}import`).value) || null,
+                stationTrans: parseFloat(document.getElementById(`${prefix}stationTrans`).value) || null,
+                exportPlant: parseFloat(document.getElementById(`${prefix}exportPlant`).value) || null,
+                exportSubstation: parseFloat(document.getElementById(`${prefix}exportSubstation`).value) || null,
+                importOutgoing: parseFloat(document.getElementById(`${prefix}importOutgoing`).value) || null,
+                importSubstation: parseFloat(document.getElementById(`${prefix}importSubstation`).value) || null,
                 unit1Counter: parseFloat(document.getElementById(`${prefix}unit1Counter`).value) || null,
                 unit2Counter: parseFloat(document.getElementById(`${prefix}unit2Counter`).value) || null,
             };
@@ -318,7 +320,7 @@
                     editingRowId = null;
                     renderTable(allData);
                 } else {
-                    document.getElementById('add-new-row').reset(); // Clear the form
+                    document.getElementById('add-new-row').querySelectorAll('input[type=number]').forEach(input => input.value = '');
                 }
             } catch (error) {
                 console.error("Error saving data:", error);
@@ -377,15 +379,21 @@
 
         // --- Excel Download/Upload Logic ---
         downloadBtn.addEventListener('click', () => {
+            // CHANGED: Data export keys updated to match new headers
             const dataToExport = allData.map(d => ({
                 'Date': d.id,
-                'Unit 1 Gen': d.unit1Gen, 'Unit 2 Gen': d.unit2Gen,
-                'Unit 1 Trans': d.unit1Trans, 'Unit 2 Trans': d.unit2Trans,
-                'SST': d.sst, 'Outgoing': d.outgoing, 'Substation': d.substation,
-                'Consumption': d.consumption,
+                'Unit 1 Generator Reading': d.unit1Gen,
+                'Unit 2 Generator Reading': d.unit2Gen,
+                'Unit 1 Transformer Reading': d.unit1Trans,
+                'Unit 2 Transformer Reading': d.unit2Trans,
+                'Station Transformer Reading': d.stationTrans,
+                'Export at Plant Outgoing Feeder': d.exportPlant,
+                'Export at Substation Feeder': d.exportSubstation,
+                'Import at Outgoing Feeder': d.importOutgoing,
+                'Import at Substation Feeder': d.importSubstation,
                 '': null, // Blank column
-                'Import': d.import,
-                'Unit 1 counter': d.unit1Counter, 'Unit 2 counter': d.unit2Counter,
+                'Unit 1 hour counter': d.unit1Counter,
+                'Unit 2 hour counter': d.unit2Counter,
                 'Operator': d.user
             }));
             const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -399,7 +407,6 @@
         fileUpload.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
@@ -411,7 +418,7 @@
                     if (jsonData.length < 2) {
                         return showNotification("File is empty or has no data rows.", true);
                     }
-                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Continue?`, () => processAndUploadData(jsonData));
+                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data will be overwritten. Continue?`, () => processAndUploadData(jsonData));
                 } catch (error) {
                     console.error("File read error:", error);
                     showNotification("Error reading file. Please ensure it's a valid Excel file.", true);
@@ -427,10 +434,18 @@
 
             const header = jsonData.shift().map(h => String(h ?? "").trim());
             const headerMap = {
-                date: header.indexOf('Date'), unit1Gen: header.indexOf('Unit 1 Gen'), unit2Gen: header.indexOf('Unit 2 Gen'),
-                unit1Trans: header.indexOf('Unit 1 Trans'), unit2Trans: header.indexOf('Unit 2 Trans'), sst: header.indexOf('SST'),
-                outgoing: header.indexOf('Outgoing'), substation: header.indexOf('Substation'), consumption: header.indexOf('Consumption'),
-                import: header.indexOf('Import'), unit1Counter: header.indexOf('Unit 1 counter'), unit2Counter: header.indexOf('Unit 2 counter'),
+                date: header.indexOf('Date'),
+                unit1Gen: header.indexOf('Unit 1 Generator Reading'),
+                unit2Gen: header.indexOf('Unit 2 Generator Reading'),
+                unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
+                unit2Trans: header.indexOf('Unit 2 Transformer Reading'),
+                stationTrans: header.indexOf('Station Transformer Reading'),
+                exportPlant: header.indexOf('Export at Plant Outgoing Feeder'),
+                exportSubstation: header.indexOf('Export at Substation Feeder'),
+                importOutgoing: header.indexOf('Import at Outgoing Feeder'),
+                importSubstation: header.indexOf('Import at Substation Feeder'),
+                unit1Counter: header.indexOf('Unit 1 hour counter'),
+                unit2Counter: header.indexOf('Unit 2 hour counter'),
             };
 
             if (headerMap.date === -1) { return showNotification("Upload failed. 'Date' column not found.", true); }
@@ -447,11 +462,16 @@
                 const docRef = doc(db, plantDataPath, dateStr);
                 const docData = {
                     user: currentUser.email, uid: currentUser.uid,
-                    unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null, unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
-                    unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null, unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
-                    sst: parseFloat(row[headerMap.sst]) || null, outgoing: parseFloat(row[headerMap.outgoing]) || null,
-                    substation: parseFloat(row[headerMap.substation]) || null, consumption: parseFloat(row[headerMap.consumption]) || null,
-                    import: parseFloat(row[headerMap.import]) || null, unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
+                    unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
+                    unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
+                    unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
+                    unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
+                    stationTrans: parseFloat(row[headerMap.stationTrans]) || null,
+                    exportPlant: parseFloat(row[headerMap.exportPlant]) || null,
+                    exportSubstation: parseFloat(row[headerMap.exportSubstation]) || null,
+                    importOutgoing: parseFloat(row[headerMap.importOutgoing]) || null,
+                    importSubstation: parseFloat(row[headerMap.importSubstation]) || null,
+                    unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
                     unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
                 };
                 batch.set(docRef, docData, { merge: true });

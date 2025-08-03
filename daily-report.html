@@ -142,37 +142,35 @@
 
     // --- DATA FETCHING via CLOUD FUNCTION ---
     async function fetchData() {
-        try {
-            const getPlantData = httpsCallable(functions, 'getPlantData');
-            const result = await getPlantData();
-            const data = result.data.data;
+    try {
+        const getPlantData = httpsCallable(functions, 'getPlantData');
+        const result = await getPlantData();
 
-            // --- ADD THIS LINE FOR DEBUGGING ---
-            console.log("ALL DATA RECEIVED BY BROWSER:", data);
-            // --- END OF DEBUGGING LINE ---
+        // The data from an onCall function is always in result.data
+        const data = result.data.data;
 
-            if (!data) {
-                showError("Received invalid data from the server.");
-                loadingState.classList.add('hidden');
-                return;
-            }
-
-            allData = data.sort((a, b) => a.id.localeCompare(b.id));
-
-            if (allData.length > 0) {
-                const latestDate = allData[allData.length - 1].id;
-                reportDateInput.value = latestDate;
-                reportDateInput.max = latestDate;
-                generateReport(latestDate);
-            } else {
-                showError("No data available in the database.");
-            }
+        if (!data) {
+            showError("Received invalid data from the server.");
             loadingState.classList.add('hidden');
-        } catch (error) {
-            console.error("Error fetching data via Cloud Function:", error);
-            showError("Error fetching data from the server. Please try again later.");
+            return;
         }
+
+        allData = data.sort((a, b) => a.id.localeCompare(b.id));
+
+        if (allData.length > 0) {
+            const latestDate = allData[allData.length - 1].id;
+            reportDateInput.value = latestDate;
+            reportDateInput.max = latestDate;
+            generateReport(latestDate);
+        } else {
+            showError("No data available in the database.");
+        }
+        loadingState.classList.add('hidden');
+    } catch (error) {
+        console.error("Error fetching data via Cloud Function:", error);
+        showError("Error fetching data from the server. Please try again later.");
     }
+}
 
     fetchData();
 

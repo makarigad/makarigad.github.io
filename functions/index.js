@@ -1,33 +1,26 @@
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-const cors = require("cors")({ origin: true });
+const { onCall } = require("firebase-functions/v2/https");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
 
-admin.initializeApp();
+initializeApp();
 
-exports.getPlantData = functions.https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    try {
-      const db = admin.firestore();
-      const plantDataRef = db.collection("plantData");
-      const snapshot = await plantDataRef.get();
+exports.getPlantData = onCall({ region: "us-central1" }, async (request) => {
+  try {
+    const db = getFirestore();
+    const plantDataRef = db.collection("plantData");
+    const snapshot = await plantDataRef.get();
+    
+    const data = [];
+    snapshot.forEach(doc => {
+      data.push({ id: doc.id, ...doc.data() });
+    });
 
-      if (snapshot.empty) {
-        // Still send the correct structure, even if the array is empty
-        res.status(200).json({ data: [] });
-        return;
-      }
+    // For onCall functions, you return the data object directly
+    return { data: data };
 
-      const data = [];
-      snapshot.forEach(doc => {
-        data.push({ id: doc.id, ...doc.data() });
-      });
-
-      // **CHANGE IS HERE**: The response is now { data: [...] }
-      res.status(200).json({ data: data });
-
-    } catch (error) {
-      console.error("Error fetching plant data:", error);
-      res.status(500).send({ error: "Internal Server Error" });
-    }
-  });
+  } catch (error) {
+    console.error("Error fetching plant data:", error);
+    // Throw a specific error for the client
+    throw new functions.https.HttpsError('internal', 'Could not fetch plant data.');
+  }
 });

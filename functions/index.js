@@ -1,32 +1,33 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const cors = require("cors")({ origin: true });
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+admin.initializeApp();
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+exports.getPlantData = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      const db = admin.firestore();
+      const plantDataRef = db.collection("plantData");
+      const snapshot = await plantDataRef.get();
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+      if (snapshot.empty) {
+        // Send an empty array if no data is found
+        res.status(200).json([]);
+        return;
+      }
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+      const data = [];
+      snapshot.forEach(doc => {
+        data.push({ id: doc.id, ...doc.data() });
+      });
+
+      // CHANGE IS HERE: Send the data array directly
+      res.status(200).json(data);
+
+    } catch (error) {
+      console.error("Error fetching plant data:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+});

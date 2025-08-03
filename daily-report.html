@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Report - Makari Gad Project</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Nepali Date Converter Library -->
-    <script src="https://cdn.jsdelivr.net/npm/nepali-date-converter/dist/nepali-date-converter.umd.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -15,14 +13,10 @@
             border-left: 4px solid #4f46e5;
         }
         .summary-label {
-            font-size: 0.875rem; /* text-sm */
-            font-weight: 500;     /* font-medium */
-            color: #6b7280;       /* text-gray-500 */
+            @apply text-sm font-medium text-gray-500;
         }
         .summary-value {
-            font-size: 1.125rem;  /* text-lg */
-            font-weight: 600;     /* font-semibold */
-            color: #111827;       /* text-gray-900 */
+            @apply text-lg font-semibold text-gray-900;
         }
     </style>
 </head>
@@ -128,6 +122,7 @@
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+    // NOTE: NepaliDate is no longer imported or used in the logic
 
     // --- CONFIG & INITIALIZATION ---
     const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
@@ -144,29 +139,37 @@
 
     // --- DATA FETCHING via CLOUD FUNCTION ---
     async function fetchData() {
-        try {
-            const getPlantData = httpsCallable(functions, 'getPlantData');
-            const result = await getPlantData();
-            const data = result.data;
+    try {
+        const getPlantData = httpsCallable(functions, 'getPlantData');
+        const result = await getPlantData();
 
-            // No sorting needed here as we will search by Nepali date string
-            allData = data; 
+        // CHANGE IS HERE: The data is now directly in result.data
+        const data = result.data;
 
-            if (allData.length > 0) {
-                // Set the default date picker value to today's date
-                reportDateInput.value = new Date().toISOString().split('T')[0];
-                generateReport(reportDateInput.value);
-            } else {
-                showError("No data available to generate a report.");
-            }
-            loadingState.classList.add('hidden');
-        } catch (error) {
-            console.error("Error fetching data via Cloud Function:", error);
-            showError("Error fetching data from the server. Please try again later.");
+        if (!data) {
+             showError("Received no data from the server.");
+             loadingState.classList.add('hidden');
+             return;
         }
-    }
 
-    fetchData(); // Fetch data when the page loads
+        allData = data.sort((a, b) => a.id.localeCompare(b.id)); 
+
+        if (allData.length > 0) {
+            const latestDate = allData[allData.length - 1].id;
+            reportDateInput.value = latestDate;
+            reportDateInput.max = latestDate;
+            generateReport(latestDate);
+        } else {
+            showError("No data available in the database.");
+        }
+        loadingState.classList.add('hidden');
+    } catch (error) {
+        console.error("Error fetching data via Cloud Function:", error);
+        showError("Error fetching data from the server. Please try again later.");
+    }
+}
+
+    fetchData(); 
 
     reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
 
@@ -175,22 +178,19 @@
         reportContent.classList.add('hidden');
         errorState.classList.add('hidden');
 
-        // *** CHANGE IS HERE ***
-        // Convert Gregorian dates to Nepali strings before searching
-        const nepaliTodayStr = new NepaliDate(new Date(gregorianDateStr)).format('YYYY-MM-DD');
-        const todayData = allData.find(d => d.id === nepaliTodayStr);
+        // *** CHANGE IS HERE: Searching for the English (Gregorian) date string directly ***
+        const todayData = allData.find(d => d.id === gregorianDateStr);
         
         if (!todayData) {
-            showError(`No data available for ${nepaliTodayStr} (${gregorianDateStr}). Please select another date.`);
+            showError(`No data available for ${gregorianDateStr}. Please select another date.`);
             return;
         }
 
         const gregorianYesterdayStr = getPreviousDay(gregorianDateStr);
-        const nepaliYesterdayStr = new NepaliDate(new Date(gregorianYesterdayStr)).format('YYYY-MM-DD');
-        const yesterdayData = allData.find(d => d.id === nepaliYesterdayStr);
+        const yesterdayData = allData.find(d => d.id === gregorianYesterdayStr);
         
         if (!yesterdayData) {
-            showError(`Cannot generate report for ${nepaliTodayStr} as data for the previous day (${nepaliYesterdayStr}) is missing.`);
+            showError(`Cannot generate report for ${gregorianDateStr} as data for the previous day (${gregorianYesterdayStr}) is missing.`);
             return;
         }
 
@@ -212,11 +212,19 @@
         renderReport(gregorianDateStr, calculations);
     }
 
-    // --- UI RENDERING (no changes here) ---
+    // --- UI RENDERING ---
     function renderReport(dateStr, data) {
-        const nepaliDate = new NepaliDate(new Date(dateStr)).format('YYYY-MM-DD');
-        document.getElementById('display-date-ad').textContent = dateStr;
-        document.getElementById('display-date-bs').textContent = nepaliDate;
+        // *** CHANGE IS HERE: Removed the Nepali date display ***
+        const displayDateEl = document.getElementById('display-date-ad');
+        const nepaliDateEl = document.getElementById('display-date-bs');
+        displayDateEl.textContent = dateStr;
+        if(nepaliDateEl) nepaliDateEl.textContent = ""; // Clear the nepali date element
+        
+        // Hide the parenthesis if the nepali date is empty
+        const dateContainer = displayDateEl.parentElement;
+        dateContainer.innerHTML = `Summary for <span id="display-date-ad" class="text-indigo-600">${dateStr}</span>`;
+
+
         document.getElementById('val-generation').textContent = formatNumber(data.generation);
         document.getElementById('val-export-substation').textContent = formatNumber(data.exportSubstation);
         document.getElementById('val-export-plant').textContent = formatNumber(data.exportPlant);
@@ -229,7 +237,7 @@
         reportContent.classList.remove('hidden');
     }
 
-    // --- HELPER FUNCTIONS (no changes here) ---
+    // --- HELPER FUNCTIONS ---
     function showError(message) {
         errorMessage.textContent = message;
         errorState.classList.remove('hidden');

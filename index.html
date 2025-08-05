@@ -11,22 +11,11 @@
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen">
+    
+    <div id="header-placeholder"></div>
 
-    <header class="bg-indigo-800 text-white p-5 text-center shadow-md">
-        <h1 class="text-3xl font-bold">Makari Gad Hydroelectric Project (10 MW)</h1>
-        <h2 class="text-md font-light mt-1">Apihimal-5, Makarigad, Darchula, Sudurpaschim Province, Nepal</h2>
-    </header>
-
-    <nav class="bg-gray-800 text-white p-3 flex justify-center flex-wrap gap-x-6 gap-y-2">
-    <a href="index.html" class="hover:text-indigo-300">Home</a>
-    <a href="about.html" class="hover:text-indigo-300">About</a>
-    <a href="features.html" class="hover:text-indigo-300">Features</a>
-    <a href="board.html" class="hover:text-indigo-300">Board</a>
-    <a href="notices.html" class="hover:text-indigo-300">Notices</a>
-    <a href="contacts.html" class="hover:text-indigo-300">Contact</a>
-    <a href="daily-report.html" class="hover:text-indigo-300">Daily Report</a>
-    <a href="plant-data.html" class="font-bold text-indigo-300 hover:text-indigo-100">Plant Data</a>
-</nav>
+  
+   </nav>
 
     <main class="flex-grow flex flex-col items-center justify-center p-6">
         <div id="login-box" class="w-full max-w-sm bg-white p-8 rounded-xl shadow-lg">
@@ -83,6 +72,7 @@
         });
     </script>
     <script>
+      fetch('header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
       fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
     </script>
 </body>

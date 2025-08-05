@@ -123,6 +123,12 @@
 
     <div id="footer-placeholder"></div>
 
+    <script>
+        // ADD THIS SCRIPT BLOCK
+        fetch('header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
+        fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+    </script>
+
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
@@ -229,7 +235,10 @@
         document.getElementById('val-plant-factor').textContent = formatNumber(data.plantFactor);
         document.getElementById('val-unit1-counter').textContent = formatNumber(data.unit1Counter, 1);
         document.getElementById('val-unit2-counter').textContent = formatNumber(data.unit2Counter, 1);
+        document.getElementById('display-date-ad').textContent = dateStr;
+        document.getElementById('display-date-bs').textContent = 'N/A';
         reportContent.classList.remove('hidden');
+        
     }
 
     // --- HELPER FUNCTIONS ---

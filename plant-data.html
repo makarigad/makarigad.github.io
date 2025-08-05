@@ -13,19 +13,19 @@
             background-color: #f7fafc;
         }
         .table-input {
-                width: 100%;
-                padding: 0.25rem;
-                border: 1px solid #d1d5db;
-                border-radius: 0.375rem;
-                box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
-                font-size: 0.875rem;
-                min-width: 65px;
-                transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-            }
-            .table-input:focus {
-                border-color: #6366f1;
-                box-shadow: 0 0 0 2px rgba(99,102,241,0.5);
-                outline: none;
+            width: 100%;
+            padding: 0.25rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+            font-size: 0.875rem;
+            min-width: 65px;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .table-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99,102,241,0.5);
+            outline: none;
         }
         #notification-modal, #confirm-modal-backdrop {
             transition: opacity 0.3s ease-in-out;
@@ -50,8 +50,6 @@
         th {
             white-space: normal !important;
         }
-    </style>
-    <style>
         .w-full {
             table-layout: fixed;
             width: 100%;
@@ -65,22 +63,23 @@
             padding: 8px 4px !important;
         }
         
-        /* CORRECTED: Column widths re-distributed */
-        thead th:nth-child(1) { width: 9%; }   /* Date */
-        thead th:nth-child(2) { width: 6.5%; } /* Unit 1 Gen */
-        thead th:nth-child(3) { width: 6.5%; } /* Unit 2 Gen */
-        thead th:nth-child(4) { width: 6.5%; } /* Unit 1 Trans */
-        thead th:nth-child(5) { width: 6.5%; } /* Unit 2 Trans */
-        thead th:nth-child(6) { width: 6%; }   /* SST */
-        thead th:nth-child(7) { width: 7.5%; } /* Export Plant */
-        thead th:nth-child(8) { width: 7.5%; } /* Export Substation */
-        thead th:nth-child(9) { width: 7.5%; } /* Import Outgoing */
-        thead th:nth-child(10){ width: 7.5%; } /* Import Substation */
-        thead th:nth-child(11){ width: 1.5%; } /* Blank */
-        thead th:nth-child(12){ width: 7%; }   /* Unit 1 counter */
-        thead th:nth-child(13){ width: 7%; }   /* Unit 2 counter */
-        thead th:nth-child(14){ width: 6.5%; } /* Operator */
-        thead th:nth-child(15){ width: 7%; }   /* Actions */
+        /* Column widths re-distributed */
+        thead th:nth-child(1) { width: 8%; }  /* English Date */
+        thead th:nth-child(2) { width: 8%; }  /* Nepali Date */
+        thead th:nth-child(3) { width: 6%; } /* Unit 1 Gen */
+        thead th:nth-child(4) { width: 6%; } /* Unit 2 Gen */
+        thead th:nth-child(5) { width: 6%; } /* Unit 1 Trans */
+        thead th:nth-child(6) { width: 6%; } /* Unit 2 Trans */
+        thead th:nth-child(7) { width: 6%; }  /* SST */
+        thead th:nth-child(8) { width: 7%; } /* Export Plant */
+        thead th:nth-child(9) { width: 7%; } /* Export Substation */
+        thead th:nth-child(10){ width: 7%; } /* Import Outgoing */
+        thead th:nth-child(11){ width: 7%; } /* Import Substation */
+        thead th:nth-child(12){ width: 1%; } /* Blank */
+        thead th:nth-child(13){ width: 6%; }  /* Unit 1 counter */
+        thead th:nth-child(14){ width: 6%; }  /* Unit 2 counter */
+        thead th:nth-child(15){ width: 6%; } /* Operator */
+        thead th:nth-child(16){ width: 8%; }  /* Actions */
         
         .table-input {
             min-width: unset;
@@ -122,31 +121,33 @@
 
         <main>
             <section>
-                <div class="bg-white p-4 rounded-lg shadow-md">
+                <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
                     <h2 class="text-xl font-semibold mb-4 text-gray-800">Historical Data</h2>
                     <div>
                         <table class="w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Generator Reading</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Generator Reading</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Transformer Reading</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Transformer Reading</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Transformer Reading</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export at Plant Outgoing Feeder</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export at Substation Feeder</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import at Outgoing Feeder</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import at Substation Feeder</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English Date</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nepali Date</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Trans</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Plant</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Substation</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Outgoing</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Substation</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 hour counter</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 hour counter</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Counter</th>
+                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Counter</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
                                     <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="data-body" class="bg-white divide-y divide-gray-200">
-                                </tbody>
+                                <!-- Data rows will be inserted here by JavaScript -->
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -157,9 +158,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
+        const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
         const adminEmail = "upenjyo@gmail.com";
         
         const app = initializeApp(firebaseConfig);
@@ -175,7 +176,6 @@
         const userInfo = document.getElementById("user-info"), dataBody = document.getElementById("data-body");
         const downloadBtn = document.getElementById("download-btn"), uploadBtn = document.getElementById("upload-btn"), fileUpload = document.getElementById("file-upload");
         const confirmModalBackdrop = document.getElementById("confirm-modal-backdrop"), confirmTitle = document.getElementById("confirm-title"), confirmMessage = document.getElementById("confirm-message"), confirmCancelBtn = document.getElementById("confirm-cancel-btn"), confirmActionBtn = document.getElementById("confirm-action-btn");
-
 
         function showNotification(message, isError = false) {
             const modal = document.getElementById('notification-modal');
@@ -234,6 +234,7 @@
             return `
                 <tr id="add-new-row" class="bg-indigo-50">
                     <td class="tight-cell-input"><input type="date" id="new-date" class="table-input" value="${dateString}" required /></td>
+                    <td class="tight-cell-input"><input type="text" id="new-nepali_date" class="table-input" placeholder="YYYY-MM-DD" /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
                     <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
@@ -254,16 +255,10 @@
             `;
         }
 
-        /**
-         * Formats a number to a maximum of 3 decimal places.
-         * @param {number | null | undefined} num The number to format.
-         * @returns {string | number} The formatted number or an empty string.
-         */
         function formatNumber(num) {
             if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
                 return '';
             }
-            // Round to at most 3 decimal places
             return Math.round(num * 1000) / 1000;
         }
 
@@ -280,9 +275,9 @@
         function createDisplayRowHtml(d) {
             const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
             const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
-            // CHANGED: Applied formatNumber function to all numeric data cells
             return `
                 <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.nepali_date || ''}</td>
                 <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Gen)}</td>
                 <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Gen)}</td>
                 <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Trans)}</td>
@@ -304,6 +299,7 @@
         function createEditRowHtml(docData) {
             return `
                 <td class="tight-cell-input"><input type="date" class="table-input" value="${docData.id}" disabled /></td>
+                <td class="tight-cell-input"><input type="text" id="edit-nepali_date" class="table-input" value="${docData.nepali_date || ''}" /></td>
                 <td class="tight-cell-input"><input type="number" id="edit-unit1Gen" step="any" class="table-input" value="${docData.unit1Gen ?? ''}" /></td>
                 <td class="tight-cell-input"><input type="number" id="edit-unit2Gen" step="any" class="table-input" value="${docData.unit2Gen ?? ''}" /></td>
                 <td class="tight-cell-input"><input type="number" id="edit-unit1Trans" step="any" class="table-input" value="${docData.unit1Trans ?? ''}" /></td>
@@ -324,15 +320,22 @@
             `;
         }
         
+        // =================================================================================
+        // === THIS IS THE CORRECTED FUNCTION ===
+        // =================================================================================
         async function handleAddOrUpdateEntry(docId, isUpdate = false) {
             if (!currentUser) { showNotification("You must be logged in.", true); return; }
 
-            const prefix = isUpdate ? `edit-` : 'new-';
+            const prefix = isUpdate ? 'edit-' : 'new-';
             const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`).value;
-            if (!dateVal) { showNotification("Please select a date.", true); return; }
+            if (!dateVal) { showNotification("Please select an English date.", true); return; }
 
+            // CORRECTED: This block now correctly reads from the table row inputs.
             const data = {
-                user: currentUser.email, uid: currentUser.uid,
+                user: currentUser.email,
+                uid: currentUser.uid,
+                date: Timestamp.fromDate(new Date(dateVal)),
+                nepali_date: document.getElementById(`${prefix}nepali_date`).value || null,
                 unit1Gen: parseFloat(document.getElementById(`${prefix}unit1Gen`).value) || null,
                 unit2Gen: parseFloat(document.getElementById(`${prefix}unit2Gen`).value) || null,
                 unit1Trans: parseFloat(document.getElementById(`${prefix}unit1Trans`).value) || null,
@@ -353,7 +356,10 @@
                     editingRowId = null;
                     renderTable(allData);
                 } else {
-                    document.getElementById('add-new-row').querySelectorAll('input[type=number]').forEach(input => input.value = '');
+                    // Clear only the new entry row after successful submission
+                    document.getElementById('add-new-row').querySelectorAll('input').forEach(input => {
+                        if(input.type !== 'date') input.value = '';
+                    });
                 }
             } catch (error) {
                 console.error("Error saving data:", error);
@@ -412,9 +418,9 @@
 
         // --- Excel Download/Upload Logic ---
         downloadBtn.addEventListener('click', () => {
-            // CHANGED: Data export keys updated to match new headers
             const dataToExport = allData.map(d => ({
-                'Date': d.id,
+                'English Date': d.id,
+                'Nepali Date': d.nepali_date,
                 'Unit 1 Generator Reading': d.unit1Gen,
                 'Unit 2 Generator Reading': d.unit2Gen,
                 'Unit 1 Transformer Reading': d.unit1Trans,
@@ -429,10 +435,15 @@
                 'Unit 2 hour counter': d.unit2Counter,
                 'Operator': d.user
             }));
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport, {header: [
+                "English Date", "Nepali Date", "Unit 1 Generator Reading", "Unit 2 Generator Reading", 
+                "Unit 1 Transformer Reading", "Unit 2 Transformer Reading", "Station Transformer Reading",
+                "Export at Plant Outgoing Feeder", "Export at Substation Feeder", "Import at Outgoing Feeder",
+                "Import at Substation Feeder", "", "Unit 1 hour counter", "Unit 2 hour counter", "Operator"
+            ]});
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "PlantData");
-            XLSX.writeFile(workbook, "PlantData.xlsx");
+            XLSX.writeFile(workbook, "PlantData_MakariGad.xlsx");
             showNotification("Downloading Excel file...");
         });
 
@@ -451,7 +462,7 @@
                     if (jsonData.length < 2) {
                         return showNotification("File is empty or has no data rows.", true);
                     }
-                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data will be overwritten. Continue?`, () => processAndUploadData(jsonData));
+                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Continue?`, () => processAndUploadData(jsonData));
                 } catch (error) {
                     console.error("File read error:", error);
                     showNotification("Error reading file. Please ensure it's a valid Excel file.", true);
@@ -461,13 +472,19 @@
             fileUpload.value = '';
         });
 
+        // =================================================================================
+        // === THIS IS THE CORRECTED FUNCTION ===
+        // =================================================================================
         async function processAndUploadData(jsonData) {
             if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
             showNotification("Starting upload...", false);
 
             const header = jsonData.shift().map(h => String(h ?? "").trim());
+            
+            // CORRECTED: The keys now exactly match the headers from your Excel screenshot.
             const headerMap = {
-                date: header.indexOf('Date'),
+                englishDate: header.indexOf('English Date'),
+                nepaliDate: header.indexOf('Nepali Date'),
                 unit1Gen: header.indexOf('Unit 1 Generator Reading'),
                 unit2Gen: header.indexOf('Unit 2 Generator Reading'),
                 unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
@@ -481,12 +498,12 @@
                 unit2Counter: header.indexOf('Unit 2 hour counter'),
             };
 
-            if (headerMap.date === -1) { return showNotification("Upload failed. 'Date' column not found.", true); }
+            if (headerMap.englishDate === -1) { return showNotification("Upload failed. 'English Date' column not found.", true); }
 
             const batch = writeBatch(db);
             let operationsCount = 0;
             jsonData.forEach(row => {
-                const dateValue = row[headerMap.date];
+                const dateValue = row[headerMap.englishDate];
                 if (!dateValue || !(dateValue instanceof Date)) return;
 
                 const localDate = new Date(dateValue.getTime() - (dateValue.getTimezoneOffset() * 60000));
@@ -495,6 +512,8 @@
                 const docRef = doc(db, plantDataPath, dateStr);
                 const docData = {
                     user: currentUser.email, uid: currentUser.uid,
+                    date: Timestamp.fromDate(localDate),
+                    nepali_date: row[headerMap.nepaliDate] || null,
                     unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
                     unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
                     unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
@@ -521,7 +540,6 @@
                 showNotification("Upload failed: " + error.message, true);
             }
         }
-
     </script>
 </body>
 </html>

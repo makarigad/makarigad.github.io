@@ -5,22 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Report - Makari Gad Project</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .summary-card {
-            background-color: #f9fafb;
-            border-left: 4px solid #4f46e5;
+        .data-card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
-        .summary-label {
+        .data-label {
             font-size: 0.875rem; /* text-sm */
             font-weight: 500;    /* font-medium */
-            color: #6b7280;      /* text-gray-500 */
+            color: #4b5563;      /* text-gray-600 */
         }
-        .summary-value {
-            font-size: 1.125rem; /* text-lg */
-            font-weight: 600;    /* font-semibold */
-            color: #111827;      /* text-gray-900 */
+        .data-value {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 700;    /* font-bold */
+            color: #1e3a8a;      /* text-blue-900 */
+        }
+        .data-unit {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-left: 0.5rem;
         }
     </style>
 </head>
@@ -29,11 +38,11 @@
     <div id="header-placeholder"></div>
 
     <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="data-card">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
                 <div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Daily Generation Report</h1>
-                    <p class="text-sm text-gray-500 mt-1">Select a date to view the daily summary.</p>
+                    <p class="text-sm text-gray-500 mt-1">Select a date to view the detailed summary.</p>
                 </div>
                 <div class="mt-4 sm:mt-0">
                     <label for="report-date" class="block text-sm font-medium text-gray-700">Report Date</label>
@@ -42,69 +51,76 @@
             </div>
             
             <div id="report-content" class="hidden">
-                <div class="mb-6 p-4 rounded-md bg-indigo-50 border border-indigo-200">
-                    <h2 class="text-xl font-semibold text-center text-gray-800">
+                <div class="mb-6 p-4 rounded-md bg-indigo-50 border border-indigo-200 text-center">
+                    <h2 class="text-xl font-semibold text-gray-800">
                         Summary for <span id="display-date-ad" class="text-indigo-600"></span> 
                         (<span id="display-date-bs" class="text-indigo-600"></span>)
                     </h2>
-                    <p class="text-xs text-center text-gray-500">(Calculated from 12:00 PM previous day to 12:00 PM on selected date)</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Generation & Export -->
-                    <div class="summary-card p-4 rounded-md">
-                        <h3 class="font-bold text-lg mb-3 text-gray-800">Energy Summary</h3>
-                        <div class="space-y-3">
-                            <div>
-                                <p class="summary-label">Total Generation</p>
-                                <p class="summary-value"><span id="val-generation">0.00</span> MWh</p>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left Column -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="data-card">
+                                <h3 class="font-bold text-lg mb-3 text-gray-800">Daily Performance</h3>
+                                <div class="space-y-4">
+                                    <div><p class="data-label">Average Plant Load at Generator Terminal</p><p class="data-value"><span id="val-avg-load-powerhouse">0.00</span><span class="data-unit">kW</span></p></div>
+                                    <div><p class="data-label">Average Plant Load at Substation</p><p class="data-value"><span id="val-avg-load-substation">0.00</span><span class="data-unit">kW</span></p></div>
+                                    <div><p class="data-label">Daily Plant Factor</p><p class="data-value"><span id="val-plant-factor">0.00</span><span class="data-unit">%</span></p></div>
+                                </div>
                             </div>
-                            <div>
-                                <p class="summary-label">Export at Substation</p>
-                                <p class="summary-value"><span id="val-export-substation">0.00</span> MWh</p>
+                            <div class="data-card">
+                                <h3 class="font-bold text-lg mb-3 text-gray-800">Daily Energy</h3>
+                                <div class="space-y-4">
+                                    <div><p class="data-label">Energy Generation (at Generator Terminal)</p><p class="data-value"><span id="val-generation">0.00</span><span class="data-unit">MWh</span></p></div>
+                                    <div><p class="data-label">Energy Dispatch (at Plant Feeder)</p><p class="data-value"><span id="val-export-plant">0.00</span><span class="data-unit">MWh</span></p></div>
+                                    <div><p class="data-label">Energy Dispatch (at Substation)</p><p class="data-value"><span id="val-export-substation">0.00</span><span class="data-unit">MWh</span></p></div>
+                                </div>
                             </div>
-                            <div>
-                                <p class="summary-label">Export at Plant Outgoing</p>
-                                <p class="summary-value"><span id="val-export-plant">0.00</span> MWh</p>
-                            </div>
-                            <div>
-                                <p class="summary-label">Total Import</p>
-                                <p class="summary-value"><span id="val-import">0.00</span> kWh</p>
+                        </div>
+                        <div class="data-card">
+                             <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly & Cumulative Summary</h3>
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <p class="data-label">Cumulative Energy Export (Month)</p><p class="data-value"><span id="val-cumulative-export-month">0.00</span><span class="data-unit">MWh</span></p>
+                                    <p class="data-label mt-4">Guaranteed Energy (PPA for Month)</p><p class="data-value"><span id="val-guaranteed-energy">0.00</span><span class="data-unit">MWh</span></p>
+                                    <p class="data-label mt-4">Energy Difference</p><p class="data-value"><span id="val-energy-difference">0.00</span><span class="data-unit">MWh</span></p>
+                                </div>
+                                <div>
+                                    <p class="data-label">Monthly Plant Factor</p><p class="data-value"><span id="val-monthly-plant-factor">0.00</span><span class="data-unit">%</span></p>
+                                    <p class="data-label mt-4">Plant Factor (Till Date)</p><p class="data-value"><span id="val-plant-factor-till-date">0.00</span><span class="data-unit">%</span></p>
+                                    <p class="data-label mt-4">Remaining Dispatch Days</p><p class="data-value"><span id="val-remaining-days">0</span><span class="data-unit">days</span></p>
+                                </div>
+                             </div>
+                        </div>
+                         <div class="data-card">
+                            <h3 class="font-bold text-lg mb-3 text-gray-800">Daily Losses & Consumption</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <p class="data-label">Transformer Losses at Powerhouse</p><p class="data-value"><span id="val-transformer-loss">0.00</span><span class="data-unit">MWh</span></p>
+                                    <p class="data-label mt-4">Station Consumption</p><p class="data-value"><span id="val-station-consumption">0.00</span><span class="data-unit">MWh</span></p>
+                                </div>
+                                <div>
+                                    <p class="data-label">Transmission & Substation Losses</p><p class="data-value"><span id="val-transmission-loss">0.00</span><span class="data-unit">MWh</span></p>
+                                     <p class="data-label mt-4">Other Losses (Grid/Breakdown)</p><p class="data-value"><span id="val-other-losses">0.00</span><span class="data-unit">MWh</span></p>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Load & Plant Factor -->
-                    <div class="summary-card p-4 rounded-md">
-                        <h3 class="font-bold text-lg mb-3 text-gray-800">Performance</h3>
-                        <div class="space-y-3">
-                            <div>
-                                <p class="summary-label">Average Load at Powerhouse</p>
-                                <p class="summary-value"><span id="val-avg-load-powerhouse">0.00</span> kW</p>
-                            </div>
-                            <div>
-                                <p class="summary-label">Average Load at Substation</p>
-                                <p class="summary-value"><span id="val-avg-load-substation">0.00</span> kW</p>
-                            </div>
-                            <div>
-                                <p class="summary-label">Daily Plant Factor</p>
-                                <p class="summary-value"><span id="val-plant-factor">0.00</span> %</p>
-                            </div>
+                    <!-- Right Column -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <div class="data-card">
+                            <h3 class="font-bold text-lg mb-3 text-gray-800">Energy Distribution</h4>
+                            <canvas id="energy-pie-chart"></canvas>
                         </div>
-                    </div>
-
-                    <!-- Unit Hours -->
-                    <div class="summary-card p-4 rounded-md">
-                        <h3 class="font-bold text-lg mb-3 text-gray-800">Unit Cumulative Hours</h3>
-                        <div class="space-y-3">
-                            <div>
-                                <p class="summary-label">Unit 1 Hour Counter</p>
-                                <p class="summary-value"><span id="val-unit1-counter">0.00</span> hrs</p>
-                            </div>
-                            <div>
-                                <p class="summary-label">Unit 2 Hour Counter</p>
-                                <p class="summary-value"><span id="val-unit2-counter">0.00</span> hrs</p>
-                            </div>
+                        <div class="data-card">
+                            <h3 class="font-bold text-lg mb-3 text-gray-800">Unit Running Hours</h3>
+                            <p class="data-label">Unit 1 (For the Day)</p><p class="data-value"><span id="val-unit1-hours-day">0.00</span><span class="data-unit">hrs</span></p>
+                            <p class="data-label mt-2">Unit 2 (For the Day)</p><p class="data-value"><span id="val-unit2-hours-day">0.00</span><span class="data-unit">hrs</span></p>
+                            <hr class="my-4">
+                            <p class="data-label">Unit 1 (Cumulative)</p><p class="data-value"><span id="val-unit1-counter">0.00</span><span class="data-unit">hrs</span></p>
+                            <p class="data-label mt-2">Unit 2 (Cumulative)</p><p class="data-value"><span id="val-unit2-counter">0.00</span><span class="data-unit">hrs</span></p>
                         </div>
                     </div>
                 </div>
@@ -117,136 +133,238 @@
             <div id="error-state" class="hidden text-center p-10 bg-red-50 border border-red-200 rounded-md">
                 <p id="error-message" class="text-red-700 font-medium"></p>
             </div>
-
         </div>
     </main>
 
     <div id="footer-placeholder"></div>
-
+    
     <script>
-        // ADD THIS SCRIPT BLOCK
-        fetch('header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
-        fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+        fetch('./header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
+        fetch('./footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
     </script>
 
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
-    // --- CONFIG & INITIALIZATION ---
-    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{ "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" }');
+    const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
     const app = initializeApp(firebaseConfig);
     const functions = getFunctions(app);
 
     let allData = [];
-
+    let chartInstance = null;
     const reportDateInput = document.getElementById('report-date');
     const reportContent = document.getElementById('report-content');
     const loadingState = document.getElementById('loading-state');
     const errorState = document.getElementById('error-state');
     const errorMessage = document.getElementById('error-message');
+    
+    const NEPALI_MONTHS = ["", "Baisakh", "Jestha", "Ashar", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangshir", "Poush", "Magh", "Falgun", "Chaitra"];
+    const PPA_GUARANTEED_ENERGY = { 1: 5683.83, 2: 6252.19, 3: 8431.25, 4: 7070.98, 5: 6959.83, 6: 5115.83, 7: 3543.13, 8: 2795.31, 9: 2548.7, 10: 2984.7, 11: 3514.9, 12: 4333.3 };
 
-    // --- DATA FETCHING via CLOUD FUNCTION ---
     async function fetchData() {
-    try {
-        const getPlantData = httpsCallable(functions, 'getPlantData');
-        const result = await getPlantData();
+        try {
+            const getPlantData = httpsCallable(functions, 'getPlantData');
+            const result = await getPlantData();
+            const data = result.data.data;
 
-        // The data from an onCall function is always in result.data
-        const data = result.data.data;
+            if (!data) {
+                showError("Received invalid data from the server.");
+                return;
+            }
 
-        if (!data) {
-            showError("Received invalid data from the server.");
+            allData = data.sort((a, b) => a.id.localeCompare(b.id));
+
+            if (allData.length > 0) {
+                const latestDate = allData[allData.length - 1].id;
+                reportDateInput.value = latestDate;
+                reportDateInput.max = latestDate;
+                if (allData.length > 1) {
+                    generateReport(latestDate);
+                } else {
+                    showError("Not enough data to generate a report. At least two days of data are required.");
+                }
+            } else {
+                showError("No data available in the database.");
+            }
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            showError("Error fetching data from the server.");
+        } finally {
             loadingState.classList.add('hidden');
-            return;
         }
-
-        allData = data.sort((a, b) => a.id.localeCompare(b.id));
-
-        if (allData.length > 0) {
-            const latestDate = allData[allData.length - 1].id;
-            reportDateInput.value = latestDate;
-            reportDateInput.max = latestDate;
-            generateReport(latestDate);
-        } else {
-            showError("No data available in the database.");
-        }
-        loadingState.classList.add('hidden');
-    } catch (error) {
-        console.error("Error fetching data via Cloud Function:", error);
-        showError("Error fetching data from the server. Please try again later.");
     }
-}
 
     fetchData();
-
     reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
 
-    // --- REPORT GENERATION LOGIC ---
-    function generateReport(gregorianDateStr) {
+    function generateReport(englishDateStr) {
         reportContent.classList.add('hidden');
         errorState.classList.add('hidden');
 
-        const todayData = allData.find(d => d.id === gregorianDateStr);
-
+        const todayData = allData.find(d => d.id === englishDateStr);
         if (!todayData) {
-            showError(`No data available for ${gregorianDateStr}. Please select another date.`);
+            showError(`No data available for ${englishDateStr}.`);
             return;
         }
 
-        const gregorianYesterdayStr = getPreviousDay(gregorianDateStr);
-        const yesterdayData = allData.find(d => d.id === gregorianYesterdayStr);
-
+        const yesterdayStr = getPreviousDay(englishDateStr);
+        const yesterdayData = allData.find(d => d.id === yesterdayStr);
         if (!yesterdayData) {
-            showError(`Cannot generate report for ${gregorianDateStr} as data for the previous day (${gregorianYesterdayStr}) is missing.`);
+            showError(`Cannot generate report for ${englishDateStr} as data for the previous day is missing.`);
             return;
         }
 
-        // --- CALCULATIONS ---
-        const calculations = {};
-        const todayGen = (todayData.unit1Gen || 0) + (todayData.unit2Gen || 0);
-        const yesterdayGen = (yesterdayData.unit1Gen || 0) + (yesterdayData.unit2Gen || 0);
-
-        calculations.generation = todayGen - yesterdayGen;
-        calculations.exportSubstation = (todayData.exportSubstation || 0) - (yesterdayData.exportSubstation || 0);
-        calculations.exportPlant = (todayData.exportPlant || 0) - (yesterdayData.exportPlant || 0);
-        calculations.import = ((todayData.importSubstation || 0) - (yesterdayData.importSubstation || 0));
-        calculations.avgLoadPowerhouse = (calculations.generation / 24) * 1000;
-        calculations.avgLoadSubstation = (calculations.exportSubstation / 24) * 1000;
-        calculations.plantFactor = (calculations.exportSubstation / 240) * 100;
-        calculations.unit1Counter = todayData.unit1Counter || 0;
-        calculations.unit2Counter = todayData.unit2Counter || 0;
-
-        renderReport(gregorianDateStr, calculations);
-    }
-
-    // --- UI RENDERING ---
-    function renderReport(dateStr, data) {
-        const displayDateEl = document.getElementById('display-date-ad');
-        const dateContainer = displayDateEl.parentElement;
-        dateContainer.innerHTML = `Summary for <span id="display-date-ad" class="text-indigo-600">${dateStr}</span>`;
-
-        document.getElementById('val-generation').textContent = formatNumber(data.generation);
-        document.getElementById('val-export-substation').textContent = formatNumber(data.exportSubstation);
-        document.getElementById('val-export-plant').textContent = formatNumber(data.exportPlant);
-        document.getElementById('val-import').textContent = formatNumber(data.import, 0);
-        document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(data.avgLoadPowerhouse, 0);
-        document.getElementById('val-avg-load-substation').textContent = formatNumber(data.avgLoadSubstation, 0);
-        document.getElementById('val-plant-factor').textContent = formatNumber(data.plantFactor);
-        document.getElementById('val-unit1-counter').textContent = formatNumber(data.unit1Counter, 1);
-        document.getElementById('val-unit2-counter').textContent = formatNumber(data.unit2Counter, 1);
-        document.getElementById('display-date-ad').textContent = dateStr;
-        document.getElementById('display-date-bs').textContent = 'N/A';
-        reportContent.classList.remove('hidden');
+        // --- DAILY CALCULATIONS ---
+        const daily = {};
+        daily.generation = ((todayData.unit1Gen || 0) + (todayData.unit2Gen || 0)) - ((yesterdayData.unit1Gen || 0) + (yesterdayData.unit2Gen || 0));
+        daily.exportSubstation = (todayData.exportSubstation || 0) - (yesterdayData.exportSubstation || 0);
+        daily.exportPlant = (todayData.exportPlant || 0) - (yesterdayData.exportPlant || 0);
+        daily.avgLoadPowerhouse = (daily.generation / 24) * 1000;
+        daily.avgLoadSubstation = (daily.exportSubstation / 24) * 1000;
+        daily.plantFactor = (daily.exportSubstation / 240) * 100; // 10MW * 24h = 240 MWh
+        daily.unit1Hours = (todayData.unit1Counter || 0) - (yesterdayData.unit1Counter || 0);
+        daily.unit2Hours = (todayData.unit2Counter || 0) - (yesterdayData.unit2Counter || 0);
         
+        const totalTransformerGen = ((todayData.unit1Trans || 0) + (todayData.unit2Trans || 0)) - ((yesterdayData.unit1Trans || 0) + (yesterdayData.unit2Trans || 0));
+        daily.transformerLoss = daily.generation - totalTransformerGen;
+        daily.stationConsumption = totalTransformerGen - daily.exportPlant;
+        daily.transmissionLoss = daily.exportPlant - daily.exportSubstation;
+        daily.otherLosses = 0; // Placeholder for now
+
+        // --- MONTHLY & CUMULATIVE CALCULATIONS ---
+        const monthly = {};
+        const nepaliDateParts = todayData.nepali_date.split(/[-.]/);
+        const nepaliYear = parseInt(nepaliDateParts[0], 10);
+        const nepaliMonth = parseInt(nepaliDateParts[1], 10);
+        const nepaliDay = parseInt(nepaliDateParts[2], 10);
+
+        const monthData = allData.filter(d => d.nepali_date && d.nepali_date.startsWith(`${nepaliYear}-${String(nepaliMonth).padStart(2, '0')}`));
+        
+        monthly.cumulativeExport = 0;
+        for(let i = 0; i < monthData.length; i++) {
+            if (i > 0) {
+                const dayExport = (monthData[i].exportSubstation || 0) - (monthData[i-1].exportSubstation || 0);
+                monthly.cumulativeExport += dayExport;
+            }
+        }
+        
+        monthly.guaranteedEnergy = PPA_GUARANTEED_ENERGY[nepaliMonth] || 0;
+        monthly.energyDifference = monthly.cumulativeExport - monthly.guaranteedEnergy;
+        
+        const daysInMonth = new Date(new Date(englishDateStr).getFullYear(), new Date(englishDateStr).getMonth() + 1, 0).getDate();
+        monthly.monthlyPlantFactor = (monthly.cumulativeExport / (10 * 24 * nepaliDay)) * 100;
+        
+        const firstDayOfMonthData = allData.find(d => d.nepali_date && d.nepali_date.startsWith(`${nepaliYear}-${String(nepaliMonth).padStart(2, '0')}-01`));
+        let totalExportTillDate = 0;
+        if(firstDayOfMonthData) {
+            const firstDayIndex = allData.indexOf(firstDayOfMonthData);
+            const todayIndex = allData.indexOf(todayData);
+            totalExportTillDate = (todayData.exportSubstation || 0) - (allData[firstDayIndex - 1]?.exportSubstation || 0);
+        }
+        
+        const daysPassed = nepaliDay;
+        monthly.plantFactorTillDate = (totalExportTillDate / (10 * 24 * daysPassed)) * 100;
+        monthly.remainingDays = daysInMonth - new Date(englishDateStr).getDate();
+
+        renderReport(englishDateStr, todayData, daily, monthly);
     }
 
-    // --- HELPER FUNCTIONS ---
+    function renderReport(englishDateStr, todayData, daily, monthly) {
+        const nepaliDateParts = todayData.nepali_date.split(/[-.]/);
+        const bsDateString = `${NEPALI_MONTHS[parseInt(nepaliDateParts[1], 10)]} ${nepaliDateParts[2]}, ${nepaliDateParts[0]}`;
+        
+        document.getElementById('display-date-ad').textContent = englishDateStr;
+        document.getElementById('display-date-bs').textContent = bsDateString;
+
+        // Daily Performance
+        document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(daily.avgLoadPowerhouse, 2);
+        document.getElementById('val-avg-load-substation').textContent = formatNumber(daily.avgLoadSubstation, 2);
+        document.getElementById('val-plant-factor').textContent = formatNumber(daily.plantFactor, 2);
+        
+        // Daily Energy
+        document.getElementById('val-generation').textContent = formatNumber(daily.generation, 2);
+        document.getElementById('val-export-plant').textContent = formatNumber(daily.exportPlant, 2);
+        document.getElementById('val-export-substation').textContent = formatNumber(daily.exportSubstation, 2);
+
+        // Monthly
+        document.getElementById('val-cumulative-export-month').textContent = formatNumber(monthly.cumulativeExport, 2);
+        document.getElementById('val-guaranteed-energy').textContent = formatNumber(monthly.guaranteedEnergy, 2);
+        document.getElementById('val-energy-difference').textContent = formatNumber(monthly.energyDifference, 2);
+        document.getElementById('val-monthly-plant-factor').textContent = formatNumber(monthly.monthlyPlantFactor, 2);
+        document.getElementById('val-plant-factor-till-date').textContent = formatNumber(monthly.plantFactorTillDate, 2);
+        document.getElementById('val-remaining-days').textContent = monthly.remainingDays;
+
+        // Losses
+        document.getElementById('val-transformer-loss').textContent = formatNumber(daily.transformerLoss, 2);
+        document.getElementById('val-station-consumption').textContent = formatNumber(daily.stationConsumption, 2);
+        document.getElementById('val-transmission-loss').textContent = formatNumber(daily.transmissionLoss, 2);
+        document.getElementById('val-other-losses').textContent = formatNumber(daily.otherLosses, 2);
+
+        // Unit Hours
+        document.getElementById('val-unit1-hours-day').textContent = formatNumber(daily.unit1Hours, 1);
+        document.getElementById('val-unit2-hours-day').textContent = formatNumber(daily.unit2Hours, 1);
+        document.getElementById('val-unit1-counter').textContent = formatNumber(todayData.unit1Counter, 1);
+        document.getElementById('val-unit2-counter').textContent = formatNumber(todayData.unit2Counter, 1);
+        
+        updatePieChart(daily);
+        reportContent.classList.remove('hidden');
+    }
+    
+    function updatePieChart(daily) {
+        const ctx = document.getElementById('energy-pie-chart').getContext('2d');
+        const chartData = {
+            labels: ['Dispatched Energy', 'Transmission Loss', 'Station Consumption', 'Transformer Loss', 'Other Losses'],
+            datasets: [{
+                data: [
+                    daily.exportSubstation,
+                    daily.transmissionLoss,
+                    daily.stationConsumption,
+                    daily.transformerLoss,
+                    daily.otherLosses
+                ],
+                backgroundColor: ['#1e3a8a', '#60a5fa', '#facc15', '#fb923c', '#f87171'],
+                hoverOffset: 4
+            }]
+        };
+
+        if (chartInstance) {
+            chartInstance.data = chartData;
+            chartInstance.update();
+        } else {
+            chartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += formatNumber(context.parsed, 2) + ' MWh';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                },
+            });
+        }
+    }
+
     function showError(message) {
         errorMessage.textContent = message;
         errorState.classList.remove('hidden');
         reportContent.classList.add('hidden');
-        loadingState.classList.add('hidden');
     }
     function getPreviousDay(dateString) {
         const date = new Date(dateString);
@@ -259,6 +377,6 @@
         }
         return parseFloat(num).toFixed(decimals);
     }
-</script>
+    </script>
 </body>
 </html>

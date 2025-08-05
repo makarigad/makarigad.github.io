@@ -3,543 +3,351 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plant Data - Makari Gad Project</title>
+    <title>Plant Data Management - Makari Gad Project</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7fafc;
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            color: #6b7280;
+            transition: all 0.2s ease-in-out;
         }
+        .tab-button:hover { color: #111827; }
+        .tab-button.active {
+            border-bottom-color: #4f46e5;
+            color: #111827;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         .table-input {
-            width: 100%;
-            padding: 0.25rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
-            font-size: 0.875rem;
-            min-width: 65px;
-            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            width: 100%; padding: 2px; font-size: 0.75rem;
+            border: 1px solid #d1d5db; border-radius: 0.375rem;
         }
-        .table-input:focus {
-            border-color: #6366f1;
-            box-shadow: 0 0 0 2px rgba(99,102,241,0.5);
-            outline: none;
-        }
-        #notification-modal, #confirm-modal-backdrop {
-            transition: opacity 0.3s ease-in-out;
-        }
-        #confirm-modal {
-             transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-        }
-        .tight-cell {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
-            vertical-align: top;
-        }
-        .tight-cell-input {
-            padding-left: 0.25rem;
-            padding-right: 0.25rem;
-            padding-top: 0.25rem;
-            padding-bottom: 0.25rem;
-            vertical-align: middle;
-        }
-        th {
-            white-space: normal !important;
-        }
-        .w-full {
-            table-layout: fixed;
-            width: 100%;
-            word-wrap: break-word;
-        }
-        #data-body td {
-            font-size: 0.75rem;
-            padding: 4px 3px !important;
-        }
-        thead th {
-            padding: 8px 4px !important;
-        }
-        
-        /* Column widths re-distributed */
-        thead th:nth-child(1) { width: 8%; }  /* English Date */
-        thead th:nth-child(2) { width: 8%; }  /* Nepali Date */
-        thead th:nth-child(3) { width: 6%; } /* Unit 1 Gen */
-        thead th:nth-child(4) { width: 6%; } /* Unit 2 Gen */
-        thead th:nth-child(5) { width: 6%; } /* Unit 1 Trans */
-        thead th:nth-child(6) { width: 6%; } /* Unit 2 Trans */
-        thead th:nth-child(7) { width: 6%; }  /* SST */
-        thead th:nth-child(8) { width: 7%; } /* Export Plant */
-        thead th:nth-child(9) { width: 7%; } /* Export Substation */
-        thead th:nth-child(10){ width: 7%; } /* Import Outgoing */
-        thead th:nth-child(11){ width: 7%; } /* Import Substation */
-        thead th:nth-child(12){ width: 1%; } /* Blank */
-        thead th:nth-child(13){ width: 6%; }  /* Unit 1 counter */
-        thead th:nth-child(14){ width: 6%; }  /* Unit 2 counter */
-        thead th:nth-child(15){ width: 6%; } /* Operator */
-        thead th:nth-child(16){ width: 8%; }  /* Actions */
-        
-        .table-input {
-            min-width: unset;
-            padding: 2px;
-            font-size: 0.75rem;
-        }
+        thead th { padding: 8px 4px !important; white-space: normal !important; }
+        #data-body td, #outage-data-body td { font-size: 0.75rem; padding: 4px 3px !important; }
     </style>
 </head>
 <body class="text-gray-800">
-<div id="header-placeholder"></div>
-    <div id="notification-modal" class="fixed top-5 right-5 bg-white border-l-4 p-4 rounded-md shadow-lg max-w-sm z-50 opacity-0 transform translate-y-[-20px] pointer-events-none">
-        <p id="notification-message" class="text-sm font-medium"></p>
-    </div>
+    <div id="header-placeholder"></div>
 
-    <div id="confirm-modal-backdrop" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-40 flex items-center justify-center">
-        <div id="confirm-modal" class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md transform scale-95 opacity-0">
-            <h3 id="confirm-title" class="text-lg font-bold text-gray-900">Confirm Action</h3>
-            <p id="confirm-message" class="mt-2 text-sm text-gray-600">Are you sure?</p>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="p-2 sm:p-4 lg:p-6 w-full">
+    <main class="container mx-auto p-4 sm:p-6">
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
             <div>
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Plant Daily Meter Readings</h1>
-                <p class="text-sm text-gray-500 mt-1">Makari Gad Project | <a href="index.html" class="text-indigo-600 hover:underline">Home</a></p>
+                <h1 class="text-3xl font-bold text-gray-900">Plant Data Management</h1>
+                <p class="text-sm text-gray-500 mt-1">Manage daily readings and monthly PPA data.</p>
             </div>
-            <div class="flex items-center space-x-2 mt-3 sm:mt-0">
-                 <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download as Excel</button>
-                 <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload</button>
-                 <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" title="Upload Excel or CSV file" placeholder="Select file to upload" />
-                 <div id="user-info" class="text-right text-sm text-indigo-600 font-semibold cursor-pointer hover:text-indigo-800" title="Click to logout"></div>
-            </div>
+            <div id="user-info" class="text-right text-sm text-indigo-600 font-semibold cursor-pointer hover:text-indigo-800 mt-3 sm:mt-0" title="Click to logout"></div>
         </header>
 
-        <main>
-            <section>
-                <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Historical Data</h2>
-                    <div>
-                        <table class="w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <!-- Tabs Navigation -->
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button class="tab-button active" data-tab="energy">Daily Energy Readings</button>
+                    <button class="tab-button" data-tab="outages">Daily Outages & Losses</button>
+                    <button class="tab-button" data-tab="ppa">Monthly PPA Data</button>
+                </nav>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="mt-6">
+                <!-- Daily Energy Readings Tab -->
+                <div id="tab-energy" class="tab-content active">
+                    <div class="flex justify-end mb-4 space-x-2">
+                        <button id="download-energy-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm">Download</button>
+                        <button id="upload-energy-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm">Upload</button>
+                        <input type="file" id="file-upload-energy" class="hidden" accept=".xlsx, .xls, .csv" />
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                                <!-- Energy Table Headers -->
                                 <tr>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English Date</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nepali Date</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Trans</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Plant</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Substation</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Outgoing</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Substation</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Counter</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Counter</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <th>English Date</th><th>Nepali Date</th><th>Unit 1 Gen</th><th>Unit 2 Gen</th><th>Unit 1 Trans</th><th>Unit 2 Trans</th><th>Station Trans</th><th>Export Plant</th><th>Export Substation</th><th>Import Outgoing</th><th>Import Substation</th><th>Unit 1 Counter</th><th>Unit 2 Counter</th><th>Operator</th><th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="data-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Data rows will be inserted here by JavaScript -->
-                            </tbody>
+                            <tbody id="data-body" class="bg-white divide-y divide-gray-200"></tbody>
                         </table>
                     </div>
                 </div>
-            </section>
-        </main>
-    </div>
+
+                <!-- Daily Outages & Losses Tab -->
+                <div id="tab-outages" class="tab-content">
+                     <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+                                <!-- Outage Table Headers -->
+                                <tr>
+                                    <th>English Date</th><th>Nepali Date</th><th>NEA Curtailed (MWh)</th><th>NEA Trip Time (min)</th><th># Trippings</th><th>Total Loss (min)</th><th>U1 Loss (min)</th><th>U2 Loss (min)</th><th>Reason</th><th>Operator</th><th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="outage-data-body" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Monthly PPA Data Tab -->
+                <div id="tab-ppa" class="tab-content">
+                    <div class="max-w-3xl mx-auto">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Monthly PPA & Availability Data</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div><label class="block text-sm font-medium">Year (BS)</label><input type="number" id="ppa-year" placeholder="e.g., 2082" class="mt-1 p-2 w-full border rounded-md"></div>
+                            <div><label class="block text-sm font-medium">Month (BS)</label>
+                                <select id="ppa-month" class="mt-1 p-2 w-full border rounded-md">
+                                    <option value="1">Baisakh</option><option value="2">Jestha</option><option value="3">Ashar</option><option value="4">Shrawan</option><option value="5">Bhadra</option><option value="6">Ashoj</option><option value="7">Kartik</option><option value="8">Mangshir</option><option value="9">Poush</option><option value="10">Magh</option><option value="11">Falgun</option><option value="12">Chaitra</option>
+                                </select>
+                            </div>
+                            <div class="md:pt-6"><button id="load-ppa-btn" class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Load Data</button></div>
+                        </div>
+                        <div id="ppa-form-fields" class="space-y-4 border-t pt-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label class="block text-sm font-medium">Contract Energy (PPA) (kWh)</label><input type="number" step="any" id="ppa-contract-energy" class="mt-1 p-2 w-full border rounded-md"></div>
+                                <div><label class="block text-sm font-medium">PPA Days in Month</label><input type="number" id="ppa-days" class="mt-1 p-2 w-full border rounded-md"></div>
+                            </div>
+                            <h4 class="font-semibold pt-4">Weekly Availability Declaration (kWh)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div><label class="block text-sm font-medium">First Week</label><input type="number" step="any" id="ppa-ad-week1" class="mt-1 p-2 w-full border rounded-md"></div>
+                                <div><label class="block text-sm font-medium">Second Week</label><input type="number" step="any" id="ppa-ad-week2" class="mt-1 p-2 w-full border rounded-md"></div>
+                                <div><label class="block text-sm font-medium">Third Week</label><input type="number" step="any" id="ppa-ad-week3" class="mt-1 p-2 w-full border rounded-md"></div>
+                                <div><label class="block text-sm font-medium">Fourth Week</label><input type="number" step="any" id="ppa-ad-week4" class="mt-1 p-2 w-full border rounded-md"></div>
+                                <div><label class="block text-sm font-medium">Remaining Days</label><input type="number" step="any" id="ppa-ad-remaining" class="mt-1 p-2 w-full border rounded-md"></div>
+                            </div>
+                            <div class="flex justify-end pt-4">
+                                <button id="save-ppa-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">Save Monthly Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, query, getDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
-        const adminEmail = "upenjyo@gmail.com";
-        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        const plantDataPath = "plantData";
         let currentUser = null;
-        let unsubscribe = null;
-        let allData = [];
-        let editingRowId = null;
+        const dailyDataPath = "plantData";
+        const ppaDataPath = "ppaData";
 
-        const userInfo = document.getElementById("user-info"), dataBody = document.getElementById("data-body");
-        const downloadBtn = document.getElementById("download-btn"), uploadBtn = document.getElementById("upload-btn"), fileUpload = document.getElementById("file-upload");
-        const confirmModalBackdrop = document.getElementById("confirm-modal-backdrop"), confirmTitle = document.getElementById("confirm-title"), confirmMessage = document.getElementById("confirm-message"), confirmCancelBtn = document.getElementById("confirm-cancel-btn"), confirmActionBtn = document.getElementById("confirm-action-btn");
+        // --- Tab Switching Logic ---
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                tabContents.forEach(content => content.classList.remove('active'));
+                document.getElementById(`tab-${button.dataset.tab}`).classList.add('active');
+            });
+        });
 
-        function showNotification(message, isError = false) {
-            const modal = document.getElementById('notification-modal');
-            const messageEl = document.getElementById('notification-message');
-            messageEl.textContent = message;
-            modal.className = modal.className.replace(/border-(green|red)-500/, '');
-            modal.classList.add(isError ? 'border-red-500' : 'border-green-500');
-            modal.classList.remove('opacity-0', 'translate-y-[-20px]');
-            modal.classList.add('opacity-100', 'translate-y-0');
-            setTimeout(() => {
-                modal.classList.remove('opacity-100', 'translate-y-0');
-                modal.classList.add('opacity-0', 'translate-y-[-20px]');
-            }, 5000);
-        }
-
+        // --- Auth Logic ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                userInfo.textContent = `Logged in as: ${user.email}`;
-                userInfo.onclick = () => showConfirmation('Confirm Logout', 'Are you sure you want to log out?', () => signOut(auth));
-                
-                if (currentUser.email === adminEmail) {
-                    downloadBtn.classList.remove('hidden');
-                    uploadBtn.classList.remove('hidden');
-                }
-                loadAndListenData();
+                document.getElementById("user-info").textContent = `Logged in as: ${user.email}`;
+                document.getElementById("user-info").onclick = () => signOut(auth);
+                listenForDailyData();
             } else {
-                const currentPath = window.location.pathname;
-                const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/index.html';
-                window.location.href = newPath;
+                window.location.href = './index.html';
             }
         });
 
-        function loadAndListenData() {
-            if (unsubscribe) unsubscribe();
-            const dataCollection = collection(db, plantDataPath);
-            const q = query(dataCollection);
-            unsubscribe = onSnapshot(q, (querySnapshot) => {
-                const rows = [];
-                querySnapshot.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-                rows.sort((a, b) => b.id.localeCompare(a.id));
-                allData = rows;
-                renderTable(allData);
-            }, (error) => {
-                console.error("Error fetching data:", error);
-                showNotification("Error fetching data.", true);
+        // --- Daily Data Logic ---
+        let allDailyData = [];
+        let dailyUnsubscribe = null;
+
+        function listenForDailyData() {
+            if (dailyUnsubscribe) dailyUnsubscribe();
+            const q = query(collection(db, dailyDataPath));
+            dailyUnsubscribe = onSnapshot(q, (snapshot) => {
+                allDailyData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allDailyData.sort((a, b) => b.id.localeCompare(a.id));
+                renderDailyTables();
+            });
+        }
+
+        function renderDailyTables() {
+            const energyBody = document.getElementById('data-body');
+            const outageBody = document.getElementById('outage-data-body');
+            energyBody.innerHTML = createDailyInputRow('energy');
+            outageBody.innerHTML = createDailyInputRow('outage');
+
+            allDailyData.forEach(d => {
+                const energyRow = document.createElement('tr');
+                energyRow.innerHTML = createDisplayRow(d, 'energy');
+                energyBody.appendChild(energyRow);
+
+                const outageRow = document.createElement('tr');
+                outageRow.innerHTML = createDisplayRow(d, 'outage');
+                outageBody.appendChild(outageRow);
             });
         }
         
-        function createInputRow() {
+        function createDailyInputRow(type) {
             const today = new Date();
-            const offset = today.getTimezoneOffset();
-            const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+            const localToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
             const dateString = localToday.toISOString().split('T')[0];
+            const operator = currentUser ? currentUser.email : 'N/A';
 
-            return `
-                <tr id="add-new-row" class="bg-indigo-50">
-                    <td class="tight-cell-input"><input type="date" id="new-date" class="table-input" value="${dateString}" required /></td>
-                    <td class="tight-cell-input"><input type="text" id="new-nepali_date" class="table-input" placeholder="YYYY-MM-DD" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Trans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-stationTrans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-exportPlant" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-exportSubstation" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-importOutgoing" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-importSubstation" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Counter" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Counter" step="any" class="table-input" /></td>
-                    <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
-                    <td class="tight-cell-input">
-                        <button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
-                    </td>
-                </tr>
-            `;
-        }
-
-        function formatNumber(num) {
-            if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
-                return '';
+            if (type === 'energy') {
+                return `<tr class="bg-indigo-50">
+                    <td><input type="date" id="new-date" value="${dateString}" class="table-input"></td>
+                    <td><input type="text" id="new-nepali_date" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-unit1Gen" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-unit2Gen" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-unit1Trans" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-unit2Trans" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-stationTrans" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-exportPlant" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-exportSubstation" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-importOutgoing" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-importSubstation" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-unit1Counter" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-unit2Counter" class="table-input"></td>
+                    <td class="text-xs truncate" title="${operator}">${operator}</td>
+                    <td><button onclick="saveDailyData()" class="bg-indigo-600 text-white text-xs font-bold py-1 px-2 rounded">Add</button></td>
+                </tr>`;
+            } else { // outage
+                 return `<tr class="bg-indigo-50">
+                    <td><input type="date" id="new-outage-date" value="${dateString}" class="table-input"></td>
+                    <td><input type="text" id="new-outage-nepali_date" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-neaCurtailedEnergy" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-neaTripTime" class="table-input"></td>
+                    <td><input type="number" id="new-tripCount" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-lossTimeTotal" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-lossTimeUnit1" class="table-input"></td>
+                    <td><input type="number" step="any" id="new-lossTimeUnit2" class="table-input"></td>
+                    <td><input type="text" id="new-reason" class="table-input"></td>
+                    <td class="text-xs truncate" title="${operator}">${operator}</td>
+                    <td><button onclick="saveOutageData()" class="bg-indigo-600 text-white text-xs font-bold py-1 px-2 rounded">Add</button></td>
+                </tr>`;
             }
-            return Math.round(num * 1000) / 1000;
         }
 
-        function renderTable(data) {
-            dataBody.innerHTML = createInputRow();
-            data.forEach(d => {
-                const row = document.createElement('tr');
-                row.id = `row-${d.id}`;
-                row.innerHTML = (d.id === editingRowId) ? createEditRowHtml(d) : createDisplayRowHtml(d);
-                dataBody.appendChild(row);
-            });
-        }
-        
-        function createDisplayRowHtml(d) {
-            const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
-            const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
-            return `
-                <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.nepali_date || ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Gen)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Gen)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Trans)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Trans)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.stationTrans)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportPlant)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportSubstation)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importOutgoing)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importSubstation)}</td>
-                <td class="tight-cell text-sm text-gray-500"></td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Counter)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Counter)}</td>
-                <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
-                <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
-                    ${canEdit ? `<button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
-                </td>`;
-        }
-
-        function createEditRowHtml(docData) {
-            return `
-                <td class="tight-cell-input"><input type="date" class="table-input" value="${docData.id}" disabled /></td>
-                <td class="tight-cell-input"><input type="text" id="edit-nepali_date" class="table-input" value="${docData.nepali_date || ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit1Gen" step="any" class="table-input" value="${docData.unit1Gen ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit2Gen" step="any" class="table-input" value="${docData.unit2Gen ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit1Trans" step="any" class="table-input" value="${docData.unit1Trans ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit2Trans" step="any" class="table-input" value="${docData.unit2Trans ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-stationTrans" step="any" class="table-input" value="${docData.stationTrans ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-exportPlant" step="any" class="table-input" value="${docData.exportPlant ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-exportSubstation" step="any" class="table-input" value="${docData.exportSubstation ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-importOutgoing" step="any" class="table-input" value="${docData.importOutgoing ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-importSubstation" step="any" class="table-input" value="${docData.importSubstation ?? ''}" /></td>
-                <td class="tight-cell-input"></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit1Counter" step="any" class="table-input" value="${docData.unit1Counter ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit2Counter" step="any" class="table-input" value="${docData.unit2Counter ?? ''}" /></td>
-                <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
-                <td class="tight-cell flex space-x-2 whitespace-nowrap">
-                    <button class="update-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${docData.id}">Update</button>
-                    <button class="cancel-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
-                </td>
-            `;
+        function createDisplayRow(d, type) {
+            const operator = d.user || 'N/A';
+            if (type === 'energy') {
+                return `
+                    <td>${d.id}</td><td>${d.nepali_date || ''}</td><td>${d.unit1Gen || ''}</td><td>${d.unit2Gen || ''}</td>
+                    <td>${d.unit1Trans || ''}</td><td>${d.unit2Trans || ''}</td><td>${d.stationTrans || ''}</td>
+                    <td>${d.exportPlant || ''}</td><td>${d.exportSubstation || ''}</td><td>${d.importOutgoing || ''}</td>
+                    <td>${d.importSubstation || ''}</td><td>${d.unit1Counter || ''}</td><td>${d.unit2Counter || ''}</td>
+                    <td class="text-xs truncate" title="${operator}">${operator}</td><td>...</td>`;
+            } else { // outage
+                return `
+                    <td>${d.id}</td><td>${d.nepali_date || ''}</td><td>${d.neaCurtailedEnergy || ''}</td>
+                    <td>${d.neaTripTime || ''}</td><td>${d.tripCount || ''}</td><td>${d.lossTimeTotal || ''}</td>
+                    <td>${d.lossTimeUnit1 || ''}</td><td>${d.lossTimeUnit2 || ''}</td>
+                    <td class="text-xs truncate" title="${d.reason || ''}">${d.reason || ''}</td>
+                    <td class="text-xs truncate" title="${operator}">${operator}</td><td>...</td>`;
+            }
         }
         
-        // =================================================================================
-        // === THIS IS THE CORRECTED FUNCTION ===
-        // =================================================================================
-        async function handleAddOrUpdateEntry(docId, isUpdate = false) {
-            if (!currentUser) { showNotification("You must be logged in.", true); return; }
-
-            const prefix = isUpdate ? 'edit-' : 'new-';
-            const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`).value;
-            if (!dateVal) { showNotification("Please select an English date.", true); return; }
-
-            // CORRECTED: This block now correctly reads from the table row inputs.
+        window.saveDailyData = async function() {
+            const dateVal = document.getElementById('new-date').value;
+            if (!dateVal) { alert("English date is required."); return; }
             const data = {
-                user: currentUser.email,
-                uid: currentUser.uid,
-                date: Timestamp.fromDate(new Date(dateVal)),
-                nepali_date: document.getElementById(`${prefix}nepali_date`).value || null,
-                unit1Gen: parseFloat(document.getElementById(`${prefix}unit1Gen`).value) || null,
-                unit2Gen: parseFloat(document.getElementById(`${prefix}unit2Gen`).value) || null,
-                unit1Trans: parseFloat(document.getElementById(`${prefix}unit1Trans`).value) || null,
-                unit2Trans: parseFloat(document.getElementById(`${prefix}unit2Trans`).value) || null,
-                stationTrans: parseFloat(document.getElementById(`${prefix}stationTrans`).value) || null,
-                exportPlant: parseFloat(document.getElementById(`${prefix}exportPlant`).value) || null,
-                exportSubstation: parseFloat(document.getElementById(`${prefix}exportSubstation`).value) || null,
-                importOutgoing: parseFloat(document.getElementById(`${prefix}importOutgoing`).value) || null,
-                importSubstation: parseFloat(document.getElementById(`${prefix}importSubstation`).value) || null,
-                unit1Counter: parseFloat(document.getElementById(`${prefix}unit1Counter`).value) || null,
-                unit2Counter: parseFloat(document.getElementById(`${prefix}unit2Counter`).value) || null,
+                user: currentUser.email, uid: currentUser.uid, date: Timestamp.fromDate(new Date(dateVal)),
+                nepali_date: document.getElementById('new-nepali_date').value || null,
+                unit1Gen: parseFloat(document.getElementById('new-unit1Gen').value) || null,
+                unit2Gen: parseFloat(document.getElementById('new-unit2Gen').value) || null,
+                unit1Trans: parseFloat(document.getElementById('new-unit1Trans').value) || null,
+                unit2Trans: parseFloat(document.getElementById('new-unit2Trans').value) || null,
+                stationTrans: parseFloat(document.getElementById('new-stationTrans').value) || null,
+                exportPlant: parseFloat(document.getElementById('new-exportPlant').value) || null,
+                exportSubstation: parseFloat(document.getElementById('new-exportSubstation').value) || null,
+                importOutgoing: parseFloat(document.getElementById('new-importOutgoing').value) || null,
+                importSubstation: parseFloat(document.getElementById('new-importSubstation').value) || null,
+                unit1Counter: parseFloat(document.getElementById('new-unit1Counter').value) || null,
+                unit2Counter: parseFloat(document.getElementById('new-unit2Counter').value) || null,
             };
-
-            try {
-                await setDoc(doc(db, plantDataPath, dateVal), data, { merge: true });
-                showNotification(`Data ${isUpdate ? 'updated' : 'added'} successfully!`);
-                if (isUpdate) {
-                    editingRowId = null;
-                    renderTable(allData);
-                } else {
-                    // Clear only the new entry row after successful submission
-                    document.getElementById('add-new-row').querySelectorAll('input').forEach(input => {
-                        if(input.type !== 'date') input.value = '';
-                    });
-                }
-            } catch (error) {
-                console.error("Error saving data:", error);
-                showNotification("Error saving data: " + error.message, true);
-            }
+            await setDoc(doc(db, dailyDataPath, dateVal), data, { merge: true });
+            alert('Energy data saved!');
         }
-
-        dataBody.addEventListener('click', e => {
-            if (e.target.id === 'add-entry-btn') handleAddOrUpdateEntry(null, false);
-            if (e.target.classList.contains('edit-btn')) {
-                editingRowId = JSON.parse(e.target.dataset.doc).id;
-                renderTable(allData);
-            }
-            if (e.target.classList.contains('delete-btn')) {
-                showDeleteConfirm(e.target.dataset.id);
-            }
-            if (e.target.classList.contains('update-btn')) handleAddOrUpdateEntry(e.target.dataset.id, true);
-            if (e.target.classList.contains('cancel-btn')) {
-                editingRowId = null;
-                renderTable(allData);
-            }
-        });
-
-        function showConfirmation(title, message, onConfirm) {
-            confirmTitle.textContent = title;
-            confirmMessage.textContent = message;
-            confirmModalBackdrop.classList.remove('hidden');
-            document.getElementById('confirm-modal').classList.remove('opacity-0', 'scale-95');
-            confirmActionBtn.onclick = () => {
-                onConfirm();
-                hideConfirmation();
+        
+        window.saveOutageData = async function() {
+            const dateVal = document.getElementById('new-outage-date').value;
+            if (!dateVal) { alert("English date is required."); return; }
+            const data = {
+                user: currentUser.email, uid: currentUser.uid, date: Timestamp.fromDate(new Date(dateVal)),
+                nepali_date: document.getElementById('new-outage-nepali_date').value || null,
+                neaCurtailedEnergy: parseFloat(document.getElementById('new-neaCurtailedEnergy').value) || null,
+                neaTripTime: parseFloat(document.getElementById('new-neaTripTime').value) || null,
+                tripCount: parseInt(document.getElementById('new-tripCount').value) || null,
+                lossTimeTotal: parseFloat(document.getElementById('new-lossTimeTotal').value) || null,
+                lossTimeUnit1: parseFloat(document.getElementById('new-lossTimeUnit1').value) || null,
+                lossTimeUnit2: parseFloat(document.getElementById('new-lossTimeUnit2').value) || null,
+                reason: document.getElementById('new-reason').value || null,
             };
+            await setDoc(doc(db, dailyDataPath, dateVal), data, { merge: true });
+            alert('Outage data saved!');
         }
 
-        function hideConfirmation() {
-            confirmModalBackdrop.classList.add('hidden');
-            document.getElementById('confirm-modal').classList.add('opacity-0', 'scale-95');
-        }
+        // --- Monthly PPA Data Logic ---
+        const loadPpaBtn = document.getElementById('load-ppa-btn');
+        const savePpaBtn = document.getElementById('save-ppa-btn');
 
-        confirmCancelBtn.addEventListener('click', hideConfirmation);
-        confirmModalBackdrop.addEventListener('click', (e) => { if (e.target === confirmModalBackdrop) hideConfirmation(); });
+        async function loadPpaData() {
+            const year = document.getElementById('ppa-year').value;
+            const month = String(document.getElementById('ppa-month').value).padStart(2, '0');
+            if (!year || !month) { alert("Please select a year and month."); return; }
 
-        function showDeleteConfirm(docId) {
-            showConfirmation('Confirm Deletion', `Are you sure you want to delete the entry for ${docId}? This cannot be undone.`, () => deleteEntry(docId));
-        }
+            const docId = `${year}-${month}`;
+            const docRef = doc(db, ppaDataPath, docId);
+            const docSnap = await getDoc(docRef);
 
-        async function deleteEntry(docId) {
-            try {
-                await deleteDoc(doc(db, plantDataPath, docId));
-                showNotification("Entry deleted successfully.");
-            } catch (error) {
-                console.error("Error deleting document:", error);
-                showNotification("Error deleting entry: " + error.message, true);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('ppa-contract-energy').value = data.contractEnergy || '';
+                document.getElementById('ppa-days').value = data.ppaDays || '';
+                document.getElementById('ppa-ad-week1').value = data.adWeek1 || '';
+                document.getElementById('ppa-ad-week2').value = data.adWeek2 || '';
+                document.getElementById('ppa-ad-week3').value = data.adWeek3 || '';
+                document.getElementById('ppa-ad-week4').value = data.adWeek4 || '';
+                document.getElementById('ppa-ad-remaining').value = data.adRemaining || '';
+            } else {
+                alert('No data found for this month. You can enter new data and save it.');
+                // Clear form
+                document.getElementById('ppa-form-fields').querySelectorAll('input').forEach(i => i.value = '');
             }
         }
 
-        // --- Excel Download/Upload Logic ---
-        downloadBtn.addEventListener('click', () => {
-            const dataToExport = allData.map(d => ({
-                'English Date': d.id,
-                'Nepali Date': d.nepali_date,
-                'Unit 1 Generator Reading': d.unit1Gen,
-                'Unit 2 Generator Reading': d.unit2Gen,
-                'Unit 1 Transformer Reading': d.unit1Trans,
-                'Unit 2 Transformer Reading': d.unit2Trans,
-                'Station Transformer Reading': d.stationTrans,
-                'Export at Plant Outgoing Feeder': d.exportPlant,
-                'Export at Substation Feeder': d.exportSubstation,
-                'Import at Outgoing Feeder': d.importOutgoing,
-                'Import at Substation Feeder': d.importSubstation,
-                '': null, // Blank column
-                'Unit 1 hour counter': d.unit1Counter,
-                'Unit 2 hour counter': d.unit2Counter,
-                'Operator': d.user
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport, {header: [
-                "English Date", "Nepali Date", "Unit 1 Generator Reading", "Unit 2 Generator Reading", 
-                "Unit 1 Transformer Reading", "Unit 2 Transformer Reading", "Station Transformer Reading",
-                "Export at Plant Outgoing Feeder", "Export at Substation Feeder", "Import at Outgoing Feeder",
-                "Import at Substation Feeder", "", "Unit 1 hour counter", "Unit 2 hour counter", "Operator"
-            ]});
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "PlantData");
-            XLSX.writeFile(workbook, "PlantData_MakariGad.xlsx");
-            showNotification("Downloading Excel file...");
-        });
-
-        uploadBtn.addEventListener('click', () => fileUpload.click());
-        fileUpload.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-                    
-                    if (jsonData.length < 2) {
-                        return showNotification("File is empty or has no data rows.", true);
-                    }
-                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Continue?`, () => processAndUploadData(jsonData));
-                } catch (error) {
-                    console.error("File read error:", error);
-                    showNotification("Error reading file. Please ensure it's a valid Excel file.", true);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-            fileUpload.value = '';
-        });
-
-        // =================================================================================
-        // === THIS IS THE CORRECTED FUNCTION ===
-        // =================================================================================
-        async function processAndUploadData(jsonData) {
-            if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
-            showNotification("Starting upload...", false);
-
-            const header = jsonData.shift().map(h => String(h ?? "").trim());
+        async function savePpaData() {
+            const year = document.getElementById('ppa-year').value;
+            const month = String(document.getElementById('ppa-month').value).padStart(2, '0');
+            if (!year || !month) { alert("Please select a year and month."); return; }
             
-            // CORRECTED: The keys now exactly match the headers from your Excel screenshot.
-            const headerMap = {
-                englishDate: header.indexOf('English Date'),
-                nepaliDate: header.indexOf('Nepali Date'),
-                unit1Gen: header.indexOf('Unit 1 Generator Reading'),
-                unit2Gen: header.indexOf('Unit 2 Generator Reading'),
-                unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
-                unit2Trans: header.indexOf('Unit 2 Transformer Reading'),
-                stationTrans: header.indexOf('Station Transformer Reading'),
-                exportPlant: header.indexOf('Export at Plant Outgoing Feeder'),
-                exportSubstation: header.indexOf('Export at Substation Feeder'),
-                importOutgoing: header.indexOf('Import at Outgoing Feeder'),
-                importSubstation: header.indexOf('Import at Substation Feeder'),
-                unit1Counter: header.indexOf('Unit 1 hour counter'),
-                unit2Counter: header.indexOf('Unit 2 hour counter'),
+            const docId = `${year}-${month}`;
+            const data = {
+                contractEnergy: parseFloat(document.getElementById('ppa-contract-energy').value) || null,
+                ppaDays: parseInt(document.getElementById('ppa-days').value) || null,
+                adWeek1: parseFloat(document.getElementById('ppa-ad-week1').value) || null,
+                adWeek2: parseFloat(document.getElementById('ppa-ad-week2').value) || null,
+                adWeek3: parseFloat(document.getElementById('ppa-ad-week3').value) || null,
+                adWeek4: parseFloat(document.getElementById('ppa-ad-week4').value) || null,
+                adRemaining: parseFloat(document.getElementById('ppa-ad-remaining').value) || null,
             };
 
-            if (headerMap.englishDate === -1) { return showNotification("Upload failed. 'English Date' column not found.", true); }
-
-            const batch = writeBatch(db);
-            let operationsCount = 0;
-            jsonData.forEach(row => {
-                const dateValue = row[headerMap.englishDate];
-                if (!dateValue || !(dateValue instanceof Date)) return;
-
-                const localDate = new Date(dateValue.getTime() - (dateValue.getTimezoneOffset() * 60000));
-                const dateStr = localDate.toISOString().split('T')[0];
-
-                const docRef = doc(db, plantDataPath, dateStr);
-                const docData = {
-                    user: currentUser.email, uid: currentUser.uid,
-                    date: Timestamp.fromDate(localDate),
-                    nepali_date: row[headerMap.nepaliDate] || null,
-                    unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
-                    unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
-                    unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
-                    unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
-                    stationTrans: parseFloat(row[headerMap.stationTrans]) || null,
-                    exportPlant: parseFloat(row[headerMap.exportPlant]) || null,
-                    exportSubstation: parseFloat(row[headerMap.exportSubstation]) || null,
-                    importOutgoing: parseFloat(row[headerMap.importOutgoing]) || null,
-                    importSubstation: parseFloat(row[headerMap.importSubstation]) || null,
-                    unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
-                    unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
-                };
-                batch.set(docRef, docData, { merge: true });
-                operationsCount++;
-            });
-
-            if (operationsCount === 0) { return showNotification("No valid data rows found to upload.", true); }
-
-            try {
-                await batch.commit();
-                showNotification(`Successfully uploaded ${operationsCount} records.`, false);
-            } catch (error) {
-                console.error("Batch upload error:", error);
-                showNotification("Upload failed: " + error.message, true);
-            }
+            await setDoc(doc(db, ppaDataPath, docId), data);
+            alert('Monthly PPA data saved!');
         }
+
+        loadPpaBtn.addEventListener('click', loadPpaData);
+        savePpaBtn.addEventListener('click', savePpaData);
+
     </script>
 </body>
 </html>

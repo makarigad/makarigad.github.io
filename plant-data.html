@@ -17,7 +17,6 @@ window.openTab = function(tab) {
 };
 
 // Nepali month mapping
-const nepaliMonths = { "Baisakh":1, "Jestha":2, "Ashadh":3, "Shrawan":4, "Bhadra":5, "Ashwin":6, "Kartik":7, "Mangsir":8, "Poush":9, "Magh":10, "Falgun":11, "Chaitra":12 };
 
 // Format to 2 decimals
 function formatTwoDecimals(val) { return (typeof val === 'number') ? parseFloat(val.toFixed(2)) : ''; }
@@ -84,7 +83,7 @@ window.openTab = function(tab) {
 };
 
 // Nepali month mapping
-const nepaliMonths = { "Baisakh":1, "Jestha":2, "Ashadh":3, "Shrawan":4, "Bhadra":5, "Ashwin":6, "Kartik":7, "Mangsir":8, "Poush":9, "Magh":10, "Falgun":11, "Chaitra":12 };
+/* Removed duplicate nepaliMonths declaration */
 
 // Format to 2 decimals
 function formatTwoDecimals(val) { return (typeof val === 'number') ? parseFloat(val.toFixed(2)) : ''; }
@@ -189,7 +188,7 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
         <div class="flex items-center space-x-2">
           <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download as Excel</button>
           <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload</button>
-          <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" />
+          <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" title="Upload Excel, CSV, or XLS file" />
         </div>
       </div>
 
@@ -240,12 +239,12 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
           <!-- Filters -->
           <div class="flex items-center gap-2">
             <label class="text-sm text-gray-600">Year</label>
-            <select id="mce-year" class="border rounded px-2 py-1"></select>
+            <select id="mce-year" class="border rounded px-2 py-1" title="Year"></select>
           </div>
 
           <div class="flex items-center gap-2">
             <label class="text-sm text-gray-600">Month</label>
-            <select id="mce-month" class="border rounded px-2 py-1">
+            <select id="mce-month" class="border rounded px-2 py-1" title="Month">
               <option value="">All</option>
               <option value="Baisakh">Baisakh</option><option value="Jestha">Jestha</option><option value="Ashadh">Ashadh</option>
               <option value="Shrawan">Shrawan</option><option value="Bhadra">Bhadra</option><option value="Asoj">Asoj</option>
@@ -257,8 +256,8 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
           <!-- Range (From-To) -->
           <div class="flex items-center gap-2">
             <label class="text-sm text-gray-600">From</label>
-            <select id="range-from-year" class="border rounded px-2 py-1"></select>
-            <select id="range-from-month" class="border rounded px-2 py-1">
+            <select id="range-from-year" class="border rounded px-2 py-1" title="From Year"></select>
+            <select id="range-from-month" class="border rounded px-2 py-1" title="From Month">
               <option value="">--</option>
               <option value="Baisakh">Baisakh</option><option value="Jestha">Jestha</option><option value="Ashadh">Ashadh</option>
               <option value="Shrawan">Shrawan</option><option value="Bhadra">Bhadra</option><option value="Asoj">Asoj</option>
@@ -269,7 +268,7 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
 
           <div class="flex items-center gap-2">
             <label class="text-sm text-gray-600">To</label>
-            <select id="range-to-year" class="border rounded px-2 py-1"></select>
+            <select id="range-to-year" class="border rounded px-2 py-1" title="To Year"></select>
             <select id="range-to-month" class="border rounded px-2 py-1">
               <option value="">--</option>
               <option value="Baisakh">Baisakh</option><option value="Jestha">Jestha</option><option value="Ashadh">Ashadh</option>
@@ -283,7 +282,7 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
           <div class="ml-auto flex items-center gap-2">
             <button id="mce-download-all" class="bg-green-600 text-white px-3 py-1 rounded hidden">Download All</button>
             <button id="mce-download-range" class="bg-indigo-600 text-white px-3 py-1 rounded hidden">Download Range</button>
-            <button id="mce-upload" class="bg-blue-600 text-white px-3 py-1 rounded hidden">Upload Excel</button>
+            <button id="mce-upload-btn-monthly" class="bg-blue-600 text-white px-3 py-1 rounded hidden">Upload Excel</button>
             <input id="mce-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
           </div>
         </div>
@@ -320,7 +319,7 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
 <div id="tab-mce" class="hidden p-4">
   <h1 class="text-2xl font-bold mb-4">Monthly Contract Energy</h1>
   <div class="mb-4">
-    <input type="file" id="mce-upload" accept=".xlsx,.xls" class="hidden" />
+    <input type="file" id="mce-upload" accept=".xlsx,.xls" class="hidden" title="Upload Monthly Contract Energy Excel file" />
     <button id="mce-upload-btn" class="bg-blue-600 text-white px-4 py-2 rounded">Upload</button>
     <button id="mce-download-btn" class="bg-green-600 text-white px-4 py-2 rounded">Download</button>
   </div>
@@ -761,7 +760,7 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
     const rangeFromMonth = document.getElementById('range-from-month');
     const rangeToMonth = document.getElementById('range-to-month');
 
-    const mceUploadBtn = document.getElementById('mce-upload');
+    const mceUploadBtn = document.getElementById('mce-upload-btn-monthly');
     const mceFileInput = document.getElementById('mce-file');
     const mceDownloadAllBtn = document.getElementById('mce-download-all');
     const mceDownloadRangeBtn = document.getElementById('mce-download-range');

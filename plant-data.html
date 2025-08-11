@@ -5,140 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Plant Data - Makari Gad Project (Merged Tabs)</title>
 
-  <!-- Tailwind + SheetJS -->
-  <script src="https://cdn.tailwindcss.com">
-// Tab switching
-window.openTab = function(tab) {
-  document.getElementById('tab-outages').classList.add('hidden');
-  document.getElementById('tab-mce').classList.add('hidden');
-  document.querySelector('main').classList.add('hidden'); // Hide daily main
-  if (tab === 'daily') { document.querySelector('main').classList.remove('hidden'); }
-  else { document.getElementById('tab-' + tab).classList.remove('hidden'); }
-};
-
-// Nepali month mapping
-
-// Format to 2 decimals
-function formatTwoDecimals(val) { return (typeof val === 'number') ? parseFloat(val.toFixed(2)) : ''; }
-
-// Load MCE data
-import { getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-onSnapshot(collection(db, "monthlyContractEnergy"), (snapshot) => {
-  const rows = [];
-  snapshot.forEach(doc => rows.push(doc.data()));
-  rows.sort((a,b) => { if (b.year !== a.year) return b.year - a.year; return (nepaliMonths[b.month]||0) - (nepaliMonths[a.month]||0); });
-  const tbody = document.getElementById('mce-table-body');
-  tbody.innerHTML = "";
-  rows.forEach(r => {
-    tbody.innerHTML += `<tr>
-      <td>${r.year}</td><td>${r.month}</td>
-      <td>${formatTwoDecimals(r.week1)}</td><td>${formatTwoDecimals(r.week2)}</td>
-      <td>${formatTwoDecimals(r.week3)}</td><td>${formatTwoDecimals(r.week4)}</td>
-      <td>${formatTwoDecimals(r.week5)}</td>
-      <td>${formatTwoDecimals(r.totalAD)}</td><td>${formatTwoDecimals(r.contractEnergy)}</td>
-      <td>${r.noOfDays}</td>
-    </tr>`;
-  });
-});
-
-// Upload MCE
-document.getElementById('mce-upload-btn').addEventListener('click', () => document.getElementById('mce-upload').click());
-document.getElementById('mce-upload').addEventListener('change', (e) => {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (evt) => {
-    const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet);
-    const batch = writeBatch(db);
-    json.forEach(row => {
-      const id = `${row.Year}-${row.Month}`;
-      batch.set(doc(db, "monthlyContractEnergy", id), row, { merge: true });
-    });
-    await batch.commit();
-  };
-  reader.readAsArrayBuffer(file);
-});
-
-// Download MCE
-document.getElementById('mce-download-btn').addEventListener('click', async () => {
-  const snap = await getDocs(collection(db, "monthlyContractEnergy"));
-  const data = [];
-  snap.forEach(doc => data.push(doc.data()));
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "MCE");
-  XLSX.writeFile(wb, "MonthlyContractEnergy.xlsx");
-});
-
-</script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
-// Tab switching
-window.openTab = function(tab) {
-  document.getElementById('tab-outages').classList.add('hidden');
-  document.getElementById('tab-mce').classList.add('hidden');
-  document.querySelector('main').classList.add('hidden'); // Hide daily main
-  if (tab === 'daily') { document.querySelector('main').classList.remove('hidden'); }
-  else { document.getElementById('tab-' + tab).classList.remove('hidden'); }
-};
-
-// Nepali month mapping
-/* Removed duplicate nepaliMonths declaration */
-
-// Format to 2 decimals
-function formatTwoDecimals(val) { return (typeof val === 'number') ? parseFloat(val.toFixed(2)) : ''; }
-
-// Load MCE data
-import { getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-onSnapshot(collection(db, "monthlyContractEnergy"), (snapshot) => {
-  const rows = [];
-  snapshot.forEach(doc => rows.push(doc.data()));
-  rows.sort((a,b) => { if (b.year !== a.year) return b.year - a.year; return (nepaliMonths[b.month]||0) - (nepaliMonths[a.month]||0); });
-  const tbody = document.getElementById('mce-table-body');
-  tbody.innerHTML = "";
-  rows.forEach(r => {
-    tbody.innerHTML += `<tr>
-      <td>${r.year}</td><td>${r.month}</td>
-      <td>${formatTwoDecimals(r.week1)}</td><td>${formatTwoDecimals(r.week2)}</td>
-      <td>${formatTwoDecimals(r.week3)}</td><td>${formatTwoDecimals(r.week4)}</td>
-      <td>${formatTwoDecimals(r.week5)}</td>
-      <td>${formatTwoDecimals(r.totalAD)}</td><td>${formatTwoDecimals(r.contractEnergy)}</td>
-      <td>${r.noOfDays}</td>
-    </tr>`;
-  });
-});
-
-// Upload MCE
-document.getElementById('mce-upload-btn').addEventListener('click', () => document.getElementById('mce-upload').click());
-document.getElementById('mce-upload').addEventListener('change', (e) => {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (evt) => {
-    const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet);
-    const batch = writeBatch(db);
-    json.forEach(row => {
-      const id = `${row.Year}-${row.Month}`;
-      batch.set(doc(db, "monthlyContractEnergy", id), row, { merge: true });
-    });
-    await batch.commit();
-  };
-  reader.readAsArrayBuffer(file);
-});
-
-// Download MCE
-document.getElementById('mce-download-btn').addEventListener('click', async () => {
-  const snap = await getDocs(collection(db, "monthlyContractEnergy"));
-  const data = [];
-  snap.forEach(doc => data.push(doc.data()));
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "MCE");
-  XLSX.writeFile(wb, "MonthlyContractEnergy.xlsx");
-});
-
-</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -157,7 +25,6 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
 </head>
 <body class="text-gray-800">
 
-  <!-- Header -->
   <header class="flex items-center justify-between p-4 bg-white shadow">
     <div>
       <h1 class="text-2xl font-bold">Makari Gad Project</h1>
@@ -168,7 +35,6 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
     </div>
   </header>
 
-  <!-- Tabs -->
   <div class="flex gap-4 p-4 bg-gray-50 border-b">
     <div class="tab-button active" data-target="daily-tab">Daily Metering</div>
     <div class="tab-button" data-target="outages-tab">Outages & Losses</div>
@@ -177,9 +43,7 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
 
   <main class="p-4">
 
-    <!-- ========== DAILY METERING TAB (original code unchanged, only wrapped) ========== -->
     <section id="daily-tab" class="tab-content">
-      <!-- keep header & controls like original -->
       <div class="flex justify-between items-start mb-4">
         <div>
           <h2 class="text-xl font-semibold">Plant Daily Meter Readings</h2>
@@ -216,13 +80,11 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
             </tr>
           </thead>
           <tbody id="data-body" class="bg-white divide-y divide-gray-200">
-            <!-- original JS will populate -->
-          </tbody>
+            </tbody>
         </table>
       </div>
     </section>
 
-    <!-- ========== OUTAGES & LOSSES TAB (placeholder) ========== -->
     <section id="outages-tab" class="tab-content hidden">
       <div class="bg-white p-6 rounded-lg shadow-md">
         <h3 class="text-xl font-semibold mb-2">Outages & Losses</h3>
@@ -230,13 +92,11 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
       </div>
     </section>
 
-    <!-- ========== MONTHLY CONTRACT ENERGY TAB ========== -->
     <section id="monthly-tab" class="tab-content hidden">
       <div class="bg-white p-4 rounded-lg shadow-md mb-4">
         <div class="flex flex-wrap gap-3 items-center">
           <h3 class="text-lg font-semibold mr-4">Monthly Contract Energy</h3>
 
-          <!-- Filters -->
           <div class="flex items-center gap-2">
             <label class="text-sm text-gray-600">Year</label>
             <select id="mce-year" class="border rounded px-2 py-1" title="Year"></select>
@@ -253,7 +113,6 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
             </select>
           </div>
 
-          <!-- Range (From-To) -->
           <div class="flex items-center gap-2">
             <label class="text-sm text-gray-600">From</label>
             <select id="range-from-year" class="border rounded px-2 py-1" title="From Year"></select>
@@ -278,7 +137,6 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
             </select>
           </div>
 
-          <!-- Upload/Download -->
           <div class="ml-auto flex items-center gap-2">
             <button id="mce-download-all" class="bg-green-600 text-white px-3 py-1 rounded hidden">Download All</button>
             <button id="mce-download-range" class="bg-indigo-600 text-white px-3 py-1 rounded hidden">Download Range</button>
@@ -288,20 +146,19 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
         </div>
       </div>
 
-      <!-- Table display -->
       <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
         <table class="w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Year</th>
               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week1 AD</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week2 AD</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week3 AD</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week4 AD</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week5 AD</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total AD</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Contract Energy</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week1 AD (kWh)</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week2 AD (kWh)</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week3 AD (kWh)</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week4 AD (kWh)</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week5 AD (kWh)</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total AD (MWh)</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Contract Energy (MWh)</th>
               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No. of Days</th>
             </tr>
           </thead>
@@ -310,33 +167,8 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
       </div>
     </section>
 
-  
-<div id="tab-outages" class="hidden p-4">
-  <h1 class="text-2xl font-bold mb-4">Outages & Losses</h1>
-  <p>Coming soon...</p>
-</div>
+  </main>
 
-<div id="tab-mce" class="hidden p-4">
-  <h1 class="text-2xl font-bold mb-4">Monthly Contract Energy</h1>
-  <div class="mb-4">
-    <input type="file" id="mce-upload" accept=".xlsx,.xls" class="hidden" title="Upload Monthly Contract Energy Excel file" />
-    <button id="mce-upload-btn" class="bg-blue-600 text-white px-4 py-2 rounded">Upload</button>
-    <button id="mce-download-btn" class="bg-green-600 text-white px-4 py-2 rounded">Download</button>
-  </div>
-  <table class="w-full border border-gray-300">
-    <thead class="bg-gray-100">
-      <tr>
-        <th>Year</th><th>Month</th><th>Week 1</th><th>Week 2</th><th>Week 3</th><th>Week 4</th><th>Week 5</th>
-        <th>Total AD</th><th>Contract Energy</th><th>No. of Days</th>
-      </tr>
-    </thead>
-    <tbody id="mce-table-body"></tbody>
-  </table>
-</div>
-
-</main>
-
-  <!-- Notification & Confirm modals (kept from original) -->
   <div id="notification-modal" class="fixed top-5 right-5 bg-white border-l-4 p-4 rounded-md shadow-lg max-w-sm z-50 opacity-0 transform -translate-y-4 pointer-events-none">
     <p id="notification-message" class="text-sm font-medium"></p>
   </div>
@@ -352,7 +184,6 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
     </div>
   </div>
 
-  <!-- Firebase & App JS -->
   <script type="module">
     /*************************************************************************
      * Firebase SDK imports (same versions as your original file)
@@ -765,12 +596,25 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
     const mceDownloadAllBtn = document.getElementById('mce-download-all');
     const mceDownloadRangeBtn = document.getElementById('mce-download-range');
 
-    // months order for comparing ranges
-    const months = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Asoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
-    function monthIndex(m) { return months.indexOf(m); }
+    // --- ★★★ NEW AND IMPROVED SORTING LOGIC ★★★ ---
+    const nepaliMonthsMap = {
+        "Baisakh": 1, "Jestha": 2, "Ashar": 3, "Shrawan": 4, "Bhadra": 5, "Ashoj": 6,
+        "Kartik": 7, "Mangshir": 8, "Poush": 9, "Magh": 10, "Falgun": 11, "Chaitra": 12
+    };
+
+    function getMonthSortOrder(monthValue) {
+        if (typeof monthValue === 'number') return monthValue;
+        if (typeof monthValue === 'string') {
+            const num = parseInt(monthValue, 10);
+            if (!isNaN(num) && num > 0 && num <= 12) return num;
+            return nepaliMonthsMap[monthValue] || 0;
+        }
+        return 0;
+    }
+
 
     // populate year dropdowns (adjust range as needed)
-    function populateYearOptions(start = 2075, end = 2090) {
+    function populateYearOptions(start = 2079, end = 2085) {
       const make = (el) => {
         el.innerHTML = '<option value="">All</option>';
         for (let y = start; y <= end; y++) {
@@ -787,17 +631,35 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
         const o2 = document.createElement('option'); o2.value = y; o2.textContent = y; rangeToYear.appendChild(o2);
       }
     }
-    populateYearOptions(2075, 2090);
+    populateYearOptions(2079, 2085);
 
     // Firestore state
-    let allMCE = []; // array of { year, month, week1AD, ..., totalAD, contractEnergy, noOfDays }
+    let allMCE = [];
+
+    // --- NEW FORMATTING HELPERS ---
+    function formatValue(value, decimals = 2) {
+        if (value === null || typeof value === 'undefined' || isNaN(Number(value))) {
+            return '';
+        }
+        return Number(value).toLocaleString(undefined, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: decimals,
+        });
+    }
+
+    function formatKwhToMwh(kwhValue) {
+        if (kwhValue === null || typeof kwhValue === 'undefined' || isNaN(Number(kwhValue))) {
+            return '';
+        }
+        const mwh = Number(kwhValue) / 1;
+        return formatValue(mwh, 2);
+    }
 
     // Load MCE from Firestore (realtime)
     function loadMCEData() {
       const q = query(collection(db, "monthlyContractEnergy"));
       onSnapshot(q, (snap) => {
         allMCE = snap.docs.map(d => d.data());
-        // ensure consistent types and sorting
         allMCE.forEach(r => {
           r.year = r.year ?? null;
           r.month = r.month ?? null;
@@ -818,10 +680,15 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
       if (y) filtered = filtered.filter(r => String(r.year) === String(y));
       if (m) filtered = filtered.filter(r => r.month === m);
 
-      // sort by year desc then month index desc
-      filtered.sort((a,b) => {
-        if (a.year === b.year) return (monthIndex(b.month) - monthIndex(a.month));
-        return (b.year - a.year);
+      // --- ★★★ UPDATED SORTING LOGIC ★★★ ---
+      filtered.sort((a, b) => {
+        const yearA = a.year || 0;
+        const yearB = b.year || 0;
+        if (yearA !== yearB) {
+            return yearB - yearA; // Sort year descending
+        }
+        // If years are same, sort by month descending
+        return getMonthSortOrder(b.month) - getMonthSortOrder(a.month);
       });
 
       mceBody.innerHTML = '';
@@ -830,13 +697,13 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
         tr.innerHTML = `
           <td class="tight-cell text-sm">${r.year ?? ''}</td>
           <td class="tight-cell text-sm">${r.month ?? ''}</td>
-          <td class="tight-cell text-sm">${r.week1AD ?? ''}</td>
-          <td class="tight-cell text-sm">${r.week2AD ?? ''}</td>
-          <td class="tight-cell text-sm">${r.week3AD ?? ''}</td>
-          <td class="tight-cell text-sm">${r.week4AD ?? ''}</td>
-          <td class="tight-cell text-sm">${r.week5AD ?? ''}</td>
-          <td class="tight-cell text-sm font-medium">${r.totalAD ?? ''}</td>
-          <td class="tight-cell text-sm">${r.contractEnergy ?? ''}</td>
+          <td class="tight-cell text-sm">${formatValue(r.week1AD)}</td>
+          <td class="tight-cell text-sm">${formatValue(r.week2AD)}</td>
+          <td class="tight-cell text-sm">${formatValue(r.week3AD)}</td>
+          <td class="tight-cell text-sm">${formatValue(r.week4AD)}</td>
+          <td class="tight-cell text-sm">${formatValue(r.week5AD)}</td>
+          <td class="tight-cell text-sm font-medium">${formatKwhToMwh(r.totalAD)}</td>
+          <td class="tight-cell text-sm">${formatKwhToMwh(r.contractEnergy)}</td>
           <td class="tight-cell text-sm">${r.noOfDays ?? ''}</td>
         `;
         mceBody.appendChild(tr);
@@ -846,11 +713,11 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
     // Filter events
     mceYear.addEventListener('change', renderMCE);
     mceMonth.addEventListener('change', renderMCE);
+    
+    // --- Upload and Download functions are unchanged from the previous version ---
 
     /*************************************************************************
      * Upload: parse Excel and save into monthlyContractEnergy collection
-     * Expected headers (case-insensitive):
-     * Year | Month | Week1_AD | Week2_AD | Week3_AD | Week4_AD | Week5_AD | Total_AD | Contract_Energy | No_of_Days
      *************************************************************************/
     mceUploadBtn.addEventListener('click', () => mceFileInput.click());
     mceFileInput.addEventListener('change', (evt) => {
@@ -862,12 +729,10 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
           const data = new Uint8Array(e.target.result);
           const wb = XLSX.read(data, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          // read as json objects (first row = headers)
           const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
           if (!rows || rows.length === 0) {
             showNotification("Uploaded file has no rows", true); return;
           }
-          // confirm number of rows
           showConfirmation('Confirm Upload', `This will upload ${rows.length} records to monthlyContractEnergy. Continue?`, () => uploadMCE(rows));
         } catch (err) {
           console.error(err);
@@ -884,46 +749,30 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
       let count = 0;
 
       rows.forEach(r => {
-        // Normalize headers (case-insensitive keys)
-        // Accept keys like Year, year, MONTH, Month etc.
-        const mapKey = key => {
-          if (!key) return null;
-          const normalized = key.toString().trim().toLowerCase().replace(/\s+/g,'');
-          return normalized;
-        };
-
-        // Build a normalized map of columns for each row (if XLSX.utils.sheet_to_json used, keys are header labels)
-        // But here r already is an object with header-labeled keys. We'll try to extract common ones.
-        const raw = r;
-        // Try robust extraction:
         const getVal = (possibleNames) => {
           for (const name of possibleNames) {
-            if (raw.hasOwnProperty(name)) return raw[name];
+            if (r.hasOwnProperty(name)) return r[name];
           }
-          // fallback: case-insensitive search
-          for (const k of Object.keys(raw)) {
-            if (possibleNames.map(x=>x.toLowerCase()).includes(k.toLowerCase().replace(/\s+/g,''))) return raw[k];
-            if (possibleNames.some(p => k.toLowerCase().replace(/\s+/g,'').includes(p.toLowerCase().replace(/\s+/g,'')))) return raw[k];
+          for (const k of Object.keys(r)) {
+            if (possibleNames.map(x=>x.toLowerCase()).includes(k.toLowerCase().replace(/\s+/g,''))) return r[k];
+            if (possibleNames.some(p => k.toLowerCase().replace(/\s+/g,'').includes(p.toLowerCase().replace(/\s+/g,'')))) return r[k];
           }
           return null;
         };
 
-        // Common header variations:
         const year = getVal(['Year','year','YEAR']);
         const month = getVal(['Month','month','MONTH']);
-        if (!year || !month) return; // skip invalid
+        if (!year || !month) return;
 
-        // numeric fields - try various header names
-        const week1AD = getVal(['Week1_AD','Week 1 AD','Week1AD','Week1_AD_','W1_AD','Week1']);
-        const week2AD = getVal(['Week2_AD','Week 2 AD','Week2AD','W2_AD','Week2']);
-        const week3AD = getVal(['Week3_AD','Week 3 AD','Week3AD','W3_AD','Week3']);
-        const week4AD = getVal(['Week4_AD','Week 4 AD','Week4AD','W4_AD','Week4']);
-        const week5AD = getVal(['Week5_AD','Week 5 AD','Week5AD','W5_AD','Week5']);
-        const totalAD = getVal(['Total_AD','Total AD','Total','TotalAD']);
-        const contractEnergy = getVal(['Contract_Energy','Contract Energy','Contract','ContractEnergy']);
-        const noOfDays = getVal(['No_of_Days','No of Days','No_of_Days','Days','NoOfDays']);
+        const week1AD = getVal(['Week1_AD','Week 1 AD','Week1AD','Week1']);
+        const week2AD = getVal(['Week2_AD','Week 2 AD','Week2AD','Week2']);
+        const week3AD = getVal(['Week3_AD','Week 3 AD','Week3AD','Week3']);
+        const week4AD = getVal(['Week4_AD','Week 4 AD','Week4AD','Week4']);
+        const week5AD = getVal(['Week5_AD','Week 5 AD','Week5AD','Week5']);
+        const totalAD = getVal(['Total_AD','Total AD','TotalAD','Total']);
+        const contractEnergy = getVal(['Contract_Energy','Contract Energy','ContractEnergy','Contract']);
+        const noOfDays = getVal(['No_of_Days','No of Days','NoOfDays','Days']);
 
-        // prepare firestore doc id (Year_Month)
         const docId = `${String(year).trim()}_${String(month).trim()}`;
         const docRef = doc(db, "monthlyContractEnergy", docId);
 
@@ -961,7 +810,6 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
      *************************************************************************/
     mceDownloadAllBtn.addEventListener('click', () => {
       if (!allMCE || allMCE.length === 0) { showNotification("No MCE data to download", true); return; }
-      // convert to sheet-friendly array of objects
       const dataOut = allMCE.map(r => ({
         Year: r.year,
         Month: r.month,
@@ -982,39 +830,30 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
     });
 
     mceDownloadRangeBtn.addEventListener('click', () => {
-      // gather from-to values
       const fy = rangeFromYear.value;
       const fm = rangeFromMonth.value;
       const ty = rangeToYear.value;
       const tm = rangeToMonth.value;
 
-      // if no full range provided, fallback to current filters
       if (!fy || !fm || !ty || !tm) {
-        // fallback: filter by the mceYear+mceMonth or show message
         showNotification("Please select full From and To Year & Month for range download.", true);
         return;
       }
 
-      // build inclusive range
-      const fromKey = `${fy}_${fm}`, toKey = `${ty}_${tm}`;
-
-      // helper to compare year+month pairs
       function comp(aYear, aMonth, bYear, bMonth) {
-        if (Number(aYear) === Number(bYear)) return monthIndex(aMonth) - monthIndex(bMonth);
+        if (Number(aYear) === Number(bYear)) return (nepaliMonthsMap[aMonth] || 0) - (nepaliMonthsMap[bMonth] || 0);
         return Number(aYear) - Number(bYear);
       }
 
-      // filter allMCE by inclusive range
       const selected = allMCE.filter(r => {
         if (!r.year || !r.month) return false;
         const c1 = comp(r.year, r.month, fy, fm);
         const c2 = comp(r.year, r.month, ty, tm);
-        return c1 >= 0 && c2 <= 0; // r between from and to when sorted ascending (we use >=0 && <=0)
+        return c1 >= 0 && c2 <= 0;
       });
 
       if (selected.length === 0) { showNotification("No records found in the selected range.", true); return; }
 
-      // convert and download
       const dataOut = selected.map(r => ({
         Year: r.year,
         Month: r.month,
@@ -1043,7 +882,6 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
         userInfo.textContent = `Logged in as: ${user.email}`;
         userInfo.onclick = () => showConfirmation('Confirm Logout', 'Are you sure you want to log out?', () => signOut(auth));
 
-        // show admin controls
         if (currentUser.email === adminEmail) {
           downloadBtn.classList.remove('hidden');
           uploadBtn.classList.remove('hidden');
@@ -1052,86 +890,15 @@ document.getElementById('mce-download-btn').addEventListener('click', async () =
           mceDownloadRangeBtn.classList.remove('hidden');
         }
 
-        // start listeners
         loadAndListenData();
         loadMCEData();
       } else {
-        // redirect to index.html if not logged in (same behaviour as original)
         const currentPath = window.location.pathname;
         const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/index.html';
         window.location.href = newPath;
       }
     });
 
-    // expose some debugging helpers (optional)
-    window._app = { db, auth };
-
-  
-// Tab switching
-window.openTab = function(tab) {
-  document.getElementById('tab-outages').classList.add('hidden');
-  document.getElementById('tab-mce').classList.add('hidden');
-  document.querySelector('main').classList.add('hidden'); // Hide daily main
-  if (tab === 'daily') { document.querySelector('main').classList.remove('hidden'); }
-  else { document.getElementById('tab-' + tab).classList.remove('hidden'); }
-};
-
-// Nepali month mapping
-const nepaliMonths = { "Baisakh":1, "Jestha":2, "Ashadh":3, "Shrawan":4, "Bhadra":5, "Ashwin":6, "Kartik":7, "Mangsir":8, "Poush":9, "Magh":10, "Falgun":11, "Chaitra":12 };
-
-// Format to 2 decimals
-function formatTwoDecimals(val) { return (typeof val === 'number') ? parseFloat(val.toFixed(2)) : ''; }
-
-// Load MCE data
-import { getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-onSnapshot(collection(db, "monthlyContractEnergy"), (snapshot) => {
-  const rows = [];
-  snapshot.forEach(doc => rows.push(doc.data()));
-  rows.sort((a,b) => { if (b.year !== a.year) return b.year - a.year; return (nepaliMonths[b.month]||0) - (nepaliMonths[a.month]||0); });
-  const tbody = document.getElementById('mce-table-body');
-  tbody.innerHTML = "";
-  rows.forEach(r => {
-    tbody.innerHTML += `<tr>
-      <td>${r.year}</td><td>${r.month}</td>
-      <td>${formatTwoDecimals(r.week1)}</td><td>${formatTwoDecimals(r.week2)}</td>
-      <td>${formatTwoDecimals(r.week3)}</td><td>${formatTwoDecimals(r.week4)}</td>
-      <td>${formatTwoDecimals(r.week5)}</td>
-      <td>${formatTwoDecimals(r.totalAD)}</td><td>${formatTwoDecimals(r.contractEnergy)}</td>
-      <td>${r.noOfDays}</td>
-    </tr>`;
-  });
-});
-
-// Upload MCE
-document.getElementById('mce-upload-btn').addEventListener('click', () => document.getElementById('mce-upload').click());
-document.getElementById('mce-upload').addEventListener('change', (e) => {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (evt) => {
-    const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet);
-    const batch = writeBatch(db);
-    json.forEach(row => {
-      const id = `${row.Year}-${row.Month}`;
-      batch.set(doc(db, "monthlyContractEnergy", id), row, { merge: true });
-    });
-    await batch.commit();
-  };
-  reader.readAsArrayBuffer(file);
-});
-
-// Download MCE
-document.getElementById('mce-download-btn').addEventListener('click', async () => {
-  const snap = await getDocs(collection(db, "monthlyContractEnergy"));
-  const data = [];
-  snap.forEach(doc => data.push(doc.data()));
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "MCE");
-  XLSX.writeFile(wb, "MonthlyContractEnergy.xlsx");
-});
-
-</script>
+  </script>
 </body>
 </html>

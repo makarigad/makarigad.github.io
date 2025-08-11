@@ -1,28 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Makari Gad Project - About</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'); body { font-family: 'Inter', sans-serif; }</style>
+    <meta charset="UTF-8">
+    <title>Makari Gad Hydroelectric Project - About</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+        }
+        
+        /* MOVED this rule inside the <style> tag */
+        p {
+            text-align: justify;
+            margin-bottom: 1.2em; /* Adds spacing between paragraphs */
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
 
-  <div id="header-placeholder"></div>
+    <div id="header-placeholder"></div>
 
-  <main class="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-8">
-    <h3 class="text-2xl font-bold text-gray-800 mb-4">About the Project</h3>
-    <div class="space-y-4 text-gray-700">
-      <p>The Makari Gad Hydro Power Project (MGHEP) is a ‘Run of the River (ROR) type project...</p>
-      </div>
-  </main>
+    <main class="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">About the Project</h1>
+        <div class="space-y-4 text-gray-700">
+        
+            <p>
+                Makari Gad Hydropower Limited (MGHL) is the proponent of the Makari Gad Hydroelectric Project. As a limited company registered under the Company Act of Nepal, MGHL is dedicated to developing sustainable energy solutions, with this project being a key testament to that commitment.
+            </p>
+            
+            <p>
+                The Makari Gad Hydroelectric Project (MGHEP) is a 10 MW run-of-river scheme located in Apihimal Rural Municipality, Darchula District of Sudurpashchim Province. It was developed by Makari Gad Hydropower Pvt. Ltd. under a BOOT (Build-Own-Operate-Transfer) model. Construction was completed and the plant was commissioned on March 11, 2023. MGHEP is now operational and connected to the national grid at Balanch Substation via a 33 kV transmission line.
+            </p>
 
-  <div id="footer-placeholder"></div>
+            <p>
+                The project's water source, the Makari Gad, is a small, perennial left-sided tributary of the Chameliya River. It originates from the Chaupode Dhar and Dharmaghar Dhar, meeting the Chameliya River at Makarigad Gaun village. The total catchment area of the Makari Gad at the proposed headworks site is 37.8 km<sup>2</sup>.
+            </p>
 
-  <script>
-    fetch('header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
-    fetch('footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
-  </script>
+            <p>
+                The project infrastructure consists of a diversion weir across the Makari river, an intake structure, an approach canal, a desanding basin that also functions as a head pond, a 3.2 km long surface penstock along the right bank of the Makari river, and a powerhouse with its tailrace outfall into the Chameliya river, upstream of their confluence.
+            </p>
+            
+            <p>
+                The project’s installed capacity is 10 MW, achieved with a design discharge of 1.35 m<sup>3</sup>/s and a net head of 862.35 m. The electricity generated from the powerhouse is evacuated to the national grid via a 27.2 km long, 33 kV single-circuit transmission line to the 33/132 kV substation at Balanch.
+            </p>
+        
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script>
+        // Scripts to fetch header and footer content remain the same
+        fetch('header.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('header-placeholder').innerHTML = data;
+            });
+        
+        fetch('footer.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('footer-placeholder').innerHTML = data;
+            });
+    </script>
 
 </body>
 </html>

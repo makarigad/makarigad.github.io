@@ -1,545 +1,1138 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plant Data - Makari Gad Project</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7fafc;
-        }
-        .table-input {
-            width: 100%;
-            padding: 0.25rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
-            font-size: 0.875rem;
-            min-width: 65px;
-            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        }
-        .table-input:focus {
-            border-color: #6366f1;
-            box-shadow: 0 0 0 2px rgba(99,102,241,0.5);
-            outline: none;
-        }
-        #notification-modal, #confirm-modal-backdrop {
-            transition: opacity 0.3s ease-in-out;
-        }
-        #confirm-modal {
-             transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-        }
-        .tight-cell {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
-            vertical-align: top;
-        }
-        .tight-cell-input {
-            padding-left: 0.25rem;
-            padding-right: 0.25rem;
-            padding-top: 0.25rem;
-            padding-bottom: 0.25rem;
-            vertical-align: middle;
-        }
-        th {
-            white-space: normal !important;
-        }
-        .w-full {
-            table-layout: fixed;
-            width: 100%;
-            word-wrap: break-word;
-        }
-        #data-body td {
-            font-size: 0.75rem;
-            padding: 4px 3px !important;
-        }
-        thead th {
-            padding: 8px 4px !important;
-        }
-        
-        /* Column widths re-distributed */
-        thead th:nth-child(1) { width: 8%; }  /* English Date */
-        thead th:nth-child(2) { width: 8%; }  /* Nepali Date */
-        thead th:nth-child(3) { width: 6%; } /* Unit 1 Gen */
-        thead th:nth-child(4) { width: 6%; } /* Unit 2 Gen */
-        thead th:nth-child(5) { width: 6%; } /* Unit 1 Trans */
-        thead th:nth-child(6) { width: 6%; } /* Unit 2 Trans */
-        thead th:nth-child(7) { width: 6%; }  /* SST */
-        thead th:nth-child(8) { width: 7%; } /* Export Plant */
-        thead th:nth-child(9) { width: 7%; } /* Export Substation */
-        thead th:nth-child(10){ width: 7%; } /* Import Outgoing */
-        thead th:nth-child(11){ width: 7%; } /* Import Substation */
-        thead th:nth-child(12){ width: 1%; } /* Blank */
-        thead th:nth-child(13){ width: 6%; }  /* Unit 1 counter */
-        thead th:nth-child(14){ width: 6%; }  /* Unit 2 counter */
-        thead th:nth-child(15){ width: 6%; } /* Operator */
-        thead th:nth-child(16){ width: 8%; }  /* Actions */
-        
-        .table-input {
-            min-width: unset;
-            padding: 2px;
-            font-size: 0.75rem;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Plant Data - Makari Gad Project (Merged Tabs)</title>
+
+  <!-- Tailwind + SheetJS -->
+  <script src="https://cdn.tailwindcss.com">
+// Tab switching
+window.openTab = function(tab) {
+  document.getElementById('tab-outages').classList.add('hidden');
+  document.getElementById('tab-mce').classList.add('hidden');
+  document.querySelector('main').classList.add('hidden'); // Hide daily main
+  if (tab === 'daily') { document.querySelector('main').classList.remove('hidden'); }
+  else { document.getElementById('tab-' + tab).classList.remove('hidden'); }
+};
+
+// Nepali month mapping
+const nepaliMonths = { "Baisakh":1, "Jestha":2, "Ashadh":3, "Shrawan":4, "Bhadra":5, "Ashwin":6, "Kartik":7, "Mangsir":8, "Poush":9, "Magh":10, "Falgun":11, "Chaitra":12 };
+
+// Format to 2 decimals
+function formatTwoDecimals(val) { return (typeof val === 'number') ? parseFloat(val.toFixed(2)) : ''; }
+
+// Load MCE data
+import { getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+onSnapshot(collection(db, "monthlyContractEnergy"), (snapshot) => {
+  const rows = [];
+  snapshot.forEach(doc => rows.push(doc.data()));
+  rows.sort((a,b) => { if (b.year !== a.year) return b.year - a.year; return (nepaliMonths[b.month]||0) - (nepaliMonths[a.month]||0); });
+  const tbody = document.getElementById('mce-table-body');
+  tbody.innerHTML = "";
+  rows.forEach(r => {
+    tbody.innerHTML += `<tr>
+      <td>${r.year}</td><td>${r.month}</td>
+      <td>${formatTwoDecimals(r.week1)}</td><td>${formatTwoDecimals(r.week2)}</td>
+      <td>${formatTwoDecimals(r.week3)}</td><td>${formatTwoDecimals(r.week4)}</td>
+      <td>${formatTwoDecimals(r.week5)}</td>
+      <td>${formatTwoDecimals(r.totalAD)}</td><td>${formatTwoDecimals(r.contractEnergy)}</td>
+      <td>${r.noOfDays}</td>
+    </tr>`;
+  });
+});
+
+// Upload MCE
+document.getElementById('mce-upload-btn').addEventListener('click', () => document.getElementById('mce-upload').click());
+document.getElementById('mce-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+    const batch = writeBatch(db);
+    json.forEach(row => {
+      const id = `${row.Year}-${row.Month}`;
+      batch.set(doc(db, "monthlyContractEnergy", id), row, { merge: true });
+    });
+    await batch.commit();
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// Download MCE
+document.getElementById('mce-download-btn').addEventListener('click', async () => {
+  const snap = await getDocs(collection(db, "monthlyContractEnergy"));
+  const data = [];
+  snap.forEach(doc => data.push(doc.data()));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "MCE");
+  XLSX.writeFile(wb, "MonthlyContractEnergy.xlsx");
+});
+
+</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+// Tab switching
+window.openTab = function(tab) {
+  document.getElementById('tab-outages').classList.add('hidden');
+  document.getElementById('tab-mce').classList.add('hidden');
+  document.querySelector('main').classList.add('hidden'); // Hide daily main
+  if (tab === 'daily') { document.querySelector('main').classList.remove('hidden'); }
+  else { document.getElementById('tab-' + tab).classList.remove('hidden'); }
+};
+
+// Nepali month mapping
+const nepaliMonths = { "Baisakh":1, "Jestha":2, "Ashadh":3, "Shrawan":4, "Bhadra":5, "Ashwin":6, "Kartik":7, "Mangsir":8, "Poush":9, "Magh":10, "Falgun":11, "Chaitra":12 };
+
+// Format to 2 decimals
+function formatTwoDecimals(val) { return (typeof val === 'number') ? parseFloat(val.toFixed(2)) : ''; }
+
+// Load MCE data
+import { getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+onSnapshot(collection(db, "monthlyContractEnergy"), (snapshot) => {
+  const rows = [];
+  snapshot.forEach(doc => rows.push(doc.data()));
+  rows.sort((a,b) => { if (b.year !== a.year) return b.year - a.year; return (nepaliMonths[b.month]||0) - (nepaliMonths[a.month]||0); });
+  const tbody = document.getElementById('mce-table-body');
+  tbody.innerHTML = "";
+  rows.forEach(r => {
+    tbody.innerHTML += `<tr>
+      <td>${r.year}</td><td>${r.month}</td>
+      <td>${formatTwoDecimals(r.week1)}</td><td>${formatTwoDecimals(r.week2)}</td>
+      <td>${formatTwoDecimals(r.week3)}</td><td>${formatTwoDecimals(r.week4)}</td>
+      <td>${formatTwoDecimals(r.week5)}</td>
+      <td>${formatTwoDecimals(r.totalAD)}</td><td>${formatTwoDecimals(r.contractEnergy)}</td>
+      <td>${r.noOfDays}</td>
+    </tr>`;
+  });
+});
+
+// Upload MCE
+document.getElementById('mce-upload-btn').addEventListener('click', () => document.getElementById('mce-upload').click());
+document.getElementById('mce-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+    const batch = writeBatch(db);
+    json.forEach(row => {
+      const id = `${row.Year}-${row.Month}`;
+      batch.set(doc(db, "monthlyContractEnergy", id), row, { merge: true });
+    });
+    await batch.commit();
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+// Download MCE
+document.getElementById('mce-download-btn').addEventListener('click', async () => {
+  const snap = await getDocs(collection(db, "monthlyContractEnergy"));
+  const data = [];
+  snap.forEach(doc => data.push(doc.data()));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "MCE");
+  XLSX.writeFile(wb, "MonthlyContractEnergy.xlsx");
+});
+
+</script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f7fafc; }
+    .tab-button { cursor:pointer; padding:0.5rem 1rem; border-bottom:2px solid transparent; }
+    .tab-button.active { color:#4f46e5; font-weight:600; border-color:#4f46e5; }
+    .table-input { width:100%; padding:0.25rem; border:1px solid #d1d5db; border-radius:0.375rem; font-size:0.875rem; }
+    .tight-cell { padding:0.5rem; vertical-align:top; }
+    .tight-cell-input { padding:0.25rem; vertical-align:middle; }
+    /* Keep your original table width sizing rules */
+    th { white-space: normal !important; }
+    .w-full { table-layout: fixed; width:100%; word-wrap:break-word; }
+    #data-body td { font-size: 0.75rem; padding: 4px 3px !important; }
+    thead th { padding: 8px 4px !important; }
+  </style>
 </head>
 <body class="text-gray-800">
-<div id="header-placeholder"></div>
-    <div id="notification-modal" class="fixed top-5 right-5 bg-white border-l-4 p-4 rounded-md shadow-lg max-w-sm z-50 opacity-0 transform translate-y-[-20px] pointer-events-none">
-        <p id="notification-message" class="text-sm font-medium"></p>
-    </div>
 
-    <div id="confirm-modal-backdrop" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-40 flex items-center justify-center">
-        <div id="confirm-modal" class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md transform scale-95 opacity-0">
-            <h3 id="confirm-title" class="text-lg font-bold text-gray-900">Confirm Action</h3>
-            <p id="confirm-message" class="mt-2 text-sm text-gray-600">Are you sure?</p>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-                <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
-            </div>
+  <!-- Header -->
+  <header class="flex items-center justify-between p-4 bg-white shadow">
+    <div>
+      <h1 class="text-2xl font-bold">Makari Gad Project</h1>
+      <p class="text-sm text-gray-500">Metering & Contract Energy</p>
+    </div>
+    <div class="flex items-center space-x-3">
+      <div id="user-info" class="text-sm text-indigo-600 font-semibold cursor-pointer" title="Click to logout"></div>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="flex gap-4 p-4 bg-gray-50 border-b">
+    <div class="tab-button active" data-target="daily-tab">Daily Metering</div>
+    <div class="tab-button" data-target="outages-tab">Outages & Losses</div>
+    <div class="tab-button" data-target="monthly-tab">Monthly Contract Energy</div>
+  </div>
+
+  <main class="p-4">
+
+    <!-- ========== DAILY METERING TAB (original code unchanged, only wrapped) ========== -->
+    <section id="daily-tab" class="tab-content">
+      <!-- keep header & controls like original -->
+      <div class="flex justify-between items-start mb-4">
+        <div>
+          <h2 class="text-xl font-semibold">Plant Daily Meter Readings</h2>
+          <p class="text-sm text-gray-500">Makari Gad Project | <a href="index.html" class="text-indigo-600 hover:underline">Home</a></p>
         </div>
+        <div class="flex items-center space-x-2">
+          <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download as Excel</button>
+          <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload</button>
+          <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" />
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-3">Historical Data</h3>
+        <table class="w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English Date</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nepali Date</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Trans</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Plant</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Substation</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Outgoing</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Substation</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Counter</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Counter</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="data-body" class="bg-white divide-y divide-gray-200">
+            <!-- original JS will populate -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== OUTAGES & LOSSES TAB (placeholder) ========== -->
+    <section id="outages-tab" class="tab-content hidden">
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold mb-2">Outages & Losses</h3>
+        <p class="text-gray-600">This section is a placeholder. We'll implement outage and loss analytics here later.</p>
+      </div>
+    </section>
+
+    <!-- ========== MONTHLY CONTRACT ENERGY TAB ========== -->
+    <section id="monthly-tab" class="tab-content hidden">
+      <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+        <div class="flex flex-wrap gap-3 items-center">
+          <h3 class="text-lg font-semibold mr-4">Monthly Contract Energy</h3>
+
+          <!-- Filters -->
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">Year</label>
+            <select id="mce-year" class="border rounded px-2 py-1"></select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">Month</label>
+            <select id="mce-month" class="border rounded px-2 py-1">
+              <option value="">All</option>
+              <option value="Baisakh">Baisakh</option><option value="Jestha">Jestha</option><option value="Ashadh">Ashadh</option>
+              <option value="Shrawan">Shrawan</option><option value="Bhadra">Bhadra</option><option value="Asoj">Asoj</option>
+              <option value="Kartik">Kartik</option><option value="Mangsir">Mangsir</option><option value="Poush">Poush</option>
+              <option value="Magh">Magh</option><option value="Falgun">Falgun</option><option value="Chaitra">Chaitra</option>
+            </select>
+          </div>
+
+          <!-- Range (From-To) -->
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">From</label>
+            <select id="range-from-year" class="border rounded px-2 py-1"></select>
+            <select id="range-from-month" class="border rounded px-2 py-1">
+              <option value="">--</option>
+              <option value="Baisakh">Baisakh</option><option value="Jestha">Jestha</option><option value="Ashadh">Ashadh</option>
+              <option value="Shrawan">Shrawan</option><option value="Bhadra">Bhadra</option><option value="Asoj">Asoj</option>
+              <option value="Kartik">Kartik</option><option value="Mangsir">Mangsir</option><option value="Poush">Poush</option>
+              <option value="Magh">Magh</option><option value="Falgun">Falgun</option><option value="Chaitra">Chaitra</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">To</label>
+            <select id="range-to-year" class="border rounded px-2 py-1"></select>
+            <select id="range-to-month" class="border rounded px-2 py-1">
+              <option value="">--</option>
+              <option value="Baisakh">Baisakh</option><option value="Jestha">Jestha</option><option value="Ashadh">Ashadh</option>
+              <option value="Shrawan">Shrawan</option><option value="Bhadra">Bhadra</option><option value="Asoj">Asoj</option>
+              <option value="Kartik">Kartik</option><option value="Mangsir">Mangsir</option><option value="Poush">Poush</option>
+              <option value="Magh">Magh</option><option value="Falgun">Falgun</option><option value="Chaitra">Chaitra</option>
+            </select>
+          </div>
+
+          <!-- Upload/Download -->
+          <div class="ml-auto flex items-center gap-2">
+            <button id="mce-download-all" class="bg-green-600 text-white px-3 py-1 rounded hidden">Download All</button>
+            <button id="mce-download-range" class="bg-indigo-600 text-white px-3 py-1 rounded hidden">Download Range</button>
+            <button id="mce-upload" class="bg-blue-600 text-white px-3 py-1 rounded hidden">Upload Excel</button>
+            <input id="mce-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Table display -->
+      <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+        <table class="w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Year</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week1 AD</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week2 AD</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week3 AD</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week4 AD</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week5 AD</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total AD</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Contract Energy</th>
+              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No. of Days</th>
+            </tr>
+          </thead>
+          <tbody id="mce-body" class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
+      </div>
+    </section>
+
+  
+<div id="tab-outages" class="hidden p-4">
+  <h1 class="text-2xl font-bold mb-4">Outages & Losses</h1>
+  <p>Coming soon...</p>
+</div>
+
+<div id="tab-mce" class="hidden p-4">
+  <h1 class="text-2xl font-bold mb-4">Monthly Contract Energy</h1>
+  <div class="mb-4">
+    <input type="file" id="mce-upload" accept=".xlsx,.xls" class="hidden" />
+    <button id="mce-upload-btn" class="bg-blue-600 text-white px-4 py-2 rounded">Upload</button>
+    <button id="mce-download-btn" class="bg-green-600 text-white px-4 py-2 rounded">Download</button>
+  </div>
+  <table class="w-full border border-gray-300">
+    <thead class="bg-gray-100">
+      <tr>
+        <th>Year</th><th>Month</th><th>Week 1</th><th>Week 2</th><th>Week 3</th><th>Week 4</th><th>Week 5</th>
+        <th>Total AD</th><th>Contract Energy</th><th>No. of Days</th>
+      </tr>
+    </thead>
+    <tbody id="mce-table-body"></tbody>
+  </table>
+</div>
+
+</main>
+
+  <!-- Notification & Confirm modals (kept from original) -->
+  <div id="notification-modal" class="fixed top-5 right-5 bg-white border-l-4 p-4 rounded-md shadow-lg max-w-sm z-50 opacity-0 transform -translate-y-4 pointer-events-none">
+    <p id="notification-message" class="text-sm font-medium"></p>
+  </div>
+
+  <div id="confirm-modal-backdrop" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-40 flex items-center justify-center">
+    <div id="confirm-modal" class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md transform scale-95 opacity-0">
+      <h3 id="confirm-title" class="text-lg font-bold text-gray-900">Confirm Action</h3>
+      <p id="confirm-message" class="mt-2 text-sm text-gray-600">Are you sure?</p>
+      <div class="mt-6 flex justify-end space-x-3">
+        <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+        <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
+      </div>
     </div>
+  </div>
 
-    <div class="p-2 sm:p-4 lg:p-6 w-full">
-        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
-            <div>
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Plant Daily Meter Readings</h1>
-                <p class="text-sm text-gray-500 mt-1">Makari Gad Project | <a href="index.html" class="text-indigo-600 hover:underline">Home</a></p>
-            </div>
-            <div class="flex items-center space-x-2 mt-3 sm:mt-0">
-                 <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download as Excel</button>
-                 <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload</button>
-                 <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" title="Upload Excel or CSV file" placeholder="Select file to upload" />
-                 <div id="user-info" class="text-right text-sm text-indigo-600 font-semibold cursor-pointer hover:text-indigo-800" title="Click to logout"></div>
-            </div>
-        </header>
+  <!-- Firebase & App JS -->
+  <script type="module">
+    /*************************************************************************
+     * Firebase SDK imports (same versions as your original file)
+     *************************************************************************/
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        <main>
-            <section>
-                <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Historical Data</h2>
-                    <div>
-                        <table class="w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English Date</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nepali Date</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Trans</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Plant</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Substation</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Outgoing</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Substation</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Counter</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Counter</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
-                                    <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="data-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Data rows will be inserted here by JavaScript -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
+    /*************************************************************************
+     * Config (kept identical to your original snippet)
+     *************************************************************************/
+    const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
+    const adminEmail = "upenjyo@gmail.com";
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-        const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
-        const adminEmail = "upenjyo@gmail.com";
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        
-        const plantDataPath = "plantData";
-        let currentUser = null;
-        let unsubscribe = null;
-        let allData = [];
-        let editingRowId = null;
+    /*************************************************************************
+     * Tab switching behaviour
+     *************************************************************************/
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        const target = btn.dataset.target;
+        document.getElementById(target).classList.remove('hidden');
+      });
+    });
 
-        const userInfo = document.getElementById("user-info"), dataBody = document.getElementById("data-body");
-        const downloadBtn = document.getElementById("download-btn"), uploadBtn = document.getElementById("upload-btn"), fileUpload = document.getElementById("file-upload");
-        const confirmModalBackdrop = document.getElementById("confirm-modal-backdrop"), confirmTitle = document.getElementById("confirm-title"), confirmMessage = document.getElementById("confirm-message"), confirmCancelBtn = document.getElementById("confirm-cancel-btn"), confirmActionBtn = document.getElementById("confirm-action-btn");
+    /*************************************************************************
+     * Notification and confirm helpers (reused from your original file)
+     *************************************************************************/
+    const notificationModal = document.getElementById('notification-modal');
+    const notificationMessage = document.getElementById('notification-message');
+    function showNotification(msg, isError=false) {
+      notificationMessage.textContent = msg;
+      notificationModal.classList.remove('opacity-0','-translate-y-4');
+      notificationModal.style.borderLeftColor = isError ? '#dc2626' : '#10b981';
+      notificationModal.classList.add('opacity-100');
+      setTimeout(()=> {
+        notificationModal.classList.remove('opacity-100');
+        notificationModal.classList.add('opacity-0','-translate-y-4');
+      },4500);
+    }
 
-        function showNotification(message, isError = false) {
-            const modal = document.getElementById('notification-modal');
-            const messageEl = document.getElementById('notification-message');
-            messageEl.textContent = message;
-            modal.className = modal.className.replace(/border-(green|red)-500/, '');
-            modal.classList.add(isError ? 'border-red-500' : 'border-green-500');
-            modal.classList.remove('opacity-0', 'translate-y-[-20px]');
-            modal.classList.add('opacity-100', 'translate-y-0');
-            setTimeout(() => {
-                modal.classList.remove('opacity-100', 'translate-y-0');
-                modal.classList.add('opacity-0', 'translate-y-[-20px]');
-            }, 5000);
+    const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
+    const confirmTitle = document.getElementById('confirm-title');
+    const confirmMessage = document.getElementById('confirm-message');
+    const confirmActionBtn = document.getElementById('confirm-action-btn');
+    const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+
+    function showConfirmation(title, message, onConfirm) {
+      confirmTitle.textContent = title;
+      confirmMessage.textContent = message;
+      confirmModalBackdrop.classList.remove('hidden');
+      document.getElementById('confirm-modal').classList.remove('opacity-0','scale-95');
+      confirmActionBtn.onclick = () => { onConfirm(); hideConfirmation(); };
+    }
+    function hideConfirmation() {
+      confirmModalBackdrop.classList.add('hidden');
+      document.getElementById('confirm-modal').classList.add('opacity-0','scale-95');
+    }
+    confirmCancelBtn.addEventListener('click', hideConfirmation);
+    confirmModalBackdrop.addEventListener('click', (e)=> { if (e.target === confirmModalBackdrop) hideConfirmation(); });
+
+    /*************************************************************************
+     * =============== DAILY METERING logic (unchanged) ======================
+     * Most of this is your original code pasted verbatim and only slightly
+     * adapted to operate inside the tab layout (ids preserved).
+     *************************************************************************/
+    const plantDataPath = "plantData";
+    let currentUser = null;
+    let unsubscribe = null;
+    let allData = [];
+    let editingRowId = null;
+
+    const userInfo = document.getElementById("user-info");
+    const dataBody = document.getElementById("data-body");
+    const downloadBtn = document.getElementById("download-btn");
+    const uploadBtn = document.getElementById("upload-btn");
+    const fileUpload = document.getElementById("file-upload");
+
+    // Helper format
+    function formatNumber(num) {
+      if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
+        return '';
+      }
+      return Math.round(num * 1000) / 1000;
+    }
+
+    // Create new-entry row (keeps same look/ids)
+    function createInputRow() {
+      const today = new Date();
+      const offset = today.getTimezoneOffset();
+      const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+      const dateString = localToday.toISOString().split('T')[0];
+
+      return `
+        <tr id="add-new-row" class="bg-indigo-50">
+            <td class="tight-cell-input"><input type="date" id="new-date" class="table-input" value="${dateString}" required /></td>
+            <td class="tight-cell-input"><input type="text" id="new-nepali_date" class="table-input" placeholder="YYYY-MM-DD" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-unit2Trans" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-stationTrans" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-exportPlant" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-exportSubstation" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-importOutgoing" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-importSubstation" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"></td>
+            <td class="tight-cell-input"><input type="number" id="new-unit1Counter" step="any" class="table-input" /></td>
+            <td class="tight-cell-input"><input type="number" id="new-unit2Counter" step="any" class="table-input" /></td>
+            <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
+            <td class="tight-cell-input">
+                <button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
+            </td>
+        </tr>
+      `;
+    }
+
+    function createDisplayRowHtml(d) {
+      const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
+      const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
+      return `
+        <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
+        <td class="tight-cell text-sm text-gray-500">${d.nepali_date || ''}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Gen)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Gen)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Trans)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Trans)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.stationTrans)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportPlant)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportSubstation)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importOutgoing)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importSubstation)}</td>
+        <td class="tight-cell text-sm text-gray-500"></td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Counter)}</td>
+        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Counter)}</td>
+        <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
+        <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
+            ${canEdit ? `<button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
+        </td>`;
+    }
+
+    function createEditRowHtml(docData) {
+      return `
+        <td class="tight-cell-input"><input type="date" class="table-input" value="${docData.id}" disabled /></td>
+        <td class="tight-cell-input"><input type="text" id="edit-nepali_date" class="table-input" value="${docData.nepali_date || ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-unit1Gen" step="any" class="table-input" value="${docData.unit1Gen ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-unit2Gen" step="any" class="table-input" value="${docData.unit2Gen ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-unit1Trans" step="any" class="table-input" value="${docData.unit1Trans ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-unit2Trans" step="any" class="table-input" value="${docData.unit2Trans ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-stationTrans" step="any" class="table-input" value="${docData.stationTrans ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-exportPlant" step="any" class="table-input" value="${docData.exportPlant ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-exportSubstation" step="any" class="table-input" value="${docData.exportSubstation ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-importOutgoing" step="any" class="table-input" value="${docData.importOutgoing ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-importSubstation" step="any" class="table-input" value="${docData.importSubstation ?? ''}" /></td>
+        <td class="tight-cell-input"></td>
+        <td class="tight-cell-input"><input type="number" id="edit-unit1Counter" step="any" class="table-input" value="${docData.unit1Counter ?? ''}" /></td>
+        <td class="tight-cell-input"><input type="number" id="edit-unit2Counter" step="any" class="table-input" value="${docData.unit2Counter ?? ''}" /></td>
+        <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
+        <td class="tight-cell flex space-x-2 whitespace-nowrap">
+            <button class="update-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${docData.id}">Update</button>
+            <button class="cancel-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
+        </td>
+      `;
+    }
+
+    function renderTable(data) {
+      dataBody.innerHTML = createInputRow();
+      data.forEach(d => {
+        const row = document.createElement('tr');
+        row.id = `row-${d.id}`;
+        row.innerHTML = (d.id === editingRowId) ? createEditRowHtml(d) : createDisplayRowHtml(d);
+        dataBody.appendChild(row);
+      });
+    }
+
+    // Add/update handler (kept from your corrected function)
+    async function handleAddOrUpdateEntry(docId, isUpdate = false) {
+      if (!currentUser) { showNotification("You must be logged in.", true); return; }
+
+      const prefix = isUpdate ? 'edit-' : 'new-';
+      const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`).value;
+      if (!dateVal) { showNotification("Please select an English date.", true); return; }
+
+      const data = {
+        user: currentUser.email,
+        uid: currentUser.uid,
+        date: Timestamp.fromDate(new Date(dateVal)),
+        nepali_date: document.getElementById(`${prefix}nepali_date`).value || null,
+        unit1Gen: parseFloat(document.getElementById(`${prefix}unit1Gen`).value) || null,
+        unit2Gen: parseFloat(document.getElementById(`${prefix}unit2Gen`).value) || null,
+        unit1Trans: parseFloat(document.getElementById(`${prefix}unit1Trans`).value) || null,
+        unit2Trans: parseFloat(document.getElementById(`${prefix}unit2Trans`).value) || null,
+        stationTrans: parseFloat(document.getElementById(`${prefix}stationTrans`).value) || null,
+        exportPlant: parseFloat(document.getElementById(`${prefix}exportPlant`).value) || null,
+        exportSubstation: parseFloat(document.getElementById(`${prefix}exportSubstation`).value) || null,
+        importOutgoing: parseFloat(document.getElementById(`${prefix}importOutgoing`).value) || null,
+        importSubstation: parseFloat(document.getElementById(`${prefix}importSubstation`).value) || null,
+        unit1Counter: parseFloat(document.getElementById(`${prefix}unit1Counter`).value) || null,
+        unit2Counter: parseFloat(document.getElementById(`${prefix}unit2Counter`).value) || null,
+      };
+
+      try {
+        await setDoc(doc(db, plantDataPath, dateVal), data, { merge: true });
+        showNotification(`Data ${isUpdate ? 'updated' : 'added'} successfully!`);
+        if (isUpdate) {
+          editingRowId = null;
+          renderTable(allData);
+        } else {
+          // Clear only the new entry row after successful submission
+          const addRow = document.getElementById('add-new-row');
+          if (addRow) addRow.querySelectorAll('input').forEach(input => { if (input.type !== 'date') input.value = ''; });
         }
+      } catch (error) {
+        console.error("Error saving data:", error);
+        showNotification("Error saving data: " + (error.message || error), true);
+      }
+    }
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                userInfo.textContent = `Logged in as: ${user.email}`;
-                userInfo.onclick = () => showConfirmation('Confirm Logout', 'Are you sure you want to log out?', () => signOut(auth));
-                
-                if (currentUser.email === adminEmail) {
-                    downloadBtn.classList.remove('hidden');
-                    uploadBtn.classList.remove('hidden');
-                }
-                loadAndListenData();
-            } else {
-                const currentPath = window.location.pathname;
-                const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/index.html';
-                window.location.href = newPath;
-            }
+    // Event delegation for daily table actions
+    dataBody.addEventListener('click', e => {
+      if (e.target.id === 'add-entry-btn') handleAddOrUpdateEntry(null, false);
+      if (e.target.classList.contains('edit-btn')) {
+        editingRowId = JSON.parse(e.target.dataset.doc).id;
+        renderTable(allData);
+      }
+      if (e.target.classList.contains('delete-btn')) {
+        showDeleteConfirm(e.target.dataset.id);
+      }
+      if (e.target.classList.contains('update-btn')) handleAddOrUpdateEntry(e.target.dataset.id, true);
+      if (e.target.classList.contains('cancel-btn')) {
+        editingRowId = null;
+        renderTable(allData);
+      }
+    });
+
+    function showDeleteConfirm(docId) {
+      showConfirmation('Confirm Deletion', `Are you sure you want to delete the entry for ${docId}? This cannot be undone.`, () => deleteEntry(docId));
+    }
+
+    async function deleteEntry(docId) {
+      try {
+        await deleteDoc(doc(db, plantDataPath, docId));
+        showNotification("Entry deleted successfully.");
+      } catch (error) {
+        console.error("Error deleting document:", error);
+        showNotification("Error deleting entry: " + (error.message || error), true);
+      }
+    }
+
+    // Excel Download for daily data (kept same)
+    downloadBtn.addEventListener('click', () => {
+      const dataToExport = allData.map(d => ({
+        'English Date': d.id,
+        'Nepali Date': d.nepali_date,
+        'Unit 1 Generator Reading': d.unit1Gen,
+        'Unit 2 Generator Reading': d.unit2Gen,
+        'Unit 1 Transformer Reading': d.unit1Trans,
+        'Unit 2 Transformer Reading': d.unit2Trans,
+        'Station Transformer Reading': d.stationTrans,
+        'Export at Plant Outgoing Feeder': d.exportPlant,
+        'Export at Substation Feeder': d.exportSubstation,
+        'Import at Outgoing Feeder': d.importOutgoing,
+        'Import at Substation Feeder': d.importSubstation,
+        '': null, // Blank column
+        'Unit 1 hour counter': d.unit1Counter,
+        'Unit 2 hour counter': d.unit2Counter,
+        'Operator': d.user
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport, {header: [
+        "English Date", "Nepali Date", "Unit 1 Generator Reading", "Unit 2 Generator Reading",
+        "Unit 1 Transformer Reading", "Unit 2 Transformer Reading", "Station Transformer Reading",
+        "Export at Plant Outgoing Feeder", "Export at Substation Feeder", "Import at Outgoing Feeder",
+        "Import at Substation Feeder", "", "Unit 1 hour counter", "Unit 2 hour counter", "Operator"
+      ]});
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "PlantData");
+      XLSX.writeFile(workbook, "PlantData_MakariGad.xlsx");
+      showNotification("Downloading Excel file...");
+    });
+
+    // Upload daily data (kept same with confirmation)
+    uploadBtn.addEventListener('click', () => fileUpload.click());
+    fileUpload.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+
+          if (jsonData.length < 2) {
+            return showNotification("File is empty or has no data rows.", true);
+          }
+          showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Continue?`, () => processAndUploadData(jsonData));
+        } catch (error) {
+          console.error("File read error:", error);
+          showNotification("Error reading file. Please ensure it's a valid Excel file.", true);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      fileUpload.value = '';
+    });
+
+    async function processAndUploadData(jsonData) {
+      if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
+      showNotification("Starting upload...", false);
+
+      const header = jsonData.shift().map(h => String(h ?? "").trim());
+      const headerMap = {
+        englishDate: header.indexOf('English Date'),
+        nepaliDate: header.indexOf('Nepali Date'),
+        unit1Gen: header.indexOf('Unit 1 Generator Reading'),
+        unit2Gen: header.indexOf('Unit 2 Generator Reading'),
+        unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
+        unit2Trans: header.indexOf('Unit 2 Transformer Reading'),
+        stationTrans: header.indexOf('Station Transformer Reading'),
+        exportPlant: header.indexOf('Export at Plant Outgoing Feeder'),
+        exportSubstation: header.indexOf('Export at Substation Feeder'),
+        importOutgoing: header.indexOf('Import at Outgoing Feeder'),
+        importSubstation: header.indexOf('Import at Substation Feeder'),
+        unit1Counter: header.indexOf('Unit 1 hour counter'),
+        unit2Counter: header.indexOf('Unit 2 hour counter'),
+      };
+
+      if (headerMap.englishDate === -1) { return showNotification("Upload failed. 'English Date' column not found.", true); }
+
+      const batch = writeBatch(db);
+      let operationsCount = 0;
+      jsonData.forEach(row => {
+        const dateValue = row[headerMap.englishDate];
+        if (!dateValue || !(dateValue instanceof Date)) return;
+
+        const localDate = new Date(dateValue.getTime() - (dateValue.getTimezoneOffset() * 60000));
+        const dateStr = localDate.toISOString().split('T')[0];
+
+        const docRef = doc(db, plantDataPath, dateStr);
+        const docData = {
+          user: currentUser.email, uid: currentUser.uid,
+          date: Timestamp.fromDate(localDate),
+          nepali_date: row[headerMap.nepaliDate] || null,
+          unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
+          unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
+          unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
+          unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
+          stationTrans: parseFloat(row[headerMap.stationTrans]) || null,
+          exportPlant: parseFloat(row[headerMap.exportPlant]) || null,
+          exportSubstation: parseFloat(row[headerMap.exportSubstation]) || null,
+          importOutgoing: parseFloat(row[headerMap.importOutgoing]) || null,
+          importSubstation: parseFloat(row[headerMap.importSubstation]) || null,
+          unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
+          unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
+        };
+        batch.set(docRef, docData, { merge: true });
+        operationsCount++;
+      });
+
+      if (operationsCount === 0) { return showNotification("No valid data rows found to upload.", true); }
+
+      try {
+        await batch.commit();
+        showNotification(`Successfully uploaded ${operationsCount} records.`, false);
+      } catch (error) {
+        console.error("Batch upload error:", error);
+        showNotification("Upload failed: " + (error.message || error), true);
+      }
+    }
+
+    /*************************************************************************
+     * Listen for plantData collection (daily) - live updates
+     *************************************************************************/
+    function loadAndListenData() {
+      if (unsubscribe) unsubscribe();
+      const dataCollection = collection(db, plantDataPath);
+      const q = query(dataCollection);
+      unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const rows = [];
+        querySnapshot.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+        rows.sort((a, b) => b.id.localeCompare(a.id));
+        allData = rows;
+        renderTable(allData);
+      }, (error) => {
+        console.error("Error fetching data:", error);
+        showNotification("Error fetching data.", true);
+      });
+    }
+
+    /*************************************************************************
+     * =============== MONTHLY CONTRACT ENERGY (MCE) logic ===================
+     *************************************************************************/
+    const mceYear = document.getElementById('mce-year');
+    const mceMonth = document.getElementById('mce-month');
+    const mceBody = document.getElementById('mce-body');
+
+    const rangeFromYear = document.getElementById('range-from-year');
+    const rangeToYear = document.getElementById('range-to-year');
+    const rangeFromMonth = document.getElementById('range-from-month');
+    const rangeToMonth = document.getElementById('range-to-month');
+
+    const mceUploadBtn = document.getElementById('mce-upload');
+    const mceFileInput = document.getElementById('mce-file');
+    const mceDownloadAllBtn = document.getElementById('mce-download-all');
+    const mceDownloadRangeBtn = document.getElementById('mce-download-range');
+
+    // months order for comparing ranges
+    const months = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Asoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
+    function monthIndex(m) { return months.indexOf(m); }
+
+    // populate year dropdowns (adjust range as needed)
+    function populateYearOptions(start = 2075, end = 2090) {
+      const make = (el) => {
+        el.innerHTML = '<option value="">All</option>';
+        for (let y = start; y <= end; y++) {
+          const opt = document.createElement('option'); opt.value = y; opt.textContent = y;
+          el.appendChild(opt);
+        }
+      };
+      make(mceYear);
+      // range selectors should include full range and have a placeholder
+      rangeFromYear.innerHTML = '<option value="">Year</option>';
+      rangeToYear.innerHTML = '<option value="">Year</option>';
+      for (let y = start; y <= end; y++) {
+        const o1 = document.createElement('option'); o1.value = y; o1.textContent = y; rangeFromYear.appendChild(o1);
+        const o2 = document.createElement('option'); o2.value = y; o2.textContent = y; rangeToYear.appendChild(o2);
+      }
+    }
+    populateYearOptions(2075, 2090);
+
+    // Firestore state
+    let allMCE = []; // array of { year, month, week1AD, ..., totalAD, contractEnergy, noOfDays }
+
+    // Load MCE from Firestore (realtime)
+    function loadMCEData() {
+      const q = query(collection(db, "monthlyContractEnergy"));
+      onSnapshot(q, (snap) => {
+        allMCE = snap.docs.map(d => d.data());
+        // ensure consistent types and sorting
+        allMCE.forEach(r => {
+          r.year = r.year ?? null;
+          r.month = r.month ?? null;
         });
+        renderMCE();
+      }, (error) => {
+        console.error("MCE load error:", error);
+        showNotification("Error loading monthly contract energy data", true);
+      });
+    }
 
-        function loadAndListenData() {
-            if (unsubscribe) unsubscribe();
-            const dataCollection = collection(db, plantDataPath);
-            const q = query(dataCollection);
-            unsubscribe = onSnapshot(q, (querySnapshot) => {
-                const rows = [];
-                querySnapshot.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-                rows.sort((a, b) => b.id.localeCompare(a.id));
-                allData = rows;
-                renderTable(allData);
-            }, (error) => {
-                console.error("Error fetching data:", error);
-                showNotification("Error fetching data.", true);
-            });
+    // Render MCE with filters applied
+    function renderMCE() {
+      const y = mceYear.value;
+      const m = mceMonth.value;
+      let filtered = [...allMCE];
+
+      if (y) filtered = filtered.filter(r => String(r.year) === String(y));
+      if (m) filtered = filtered.filter(r => r.month === m);
+
+      // sort by year desc then month index desc
+      filtered.sort((a,b) => {
+        if (a.year === b.year) return (monthIndex(b.month) - monthIndex(a.month));
+        return (b.year - a.year);
+      });
+
+      mceBody.innerHTML = '';
+      filtered.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="tight-cell text-sm">${r.year ?? ''}</td>
+          <td class="tight-cell text-sm">${r.month ?? ''}</td>
+          <td class="tight-cell text-sm">${r.week1AD ?? ''}</td>
+          <td class="tight-cell text-sm">${r.week2AD ?? ''}</td>
+          <td class="tight-cell text-sm">${r.week3AD ?? ''}</td>
+          <td class="tight-cell text-sm">${r.week4AD ?? ''}</td>
+          <td class="tight-cell text-sm">${r.week5AD ?? ''}</td>
+          <td class="tight-cell text-sm font-medium">${r.totalAD ?? ''}</td>
+          <td class="tight-cell text-sm">${r.contractEnergy ?? ''}</td>
+          <td class="tight-cell text-sm">${r.noOfDays ?? ''}</td>
+        `;
+        mceBody.appendChild(tr);
+      });
+    }
+
+    // Filter events
+    mceYear.addEventListener('change', renderMCE);
+    mceMonth.addEventListener('change', renderMCE);
+
+    /*************************************************************************
+     * Upload: parse Excel and save into monthlyContractEnergy collection
+     * Expected headers (case-insensitive):
+     * Year | Month | Week1_AD | Week2_AD | Week3_AD | Week4_AD | Week5_AD | Total_AD | Contract_Energy | No_of_Days
+     *************************************************************************/
+    mceUploadBtn.addEventListener('click', () => mceFileInput.click());
+    mceFileInput.addEventListener('change', (evt) => {
+      const file = evt.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          // read as json objects (first row = headers)
+          const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+          if (!rows || rows.length === 0) {
+            showNotification("Uploaded file has no rows", true); return;
+          }
+          // confirm number of rows
+          showConfirmation('Confirm Upload', `This will upload ${rows.length} records to monthlyContractEnergy. Continue?`, () => uploadMCE(rows));
+        } catch (err) {
+          console.error(err);
+          showNotification("Error reading Excel file", true);
         }
-        
-        function createInputRow() {
-            const today = new Date();
-            const offset = today.getTimezoneOffset();
-            const localToday = new Date(today.getTime() - (offset * 60 * 1000));
-            const dateString = localToday.toISOString().split('T')[0];
+      };
+      reader.readAsArrayBuffer(file);
+      mceFileInput.value = '';
+    });
 
-            return `
-                <tr id="add-new-row" class="bg-indigo-50">
-                    <td class="tight-cell-input"><input type="date" id="new-date" class="table-input" value="${dateString}" required /></td>
-                    <td class="tight-cell-input"><input type="text" id="new-nepali_date" class="table-input" placeholder="YYYY-MM-DD" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Trans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-stationTrans" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-exportPlant" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-exportSubstation" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-importOutgoing" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-importSubstation" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit1Counter" step="any" class="table-input" /></td>
-                    <td class="tight-cell-input"><input type="number" id="new-unit2Counter" step="any" class="table-input" /></td>
-                    <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
-                    <td class="tight-cell-input">
-                        <button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
-                    </td>
-                </tr>
-            `;
+    async function uploadMCE(rows) {
+      if (!currentUser) { showNotification("Not authenticated", true); return; }
+      const batch = writeBatch(db);
+      let count = 0;
+
+      rows.forEach(r => {
+        // Normalize headers (case-insensitive keys)
+        // Accept keys like Year, year, MONTH, Month etc.
+        const mapKey = key => {
+          if (!key) return null;
+          const normalized = key.toString().trim().toLowerCase().replace(/\s+/g,'');
+          return normalized;
+        };
+
+        // Build a normalized map of columns for each row (if XLSX.utils.sheet_to_json used, keys are header labels)
+        // But here r already is an object with header-labeled keys. We'll try to extract common ones.
+        const raw = r;
+        // Try robust extraction:
+        const getVal = (possibleNames) => {
+          for (const name of possibleNames) {
+            if (raw.hasOwnProperty(name)) return raw[name];
+          }
+          // fallback: case-insensitive search
+          for (const k of Object.keys(raw)) {
+            if (possibleNames.map(x=>x.toLowerCase()).includes(k.toLowerCase().replace(/\s+/g,''))) return raw[k];
+            if (possibleNames.some(p => k.toLowerCase().replace(/\s+/g,'').includes(p.toLowerCase().replace(/\s+/g,'')))) return raw[k];
+          }
+          return null;
+        };
+
+        // Common header variations:
+        const year = getVal(['Year','year','YEAR']);
+        const month = getVal(['Month','month','MONTH']);
+        if (!year || !month) return; // skip invalid
+
+        // numeric fields - try various header names
+        const week1AD = getVal(['Week1_AD','Week 1 AD','Week1AD','Week1_AD_','W1_AD','Week1']);
+        const week2AD = getVal(['Week2_AD','Week 2 AD','Week2AD','W2_AD','Week2']);
+        const week3AD = getVal(['Week3_AD','Week 3 AD','Week3AD','W3_AD','Week3']);
+        const week4AD = getVal(['Week4_AD','Week 4 AD','Week4AD','W4_AD','Week4']);
+        const week5AD = getVal(['Week5_AD','Week 5 AD','Week5AD','W5_AD','Week5']);
+        const totalAD = getVal(['Total_AD','Total AD','Total','TotalAD']);
+        const contractEnergy = getVal(['Contract_Energy','Contract Energy','Contract','ContractEnergy']);
+        const noOfDays = getVal(['No_of_Days','No of Days','No_of_Days','Days','NoOfDays']);
+
+        // prepare firestore doc id (Year_Month)
+        const docId = `${String(year).trim()}_${String(month).trim()}`;
+        const docRef = doc(db, "monthlyContractEnergy", docId);
+
+        const docData = {
+          year: isNaN(Number(year)) ? year : Number(year),
+          month: String(month).trim(),
+          week1AD: (week1AD === null || week1AD === '') ? null : Number(week1AD),
+          week2AD: (week2AD === null || week2AD === '') ? null : Number(week2AD),
+          week3AD: (week3AD === null || week3AD === '') ? null : Number(week3AD),
+          week4AD: (week4AD === null || week4AD === '') ? null : Number(week4AD),
+          week5AD: (week5AD === null || week5AD === '') ? null : Number(week5AD),
+          totalAD: (totalAD === null || totalAD === '') ? null : Number(totalAD),
+          contractEnergy: (contractEnergy === null || contractEnergy === '') ? null : Number(contractEnergy),
+          noOfDays: (noOfDays === null || noOfDays === '') ? null : Number(noOfDays),
+          uploadedBy: currentUser.email,
+          uploadedAt: Timestamp.fromDate(new Date())
+        };
+        batch.set(docRef, docData, { merge: true });
+        count++;
+      });
+
+      if (count === 0) { showNotification("No valid MCE rows found to upload.", true); return; }
+
+      try {
+        await batch.commit();
+        showNotification(`Uploaded ${count} MCE records successfully.`, false);
+      } catch (err) {
+        console.error(err);
+        showNotification("Error uploading MCE: " + (err.message || err), true);
+      }
+    }
+
+    /*************************************************************************
+     * Download: All or Range
+     *************************************************************************/
+    mceDownloadAllBtn.addEventListener('click', () => {
+      if (!allMCE || allMCE.length === 0) { showNotification("No MCE data to download", true); return; }
+      // convert to sheet-friendly array of objects
+      const dataOut = allMCE.map(r => ({
+        Year: r.year,
+        Month: r.month,
+        Week1_AD: r.week1AD,
+        Week2_AD: r.week2AD,
+        Week3_AD: r.week3AD,
+        Week4_AD: r.week4AD,
+        Week5_AD: r.week5AD,
+        Total_AD: r.totalAD,
+        Contract_Energy: r.contractEnergy,
+        No_of_Days: r.noOfDays
+      }));
+      const ws = XLSX.utils.json_to_sheet(dataOut);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "MonthlyContractEnergy");
+      XLSX.writeFile(wb, "MonthlyContractEnergy_All.xlsx");
+      showNotification("Downloading all Monthly Contract Energy data...");
+    });
+
+    mceDownloadRangeBtn.addEventListener('click', () => {
+      // gather from-to values
+      const fy = rangeFromYear.value;
+      const fm = rangeFromMonth.value;
+      const ty = rangeToYear.value;
+      const tm = rangeToMonth.value;
+
+      // if no full range provided, fallback to current filters
+      if (!fy || !fm || !ty || !tm) {
+        // fallback: filter by the mceYear+mceMonth or show message
+        showNotification("Please select full From and To Year & Month for range download.", true);
+        return;
+      }
+
+      // build inclusive range
+      const fromKey = `${fy}_${fm}`, toKey = `${ty}_${tm}`;
+
+      // helper to compare year+month pairs
+      function comp(aYear, aMonth, bYear, bMonth) {
+        if (Number(aYear) === Number(bYear)) return monthIndex(aMonth) - monthIndex(bMonth);
+        return Number(aYear) - Number(bYear);
+      }
+
+      // filter allMCE by inclusive range
+      const selected = allMCE.filter(r => {
+        if (!r.year || !r.month) return false;
+        const c1 = comp(r.year, r.month, fy, fm);
+        const c2 = comp(r.year, r.month, ty, tm);
+        return c1 >= 0 && c2 <= 0; // r between from and to when sorted ascending (we use >=0 && <=0)
+      });
+
+      if (selected.length === 0) { showNotification("No records found in the selected range.", true); return; }
+
+      // convert and download
+      const dataOut = selected.map(r => ({
+        Year: r.year,
+        Month: r.month,
+        Week1_AD: r.week1AD,
+        Week2_AD: r.week2AD,
+        Week3_AD: r.week3AD,
+        Week4_AD: r.week4AD,
+        Week5_AD: r.week5AD,
+        Total_AD: r.totalAD,
+        Contract_Energy: r.contractEnergy,
+        No_of_Days: r.noOfDays
+      }));
+      const ws = XLSX.utils.json_to_sheet(dataOut);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "MCE_Range");
+      XLSX.writeFile(wb, `MCE_${fy}_${fm}_to_${ty}_${tm}.xlsx`);
+      showNotification("Downloading selected range...");
+    });
+
+    /*************************************************************************
+     * Auth state and initial startup
+     *************************************************************************/
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        userInfo.textContent = `Logged in as: ${user.email}`;
+        userInfo.onclick = () => showConfirmation('Confirm Logout', 'Are you sure you want to log out?', () => signOut(auth));
+
+        // show admin controls
+        if (currentUser.email === adminEmail) {
+          downloadBtn.classList.remove('hidden');
+          uploadBtn.classList.remove('hidden');
+          mceUploadBtn.classList.remove('hidden');
+          mceDownloadAllBtn.classList.remove('hidden');
+          mceDownloadRangeBtn.classList.remove('hidden');
         }
 
-        function formatNumber(num) {
-            if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
-                return '';
-            }
-            return Math.round(num * 1000) / 1000;
-        }
+        // start listeners
+        loadAndListenData();
+        loadMCEData();
+      } else {
+        // redirect to index.html if not logged in (same behaviour as original)
+        const currentPath = window.location.pathname;
+        const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/index.html';
+        window.location.href = newPath;
+      }
+    });
 
-        function renderTable(data) {
-            dataBody.innerHTML = createInputRow();
-            data.forEach(d => {
-                const row = document.createElement('tr');
-                row.id = `row-${d.id}`;
-                row.innerHTML = (d.id === editingRowId) ? createEditRowHtml(d) : createDisplayRowHtml(d);
-                dataBody.appendChild(row);
-            });
-        }
-        
-        function createDisplayRowHtml(d) {
-            const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
-            const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
-            return `
-                <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
-                <td class="tight-cell text-sm text-gray-500">${d.nepali_date || ''}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Gen)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Gen)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Trans)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Trans)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.stationTrans)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportPlant)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportSubstation)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importOutgoing)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importSubstation)}</td>
-                <td class="tight-cell text-sm text-gray-500"></td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Counter)}</td>
-                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Counter)}</td>
-                <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
-                <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
-                    ${canEdit ? `<button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
-                </td>`;
-        }
+    // expose some debugging helpers (optional)
+    window._app = { db, auth };
 
-        function createEditRowHtml(docData) {
-            return `
-                <td class="tight-cell-input"><input type="date" class="table-input" value="${docData.id}" disabled /></td>
-                <td class="tight-cell-input"><input type="text" id="edit-nepali_date" class="table-input" value="${docData.nepali_date || ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit1Gen" step="any" class="table-input" value="${docData.unit1Gen ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit2Gen" step="any" class="table-input" value="${docData.unit2Gen ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit1Trans" step="any" class="table-input" value="${docData.unit1Trans ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit2Trans" step="any" class="table-input" value="${docData.unit2Trans ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-stationTrans" step="any" class="table-input" value="${docData.stationTrans ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-exportPlant" step="any" class="table-input" value="${docData.exportPlant ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-exportSubstation" step="any" class="table-input" value="${docData.exportSubstation ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-importOutgoing" step="any" class="table-input" value="${docData.importOutgoing ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-importSubstation" step="any" class="table-input" value="${docData.importSubstation ?? ''}" /></td>
-                <td class="tight-cell-input"></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit1Counter" step="any" class="table-input" value="${docData.unit1Counter ?? ''}" /></td>
-                <td class="tight-cell-input"><input type="number" id="edit-unit2Counter" step="any" class="table-input" value="${docData.unit2Counter ?? ''}" /></td>
-                <td class="tight-cell text-sm truncate" title="${currentUser.email}">${currentUser.email}</td>
-                <td class="tight-cell flex space-x-2 whitespace-nowrap">
-                    <button class="update-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${docData.id}">Update</button>
-                    <button class="cancel-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
-                </td>
-            `;
-        }
-        
-        // =================================================================================
-        // === THIS IS THE CORRECTED FUNCTION ===
-        // =================================================================================
-        async function handleAddOrUpdateEntry(docId, isUpdate = false) {
-            if (!currentUser) { showNotification("You must be logged in.", true); return; }
+  
+// Tab switching
+window.openTab = function(tab) {
+  document.getElementById('tab-outages').classList.add('hidden');
+  document.getElementById('tab-mce').classList.add('hidden');
+  document.querySelector('main').classList.add('hidden'); // Hide daily main
+  if (tab === 'daily') { document.querySelector('main').classList.remove('hidden'); }
+  else { document.getElementById('tab-' + tab).classList.remove('hidden'); }
+};
 
-            const prefix = isUpdate ? 'edit-' : 'new-';
-            const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`).value;
-            if (!dateVal) { showNotification("Please select an English date.", true); return; }
+// Nepali month mapping
+const nepaliMonths = { "Baisakh":1, "Jestha":2, "Ashadh":3, "Shrawan":4, "Bhadra":5, "Ashwin":6, "Kartik":7, "Mangsir":8, "Poush":9, "Magh":10, "Falgun":11, "Chaitra":12 };
 
-            // CORRECTED: This block now correctly reads from the table row inputs.
-            const data = {
-                user: currentUser.email,
-                uid: currentUser.uid,
-                date: Timestamp.fromDate(new Date(dateVal)),
-                nepali_date: document.getElementById(`${prefix}nepali_date`).value || null,
-                unit1Gen: parseFloat(document.getElementById(`${prefix}unit1Gen`).value) || null,
-                unit2Gen: parseFloat(document.getElementById(`${prefix}unit2Gen`).value) || null,
-                unit1Trans: parseFloat(document.getElementById(`${prefix}unit1Trans`).value) || null,
-                unit2Trans: parseFloat(document.getElementById(`${prefix}unit2Trans`).value) || null,
-                stationTrans: parseFloat(document.getElementById(`${prefix}stationTrans`).value) || null,
-                exportPlant: parseFloat(document.getElementById(`${prefix}exportPlant`).value) || null,
-                exportSubstation: parseFloat(document.getElementById(`${prefix}exportSubstation`).value) || null,
-                importOutgoing: parseFloat(document.getElementById(`${prefix}importOutgoing`).value) || null,
-                importSubstation: parseFloat(document.getElementById(`${prefix}importSubstation`).value) || null,
-                unit1Counter: parseFloat(document.getElementById(`${prefix}unit1Counter`).value) || null,
-                unit2Counter: parseFloat(document.getElementById(`${prefix}unit2Counter`).value) || null,
-            };
+// Format to 2 decimals
+function formatTwoDecimals(val) { return (typeof val === 'number') ? parseFloat(val.toFixed(2)) : ''; }
 
-            try {
-                await setDoc(doc(db, plantDataPath, dateVal), data, { merge: true });
-                showNotification(`Data ${isUpdate ? 'updated' : 'added'} successfully!`);
-                if (isUpdate) {
-                    editingRowId = null;
-                    renderTable(allData);
-                } else {
-                    // Clear only the new entry row after successful submission
-                    document.getElementById('add-new-row').querySelectorAll('input').forEach(input => {
-                        if(input.type !== 'date') input.value = '';
-                    });
-                }
-            } catch (error) {
-                console.error("Error saving data:", error);
-                showNotification("Error saving data: " + error.message, true);
-            }
-        }
+// Load MCE data
+import { getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+onSnapshot(collection(db, "monthlyContractEnergy"), (snapshot) => {
+  const rows = [];
+  snapshot.forEach(doc => rows.push(doc.data()));
+  rows.sort((a,b) => { if (b.year !== a.year) return b.year - a.year; return (nepaliMonths[b.month]||0) - (nepaliMonths[a.month]||0); });
+  const tbody = document.getElementById('mce-table-body');
+  tbody.innerHTML = "";
+  rows.forEach(r => {
+    tbody.innerHTML += `<tr>
+      <td>${r.year}</td><td>${r.month}</td>
+      <td>${formatTwoDecimals(r.week1)}</td><td>${formatTwoDecimals(r.week2)}</td>
+      <td>${formatTwoDecimals(r.week3)}</td><td>${formatTwoDecimals(r.week4)}</td>
+      <td>${formatTwoDecimals(r.week5)}</td>
+      <td>${formatTwoDecimals(r.totalAD)}</td><td>${formatTwoDecimals(r.contractEnergy)}</td>
+      <td>${r.noOfDays}</td>
+    </tr>`;
+  });
+});
 
-        dataBody.addEventListener('click', e => {
-            if (e.target.id === 'add-entry-btn') handleAddOrUpdateEntry(null, false);
-            if (e.target.classList.contains('edit-btn')) {
-                editingRowId = JSON.parse(e.target.dataset.doc).id;
-                renderTable(allData);
-            }
-            if (e.target.classList.contains('delete-btn')) {
-                showDeleteConfirm(e.target.dataset.id);
-            }
-            if (e.target.classList.contains('update-btn')) handleAddOrUpdateEntry(e.target.dataset.id, true);
-            if (e.target.classList.contains('cancel-btn')) {
-                editingRowId = null;
-                renderTable(allData);
-            }
-        });
+// Upload MCE
+document.getElementById('mce-upload-btn').addEventListener('click', () => document.getElementById('mce-upload').click());
+document.getElementById('mce-upload').addEventListener('change', (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    const wb = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+    const batch = writeBatch(db);
+    json.forEach(row => {
+      const id = `${row.Year}-${row.Month}`;
+      batch.set(doc(db, "monthlyContractEnergy", id), row, { merge: true });
+    });
+    await batch.commit();
+  };
+  reader.readAsArrayBuffer(file);
+});
 
-        function showConfirmation(title, message, onConfirm) {
-            confirmTitle.textContent = title;
-            confirmMessage.textContent = message;
-            confirmModalBackdrop.classList.remove('hidden');
-            document.getElementById('confirm-modal').classList.remove('opacity-0', 'scale-95');
-            confirmActionBtn.onclick = () => {
-                onConfirm();
-                hideConfirmation();
-            };
-        }
+// Download MCE
+document.getElementById('mce-download-btn').addEventListener('click', async () => {
+  const snap = await getDocs(collection(db, "monthlyContractEnergy"));
+  const data = [];
+  snap.forEach(doc => data.push(doc.data()));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "MCE");
+  XLSX.writeFile(wb, "MonthlyContractEnergy.xlsx");
+});
 
-        function hideConfirmation() {
-            confirmModalBackdrop.classList.add('hidden');
-            document.getElementById('confirm-modal').classList.add('opacity-0', 'scale-95');
-        }
-
-        confirmCancelBtn.addEventListener('click', hideConfirmation);
-        confirmModalBackdrop.addEventListener('click', (e) => { if (e.target === confirmModalBackdrop) hideConfirmation(); });
-
-        function showDeleteConfirm(docId) {
-            showConfirmation('Confirm Deletion', `Are you sure you want to delete the entry for ${docId}? This cannot be undone.`, () => deleteEntry(docId));
-        }
-
-        async function deleteEntry(docId) {
-            try {
-                await deleteDoc(doc(db, plantDataPath, docId));
-                showNotification("Entry deleted successfully.");
-            } catch (error) {
-                console.error("Error deleting document:", error);
-                showNotification("Error deleting entry: " + error.message, true);
-            }
-        }
-
-        // --- Excel Download/Upload Logic ---
-        downloadBtn.addEventListener('click', () => {
-            const dataToExport = allData.map(d => ({
-                'English Date': d.id,
-                'Nepali Date': d.nepali_date,
-                'Unit 1 Generator Reading': d.unit1Gen,
-                'Unit 2 Generator Reading': d.unit2Gen,
-                'Unit 1 Transformer Reading': d.unit1Trans,
-                'Unit 2 Transformer Reading': d.unit2Trans,
-                'Station Transformer Reading': d.stationTrans,
-                'Export at Plant Outgoing Feeder': d.exportPlant,
-                'Export at Substation Feeder': d.exportSubstation,
-                'Import at Outgoing Feeder': d.importOutgoing,
-                'Import at Substation Feeder': d.importSubstation,
-                '': null, // Blank column
-                'Unit 1 hour counter': d.unit1Counter,
-                'Unit 2 hour counter': d.unit2Counter,
-                'Operator': d.user
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport, {header: [
-                "English Date", "Nepali Date", "Unit 1 Generator Reading", "Unit 2 Generator Reading", 
-                "Unit 1 Transformer Reading", "Unit 2 Transformer Reading", "Station Transformer Reading",
-                "Export at Plant Outgoing Feeder", "Export at Substation Feeder", "Import at Outgoing Feeder",
-                "Import at Substation Feeder", "", "Unit 1 hour counter", "Unit 2 hour counter", "Operator"
-            ]});
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "PlantData");
-            XLSX.writeFile(workbook, "PlantData_MakariGad.xlsx");
-            showNotification("Downloading Excel file...");
-        });
-
-        uploadBtn.addEventListener('click', () => fileUpload.click());
-        fileUpload.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-                    
-                    if (jsonData.length < 2) {
-                        return showNotification("File is empty or has no data rows.", true);
-                    }
-                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Continue?`, () => processAndUploadData(jsonData));
-                } catch (error) {
-                    console.error("File read error:", error);
-                    showNotification("Error reading file. Please ensure it's a valid Excel file.", true);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-            fileUpload.value = '';
-        });
-
-        // =================================================================================
-        // === THIS IS THE CORRECTED FUNCTION ===
-        // =================================================================================
-        async function processAndUploadData(jsonData) {
-            if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
-            showNotification("Starting upload...", false);
-
-            const header = jsonData.shift().map(h => String(h ?? "").trim());
-            
-            // CORRECTED: The keys now exactly match the headers from your Excel screenshot.
-            const headerMap = {
-                englishDate: header.indexOf('English Date'),
-                nepaliDate: header.indexOf('Nepali Date'),
-                unit1Gen: header.indexOf('Unit 1 Generator Reading'),
-                unit2Gen: header.indexOf('Unit 2 Generator Reading'),
-                unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
-                unit2Trans: header.indexOf('Unit 2 Transformer Reading'),
-                stationTrans: header.indexOf('Station Transformer Reading'),
-                exportPlant: header.indexOf('Export at Plant Outgoing Feeder'),
-                exportSubstation: header.indexOf('Export at Substation Feeder'),
-                importOutgoing: header.indexOf('Import at Outgoing Feeder'),
-                importSubstation: header.indexOf('Import at Substation Feeder'),
-                unit1Counter: header.indexOf('Unit 1 hour counter'),
-                unit2Counter: header.indexOf('Unit 2 hour counter'),
-            };
-
-            if (headerMap.englishDate === -1) { return showNotification("Upload failed. 'English Date' column not found.", true); }
-
-            const batch = writeBatch(db);
-            let operationsCount = 0;
-            jsonData.forEach(row => {
-                const dateValue = row[headerMap.englishDate];
-                if (!dateValue || !(dateValue instanceof Date)) return;
-
-                const localDate = new Date(dateValue.getTime() - (dateValue.getTimezoneOffset() * 60000));
-                const dateStr = localDate.toISOString().split('T')[0];
-
-                const docRef = doc(db, plantDataPath, dateStr);
-                const docData = {
-                    user: currentUser.email, uid: currentUser.uid,
-                    date: Timestamp.fromDate(localDate),
-                    nepali_date: row[headerMap.nepaliDate] || null,
-                    unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
-                    unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
-                    unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
-                    unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
-                    stationTrans: parseFloat(row[headerMap.stationTrans]) || null,
-                    exportPlant: parseFloat(row[headerMap.exportPlant]) || null,
-                    exportSubstation: parseFloat(row[headerMap.exportSubstation]) || null,
-                    importOutgoing: parseFloat(row[headerMap.importOutgoing]) || null,
-                    importSubstation: parseFloat(row[headerMap.importSubstation]) || null,
-                    unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
-                    unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
-                };
-                batch.set(docRef, docData, { merge: true });
-                operationsCount++;
-            });
-
-            if (operationsCount === 0) { return showNotification("No valid data rows found to upload.", true); }
-
-            try {
-                await batch.commit();
-                showNotification(`Successfully uploaded ${operationsCount} records.`, false);
-            } catch (error) {
-                console.error("Batch upload error:", error);
-                showNotification("Upload failed: " + error.message, true);
-            }
-        }
-    </script>
+</script>
 </body>
 </html>

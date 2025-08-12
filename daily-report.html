@@ -410,35 +410,36 @@
         }
         
         if (!nepaliMonth) {
+            // Fallback if nepali_date is missing, though the main logic relies on it.
             const date = new Date(todayData.id);
             nepaliMonth = date.getMonth() + 1;
             nepaliDay = date.getDate();
         }
 
-        // --- STANDARD CUMULATIVE ENERGY CALCULATIONS ---
+        // --- CUMULATIVE ENERGY CALCULATIONS (using your formula) ---
         const monthlyPlantData = allData.filter(d => {
             if (nepaliYear && d.nepali_date) {
                 const dParts = d.nepali_date.split(/[-.]/);
                 return dParts.length === 3 && parseInt(dParts[0]) === nepaliYear && parseInt(dParts[1]) === nepaliMonth;
             }
-            return false;
+            return false; // Strictly filter by Nepali month and year
         }).sort((a, b) => a.id.localeCompare(b.id));
         
-        const dayBeforeMonthStartData = allData[allData.findIndex(d => d.id === monthlyPlantData[0]?.id) - 1];
-
-        if (dayBeforeMonthStartData) {
-            // Correct: Use the standard formula (Today - Previous Month End) for these values.
-            monthly.cumulativeGeneration = (todayData.unit1Gen + todayData.unit2Gen) - (dayBeforeMonthStartData.unit1Gen + dayBeforeMonthStartData.unit2Gen);
-            monthly.cumulativeExport = todayData.exportSubstation - dayBeforeMonthStartData.exportSubstation;
-            monthly.cumulativePlantExport = todayData.exportPlant - dayBeforeMonthStartData.exportPlant;
-            monthly.cumulativeStationConsumption = (todayData.stationTrans - dayBeforeMonthStartData.stationTrans) / 1000;
+        const monthStartData = monthlyPlantData[0];
+        if (monthStartData && todayData.id !== monthStartData.id) {
+            monthly.cumulativeGeneration = (todayData.unit1Gen + todayData.unit2Gen) - (monthStartData.unit1Gen + monthStartData.unit2Gen);
+            monthly.cumulativeExport = todayData.exportSubstation - monthStartData.exportSubstation;
+            monthly.cumulativePlantExport = todayData.exportPlant - monthStartData.exportPlant;
+            monthly.cumulativeStationConsumption = (todayData.stationTrans - monthStartData.stationTrans) / 1000;
         } else {
              Object.assign(monthly, { 
                 cumulativeGeneration: 0, cumulativeExport: 0, cumulativePlantExport: 0, cumulativeStationConsumption: 0
             });
         }
         
-        // --- SPECIAL CUMULATIVE LOSS CALCULATIONS (Sum from Day 2 onwards) ---
+        // --- CUMULATIVE LOSS CALCULATIONS (Corrected Summing Logic using Nepali Calendar) ---
+        
+        // 1. Get the list of all Gregorian dates (IDs) for the current Nepali month, up to the selected day.
         const relevantPlantDataForMonth = allData.filter(d => {
             if (d.nepali_date) {
                 const dParts = d.nepali_date.split(/[-.]/);
@@ -446,14 +447,18 @@
                     const dYear = parseInt(dParts[0]);
                     const dMonth = parseInt(dParts[1]);
                     const dDay = parseInt(dParts[2]);
-                    return dYear === nepaliYear && dMonth === nepaliMonth && dDay > 1 && dDay <= nepaliDay;
+                    // Check if it's the same Nepali month/year, and the day is on or before the selected day.
+                    return dYear === nepaliYear && dMonth === nepaliMonth && dDay <= nepaliDay;
                 }
             }
             return false;
         });
         const relevantGregorianDates = relevantPlantDataForMonth.map(d => d.id);
+
+        // 2. Filter the outagesData using this list of correct dates.
         const monthlyOutageData = outagesData.filter(o => relevantGregorianDates.includes(o.id));
 
+        // 3. Sum the daily values from the correctly filtered records.
         monthly.cumulativeNeaCurtailed = monthlyOutageData.reduce((sum, record) => sum + (parseFloat(record.neaCurtailedEnergy) || 0), 0);
         monthly.cumulativeOtherLosses = monthlyOutageData.reduce((sum, record) => sum + (parseFloat(record.totalEnergyLoss) || 0), 0);
 
@@ -471,9 +476,9 @@
         monthly.energyDifference = monthly.cumulativeExport - monthly.guaranteedEnergy;
         monthly.monthlyPlantFactor = totalDaysInMonth > 0 ? (monthly.cumulativeExport / (10 * 24 * totalDaysInMonth)) * 100 : 0;
         
-        // This formula is now correct because cumulativeExport uses the standard method.
-        monthly.plantFactorTillDate = nepaliDay > 0 ? (monthly.cumulativeExport / (10 * 24 * nepaliDay)) * 100 : 0;
-        monthly.remainingDays = nepaliDay ? (totalDaysInMonth - nepaliDay) : 0;
+        const daysTillDate = nepaliDay - 1;
+        monthly.plantFactorTillDate = daysTillDate > 0 ? (monthly.cumulativeExport / (10 * 24 * daysTillDate)) * 100 : 0;
+        monthly.remainingDays = nepaliDay ? (totalDaysInMonth - nepaliDay) + 1 : 0;
         
         return monthly;
     }

@@ -89,7 +89,7 @@
        <div class="flex justify-between items-start mb-4">
         <div>
           <h2 class="text-xl font-semibold">Outages & Losses Log</h2>
-           <p class="text-sm text-gray-500">Record and track all plant and grid-related outages.</p>
+           <p class="text-sm text-gray-500">Daily log for outages and energy losses.</p>
         </div>
         <div class="flex items-center space-x-2">
           <button id="outages-download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download Excel</button>
@@ -102,15 +102,18 @@
          <table class="w-full divide-y divide-gray-200">
            <thead class="bg-gray-50">
              <tr>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Event Start</th>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Event End</th>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Component</th>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Duration (Hrs)</th>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy Loss (kWh)</th>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
-               <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">NEA Curtailed Energy</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">NEA trip loss time (min)</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No of Trippings</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time (Min)</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time for Unit I (Min)</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time for Unit II (Min)</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy loss due to Line Tripping</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy loss due to Other reasons</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total energy loss</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Reason for Tripping</th>
+                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
              </tr>
            </thead>
            <tbody id="outages-body" class="bg-white divide-y divide-gray-200">
@@ -293,11 +296,18 @@
     const uploadBtn = document.getElementById("upload-btn");
     const fileUpload = document.getElementById("file-upload");
 
-    function formatNumber(num) {
+    /**
+     * Formats a number to a specific number of decimal places.
+     * @param {number | string | null} num The number to format.
+     * @param {number} decimals The number of decimal places to round to.
+     * @returns {number | string} The formatted number or an empty string.
+     */
+    function formatNumber(num, decimals = 3) {
       if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
         return '';
       }
-      return Math.round(num * 1000) / 1000;
+      const multiplier = Math.pow(10, decimals);
+      return Math.round(num * multiplier) / multiplier;
     }
 
     function createInputRow() {
@@ -596,7 +606,7 @@
     }
 
     /*************************************************************************
-     * =============== OUTAGES & LOSSES logic (NEW) ==========================
+     * =============== OUTAGES & LOSSES logic (REVISED & FIXED) ==============
      *************************************************************************/
     const outagesDataPath = "outagesAndLosses";
     const outagesBody = document.getElementById("outages-body");
@@ -605,50 +615,36 @@
     const outagesFileUpload = document.getElementById('outages-file-upload');
     
     let allOutages = [];
-    let editingOutageId = null;
+    let editingOutageId = null; // This will be the date string, e.g., "2023-08-12"
 
-    // Helper to format Firestore Timestamps to a string for datetime-local input
-    function formatTimestampForInput(timestamp) {
-        if (!timestamp || !timestamp.toDate) return '';
-        const date = timestamp.toDate();
-        const offset = date.getTimezoneOffset();
-        const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-        return localDate.toISOString().slice(0, 16);
-    }
-    
-    // Helper to calculate duration in hours
-    function calculateDuration(start, end) {
-        if (!start || !end || !start.toDate || !end.toDate) return '';
-        const durationMs = end.toDate().getTime() - start.toDate().getTime();
-        if (durationMs < 0) return 'Invalid';
-        return (durationMs / (1000 * 60 * 60)).toFixed(2);
-    }
-    
+    const outageFields = [
+        { key: 'neaCurtailedEnergy', type: 'number'},
+        { key: 'neaTripLossTimeMin', type: 'number'},
+        { key: 'noOfTrippings', type: 'number'},
+        { key: 'lossTimeMin', type: 'number'},
+        { key: 'lossTimeU1Min', type: 'number'},
+        { key: 'lossTimeU2Min', type: 'number'},
+        { key: 'energyLossLineTrip', type: 'number'},
+        { key: 'energyLossOther', type: 'number'},
+        { key: 'totalEnergyLoss', type: 'number'},
+        { key: 'reason', type: 'text'},
+    ];
+
     // Create new outage entry row
     function createOutageInputRow() {
+        const today = new Date();
+        const offset = today.getTimezoneOffset();
+        const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+        const dateString = localToday.toISOString().split('T')[0];
+
+        let inputCells = outageFields.map(f => `
+            <td class="tight-cell-input"><input type="${f.type}" id="new-${f.key}" step="any" class="table-input" /></td>
+        `).join('');
+
         return `
             <tr id="add-new-outage-row" class="bg-indigo-50">
-                <td class="tight-cell-input"><input type="datetime-local" id="new-outage-start" class="table-input" required /></td>
-                <td class="tight-cell-input"><input type="datetime-local" id="new-outage-end" class="table-input" /></td>
-                <td class="tight-cell-input">
-                    <select id="new-outage-type" class="table-input">
-                        <option value="Forced">Forced</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="Grid Failure">Grid Failure</option>
-                        <option value="Line Loss">Line Loss</option>
-                    </select>
-                </td>
-                <td class="tight-cell-input">
-                     <select id="new-outage-component" class="table-input">
-                        <option value="Unit 1">Unit 1</option>
-                        <option value="Unit 2">Unit 2</option>
-                        <option value="Transmission Line">Transmission Line</option>
-                        <option value="Station Transformer">Station Transformer</option>
-                    </select>
-                </td>
-                <td class="tight-cell-input"><input type="text" id="new-outage-reason" class="table-input" /></td>
-                <td class="tight-cell text-sm text-gray-500"></td> <td class="tight-cell-input"><input type="number" id="new-outage-loss" step="any" class="table-input" placeholder="kWh" /></td>
-                <td class="tight-cell text-sm truncate" title="${currentUser?.email || ''}">${currentUser?.email || ''}</td>
+                <td class="tight-cell-input"><input type="date" id="new-outage-date" class="table-input" value="${dateString}" required /></td>
+                ${inputCells}
                 <td class="tight-cell-input">
                     <button id="add-outage-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
                 </td>
@@ -660,15 +656,16 @@
     function createOutageDisplayRow(d) {
         const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
         const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
+        
+        let displayCells = outageFields.map(f => {
+            const rawValue = d[f.key];
+            const displayValue = f.type === 'number' ? formatNumber(rawValue, 2) : rawValue;
+            return `<td class="tight-cell text-sm text-gray-500">${displayValue ?? ''}</td>`;
+        }).join('');
+
         return `
-            <td class="tight-cell text-sm font-medium text-gray-900">${formatTimestampForInput(d.eventStart)}</td>
-            <td class="tight-cell text-sm text-gray-500">${formatTimestampForInput(d.eventEnd)}</td>
-            <td class="tight-cell text-sm text-gray-500">${d.eventType || ''}</td>
-            <td class="tight-cell text-sm text-gray-500">${d.component || ''}</td>
-            <td class="tight-cell text-sm text-gray-500">${d.reason || ''}</td>
-            <td class="tight-cell text-sm text-gray-500">${calculateDuration(d.eventStart, d.eventEnd)}</td>
-            <td class="tight-cell text-sm text-gray-500">${d.energyLossKWH || ''}</td>
-            <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
+            <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
+            ${displayCells}
             <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
                 ${canEdit ? `<button class="edit-outage-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-outage-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
             </td>
@@ -677,37 +674,23 @@
 
     // Create outage edit row
     function createOutageEditRow(d) {
-      return `
-        <td class="tight-cell-input"><input type="datetime-local" id="edit-outage-start" class="table-input" value="${formatTimestampForInput(d.eventStart)}" /></td>
-        <td class="tight-cell-input"><input type="datetime-local" id="edit-outage-end" class="table-input" value="${formatTimestampForInput(d.eventEnd)}" /></td>
-        <td class="tight-cell-input">
-            <select id="edit-outage-type" class="table-input">
-                <option value="Forced" ${d.eventType === 'Forced' ? 'selected' : ''}>Forced</option>
-                <option value="Scheduled" ${d.eventType === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
-                <option value="Grid Failure" ${d.eventType === 'Grid Failure' ? 'selected' : ''}>Grid Failure</option>
-                <option value="Line Loss" ${d.eventType === 'Line Loss' ? 'selected' : ''}>Line Loss</option>
-            </select>
-        </td>
-        <td class="tight-cell-input">
-            <select id="edit-outage-component" class="table-input">
-                <option value="Unit 1" ${d.component === 'Unit 1' ? 'selected' : ''}>Unit 1</option>
-                <option value="Unit 2" ${d.component === 'Unit 2' ? 'selected' : ''}>Unit 2</option>
-                <option value="Transmission Line" ${d.component === 'Transmission Line' ? 'selected' : ''}>Transmission Line</option>
-                <option value="Station Transformer" ${d.component === 'Station Transformer' ? 'selected' : ''}>Station Transformer</option>
-            </select>
-        </td>
-        <td class="tight-cell-input"><input type="text" id="edit-outage-reason" class="table-input" value="${d.reason || ''}" /></td>
-        <td></td> <td class="tight-cell-input"><input type="number" id="edit-outage-loss" step="any" class="table-input" value="${d.energyLossKWH || ''}" /></td>
-        <td class="tight-cell text-sm truncate" title="${currentUser?.email || ''}">${currentUser?.email || ''}</td>
-        <td class="tight-cell flex space-x-2 whitespace-nowrap">
-            <button class="update-outage-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${d.id}">Update</button>
-            <button class="cancel-outage-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
-        </td>
+        let editCells = outageFields.map(f => `
+            <td class="tight-cell-input"><input type="${f.type}" id="edit-${f.key}" step="any" class="table-input" value="${d[f.key] ?? ''}" /></td>
+        `).join('');
+
+        return `
+            <td class="tight-cell-input"><input type="date" class="table-input" value="${d.id}" disabled /></td>
+            ${editCells}
+            <td class="tight-cell flex space-x-2 whitespace-nowrap">
+                <button class="update-outage-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${d.id}">Update</button>
+                <button class="cancel-outage-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
+            </td>
       `;
     }
     
     // Render the outages table
     function renderOutagesTable() {
+        if (!currentUser) return;
         outagesBody.innerHTML = createOutageInputRow();
         allOutages.forEach(d => {
             const row = document.createElement('tr');
@@ -719,9 +702,10 @@
 
     // Load and listen for outage data
     function loadOutagesData() {
-        const q = query(collection(db, outagesDataPath), orderBy("eventStart", "desc"));
+        const q = query(collection(db, outagesDataPath));
         onSnapshot(q, (snapshot) => {
             allOutages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            allOutages.sort((a, b) => b.id.localeCompare(a.id)); // Sort by date string descending
             renderOutagesTable();
         }, (error) => {
             console.error("Error fetching outages:", error);
@@ -734,32 +718,36 @@
         if (!currentUser) return showNotification("You must be logged in.", true);
 
         const prefix = isUpdate ? 'edit-' : 'new-';
-        const startVal = document.getElementById(`${prefix}-outage-start`).value;
-        const endVal = document.getElementById(`${prefix}-outage-end`).value;
-
-        if (!startVal) return showNotification("Event Start time is required.", true);
+        const dateVal = isUpdate ? docId : document.getElementById('new-outage-date').value;
+        if (!dateVal) return showNotification("Date is required.", true);
 
         const data = {
             user: currentUser.email,
             uid: currentUser.uid,
-            eventStart: Timestamp.fromDate(new Date(startVal)),
-            eventEnd: endVal ? Timestamp.fromDate(new Date(endVal)) : null,
-            eventType: document.getElementById(`${prefix}-outage-type`).value,
-            component: document.getElementById(`${prefix}-outage-component`).value,
-            reason: document.getElementById(`${prefix}-outage-reason`).value || null,
-            energyLossKWH: parseFloat(document.getElementById(`${prefix}-outage-loss`).value) || null,
             updatedAt: Timestamp.now(),
         };
+        
+        outageFields.forEach(f => {
+            const inputEl = document.getElementById(`${prefix}-${f.key}`);
+            if (f.type === 'number') {
+                data[f.key] = parseFloat(inputEl.value) || null;
+            } else {
+                data[f.key] = inputEl.value || null;
+            }
+        });
 
         try {
-            const docRef = isUpdate ? doc(db, outagesDataPath, docId) : doc(collection(db, outagesDataPath));
-            if (!isUpdate) data.createdAt = Timestamp.now();
+            const docRef = doc(db, outagesDataPath, dateVal);
             await setDoc(docRef, data, { merge: true });
-            showNotification(`Outage record ${isUpdate ? 'updated' : 'added'} successfully!`);
+            showNotification(`Outage log ${isUpdate ? 'updated' : 'added'} successfully!`);
+            
             if (isUpdate) {
                 editingOutageId = null;
+                renderOutagesTable(); // Force re-render immediately
+            } else {
+                // Clear input row
+                document.getElementById('add-new-outage-row').querySelectorAll('input[type=number], input[type=text]').forEach(el => el.value = '');
             }
-            renderOutagesTable(); // This will re-render and clear the input row implicitly
         } catch (error) {
             console.error("Error saving outage:", error);
             showNotification("Error saving outage data: " + error.message, true);
@@ -768,24 +756,22 @@
 
     // Event delegation for the outages table
     outagesBody.addEventListener('click', async (e) => {
-        if (e.target.id === 'add-outage-btn') handleAddOrUpdateOutage(null, false);
-        if (e.target.classList.contains('edit-outage-btn')) {
+        if (e.target.id === 'add-outage-btn') {
+            handleAddOrUpdateOutage(null, false);
+        } else if (e.target.classList.contains('edit-outage-btn')) {
             editingOutageId = JSON.parse(e.target.dataset.doc).id;
             renderOutagesTable();
-        }
-        if (e.target.classList.contains('update-outage-btn')) {
+        } else if (e.target.classList.contains('update-outage-btn')) {
             handleAddOrUpdateOutage(e.target.dataset.id, true);
-        }
-        if (e.target.classList.contains('cancel-outage-btn')) {
+        } else if (e.target.classList.contains('cancel-outage-btn')) {
             editingOutageId = null;
             renderOutagesTable();
-        }
-        if (e.target.classList.contains('delete-outage-btn')) {
+        } else if (e.target.classList.contains('delete-outage-btn')) {
             const docId = e.target.dataset.id;
-            showConfirmation('Confirm Deletion', `Are you sure you want to delete this outage record? This cannot be undone.`, async () => {
+            showConfirmation('Confirm Deletion', `Are you sure you want to delete the log for ${docId}?`, async () => {
                 try {
                     await deleteDoc(doc(db, outagesDataPath, docId));
-                    showNotification("Outage record deleted.");
+                    showNotification("Outage log deleted.");
                 } catch (error) {
                     showNotification("Error deleting record: " + error.message, true);
                 }
@@ -795,16 +781,31 @@
 
     // Download outages data as Excel
     outagesDownloadBtn.addEventListener('click', () => {
-        const dataToExport = allOutages.map(d => ({
-            "Event Start": formatTimestampForInput(d.eventStart),
-            "Event End": formatTimestampForInput(d.eventEnd),
-            "Type": d.eventType,
-            "Component": d.component,
-            "Reason": d.reason,
-            "Duration (Hours)": calculateDuration(d.eventStart, d.eventEnd),
-            "Energy Loss (kWh)": d.energyLossKWH,
-            "Operator": d.user,
-        }));
+        if (allOutages.length === 0) {
+            return showNotification("No outage data to download.", true);
+        }
+        const excelHeaders = {
+            id: 'Date',
+            neaCurtailedEnergy: 'NEA Curtailed Energy',
+            neaTripLossTimeMin: 'NEA trip loss time (min)',
+            noOfTrippings: 'No of Trippings',
+            lossTimeMin: 'Loss Time (Min)',
+            lossTimeU1Min: 'Loss Time for Unit I (Min)',
+            lossTimeU2Min: 'Loss Time for Unit II(Min)',
+            energyLossLineTrip: 'Energy loss due to Line Tripping',
+            energyLossOther: 'Energy loss due to Other reasons',
+            totalEnergyLoss: 'Total energy loss',
+            reason: 'Reason for Tripping',
+        };
+
+        const dataToExport = allOutages.map(d => {
+            let row = {};
+            for (const key in excelHeaders) {
+                row[excelHeaders[key]] = d[key] ?? null;
+            }
+            return row;
+        });
+
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "OutagesAndLosses");
@@ -823,8 +824,9 @@
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
                 const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 if (jsonData.length === 0) return showNotification("File is empty.", true);
-                showConfirmation('Confirm Upload', `This will upload ${jsonData.length} outage records. Continue?`, () => processAndUploadOutages(jsonData));
+                showConfirmation('Confirm Upload', `This will upload/overwrite ${jsonData.length} daily outage logs. Continue?`, () => processAndUploadOutages(jsonData));
             } catch (error) {
+                console.error("File upload error:", error);
                 showNotification("Error reading file. Make sure it's a valid Excel format.", true);
             }
         };
@@ -835,31 +837,55 @@
     async function processAndUploadOutages(jsonData) {
         if (!currentUser) return showNotification("Authentication error.", true);
         showNotification("Starting upload of outage data...");
+
+        const headerMap = {
+            'Date': {key: 'id', type: 'date'},
+            'NEA Curtailed Energy': {key: 'neaCurtailedEnergy', type: 'number'},
+            'NEA trip loss time (min)': {key: 'neaTripLossTimeMin', type: 'number'},
+            'No of Trippings': {key: 'noOfTrippings', type: 'number'},
+            'Loss Time (Min)': {key: 'lossTimeMin', type: 'number'},
+            'Loss Time for Unit I (Min)': {key: 'lossTimeU1Min', type: 'number'},
+            'Loss Time for Unit II(Min)': {key: 'lossTimeU2Min', type: 'number'},
+            'Energy loss due to Line Tripping': {key: 'energyLossLineTrip', type: 'number'},
+            'Energy loss due to Other reasons': {key: 'energyLossOther', type: 'number'},
+            'Total energy loss': {key: 'totalEnergyLoss', type: 'number'},
+            'Reason for Tripping': {key: 'reason', type: 'string'},
+        };
+
         const batch = writeBatch(db);
         let count = 0;
 
         jsonData.forEach(row => {
-            const start = row['Event Start'];
-            if (!start || !(start instanceof Date)) return; // Skip rows without a valid start date
+            const dateValue = row['Date'];
+            if (!dateValue || !(dateValue instanceof Date)) return; 
+            
+            // Adjust for timezone offset from Excel Date object
+            const dateObj = new Date(dateValue.getTime() - (dateValue.getTimezoneOffset() * 60000));
+            if (isNaN(dateObj.getTime())) return; // Skip invalid dates
 
-            const docRef = doc(collection(db, outagesDataPath));
+            const dateStr = dateObj.toISOString().split('T')[0];
+
+            const docRef = doc(db, outagesDataPath, dateStr);
             const docData = {
-                eventStart: Timestamp.fromDate(start),
-                eventEnd: (row['Event End'] && row['Event End'] instanceof Date) ? Timestamp.fromDate(row['Event End']) : null,
-                eventType: row['Type'] || null,
-                component: row['Component'] || null,
-                reason: row['Reason'] || null,
-                energyLossKWH: parseFloat(row['Energy Loss (kWh)']) || null,
                 user: currentUser.email,
                 uid: currentUser.uid,
-                createdAt: Timestamp.now(),
                 updatedAt: Timestamp.now()
             };
-            batch.set(docRef, docData);
+            
+            for(const header in headerMap){
+                if(row.hasOwnProperty(header)){
+                    const {key, type} = headerMap[header];
+                    if(key !== 'id'){
+                         docData[key] = (type === 'number') ? parseFloat(row[header]) || null : row[header] || null;
+                    }
+                }
+            }
+
+            batch.set(docRef, docData, {merge: true});
             count++;
         });
 
-        if (count === 0) return showNotification("No valid outage records found in the file.", true);
+        if (count === 0) return showNotification("No valid outage records with a 'Date' column found in the file.", true);
 
         try {
             await batch.commit();
@@ -1177,4 +1203,4 @@
 
   </script>
 </body>
-</html>
+</ht

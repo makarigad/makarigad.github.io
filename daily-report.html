@@ -16,14 +16,14 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
         .data-label {
-            font-size: 0.875rem; /* text-sm */
-            font-weight: 500;    /* font-medium */
-            color: #4b5563;      /* text-gray-600 */
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4b5563;
         }
         .data-value {
-            font-size: 1.25rem; /* text-xl */
-            font-weight: 700;    /* font-bold */
-            color: #1e3a8a;      /* text-blue-900 */
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e3a8a;
         }
         .data-unit {
             font-size: 0.875rem;
@@ -31,35 +31,66 @@
             color: #6b7280;
             margin-left: 0.5rem;
         }
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 2px solid #3498db;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
 
-    <div id="header-placeholder"></div>
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Makari Gad Project</h1>
+                    <p class="text-sm text-gray-500">Daily Generation Report</p>
+                </div>
+                <nav class="flex space-x-4">
+                    <a href="index.html" class="text-indigo-600 hover:text-indigo-800 font-medium">Home</a>
+                    <a href="plant-data.html" class="text-gray-600 hover:text-gray-800">Plant Data</a>
+                </nav>
+            </div>
+        </div>
+    </header>
 
     <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         <div class="data-card">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
                 <div>
                     <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Daily Generation Report</h1>
-                    <p class="text-sm text-gray-500 mt-1">Select a date to view the detailed summary.</p>
+                    <p class="text-sm text-gray-500 mt-1">Select a date to view the detailed summary</p>
                 </div>
-                <div class="mt-4 sm:mt-0">
-                    <label for="report-date" class="block text-sm font-medium text-gray-700">Report Date</label>
-                    <input type="date" id="report-date" class="mt-1 block w-full sm:w-auto border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <div class="mt-4 sm:mt-0 flex items-center space-x-2">
+                    <div>
+                        <label for="report-date" class="block text-sm font-medium text-gray-700">Report Date</label>
+                        <input type="date" id="report-date" class="mt-1 block w-full sm:w-auto border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <button id="refresh-data" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center space-x-2 mt-6">
+                        <span id="refresh-spinner" class="spinner hidden"></span>
+                        <span>Refresh</span>
+                    </button>
                 </div>
             </div>
             
             <div id="report-content" class="hidden">
                 <div class="mb-6 p-4 rounded-md bg-indigo-50 border border-indigo-200 text-center">
                     <h2 class="text-xl font-semibold text-gray-800">
-                        Summary for <span id="display-date-ad" class="text-indigo-600"></span> 
-                        (<span id="display-date-bs" class="text-indigo-600"></span>)
+                        Energy Summary for the month of <span id="display-nepali-month" class="text-indigo-600"></span>
+                        <br>
+                        <span class="text-sm font-medium text-gray-500">Date: <span id="display-nepali-date"></span></span>
                     </h2>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Left Column -->
                     <div class="lg:col-span-2 space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="data-card">
@@ -80,39 +111,38 @@
                             </div>
                         </div>
                         <div class="data-card">
-                             <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly & Cumulative Summary</h3>
+                             <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly PPA Summary</h3>
                              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <p class="data-label">Cumulative Energy Export (Month)</p><p class="data-value"><span id="val-cumulative-export-month">0.00</span><span class="data-unit">MWh</span></p>
-                                    <p class="data-label mt-4">Guaranteed Energy (PPA for Month)</p><p class="data-value"><span id="val-guaranteed-energy">0.00</span><span class="data-unit">MWh</span></p>
-                                    <p class="data-label mt-4">Energy Difference</p><p class="data-value"><span id="val-energy-difference">0.00</span><span class="data-unit">MWh</span></p>
-                                </div>
-                                <div>
-                                    <p class="data-label">Monthly Plant Factor</p><p class="data-value"><span id="val-monthly-plant-factor">0.00</span><span class="data-unit">%</span></p>
-                                    <p class="data-label mt-4">Plant Factor (Till Date)</p><p class="data-value"><span id="val-plant-factor-till-date">0.00</span><span class="data-unit">%</span></p>
-                                    <p class="data-label mt-4">Remaining Dispatch Days</p><p class="data-value"><span id="val-remaining-days">0</span><span class="data-unit">days</span></p>
-                                </div>
+                                 <div>
+                                     <p class="data-label">Cumulative Energy Export (Month)</p><p class="data-value"><span id="val-cumulative-export-month">0.00</span><span class="data-unit">MWh</span></p>
+                                     <p class="data-label mt-4">Guaranteed Energy (PPA for Month)</p><p class="data-value"><span id="val-guaranteed-energy">0.00</span><span class="data-unit">MWh</span></p>
+                                     <p class="data-label mt-4">Availability Declaration</p><p class="data-value"><span id="val-availability-declaration">0.00</span><span class="data-unit">MWh</span></p>
+                                     <p class="data-label mt-4">Energy Difference</p><p class="data-value"><span id="val-energy-difference">0.00</span><span class="data-unit">MWh</span></p>
+                                 </div>
+                                 <div>
+                                     <p class="data-label">Monthly Plant Factor</p><p class="data-value"><span id="val-monthly-plant-factor">0.00</span><span class="data-unit">%</span></p>
+                                     <p class="data-label mt-4">Plant Factor (Till Date)</p><p class="data-value"><span id="val-plant-factor-till-date">0.00</span><span class="data-unit">%</span></p>
+                                     <p class="data-label mt-4">Remaining Days in Month</p><p class="data-value"><span id="val-remaining-days">0</span><span class="data-unit">days</span></p>
+                                 </div>
                              </div>
                         </div>
                          <div class="data-card">
-                            <h3 class="font-bold text-lg mb-3 text-gray-800">Daily Losses & Consumption</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <p class="data-label">Transformer Losses at Powerhouse</p><p class="data-value"><span id="val-transformer-loss">0.00</span><span class="data-unit">MWh</span></p>
-                                    <p class="data-label mt-4">Station Consumption</p><p class="data-value"><span id="val-station-consumption">0.00</span><span class="data-unit">MWh</span></p>
-                                </div>
-                                <div>
-                                    <p class="data-label">Transmission & Substation Losses</p><p class="data-value"><span id="val-transmission-loss">0.00</span><span class="data-unit">MWh</span></p>
-                                     <p class="data-label mt-4">Other Losses (Grid/Breakdown)</p><p class="data-value"><span id="val-other-losses">0.00</span><span class="data-unit">MWh</span></p>
-                                </div>
+                            <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly Losses & Consumption (Cumulative)</h3>
+                            <div class="space-y-4">
+                                <div><p class="data-label">Transformer losses at PH</p><p class="data-value"><span id="val-transformer-loss-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                <div><p class="data-label">Station Consumption</p><p class="data-value"><span id="val-station-consumption-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                <div><p class="data-label">Transmission Loss</p><p class="data-value"><span id="val-transmission-loss-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                <div><p class="data-label">NEA Curtailed</p><p class="data-value"><span id="val-nea-curtailed-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                <div><p class="data-label">Other Losses</p><p class="data-value"><span id="val-other-losses-month">0.00</span><span class="data-unit">MWh</span></p></div>
                             </div>
                         </div>
                     </div>
-                    <!-- Right Column -->
                     <div class="lg:col-span-1 space-y-6">
                         <div class="data-card">
-                            <h3 class="font-bold text-lg mb-3 text-gray-800">Energy Distribution</h4>
-                            <canvas id="energy-pie-chart"></canvas>
+                            <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly Generation/Dispatch Summary</h3>
+                            <div class="relative h-80 w-full">
+                                <canvas id="energy-pie-chart"></canvas>
+                            </div>
                         </div>
                         <div class="data-card">
                             <h3 class="font-bold text-lg mb-3 text-gray-800">Unit Running Hours</h3>
@@ -127,203 +157,390 @@
             </div>
 
             <div id="loading-state" class="text-center p-10">
-                <p class="text-gray-600">Loading data...</p>
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-gray-600">Loading plant data...</p>
+                <p class="text-sm text-gray-500 mt-2">Fetching latest meter readings from database</p>
             </div>
 
             <div id="error-state" class="hidden text-center p-10 bg-red-50 border border-red-200 rounded-md">
-                <p id="error-message" class="text-red-700 font-medium"></p>
+                <div class="text-red-600 mb-4">
+                    <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-red-800 mb-2">Unable to Load Data</h3>
+                <p id="error-message" class="text-red-700 mb-4"></p>
+                <button id="retry-button" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
+                    Try Again
+                </button>
             </div>
         </div>
     </main>
 
-    <div id="footer-placeholder"></div>
-    
-    <script>
-        fetch('./header.html').then(response => response.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
-        fetch('./footer.html').then(response => response.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
-    </script>
-
     <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, query, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    // Import signInAnonymously to fix permissions errors
+    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
+    const firebaseConfig = { 
+        "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", 
+        "authDomain": "makari-gad.firebaseapp.com", 
+        "projectId": "makari-gad", 
+        "storageBucket": "makari-gad.appspot.com", 
+        "messagingSenderId": "724611254155", 
+        "appId": "1:724611254155:web:79851f67861cee3f90918e" 
+    };
+    
     const app = initializeApp(firebaseConfig);
-    const functions = getFunctions(app);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
     let allData = [];
+    let contractData = [];
     let chartInstance = null;
+    let outagesData = [];
+    
     const reportDateInput = document.getElementById('report-date');
     const reportContent = document.getElementById('report-content');
     const loadingState = document.getElementById('loading-state');
     const errorState = document.getElementById('error-state');
     const errorMessage = document.getElementById('error-message');
+    const refreshButton = document.getElementById('refresh-data');
+    const refreshSpinner = document.getElementById('refresh-spinner');
+    const retryButton = document.getElementById('retry-button');
     
-    const NEPALI_MONTHS = ["", "Baisakh", "Jestha", "Ashar", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangshir", "Poush", "Magh", "Falgun", "Chaitra"];
-    const PPA_GUARANTEED_ENERGY = { 1: 5683.83, 2: 6252.19, 3: 8431.25, 4: 7070.98, 5: 6959.83, 6: 5115.83, 7: 3543.13, 8: 2795.31, 9: 2548.7, 10: 2984.7, 11: 3514.9, 12: 4333.3 };
+    const NEPALI_MONTHS = ["", "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Asoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
 
-    async function fetchData() {
+    function formatNumber(num, decimals = 2) {
+        if (isNaN(num) || num === null || num === undefined) {
+            return (0).toFixed(decimals);
+        }
+        return parseFloat(num).toFixed(decimals);
+    }
+
+    function getPreviousDay(dateString) {
+        const date = new Date(dateString + 'T12:00:00'); // Use noon to avoid timezone boundary issues
+        date.setDate(date.getDate() - 1);
+        return date.toISOString().split('T')[0];
+    }
+
+    function normalizeDate(dateValue) {
+        if (!dateValue) return null;
+
+        let dateObj;
+        if (dateValue.toDate && typeof dateValue.toDate === 'function') {
+            dateObj = dateValue.toDate();
+        } else if (dateValue instanceof Date) {
+            dateObj = dateValue;
+        } else if (typeof dateValue === 'string') {
+            dateObj = new Date(dateValue);
+        } else {
+            return null;
+        }
+
+        if (isNaN(dateObj.getTime())) return null;
+
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+    }
+
+    function showError(message, details = '') {
+        errorMessage.textContent = message + (details ? ` (${details})` : '');
+        errorState.classList.remove('hidden');
+        loadingState.classList.add('hidden');
+        reportContent.classList.add('hidden');
+    }
+
+    async function fetchPlantData() {
         try {
-            const getPlantData = httpsCallable(functions, 'getPlantData');
-            const result = await getPlantData();
-            const data = result.data.data;
+            const plantDataCollection = collection(db, 'plantData');
+            const q = query(plantDataCollection, orderBy('date', 'desc'), limit(400));
+            const querySnapshot = await getDocs(q);
+            
+            const data = [];
+            querySnapshot.forEach((doc) => {
+                const docData = doc.data();
+                data.push({
+                    id: normalizeDate(docData.date) || doc.id,
+                    ...docData,
+                    unit1Gen: parseFloat(docData.unit1Gen) || 0,
+                    unit2Gen: parseFloat(docData.unit2Gen) || 0,
+                    stationTrans: parseFloat(docData.stationTrans) || 0,
+                    exportPlant: parseFloat(docData.exportPlant) || 0,
+                    exportSubstation: parseFloat(docData.exportSubstation) || 0,
+                    unit1Counter: parseFloat(docData.unit1Counter) || 0,
+                    unit2Counter: parseFloat(docData.unit2Counter) || 0,
+                    
+                });
+            });
+            
+            if (data.length === 0) throw new Error('No data found in plantData collection.');
+            return data;
+        } catch (error) {
+            console.error('Firestore fetch error:', error);
+            if (error.code === 'permission-denied') throw new Error('Access denied.');
+            else if (error.code === 'unavailable') throw new Error('Database unavailable.');
+            else throw new Error(`Database error: ${error.message}`);
+        }
+    }
 
-            if (!data) {
-                showError("Received invalid data from the server.");
-                return;
-            }
+    async function fetchOutagesData() {
+        try {
+            const outagesCollection = collection(db, 'outagesAndLosses');
+            const querySnapshot = await getDocs(outagesCollection);
+            const data = [];
+            querySnapshot.forEach(doc => {
+                data.push({ id: doc.id, ...doc.data() });
+            });
+            return data;
+        } catch (error) {
+            console.error('Failed to fetch outages data:', error);
+            return [];
+        }
+    }
 
-            allData = data.sort((a, b) => a.id.localeCompare(b.id));
+    async function fetchContractData() {
+        try {
+            const contractCollection = collection(db, 'monthlyContractEnergy');
+            const querySnapshot = await getDocs(contractCollection);
+            return querySnapshot.docs.map(doc => doc.data());
+        } catch (error) {
+            console.error('Failed to fetch contract data:', error);
+            return [];
+        }
+    }
 
-            if (allData.length > 0) {
+    async function loadData() {
+        try {
+            loadingState.classList.remove('hidden');
+            errorState.classList.add('hidden');
+            reportContent.classList.add('hidden');
+            
+            // Fetch all three data sources in parallel
+            const [plantData, monthlyContracts, outages] = await Promise.all([
+                fetchPlantData(),
+                fetchContractData(),
+                fetchOutagesData()
+            ]);
+
+            allData = plantData.sort((a, b) => a.id.localeCompare(b.id)); 
+            contractData = monthlyContracts;
+            outagesData = outages;
+
+            if (allData.length > 1) {
                 const latestDate = allData[allData.length - 1].id;
                 reportDateInput.value = latestDate;
                 reportDateInput.max = latestDate;
-                if (allData.length > 1) {
-                    generateReport(latestDate);
-                } else {
-                    showError("Not enough data to generate a report. At least two days of data are required.");
-                }
+                reportDateInput.min = allData[0].id;
+                generateReport(latestDate);
             } else {
-                showError("No data available in the database.");
+                showError("Not enough data. At least two days of data are required.");
             }
         } catch (error) {
-            console.error("Error fetching data:", error);
-            showError("Error fetching data from the server.");
+            showError("Failed to load plant data", error.message);
         } finally {
             loadingState.classList.add('hidden');
         }
     }
-
-    fetchData();
-    reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
-
     function generateReport(englishDateStr) {
-        reportContent.classList.add('hidden');
-        errorState.classList.add('hidden');
+        try {
+            const todayData = allData.find(d => d.id === englishDateStr);
+            const yesterdayData = allData.find(d => d.id === getPreviousDay(englishDateStr));
 
-        const todayData = allData.find(d => d.id === englishDateStr);
-        if (!todayData) {
-            showError(`No data available for ${englishDateStr}.`);
-            return;
-        }
-
-        const yesterdayStr = getPreviousDay(englishDateStr);
-        const yesterdayData = allData.find(d => d.id === yesterdayStr);
-        if (!yesterdayData) {
-            showError(`Cannot generate report for ${englishDateStr} as data for the previous day is missing.`);
-            return;
-        }
-
-        // --- DAILY CALCULATIONS ---
-        const daily = {};
-        daily.generation = ((todayData.unit1Gen || 0) + (todayData.unit2Gen || 0)) - ((yesterdayData.unit1Gen || 0) + (yesterdayData.unit2Gen || 0));
-        daily.exportSubstation = (todayData.exportSubstation || 0) - (yesterdayData.exportSubstation || 0);
-        daily.exportPlant = (todayData.exportPlant || 0) - (yesterdayData.exportPlant || 0);
-        daily.avgLoadPowerhouse = (daily.generation / 24) * 1000;
-        daily.avgLoadSubstation = (daily.exportSubstation / 24) * 1000;
-        daily.plantFactor = (daily.exportSubstation / 240) * 100; // 10MW * 24h = 240 MWh
-        daily.unit1Hours = (todayData.unit1Counter || 0) - (yesterdayData.unit1Counter || 0);
-        daily.unit2Hours = (todayData.unit2Counter || 0) - (yesterdayData.unit2Counter || 0);
-        
-        const totalTransformerGen = ((todayData.unit1Trans || 0) + (todayData.unit2Trans || 0)) - ((yesterdayData.unit1Trans || 0) + (yesterdayData.unit2Trans || 0));
-        daily.transformerLoss = daily.generation - totalTransformerGen;
-        daily.stationConsumption = totalTransformerGen - daily.exportPlant;
-        daily.transmissionLoss = daily.exportPlant - daily.exportSubstation;
-        daily.otherLosses = 0; // Placeholder for now
-
-        // --- MONTHLY & CUMULATIVE CALCULATIONS ---
-        const monthly = {};
-        const nepaliDateParts = todayData.nepali_date.split(/[-.]/);
-        const nepaliYear = parseInt(nepaliDateParts[0], 10);
-        const nepaliMonth = parseInt(nepaliDateParts[1], 10);
-        const nepaliDay = parseInt(nepaliDateParts[2], 10);
-
-        const monthData = allData.filter(d => d.nepali_date && d.nepali_date.startsWith(`${nepaliYear}-${String(nepaliMonth).padStart(2, '0')}`));
-        
-        monthly.cumulativeExport = 0;
-        for(let i = 0; i < monthData.length; i++) {
-            if (i > 0) {
-                const dayExport = (monthData[i].exportSubstation || 0) - (monthData[i-1].exportSubstation || 0);
-                monthly.cumulativeExport += dayExport;
+            if (!todayData || !yesterdayData) {
+                showError(`Data for ${englishDateStr} or its previous day is missing.`);
+                return;
             }
-        }
-        
-        monthly.guaranteedEnergy = PPA_GUARANTEED_ENERGY[nepaliMonth] || 0;
-        monthly.energyDifference = monthly.cumulativeExport - monthly.guaranteedEnergy;
-        
-        const daysInMonth = new Date(new Date(englishDateStr).getFullYear(), new Date(englishDateStr).getMonth() + 1, 0).getDate();
-        monthly.monthlyPlantFactor = (monthly.cumulativeExport / (10 * 24 * nepaliDay)) * 100;
-        
-        const firstDayOfMonthData = allData.find(d => d.nepali_date && d.nepali_date.startsWith(`${nepaliYear}-${String(nepaliMonth).padStart(2, '0')}-01`));
-        let totalExportTillDate = 0;
-        if(firstDayOfMonthData) {
-            const firstDayIndex = allData.indexOf(firstDayOfMonthData);
-            const todayIndex = allData.indexOf(todayData);
-            totalExportTillDate = (todayData.exportSubstation || 0) - (allData[firstDayIndex - 1]?.exportSubstation || 0);
-        }
-        
-        const daysPassed = nepaliDay;
-        monthly.plantFactorTillDate = (totalExportTillDate / (10 * 24 * daysPassed)) * 100;
-        monthly.remainingDays = daysInMonth - new Date(englishDateStr).getDate();
 
-        renderReport(englishDateStr, todayData, daily, monthly);
+            const fullNepaliDate = todayData.nepali_date || 'N/A';
+            let nepaliMonthName = 'Unknown';
+            if (todayData.nepali_date) {
+                const monthNumber = parseInt(todayData.nepali_date.split(/[-.]/)[1]);
+                if (NEPALI_MONTHS[monthNumber]) {
+                    nepaliMonthName = NEPALI_MONTHS[monthNumber];
+                }
+            }
+
+            const daily = calculateDailyValues(todayData, yesterdayData);
+            const monthly = calculateMonthlyValues(todayData, allData);
+            
+            renderReport(daily, monthly, fullNepaliDate, nepaliMonthName);
+            
+        } catch (error) {
+            console.error('Report generation failed:', error);
+            showError('Failed to generate report', error.message);
+        }
     }
 
-    function renderReport(englishDateStr, todayData, daily, monthly) {
-        const nepaliDateParts = todayData.nepali_date.split(/[-.]/);
-        const bsDateString = `${NEPALI_MONTHS[parseInt(nepaliDateParts[1], 10)]} ${nepaliDateParts[2]}, ${nepaliDateParts[0]}`;
-        
-        document.getElementById('display-date-ad').textContent = englishDateStr;
-        document.getElementById('display-date-bs').textContent = bsDateString;
+    function calculateDailyValues(today, yesterday) {
+        const daily = {};
+        // Find corresponding outage data for today and yesterday
+        const todayOutage = outagesData.find(o => o.id === today.id);
+        const yesterdayOutage = outagesData.find(o => o.id === yesterday.id);
 
-        // Daily Performance
-        document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(daily.avgLoadPowerhouse, 2);
-        document.getElementById('val-avg-load-substation').textContent = formatNumber(daily.avgLoadSubstation, 2);
-        document.getElementById('val-plant-factor').textContent = formatNumber(daily.plantFactor, 2);
+        daily.generation = (today.unit1Gen + today.unit2Gen) - (yesterday.unit1Gen + yesterday.unit2Gen);
+        daily.exportSubstation = today.exportSubstation - yesterday.exportSubstation;
+        daily.exportPlant = today.exportPlant - yesterday.exportPlant;
+        daily.stationConsumption = (today.stationTrans - yesterday.stationTrans) / 1000;
+        daily.transmissionLoss = daily.exportPlant - daily.exportSubstation;
+        daily.transformerLoss = daily.generation - daily.exportPlant - daily.stationConsumption;
+        daily.avgLoadPowerhouse = (daily.generation * 1000) / 24;
+        daily.avgLoadSubstation = (daily.exportSubstation * 1000) / 24;
+        daily.plantFactor = (daily.exportSubstation / (10 * 24)) * 100;
+        daily.unit1Hours = today.unit1Counter - yesterday.unit1Counter;
+        daily.unit2Hours = today.unit2Counter - yesterday.unit2Counter;
         
-        // Daily Energy
-        document.getElementById('val-generation').textContent = formatNumber(daily.generation, 2);
-        document.getElementById('val-export-plant').textContent = formatNumber(daily.exportPlant, 2);
-        document.getElementById('val-export-substation').textContent = formatNumber(daily.exportSubstation, 2);
+        // Correctly calculate losses from the outages data
+        daily.neaCurtailed = (todayOutage?.neaCurtailedEnergy || 0) - (yesterdayOutage?.neaCurtailedEnergy || 0);
+        daily.otherLosses = (todayOutage?.totalEnergyLoss || 0) - (yesterdayOutage?.totalEnergyLoss || 0);
+        return daily;
+    }
 
-        // Monthly
-        document.getElementById('val-cumulative-export-month').textContent = formatNumber(monthly.cumulativeExport, 2);
-        document.getElementById('val-guaranteed-energy').textContent = formatNumber(monthly.guaranteedEnergy, 2);
-        document.getElementById('val-energy-difference').textContent = formatNumber(monthly.energyDifference, 2);
-        document.getElementById('val-monthly-plant-factor').textContent = formatNumber(monthly.monthlyPlantFactor, 2);
-        document.getElementById('val-plant-factor-till-date').textContent = formatNumber(monthly.plantFactorTillDate, 2);
+    function calculateMonthlyValues(todayData, allData) {
+        const monthly = {};
+        let nepaliMonth, nepaliYear, nepaliDay;
+        
+        if (todayData.nepali_date) {
+            const parts = todayData.nepali_date.split(/[-.]/);
+            if (parts.length === 3) [nepaliYear, nepaliMonth, nepaliDay] = parts.map(p => parseInt(p));
+        }
+        
+        if (!nepaliMonth) {
+            const date = new Date(todayData.id);
+            nepaliMonth = date.getMonth() + 1;
+            nepaliDay = date.getDate();
+        }
+
+        // --- STANDARD CUMULATIVE ENERGY CALCULATIONS ---
+        const monthlyPlantData = allData.filter(d => {
+            if (nepaliYear && d.nepali_date) {
+                const dParts = d.nepali_date.split(/[-.]/);
+                return dParts.length === 3 && parseInt(dParts[0]) === nepaliYear && parseInt(dParts[1]) === nepaliMonth;
+            }
+            return false;
+        }).sort((a, b) => a.id.localeCompare(b.id));
+        
+        const dayBeforeMonthStartData = allData[allData.findIndex(d => d.id === monthlyPlantData[0]?.id) - 1];
+
+        if (dayBeforeMonthStartData) {
+            // Correct: Use the standard formula (Today - Previous Month End) for these values.
+            monthly.cumulativeGeneration = (todayData.unit1Gen + todayData.unit2Gen) - (dayBeforeMonthStartData.unit1Gen + dayBeforeMonthStartData.unit2Gen);
+            monthly.cumulativeExport = todayData.exportSubstation - dayBeforeMonthStartData.exportSubstation;
+            monthly.cumulativePlantExport = todayData.exportPlant - dayBeforeMonthStartData.exportPlant;
+            monthly.cumulativeStationConsumption = (todayData.stationTrans - dayBeforeMonthStartData.stationTrans) / 1000;
+        } else {
+             Object.assign(monthly, { 
+                cumulativeGeneration: 0, cumulativeExport: 0, cumulativePlantExport: 0, cumulativeStationConsumption: 0
+            });
+        }
+        
+        // --- SPECIAL CUMULATIVE LOSS CALCULATIONS (Sum from Day 2 onwards) ---
+        const relevantPlantDataForMonth = allData.filter(d => {
+            if (d.nepali_date) {
+                const dParts = d.nepali_date.split(/[-.]/);
+                if (dParts.length === 3) {
+                    const dYear = parseInt(dParts[0]);
+                    const dMonth = parseInt(dParts[1]);
+                    const dDay = parseInt(dParts[2]);
+                    return dYear === nepaliYear && dMonth === nepaliMonth && dDay > 1 && dDay <= nepaliDay;
+                }
+            }
+            return false;
+        });
+        const relevantGregorianDates = relevantPlantDataForMonth.map(d => d.id);
+        const monthlyOutageData = outagesData.filter(o => relevantGregorianDates.includes(o.id));
+
+        monthly.cumulativeNeaCurtailed = monthlyOutageData.reduce((sum, record) => sum + (parseFloat(record.neaCurtailedEnergy) || 0), 0);
+        monthly.cumulativeOtherLosses = monthlyOutageData.reduce((sum, record) => sum + (parseFloat(record.totalEnergyLoss) || 0), 0);
+
+        // --- DERIVED & PPA CALCULATIONS ---
+        monthly.cumulativeTransmissionLoss = monthly.cumulativePlantExport - monthly.cumulativeExport;
+        monthly.cumulativeTransformerLoss = monthly.cumulativeGeneration - monthly.cumulativePlantExport - monthly.cumulativeStationConsumption;
+
+        const nepaliMonthName = NEPALI_MONTHS[nepaliMonth];
+        const contractInfo = contractData.find(c => c.year == nepaliYear && c.month == nepaliMonthName);
+        
+        const totalDaysInMonth = contractInfo ? contractInfo.noOfDays : 30;
+        monthly.guaranteedEnergy = contractInfo ? contractInfo.contractEnergy : 0;
+        monthly.availabilityDeclaration = contractInfo ? contractInfo.totalAD : 0;
+
+        monthly.energyDifference = monthly.cumulativeExport - monthly.guaranteedEnergy;
+        monthly.monthlyPlantFactor = totalDaysInMonth > 0 ? (monthly.cumulativeExport / (10 * 24 * totalDaysInMonth)) * 100 : 0;
+        
+        // This formula is now correct because cumulativeExport uses the standard method.
+        monthly.plantFactorTillDate = nepaliDay > 0 ? (monthly.cumulativeExport / (10 * 24 * nepaliDay)) * 100 : 0;
+        monthly.remainingDays = nepaliDay ? (totalDaysInMonth - nepaliDay) : 0;
+        
+        return monthly;
+    }
+
+    function renderReport(daily, monthly, fullNepaliDate, nepaliMonthName) {
+        reportContent.classList.remove('hidden');
+        
+        document.getElementById('display-nepali-month').textContent = nepaliMonthName;
+        document.getElementById('display-nepali-date').textContent = fullNepaliDate;
+
+        document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(daily.avgLoadPowerhouse);
+        document.getElementById('val-avg-load-substation').textContent = formatNumber(daily.avgLoadSubstation);
+        document.getElementById('val-plant-factor').textContent = formatNumber(daily.plantFactor);
+        document.getElementById('val-generation').textContent = formatNumber(daily.generation, 3);
+        document.getElementById('val-export-plant').textContent = formatNumber(daily.exportPlant, 3);
+        document.getElementById('val-export-substation').textContent = formatNumber(daily.exportSubstation, 3);
+        document.getElementById('val-cumulative-export-month').textContent = formatNumber(monthly.cumulativeExport);
+        document.getElementById('val-guaranteed-energy').textContent = formatNumber(monthly.guaranteedEnergy);
+        document.getElementById('val-availability-declaration').textContent = formatNumber(monthly.availabilityDeclaration);
+        document.getElementById('val-energy-difference').textContent = formatNumber(monthly.energyDifference);
+        document.getElementById('val-monthly-plant-factor').textContent = formatNumber(monthly.monthlyPlantFactor);
+        document.getElementById('val-plant-factor-till-date').textContent = formatNumber(monthly.plantFactorTillDate);
         document.getElementById('val-remaining-days').textContent = monthly.remainingDays;
-
-        // Losses
-        document.getElementById('val-transformer-loss').textContent = formatNumber(daily.transformerLoss, 2);
-        document.getElementById('val-station-consumption').textContent = formatNumber(daily.stationConsumption, 2);
-        document.getElementById('val-transmission-loss').textContent = formatNumber(daily.transmissionLoss, 2);
-        document.getElementById('val-other-losses').textContent = formatNumber(daily.otherLosses, 2);
-
-        // Unit Hours
+        document.getElementById('val-transformer-loss-month').textContent = formatNumber(monthly.cumulativeTransformerLoss, 3);
+        document.getElementById('val-station-consumption-month').textContent = formatNumber(monthly.cumulativeStationConsumption, 3);
+        document.getElementById('val-transmission-loss-month').textContent = formatNumber(monthly.cumulativeTransmissionLoss, 3);
+        document.getElementById('val-nea-curtailed-month').textContent = formatNumber(monthly.cumulativeNeaCurtailed, 3);
+        document.getElementById('val-other-losses-month').textContent = formatNumber(monthly.cumulativeOtherLosses, 3);
         document.getElementById('val-unit1-hours-day').textContent = formatNumber(daily.unit1Hours, 1);
         document.getElementById('val-unit2-hours-day').textContent = formatNumber(daily.unit2Hours, 1);
-        document.getElementById('val-unit1-counter').textContent = formatNumber(todayData.unit1Counter, 1);
-        document.getElementById('val-unit2-counter').textContent = formatNumber(todayData.unit2Counter, 1);
-        
-        updatePieChart(daily);
-        reportContent.classList.remove('hidden');
+        document.getElementById('val-unit1-counter').textContent = formatNumber(allData.find(d => d.id === reportDateInput.value)?.unit1Counter || 0, 1);
+        document.getElementById('val-unit2-counter').textContent = formatNumber(allData.find(d => d.id === reportDateInput.value)?.unit2Counter || 0, 1);
+
+        updatePieChart(monthly);
     }
     
-    function updatePieChart(daily) {
+    function updatePieChart(monthly) {
         const ctx = document.getElementById('energy-pie-chart').getContext('2d');
+        
         const chartData = {
-            labels: ['Dispatched Energy', 'Transmission Loss', 'Station Consumption', 'Transformer Loss', 'Other Losses'],
+            labels: [
+                'Dispatched', 
+                'Transformer losses at PH', 
+                'Station Consumption', 
+                'Transmission Loss', 
+                'NEA Curtailed', 
+                'Other Losses'
+            ],
             datasets: [{
                 data: [
-                    daily.exportSubstation,
-                    daily.transmissionLoss,
-                    daily.stationConsumption,
-                    daily.transformerLoss,
-                    daily.otherLosses
+                    Math.max(0, monthly.cumulativeExport),
+                    Math.max(0, monthly.cumulativeTransformerLoss),
+                    Math.max(0, monthly.cumulativeStationConsumption),
+                    Math.max(0, monthly.cumulativeTransmissionLoss),
+                    Math.max(0, monthly.cumulativeNeaCurtailed),
+                    Math.max(0, monthly.cumulativeOtherLosses)
                 ],
-                backgroundColor: ['#1e3a8a', '#60a5fa', '#facc15', '#fb923c', '#f87171'],
+                backgroundColor: [
+                    '#1e3a8a', // Dispatched
+                    '#d97706', // Transformer losses
+                    '#ca8a04', // Station Consumption
+                    '#facc15', // Transmission Loss
+                    '#0ea5e9', // NEA Curtailed
+                    '#10b981'  // Other Losses
+                ],
+                borderColor: '#ffffff',
+                borderWidth: 2,
                 hoverOffset: 4
             }]
         };
@@ -337,46 +554,44 @@
                 data: chartData,
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'top',
+                            position: 'right',
+                            labels: { padding: 15, usePointStyle: true, font: { size: 12 } }
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed !== null) {
-                                        label += formatNumber(context.parsed, 2) + ' MWh';
-                                    }
-                                    return label;
+                                    return `${context.label}: ${formatNumber(context.parsed, 2)} MWh`;
                                 }
                             }
                         }
                     }
-                },
+                }
             });
         }
     }
 
-    function showError(message) {
-        errorMessage.textContent = message;
-        errorState.classList.remove('hidden');
-        reportContent.classList.add('hidden');
-    }
-    function getPreviousDay(dateString) {
-        const date = new Date(dateString);
-        date.setDate(date.getDate() - 1);
-        return date.toISOString().split('T')[0];
-    }
-    function formatNumber(num, decimals = 2) {
-        if (isNaN(num) || num === null || num === undefined) {
-            return (0).toFixed(decimals);
+    reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
+    refreshButton.addEventListener('click', loadData);
+    retryButton.addEventListener('click', loadData);
+    
+    // Corrected authentication flow
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // If a user is signed in (either normally or anonymously), load the data.
+            loadData();
+        } else {
+            // If no user is signed in, attempt to sign in anonymously.
+            signInAnonymously(auth).catch((error) => {
+                console.error("Anonymous sign-in failed", error);
+                showError("Authentication failed.", "Could not connect to the database securely.");
+            });
+            // The onAuthStateChanged listener will be called again automatically
+            // after a successful sign-in, which will then trigger loadData().
         }
-        return parseFloat(num).toFixed(decimals);
-    }
+    });
     </script>
 </body>
 </html>

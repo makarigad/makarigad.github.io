@@ -296,18 +296,11 @@
     const uploadBtn = document.getElementById("upload-btn");
     const fileUpload = document.getElementById("file-upload");
 
-    /**
-     * Formats a number to a specific number of decimal places.
-     * @param {number | string | null} num The number to format.
-     * @param {number} decimals The number of decimal places to round to.
-     * @returns {number | string} The formatted number or an empty string.
-     */
-    function formatNumber(num, decimals = 3) {
+    function formatNumber(num) {
       if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
         return '';
       }
-      const multiplier = Math.pow(10, decimals);
-      return Math.round(num * multiplier) / multiplier;
+      return Math.round(num * 1000) / 1000;
     }
 
     function createInputRow() {
@@ -508,7 +501,7 @@
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+          const workbook = XLSX.read(data, { type: 'array'});
           const worksheet = workbook.Sheets[workbook.SheetNames[0]];
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
 
@@ -526,69 +519,93 @@
     });
 
     async function processAndUploadData(jsonData) {
-      if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
-      showNotification("Starting upload...", false);
+      if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
+      showNotification("Starting upload...", false);
 
-      const header = jsonData.shift().map(h => String(h ?? "").trim());
-      const headerMap = {
-        englishDate: header.indexOf('English Date'),
-        nepaliDate: header.indexOf('Nepali Date'),
-        unit1Gen: header.indexOf('Unit 1 Generator Reading'),
-        unit2Gen: header.indexOf('Unit 2 Generator Reading'),
-        unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
-        unit2Trans: header.indexOf('Unit 2 Transformer Reading'),
-        stationTrans: header.indexOf('Station Transformer Reading'),
-        exportPlant: header.indexOf('Export at Plant Outgoing Feeder'),
-        exportSubstation: header.indexOf('Export at Substation Feeder'),
-        importOutgoing: header.indexOf('Import at Outgoing Feeder'),
-        importSubstation: header.indexOf('Import at Substation Feeder'),
-        unit1Counter: header.indexOf('Unit 1 hour counter'),
-        unit2Counter: header.indexOf('Unit 2 hour counter'),
-      };
+      const header = jsonData.shift().map(h => String(h ?? "").trim());
+      const headerMap = {
+        englishDate: header.indexOf('English Date'),
+        nepaliDate: header.indexOf('Nepali Date'),
+        unit1Gen: header.indexOf('Unit 1 Generator Reading'),
+        unit2Gen: header.indexOf('Unit 2 Generator Reading'),
+        unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
+        unit2Trans: header.indexOf('Unit 2 Transformer Reading'),
+        stationTrans: header.indexOf('Station Transformer Reading'),
+        exportPlant: header.indexOf('Export at Plant Outgoing Feeder'),
+        exportSubstation: header.indexOf('Export at Substation Feeder'),
+        importOutgoing: header.indexOf('Import at Outgoing Feeder'),
+        importSubstation: header.indexOf('Import at Substation Feeder'),
+        unit1Counter: header.indexOf('Unit 1 hour counter'),
+        unit2Counter: header.indexOf('Unit 2 hour counter'),
+      };
 
-      if (headerMap.englishDate === -1) { return showNotification("Upload failed. 'English Date' column not found.", true); }
+      if (headerMap.englishDate === -1) { return showNotification("Upload failed. 'English Date' column not found.", true); }
 
-      const batch = writeBatch(db);
-      let operationsCount = 0;
-      jsonData.forEach(row => {
-        const dateValue = row[headerMap.englishDate];
-        if (!dateValue || !(dateValue instanceof Date)) return;
+      const batch = writeBatch(db);
+      let operationsCount = 0;
+      jsonData.forEach(row => {
+        const dateValue = row[headerMap.englishDate];
+        if (dateValue === null || typeof dateValue === 'undefined') return;
 
-        const localDate = new Date(dateValue.getTime() - (dateValue.getTimezoneOffset() * 60000));
-        const dateStr = localDate.toISOString().split('T')[0];
+        let correctedDate;
 
-        const docRef = doc(db, plantDataPath, dateStr);
-        const docData = {
-          user: currentUser.email, uid: currentUser.uid,
-          date: Timestamp.fromDate(localDate),
-          nepali_date: row[headerMap.nepaliDate] || null,
-          unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
-          unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
-          unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
-          unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
-          stationTrans: parseFloat(row[headerMap.stationTrans]) || null,
-          exportPlant: parseFloat(row[headerMap.exportPlant]) || null,
-          exportSubstation: parseFloat(row[headerMap.exportSubstation]) || null,
-          importOutgoing: parseFloat(row[headerMap.importOutgoing]) || null,
-          importSubstation: parseFloat(row[headerMap.importSubstation]) || null,
-          unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
-          unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
-        };
-        batch.set(docRef, docData, { merge: true });
-        operationsCount++;
-      });
+        // Manually convert the date from Excel to avoid timezone errors.
+        // This checks if the date is a number (Excel's format) or something else.
+        if (typeof dateValue === 'number') {
+          // Use the xlsx utility to parse the Excel serial number for the date.
+          // This correctly handles Excel's 1900 leap year bug.
+          const excelDate = XLSX.SSF.parse_date_code(dateValue, { date1904: false });
+          if (excelDate) {
+            // Create a definitive Date object at midnight LOCAL time.
+            correctedDate = new Date(excelDate.y, excelDate.m - 1, excelDate.d);
+          }
+        } else if (dateValue instanceof Date) {
+        // Fallback for cases where it's already a Date object
+        correctedDate = new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+      } else {
+          return; // Skip rows with invalid or unreadable dates.
+        }
 
-      if (operationsCount === 0) { return showNotification("No valid data rows found to upload.", true); }
+      // Final check to ensure we have a valid date before proceeding.
+        if (!correctedDate || isNaN(correctedDate.getTime())) return;
 
-      try {
-        await batch.commit();
-        showNotification(`Successfully uploaded ${operationsCount} records.`, false);
-      } catch (error) {
-        console.error("Batch upload error:", error);
-        showNotification("Upload failed: " + (error.message || error), true);
-      }
-    }
+        // Manually build the YYYY-MM-DD string from our corrected local date.
+        const year = correctedDate.getFullYear();
+        const month = String(correctedDate.getMonth() + 1).padStart(2, '0'); // JS months are 0-11
+        const day = String(correctedDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
 
+        const docRef = doc(db, plantDataPath, dateStr);
+        const docData = {
+          user: currentUser.email, uid: currentUser.uid,
+          date: Timestamp.fromDate(correctedDate),
+          nepali_date: row[headerMap.nepaliDate] || null,
+          unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
+          unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
+          unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
+          unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
+          stationTrans: parseFloat(row[headerMap.stationTrans]) || null,
+          exportPlant: parseFloat(row[headerMap.exportPlant]) || null,
+          exportSubstation: parseFloat(row[headerMap.exportSubstation]) || null,
+          importOutgoing: parseFloat(row[headerMap.importOutgoing]) || null,
+          importSubstation: parseFloat(row[headerMap.importSubstation]) || null,
+          unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
+          unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
+        };
+        batch.set(docRef, docData, { merge: true });
+        operationsCount++;
+      });
+
+      if (operationsCount === 0) { return showNotification("No valid data rows found to upload.", true); }
+
+      try {
+        await batch.commit();
+        showNotification(`Successfully uploaded ${operationsCount} records.`, false);
+      } catch (error) {
+        console.error("Batch upload error:", error);
+        showNotification("Upload failed: " + (error.message || error), true);
+      }
+    }
     function loadAndListenData() {
       if (unsubscribe) unsubscribe();
       const dataCollection = collection(db, plantDataPath);
@@ -606,7 +623,7 @@
     }
 
     /*************************************************************************
-     * =============== OUTAGES & LOSSES logic (REVISED & FIXED) ==============
+     * =============== OUTAGES & LOSSES logic (REVISED) ======================
      *************************************************************************/
     const outagesDataPath = "outagesAndLosses";
     const outagesBody = document.getElementById("outages-body");
@@ -657,11 +674,9 @@
         const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
         const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
         
-        let displayCells = outageFields.map(f => {
-            const rawValue = d[f.key];
-            const displayValue = f.type === 'number' ? formatNumber(rawValue, 2) : rawValue;
-            return `<td class="tight-cell text-sm text-gray-500">${displayValue ?? ''}</td>`;
-        }).join('');
+        let displayCells = outageFields.map(f => `
+            <td class="tight-cell text-sm text-gray-500">${d[f.key] ?? ''}</td>
+        `).join('');
 
         return `
             <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
@@ -743,7 +758,8 @@
             
             if (isUpdate) {
                 editingOutageId = null;
-                renderOutagesTable(); // Force re-render immediately
+                // Full re-render will happen on next snapshot, or we can force it
+                loadOutagesData(); 
             } else {
                 // Clear input row
                 document.getElementById('add-new-outage-row').querySelectorAll('input[type=number], input[type=text]').forEach(el => el.value = '');
@@ -781,9 +797,6 @@
 
     // Download outages data as Excel
     outagesDownloadBtn.addEventListener('click', () => {
-        if (allOutages.length === 0) {
-            return showNotification("No outage data to download.", true);
-        }
         const excelHeaders = {
             id: 'Date',
             neaCurtailedEnergy: 'NEA Curtailed Energy',
@@ -822,7 +835,7 @@
         reader.onload = (e) => {
             try {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
-                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {raw: false});
                 if (jsonData.length === 0) return showNotification("File is empty.", true);
                 showConfirmation('Confirm Upload', `This will upload/overwrite ${jsonData.length} daily outage logs. Continue?`, () => processAndUploadOutages(jsonData));
             } catch (error) {
@@ -857,13 +870,21 @@
 
         jsonData.forEach(row => {
             const dateValue = row['Date'];
-            if (!dateValue || !(dateValue instanceof Date)) return; 
+            if (!dateValue) return; 
             
-            // Adjust for timezone offset from Excel Date object
-            const dateObj = new Date(dateValue.getTime() - (dateValue.getTimezoneOffset() * 60000));
+            // Handle Excel date serial number or date string
+            let dateObj;
+            if (typeof dateValue === 'number') { // Excel date serial number
+                 dateObj = XLSX.SSF.parse_date_code(dateValue);
+                 dateObj = new Date(dateObj.y, dateObj.m - 1, dateObj.d);
+            } else {
+                 dateObj = new Date(dateValue);
+            }
+            
             if (isNaN(dateObj.getTime())) return; // Skip invalid dates
 
-            const dateStr = dateObj.toISOString().split('T')[0];
+            const localDate = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000));
+            const dateStr = localDate.toISOString().split('T')[0];
 
             const docRef = doc(db, outagesDataPath, dateStr);
             const docData = {
@@ -1203,4 +1224,4 @@
 
   </script>
 </body>
-</ht
+</html>

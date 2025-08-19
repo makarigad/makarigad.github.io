@@ -180,7 +180,6 @@
     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, query, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    // Import signInAnonymously to fix permissions errors
     import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const firebaseConfig = { 
@@ -219,15 +218,16 @@
         return parseFloat(num).toFixed(decimals);
     }
 
-    function getPreviousDay(dateString) {
-        const date = new Date(dateString + 'T12:00:00'); // Use noon to avoid timezone boundary issues
-        date.setDate(date.getDate() - 1);
-        return date.toISOString().split('T')[0];
+    function getPreviousDayData(dateStr, allSortedData) {
+        const currentIndex = allSortedData.findIndex(d => d.id === dateStr);
+        if (currentIndex > 0) {
+            return allSortedData[currentIndex - 1];
+        }
+        return null;
     }
 
     function normalizeDate(dateValue) {
         if (!dateValue) return null;
-
         let dateObj;
         if (dateValue.toDate && typeof dateValue.toDate === 'function') {
             dateObj = dateValue.toDate();
@@ -238,13 +238,10 @@
         } else {
             return null;
         }
-
         if (isNaN(dateObj.getTime())) return null;
-
         const year = dateObj.getFullYear();
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
-        
         return `${year}-${month}-${day}`;
     }
 
@@ -260,7 +257,6 @@
             const plantDataCollection = collection(db, 'plantData');
             const q = query(plantDataCollection, orderBy('date', 'desc'), limit(400));
             const querySnapshot = await getDocs(q);
-            
             const data = [];
             querySnapshot.forEach((doc) => {
                 const docData = doc.data();
@@ -274,10 +270,8 @@
                     exportSubstation: parseFloat(docData.exportSubstation) || 0,
                     unit1Counter: parseFloat(docData.unit1Counter) || 0,
                     unit2Counter: parseFloat(docData.unit2Counter) || 0,
-                    
                 });
             });
-            
             if (data.length === 0) throw new Error('No data found in plantData collection.');
             return data;
         } catch (error) {
@@ -320,7 +314,6 @@
             errorState.classList.add('hidden');
             reportContent.classList.add('hidden');
             
-            // Fetch all three data sources in parallel
             const [plantData, monthlyContracts, outages] = await Promise.all([
                 fetchPlantData(),
                 fetchContractData(),
@@ -346,29 +339,27 @@
             loadingState.classList.add('hidden');
         }
     }
+    
     function generateReport(englishDateStr) {
         try {
-            const todayData = allData.find(d => d.id === englishDateStr);
-            const yesterdayData = allData.find(d => d.id === getPreviousDay(englishDateStr));
+            const endOfPeriodData = allData.find(d => d.id === englishDateStr);
+            const previousDayData = getPreviousDayData(englishDateStr, allData);
 
-            if (!todayData || !yesterdayData) {
+            if (!endOfPeriodData || !previousDayData) {
                 showError(`Data for ${englishDateStr} or its previous day is missing.`);
                 return;
             }
 
-            const fullNepaliDate = todayData.nepali_date || 'N/A';
-            let nepaliMonthName = 'Unknown';
-            if (todayData.nepali_date) {
-                const monthNumber = parseInt(todayData.nepali_date.split(/[-.]/)[1]);
-                if (NEPALI_MONTHS[monthNumber]) {
-                    nepaliMonthName = NEPALI_MONTHS[monthNumber];
-                }
-            }
-
-            const daily = calculateDailyValues(todayData, yesterdayData);
-            const monthly = calculateMonthlyValues(todayData, allData);
+            const displayNepaliDate = previousDayData.nepali_date || 'N/A';
             
-            renderReport(daily, monthly, fullNepaliDate, nepaliMonthName);
+            let [yYear, yMonth, yDay] = previousDayData.nepali_date.split(/[-.]/).map(p => parseInt(p));
+            const billingMonth = yMonth;
+            const nepaliMonthName = NEPALI_MONTHS[billingMonth];
+
+            const daily = calculateDailyValues(endOfPeriodData, previousDayData);
+            const monthly = calculateMonthlyValues(endOfPeriodData, previousDayData, allData);
+            
+            renderReport(daily, monthly, displayNepaliDate, nepaliMonthName, endOfPeriodData, previousDayData);
             
         } catch (error) {
             console.error('Report generation failed:', error);
@@ -378,10 +369,6 @@
 
     function calculateDailyValues(today, yesterday) {
         const daily = {};
-        // Find corresponding outage data for today and yesterday
-        const todayOutage = outagesData.find(o => o.id === today.id);
-        const yesterdayOutage = outagesData.find(o => o.id === yesterday.id);
-
         daily.generation = (today.unit1Gen + today.unit2Gen) - (yesterday.unit1Gen + yesterday.unit2Gen);
         daily.exportSubstation = today.exportSubstation - yesterday.exportSubstation;
         daily.exportPlant = today.exportPlant - yesterday.exportPlant;
@@ -394,100 +381,84 @@
         daily.unit1Hours = today.unit1Counter - yesterday.unit1Counter;
         daily.unit2Hours = today.unit2Counter - yesterday.unit2Counter;
         
-        // Correctly calculate losses from the outages data
-        daily.neaCurtailed = (todayOutage?.neaCurtailedEnergy || 0) - (yesterdayOutage?.neaCurtailedEnergy || 0);
-        daily.otherLosses = (todayOutage?.totalEnergyLoss || 0) - (yesterdayOutage?.totalEnergyLoss || 0);
+        const reportDayOutage = outagesData.find(o => o.id === yesterday.id);
+        daily.neaCurtailed = reportDayOutage?.neaCurtailedEnergy || 0;
+        daily.otherLosses = reportDayOutage?.totalEnergyLoss || 0;
         return daily;
     }
 
-    function calculateMonthlyValues(todayData, allData) {
+    function calculateMonthlyValues(endOfPeriodData, previousDayData, allData) {
         const monthly = {};
-        let nepaliMonth, nepaliYear, nepaliDay;
-        
-        if (todayData.nepali_date) {
-            const parts = todayData.nepali_date.split(/[-.]/);
-            if (parts.length === 3) [nepaliYear, nepaliMonth, nepaliDay] = parts.map(p => parseInt(p));
-        }
-        
-        if (!nepaliMonth) {
-            // Fallback if nepali_date is missing, though the main logic relies on it.
-            const date = new Date(todayData.id);
-            nepaliMonth = date.getMonth() + 1;
-            nepaliDay = date.getDate();
+
+        if (!previousDayData || !previousDayData.nepali_date) {
+            console.error("Missing Nepali date for the previous day's data.");
+            return {};
         }
 
-        // --- CUMULATIVE ENERGY CALCULATIONS (using your formula) ---
-        const monthlyPlantData = allData.filter(d => {
-            if (nepaliYear && d.nepali_date) {
-                const dParts = d.nepali_date.split(/[-.]/);
-                return dParts.length === 3 && parseInt(dParts[0]) === nepaliYear && parseInt(dParts[1]) === nepaliMonth;
-            }
-            return false; // Strictly filter by Nepali month and year
-        }).sort((a, b) => a.id.localeCompare(b.id));
-        
-        const monthStartData = monthlyPlantData[0];
-        if (monthStartData && todayData.id !== monthStartData.id) {
-            monthly.cumulativeGeneration = (todayData.unit1Gen + todayData.unit2Gen) - (monthStartData.unit1Gen + monthStartData.unit2Gen);
-            monthly.cumulativeExport = todayData.exportSubstation - monthStartData.exportSubstation;
-            monthly.cumulativePlantExport = todayData.exportPlant - monthStartData.exportPlant;
-            monthly.cumulativeStationConsumption = (todayData.stationTrans - monthStartData.stationTrans) / 1000;
-        } else {
-             Object.assign(monthly, { 
-                cumulativeGeneration: 0, cumulativeExport: 0, cumulativePlantExport: 0, cumulativeStationConsumption: 0
-            });
-        }
-        
-        // --- CUMULATIVE LOSS CALCULATIONS (Corrected Summing Logic using Nepali Calendar) ---
-        
-        // 1. Get the list of all Gregorian dates (IDs) for the current Nepali month, up to the selected day.
-        const relevantPlantDataForMonth = allData.filter(d => {
-            if (d.nepali_date) {
-                const dParts = d.nepali_date.split(/[-.]/);
-                if (dParts.length === 3) {
-                    const dYear = parseInt(dParts[0]);
-                    const dMonth = parseInt(dParts[1]);
-                    const dDay = parseInt(dParts[2]);
-                    // Check if it's the same Nepali month/year, and the day is on or before the selected day.
-                    return dYear === nepaliYear && dMonth === nepaliMonth && dDay <= nepaliDay;
-                }
-            }
-            return false;
+        let [billingYear, billingMonth, billingDay] = previousDayData.nepali_date.split(/[-.]/).map(p => parseInt(p));
+
+        const monthStartData = allData.find(d => {
+            if (!d.nepali_date) return false;
+            const [dYear, dMonth, dDay] = d.nepali_date.split(/[-.]/).map(Number);
+            return dYear === billingYear && dMonth === billingMonth && dDay === 1;
         });
-        const relevantGregorianDates = relevantPlantDataForMonth.map(d => d.id);
 
-        // 2. Filter the outagesData using this list of correct dates.
+        if (monthStartData && endOfPeriodData) {
+            monthly.cumulativeGeneration = (endOfPeriodData.unit1Gen + endOfPeriodData.unit2Gen) - (monthStartData.unit1Gen + monthStartData.unit2Gen);
+            monthly.cumulativeExport = endOfPeriodData.exportSubstation - monthStartData.exportSubstation;
+            monthly.cumulativePlantExport = endOfPeriodData.exportPlant - monthStartData.exportPlant;
+            monthly.cumulativeStationConsumption = (endOfPeriodData.stationTrans - monthStartData.stationTrans) / 1000;
+        } else {
+            Object.assign(monthly, { cumulativeGeneration: 0, cumulativeExport: 0, cumulativePlantExport: 0, cumulativeStationConsumption: 0 });
+        }
+        
+        // **FIX**: Correct summation period for non-cumulative losses (Day 2 of billing month to last day of billing month).
+        const lossStartData = allData.find(d => {
+            if (!d.nepali_date) return false;
+            const [dYear, dMonth, dDay] = d.nepali_date.split(/[-.]/).map(Number);
+            return dYear === billingYear && dMonth === billingMonth && dDay === 2;
+        });
+
+        let recordsForLossSummation = [];
+        if (lossStartData) {
+            const startIndex = allData.findIndex(d => d.id === lossStartData.id);
+            const endIndex = allData.findIndex(d => d.id === previousDayData.id); // End on the day of work
+            if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
+                recordsForLossSummation = allData.slice(startIndex, endIndex + 1);
+            }
+        }
+        
+        const relevantGregorianDates = recordsForLossSummation.map(d => d.id);
         const monthlyOutageData = outagesData.filter(o => relevantGregorianDates.includes(o.id));
 
-        // 3. Sum the daily values from the correctly filtered records.
         monthly.cumulativeNeaCurtailed = monthlyOutageData.reduce((sum, record) => sum + (parseFloat(record.neaCurtailedEnergy) || 0), 0);
         monthly.cumulativeOtherLosses = monthlyOutageData.reduce((sum, record) => sum + (parseFloat(record.totalEnergyLoss) || 0), 0);
 
-        // --- DERIVED & PPA CALCULATIONS ---
         monthly.cumulativeTransmissionLoss = monthly.cumulativePlantExport - monthly.cumulativeExport;
         monthly.cumulativeTransformerLoss = monthly.cumulativeGeneration - monthly.cumulativePlantExport - monthly.cumulativeStationConsumption;
-
-        const nepaliMonthName = NEPALI_MONTHS[nepaliMonth];
-        const contractInfo = contractData.find(c => c.year == nepaliYear && c.month == nepaliMonthName);
         
-        const totalDaysInMonth = contractInfo ? contractInfo.noOfDays : 30;
+        const nepaliMonthName = NEPALI_MONTHS[billingMonth];
+        const contractInfo = contractData.find(c => c.year == billingYear && c.month == nepaliMonthName);
+        const daysInBillingCycle = contractInfo ? contractInfo.noOfDays : 30;
+        
         monthly.guaranteedEnergy = contractInfo ? contractInfo.contractEnergy : 0;
         monthly.availabilityDeclaration = contractInfo ? contractInfo.totalAD : 0;
-
-        monthly.energyDifference = monthly.cumulativeExport - monthly.guaranteedEnergy;
-        monthly.monthlyPlantFactor = totalDaysInMonth > 0 ? (monthly.cumulativeExport / (10 * 24 * totalDaysInMonth)) * 100 : 0;
+        monthly.energyDifference = monthly.cumulativeExport - monthly.availabilityDeclaration;
         
-        const daysTillDate = nepaliDay - 1;
-        monthly.plantFactorTillDate = daysTillDate > 0 ? (monthly.cumulativeExport / (10 * 24 * daysTillDate)) * 100 : 0;
-        monthly.remainingDays = nepaliDay ? (totalDaysInMonth - nepaliDay) + 1 : 0;
+        const daysPassed = billingDay;
+
+        monthly.monthlyPlantFactor = daysInBillingCycle > 0 ? (monthly.cumulativeExport / (10 * 24 * daysInBillingCycle)) * 100 : 0;
+        monthly.plantFactorTillDate = daysPassed > 0 ? (monthly.cumulativeExport / (10 * 24 * daysPassed)) * 100 : 0;
+        monthly.remainingDays = daysInBillingCycle - daysPassed;
         
         return monthly;
     }
 
-    function renderReport(daily, monthly, fullNepaliDate, nepaliMonthName) {
+    function renderReport(daily, monthly, displayNepaliDate, nepaliMonthName, currentDayData, workDayData) {
         reportContent.classList.remove('hidden');
         
         document.getElementById('display-nepali-month').textContent = nepaliMonthName;
-        document.getElementById('display-nepali-date').textContent = fullNepaliDate;
+        document.getElementById('display-nepali-date').textContent = displayNepaliDate;
 
         document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(daily.avgLoadPowerhouse);
         document.getElementById('val-avg-load-substation').textContent = formatNumber(daily.avgLoadSubstation);
@@ -509,24 +480,18 @@
         document.getElementById('val-other-losses-month').textContent = formatNumber(monthly.cumulativeOtherLosses, 3);
         document.getElementById('val-unit1-hours-day').textContent = formatNumber(daily.unit1Hours, 1);
         document.getElementById('val-unit2-hours-day').textContent = formatNumber(daily.unit2Hours, 1);
-        document.getElementById('val-unit1-counter').textContent = formatNumber(allData.find(d => d.id === reportDateInput.value)?.unit1Counter || 0, 1);
-        document.getElementById('val-unit2-counter').textContent = formatNumber(allData.find(d => d.id === reportDateInput.value)?.unit2Counter || 0, 1);
+        
+        // **FIX**: Show cumulative hours from the day of work, not the day of reading.
+        document.getElementById('val-unit1-counter').textContent = formatNumber(workDayData.unit1Counter || 0, 1);
+        document.getElementById('val-unit2-counter').textContent = formatNumber(workDayData.unit2Counter || 0, 1);
 
         updatePieChart(monthly);
     }
     
     function updatePieChart(monthly) {
         const ctx = document.getElementById('energy-pie-chart').getContext('2d');
-        
         const chartData = {
-            labels: [
-                'Dispatched', 
-                'Transformer losses at PH', 
-                'Station Consumption', 
-                'Transmission Loss', 
-                'NEA Curtailed', 
-                'Other Losses'
-            ],
+            labels: [ 'Dispatched', 'Transformer losses at PH', 'Station Consumption', 'Transmission Loss', 'NEA Curtailed', 'Other Losses' ],
             datasets: [{
                 data: [
                     Math.max(0, monthly.cumulativeExport),
@@ -536,20 +501,12 @@
                     Math.max(0, monthly.cumulativeNeaCurtailed),
                     Math.max(0, monthly.cumulativeOtherLosses)
                 ],
-                backgroundColor: [
-                    '#1e3a8a', // Dispatched
-                    '#d97706', // Transformer losses
-                    '#ca8a04', // Station Consumption
-                    '#facc15', // Transmission Loss
-                    '#0ea5e9', // NEA Curtailed
-                    '#10b981'  // Other Losses
-                ],
+                backgroundColor: [ '#1e3a8a', '#d97706', '#ca8a04', '#facc15', '#0ea5e9', '#10b981' ],
                 borderColor: '#ffffff',
                 borderWidth: 2,
                 hoverOffset: 4
             }]
         };
-
         if (chartInstance) {
             chartInstance.data = chartData;
             chartInstance.update();
@@ -561,17 +518,8 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: { padding: 15, usePointStyle: true, font: { size: 12 } }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `${context.label}: ${formatNumber(context.parsed, 2)} MWh`;
-                                }
-                            }
-                        }
+                        legend: { position: 'right', labels: { padding: 15, usePointStyle: true, font: { size: 12 } } },
+                        tooltip: { callbacks: { label: function(context) { return `${context.label}: ${formatNumber(context.parsed, 2)} MWh`; } } }
                     }
                 }
             });
@@ -582,19 +530,14 @@
     refreshButton.addEventListener('click', loadData);
     retryButton.addEventListener('click', loadData);
     
-    // Corrected authentication flow
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            // If a user is signed in (either normally or anonymously), load the data.
             loadData();
         } else {
-            // If no user is signed in, attempt to sign in anonymously.
             signInAnonymously(auth).catch((error) => {
                 console.error("Anonymous sign-in failed", error);
                 showError("Authentication failed.", "Could not connect to the database securely.");
             });
-            // The onAuthStateChanged listener will be called again automatically
-            // after a successful sign-in, which will then trigger loadData().
         }
     });
     </script>

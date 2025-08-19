@@ -140,9 +140,13 @@
                     <div class="lg:col-span-1 space-y-6">
                         <div class="data-card">
                             <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly Generation/Dispatch Summary</h3>
-                            <div class="relative h-80 w-full">
+                            <div class="relative h-96 w-full">
                                 <canvas id="energy-pie-chart"></canvas>
                             </div>
+                        </div>
+                        <div class="data-card">
+                            <h3 class="font-bold text-lg mb-3 text-gray-800">Major Events / Comments</h3>
+                            <p id="val-major-events" class="text-gray-700 text-sm whitespace-pre-wrap"></p>
                         </div>
                         <div class="data-card">
                             <h3 class="font-bold text-lg mb-3 text-gray-800">Unit Running Hours</h3>
@@ -349,17 +353,21 @@
                 showError(`Data for ${englishDateStr} or its previous day is missing.`);
                 return;
             }
-
-            const displayNepaliDate = previousDayData.nepali_date || 'N/A';
+            
+            const displayNepaliDate = endOfPeriodData.nepali_date || 'N/A';
             
             let [yYear, yMonth, yDay] = previousDayData.nepali_date.split(/[-.]/).map(p => parseInt(p));
             const billingMonth = yMonth;
             const nepaliMonthName = NEPALI_MONTHS[billingMonth];
+            
+            const outageRecord = outagesData.find(o => o.id === previousDayData.id);
+            // **FIX**: Use the correct field name 'reason'.
+            const majorEvents = outageRecord?.reason || 'No major events reported.';
 
             const daily = calculateDailyValues(endOfPeriodData, previousDayData);
             const monthly = calculateMonthlyValues(endOfPeriodData, previousDayData, allData);
             
-            renderReport(daily, monthly, displayNepaliDate, nepaliMonthName, endOfPeriodData, previousDayData);
+            renderReport(daily, monthly, displayNepaliDate, nepaliMonthName, endOfPeriodData, previousDayData, majorEvents);
             
         } catch (error) {
             console.error('Report generation failed:', error);
@@ -412,23 +420,15 @@
             Object.assign(monthly, { cumulativeGeneration: 0, cumulativeExport: 0, cumulativePlantExport: 0, cumulativeStationConsumption: 0 });
         }
         
-        // **FIX**: Correct summation period for non-cumulative losses (Day 2 of billing month to last day of billing month).
-        const lossStartData = allData.find(d => {
-            if (!d.nepali_date) return false;
-            const [dYear, dMonth, dDay] = d.nepali_date.split(/[-.]/).map(Number);
-            return dYear === billingYear && dMonth === billingMonth && dDay === 2;
-        });
-
-        let recordsForLossSummation = [];
-        if (lossStartData) {
-            const startIndex = allData.findIndex(d => d.id === lossStartData.id);
-            const endIndex = allData.findIndex(d => d.id === previousDayData.id); // End on the day of work
-            if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
-                recordsForLossSummation = allData.slice(startIndex, endIndex + 1);
+        const relevantRecordsForMonth = allData.filter(d => {
+            if (d.nepali_date) {
+                const [dYear, dMonth, dDay] = d.nepali_date.split(/[-.]/).map(Number);
+                return dYear === billingYear && dMonth === billingMonth && dDay <= billingDay;
             }
-        }
+            return false;
+        });
         
-        const relevantGregorianDates = recordsForLossSummation.map(d => d.id);
+        const relevantGregorianDates = relevantRecordsForMonth.map(d => d.id);
         const monthlyOutageData = outagesData.filter(o => relevantGregorianDates.includes(o.id));
 
         monthly.cumulativeNeaCurtailed = monthlyOutageData.reduce((sum, record) => sum + (parseFloat(record.neaCurtailedEnergy) || 0), 0);
@@ -454,11 +454,12 @@
         return monthly;
     }
 
-    function renderReport(daily, monthly, displayNepaliDate, nepaliMonthName, currentDayData, workDayData) {
+    function renderReport(daily, monthly, displayNepaliDate, nepaliMonthName, currentDayData, workDayData, majorEvents) {
         reportContent.classList.remove('hidden');
         
         document.getElementById('display-nepali-month').textContent = nepaliMonthName;
         document.getElementById('display-nepali-date').textContent = displayNepaliDate;
+        document.getElementById('val-major-events').textContent = majorEvents;
 
         document.getElementById('val-avg-load-powerhouse').textContent = formatNumber(daily.avgLoadPowerhouse);
         document.getElementById('val-avg-load-substation').textContent = formatNumber(daily.avgLoadSubstation);
@@ -472,7 +473,7 @@
         document.getElementById('val-energy-difference').textContent = formatNumber(monthly.energyDifference);
         document.getElementById('val-monthly-plant-factor').textContent = formatNumber(monthly.monthlyPlantFactor);
         document.getElementById('val-plant-factor-till-date').textContent = formatNumber(monthly.plantFactorTillDate);
-        document.getElementById('val-remaining-days').textContent = monthly.remainingDays;
+        document.getElementById('val-remaining-days').textContent = formatNumber(monthly.remainingDays, 0);
         document.getElementById('val-transformer-loss-month').textContent = formatNumber(monthly.cumulativeTransformerLoss, 3);
         document.getElementById('val-station-consumption-month').textContent = formatNumber(monthly.cumulativeStationConsumption, 3);
         document.getElementById('val-transmission-loss-month').textContent = formatNumber(monthly.cumulativeTransmissionLoss, 3);
@@ -481,7 +482,6 @@
         document.getElementById('val-unit1-hours-day').textContent = formatNumber(daily.unit1Hours, 1);
         document.getElementById('val-unit2-hours-day').textContent = formatNumber(daily.unit2Hours, 1);
         
-        // **FIX**: Show cumulative hours from the day of work, not the day of reading.
         document.getElementById('val-unit1-counter').textContent = formatNumber(workDayData.unit1Counter || 0, 1);
         document.getElementById('val-unit2-counter').textContent = formatNumber(workDayData.unit2Counter || 0, 1);
 
@@ -518,8 +518,31 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { padding: 15, usePointStyle: true, font: { size: 12 } } },
-                        tooltip: { callbacks: { label: function(context) { return `${context.label}: ${formatNumber(context.parsed, 2)} MWh`; } } }
+                        legend: { 
+                            position: 'bottom', 
+                            labels: { 
+                                padding: 15, 
+                                usePointStyle: true, 
+                                font: { size: 12 },
+                                generateLabels: function(chart) {
+                                    const original = Chart.overrides.pie.plugins.legend.labels.generateLabels;
+                                    const labels = original.call(this, chart);
+                                    labels.forEach(label => {
+                                        const dataset = chart.data.datasets[0];
+                                        const value = dataset.data[label.index];
+                                        label.text = `${label.text}: ${formatNumber(value, 2)}`;
+                                    });
+                                    return labels;
+                                }
+                            } 
+                        },
+                        tooltip: { 
+                            callbacks: { 
+                                label: function(context) { 
+                                    return `${context.label}: ${formatNumber(context.parsed, 2)} MWh`; 
+                                } 
+                            } 
+                        }
                     }
                 }
             });

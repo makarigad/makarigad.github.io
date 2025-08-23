@@ -170,8 +170,8 @@
 
     <section id="trends-tab" class="tab-content hidden">
         <div class="data-card">
-            <h3 class="font-bold text-lg mb-3 text-gray-800">Daily Dispatch Trend</h3>
-            <div class="flex flex-wrap items-end space-x-4 p-4 border rounded-md bg-gray-50 mb-4">
+            <h3 class="font-bold text-lg mb-3 text-gray-800">Generation & Dispatch Trend</h3>
+            <div class="flex flex-wrap items-end gap-4 p-4 border rounded-md bg-gray-50 mb-4">
                 <div>
                     <label for="trend-start-date" class="block text-sm font-medium text-gray-700">Start Date</label>
                     <input type="date" id="trend-start-date" class="mt-1 table-input">
@@ -190,7 +190,10 @@
                 </div>
                 <button id="view-trend-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 text-sm">View Trend</button>
             </div>
-            <div id="trend-chart-options" class="flex flex-wrap gap-4 mb-4 p-4 border rounded-md bg-gray-50"></div>
+            <div class="p-4 border rounded-md bg-gray-50 mb-4">
+                <p class="text-sm font-medium text-gray-700 mb-2">Historical Data Overlay (Line Graphs)</p>
+                <div id="trend-chart-options" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+            </div>
             <div class="relative h-96 w-full">
                 <canvas id="daily-trend-chart"></canvas>
             </div>
@@ -648,102 +651,19 @@
         const displayData = [...allData].reverse();
         renderTable(displayData);
 
-        updateTrendChart(allData.slice(-31)); // Default to last 30 days
+        // Default to last 30 days on initial load
+        if (allData.length > 1) {
+            const last30DaysData = allData.slice(-31);
+            updateTrendChart(last30DaysData);
+        } else {
+            updateTrendChart([]);
+        }
 
       }, (error) => {
         console.error("Error fetching data:", error);
         showNotification("Error fetching data.", true);
       });
     }
-
-    function updateTrendChart(data, historicalData = []) {
-        const labels = [];
-        const dailyValues = [];
-
-        for (let i = 1; i < data.length; i++) {
-            const today = data[i];
-            const yesterday = data[i - 1];
-            const dailyDispatch = today.exportSubstation - yesterday.exportSubstation;
-            
-            labels.push(today.id.slice(5));
-            dailyValues.push(dailyDispatch);
-        }
-
-        const datasets = [{
-            label: 'Energy Dispatched (MWh)',
-            data: dailyValues,
-            backgroundColor: 'rgba(255, 159, 64, 0.5)',
-            borderColor: 'rgba(255, 159, 64, 1)',
-            borderWidth: 1,
-            type: 'bar',
-            yAxisID: 'y-energy'
-        }];
-
-        const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
-        let colorIndex = 0;
-        
-        document.querySelectorAll('#trend-chart-options input:checked').forEach(checkbox => {
-            const key = checkbox.value;
-            datasets.push({
-                label: key,
-                data: historicalData.map(d => ({ x: d.timestamp.toDate().toLocaleString(), y: d[key] })),
-                borderColor: colors[colorIndex % colors.length],
-                type: 'line',
-                yAxisID: `y-${key}`,
-                tension: 0.1,
-                pointRadius: 0
-            });
-            colorIndex++;
-        });
-
-        const scales = {
-            'y-energy': {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                title: {
-                    display: true,
-                    text: 'Energy (MWh)'
-                }
-            }
-        };
-        
-        datasets.slice(1).forEach(ds => {
-            scales[ds.yAxisID] = {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                title: {
-                    display: true,
-                    text: ds.label
-                },
-                grid: {
-                    drawOnChartArea: false // only want the grid lines for one axis to avoid clutter
-                }
-            };
-        });
-
-        const ctx = document.getElementById('daily-trend-chart').getContext('2d');
-        if (trendChartInstance) {
-            trendChartInstance.data.labels = labels;
-            trendChartInstance.data.datasets = datasets;
-            trendChartInstance.options.scales = scales;
-            trendChartInstance.update();
-        } else {
-            trendChartInstance = new Chart(ctx, {
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    scales: scales,
-                    responsive: true,
-                    maintainAspectRatio: false,
-                }
-            });
-        }
-    }
-
 
     /*************************************************************************
      * =============== OUTAGES & LOSSES logic ======================
@@ -1213,48 +1133,243 @@
     const trendNepaliYear = document.getElementById('trend-nepali-year');
     const trendNepaliMonth = document.getElementById('trend-nepali-month');
     const viewTrendBtn = document.getElementById('view-trend-btn');
+    const trendChartOptionsContainer = document.getElementById('trend-chart-options');
 
-    const currentNepaliYear = new Date().getFullYear() + 57;
-    for (let i = 0; i < 10; i++) {
-        const year = currentNepaliYear - i;
-        trendNepaliYear.add(new Option(year, year));
+    // --- NEW: Define historical data fields for chart options ---
+    const historicalFields = [
+        { key: 'waterlevel_cm', name: 'Water Level (cm)' },
+        { key: 'pressure_mwc', name: 'Pressure (mWC)' },
+        { key: 'activePower_kw', name: 'Active Power (kW)' },
+        { key: 'voltage_kv', name: 'Voltage (kV)' },
+        { key: 'reactivePower_kvar', name: 'Reactive Power (kVar)' },
+        { key: 'u1_spear_pct', name: 'U1 Spear (%)' },
+        { key: 'u1_activePower_kw', name: 'U1 Power (kW)' },
+        { key: 'u2_spear_pct', name: 'U2 Spear (%)' },
+        { key: 'u2_activePower_kw', name: 'U2 Power (kW)' }
+    ];
+
+    // --- NEW: Populate Nepali date dropdowns and historical chart options ---
+    function initializeTrendsTab() {
+        const currentNepaliYear = new Date().getFullYear() + 57;
+        for (let i = 0; i < 10; i++) {
+            const year = currentNepaliYear - i;
+            trendNepaliYear.add(new Option(year, year));
+        }
+        nepaliMonths.forEach(month => {
+            trendNepaliMonth.add(new Option(month, month));
+        });
+
+        historicalFields.forEach(field => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center';
+            div.innerHTML = `
+                <input type="checkbox" id="trend-check-${field.key}" value="${field.key}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 trend-checkbox">
+                <label for="trend-check-${field.key}" class="ml-2 block text-sm text-gray-900">${field.name}</label>
+            `;
+            trendChartOptionsContainer.appendChild(div);
+        });
+
+        // Add event listener to checkboxes to re-render chart without fetching data again
+        trendChartOptionsContainer.addEventListener('change', (e) => {
+            if (e.target.classList.contains('trend-checkbox')) {
+                viewTrendBtn.click(); // Re-trigger the trend view logic
+            }
+        });
     }
-    nepaliMonths.forEach(month => {
-        trendNepaliMonth.add(new Option(month, month));
-    });
+    initializeTrendsTab();
 
-    viewTrendBtn.addEventListener('click', () => {
-        const startDateValue = trendStartDate.value;
-        const endDateValue = trendEndDate.value;
+
+    // --- NEW: Function to fetch historical data for a given date range ---
+    async function fetchHistoricalDataForRange(startDate, endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999); // Ensure the end date is inclusive
+        const allHistoricalData = [];
+
+        let current = new Date(start.getFullYear(), start.getMonth(), 1);
+        while (current <= end) {
+            const year = current.getFullYear();
+            const month = String(current.getMonth() + 1).padStart(2, '0');
+            const collectionPath = `historicalData/${year}_${month}/data`;
+            
+            try {
+                const q = query(collection(db, collectionPath), orderBy('timestamp'));
+                const snapshot = await getDocs(q);
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const docDate = data.timestamp.toDate();
+                    if (docDate >= start && docDate <= end) {
+                        allHistoricalData.push(data);
+                    }
+                });
+            } catch (error) {
+                console.warn(`Could not fetch historical data for ${year}-${month}:`, error.message);
+            }
+            current.setMonth(current.getMonth() + 1);
+        }
+        return allHistoricalData;
+    }
+
+    // --- MODIFIED: Event listener for the "View Trend" button ---
+    viewTrendBtn.addEventListener('click', async () => {
+        viewTrendBtn.disabled = true;
+        viewTrendBtn.textContent = 'Loading...';
+
+        let startDateValue = trendStartDate.value;
+        let endDateValue = trendEndDate.value;
         const nepYear = trendNepaliYear.value;
         const nepMonth = trendNepaliMonth.value;
 
-        let filteredData = [];
+        // Auto-fill dates from Nepali selection if date fields are empty
+        if (!startDateValue && !endDateValue && nepYear && nepMonth) {
+            const monthIndex = nepaliMonths.indexOf(nepMonth) + 1;
+            if (monthIndex > 0) {
+                const monthNumStr = String(monthIndex).padStart(2, '0');
+                const recordsForMonth = allData.filter(d => {
+                    if (!d.nepali_date) return false;
+                    const [year, month] = d.nepali_date.split('-');
+                    return year === nepYear && month === monthNumStr;
+                });
 
-        if (startDateValue && endDateValue) {
-            filteredData = allData.filter(d => d.id >= startDateValue && d.id <= endDateValue);
-        } else if (nepYear && nepMonth) {
-            const recordsForMonth = allData.filter(d => {
-                if (!d.nepali_date) return false;
-                const [year, monthNumStr] = d.nepali_date.split('-');
-                const monthName = nepaliMonths[parseInt(monthNumStr, 10) - 1];
-                return year === nepYear && monthName === nepMonth;
-            });
-
-            if (recordsForMonth.length > 0) {
-                const startDate = recordsForMonth[0].id;
-                const endDate = recordsForMonth[recordsForMonth.length - 1].id;
-                filteredData = allData.filter(d => d.id >= startDate && d.id <= endDate);
+                if (recordsForMonth.length > 0) {
+                    const firstDay = recordsForMonth[0];
+                    const lastDay = recordsForMonth[recordsForMonth.length - 1];
+                    
+                    trendStartDate.value = firstDay.id;
+                    trendEndDate.value = lastDay.id;
+                    startDateValue = firstDay.id;
+                    endDateValue = lastDay.id;
+                    showNotification(`Date range set for ${nepMonth} ${nepYear}`);
+                }
             }
         }
-        
-        if (filteredData.length > 0) {
-            updateTrendChart(filteredData);
-        } else {
-            showNotification("No data found for the selected period.", true);
-            updateTrendChart([]);
+
+        if (!startDateValue || !endDateValue) {
+            showNotification("Please select a date range or a Nepali month/year.", true);
+            viewTrendBtn.disabled = false;
+            viewTrendBtn.textContent = 'View Trend';
+            return;
         }
+
+        const filteredDailyData = allData.filter(d => d.id >= startDateValue && d.id <= endDateValue);
+
+        if (filteredDailyData.length > 1) {
+            showNotification("Fetching historical data for trend overlay...");
+            const historicalData = await fetchHistoricalDataForRange(startDateValue, endDateValue);
+            updateTrendChart(filteredDailyData, historicalData);
+            if (historicalData.length === 0) {
+                showNotification("No detailed historical data found for this period.", false);
+            }
+        } else {
+            showNotification("Not enough daily data found for the selected period to show a trend.", true);
+            updateTrendChart([]); // Clear the chart
+        }
+
+        viewTrendBtn.disabled = false;
+        viewTrendBtn.textContent = 'View Trend';
     });
+
+    // --- NEW/REWRITTEN: Chart update function ---
+    function updateTrendChart(dailyData, historicalData = []) {
+        // Bar chart data (Daily Dispatch)
+        const dailyDispatchData = [];
+        for (let i = 1; i < dailyData.length; i++) {
+            const today = dailyData[i];
+            const yesterday = dailyData[i - 1];
+            const dailyDispatch = (today.exportSubstation - yesterday.exportSubstation);
+            if (!isNaN(dailyDispatch) && dailyDispatch >= 0) {
+                dailyDispatchData.push({
+                    x: new Date(today.id),
+                    y: dailyDispatch
+                });
+            }
+        }
+
+        const datasets = [{
+            label: 'Daily Energy Dispatched (MWh)',
+            data: dailyDispatchData,
+            backgroundColor: 'rgba(79, 70, 229, 0.6)',
+            borderColor: 'rgba(79, 70, 229, 1)',
+            borderWidth: 1,
+            type: 'bar',
+            yAxisID: 'y-energy',
+            order: 2 // Ensure bars are drawn behind lines
+        }];
+
+        // Line chart data (Historical SCADA)
+        const colors = ['#d97706', '#059669', '#db2777', '#6d28d9', '#2563eb', '#8b5cf6', '#ec4899', '#84cc16'];
+        let colorIndex = 0;
+        
+        const scales = {
+            x: {
+                type: 'time',
+                time: {
+                    unit: 'day',
+                    tooltipFormat: 'MMM d, yyyy HH:mm',
+                    displayFormats: { hour: 'HH:mm', day: 'MMM d', month: 'MMM yyyy' }
+                },
+                grid: { display: false },
+                ticks: { source: 'auto', maxRotation: 0, autoSkip: true }
+            },
+            'y-energy': {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'Energy (MWh)', color: '#4f46e5' },
+                ticks: { color: '#4f46e5' },
+                grid: { color: '#e5e7eb' }
+            }
+        };
+
+        document.querySelectorAll('#trend-chart-options input:checked').forEach(checkbox => {
+            const key = checkbox.value;
+            const fieldInfo = historicalFields.find(f => f.key === key);
+            if (historicalData && historicalData.length > 0) {
+                const yAxisID = `y-historical-${colorIndex}`;
+                datasets.push({
+                    label: fieldInfo ? fieldInfo.name : key,
+                    data: historicalData.map(d => ({ x: d.timestamp.toDate(), y: d[key] })).filter(p => p.y !== null),
+                    borderColor: colors[colorIndex % colors.length],
+                    type: 'line',
+                    yAxisID: yAxisID,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 1.5,
+                    order: 1 // Ensure lines are drawn on top of bars
+                });
+                
+                scales[yAxisID] = {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    offset: colorIndex > 0,
+                    title: { display: true, text: fieldInfo ? fieldInfo.name : key, color: colors[colorIndex % colors.length] },
+                    ticks: { color: colors[colorIndex % colors.length] },
+                    grid: { drawOnChartArea: false }
+                };
+                colorIndex++;
+            }
+        });
+
+        const ctx = document.getElementById('daily-trend-chart').getContext('2d');
+        if (trendChartInstance) {
+            trendChartInstance.data.datasets = datasets;
+            trendChartInstance.options.scales = scales;
+            trendChartInstance.update();
+        } else {
+            trendChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { tooltip: { position: 'nearest' }, legend: { position: 'top' } },
+                    scales: scales,
+                }
+            });
+        }
+    }
 
     /*************************************************************************
      * =============== HISTORICAL DATA logic ======================
@@ -1268,8 +1383,6 @@
     const historicalStatus = document.getElementById('historical-status');
     const historicalThead = document.getElementById('historical-thead');
     const historicalTbody = document.getElementById('historical-tbody');
-    const historicalChartContainer = document.getElementById('historical-chart-container');
-    const historicalChartOptions = document.getElementById('historical-chart-options');
 
     let lastFetchedHistoricalData = [];
 
@@ -1306,9 +1419,8 @@
 
         const lines = csvString.split(/\r\n|\n/).filter(line => line.trim() !== '');
         if (lines.length < 2) {
-            showNotification("File is empty or invalid.", true);
             historicalStatus.textContent = "Upload failed. File is empty or has no data rows.";
-            return;
+            return showNotification("File is empty or invalid.", true);
         }
 
         const headerLine = lines.shift();
@@ -1327,14 +1439,13 @@
         for (const key in headerMap) {
             const index = headers.indexOf(key);
             if (index === -1) {
-                showNotification(`Header '${key}' not found in CSV.`, true);
                 historicalStatus.textContent = `Upload failed. Missing column: ${key}`;
-                return;
+                return showNotification(`Header '${key}' not found in CSV.`, true);
             }
             mappedIndices[headerMap[key]] = index;
         }
 
-        const BATCH_SIZE = 490; // Firestore limit is 500 operations per batch
+        const BATCH_SIZE = 490;
         const batches = [];
         let currentBatch = writeBatch(db);
         let operationsInCurrentBatch = 0;
@@ -1378,9 +1489,8 @@
         }
 
         if (totalCount === 0) {
-            showNotification("No valid data rows found to upload.", true);
             historicalStatus.textContent = "Upload failed. No valid data rows found.";
-            return;
+            return showNotification("No valid data rows found to upload.", true);
         }
 
         try {
@@ -1405,7 +1515,6 @@
         historicalTbody.innerHTML = '';
         lastFetchedHistoricalData = [];
         historicalDownloadBtn.classList.add('hidden');
-        historicalChartContainer.classList.add('hidden');
 
         try {
             const q = query(collection(db, collectionPath), orderBy('timestamp'));
@@ -1440,7 +1549,6 @@
             historicalTbody.innerHTML = bodyHtml;
             historicalStatus.textContent = `Displaying ${data.length} records.`;
             historicalDownloadBtn.classList.remove('hidden');
-            createHistoricalChart(data);
 
         } catch (error) {
             console.error("Error fetching historical data:", error);
@@ -1449,97 +1557,9 @@
         }
     });
 
-    function createHistoricalChart(data) {
-        historicalChartContainer.classList.remove('hidden');
-        historicalChartOptions.innerHTML = ''; // Clear previous options
-        if (historicalChartInstance) {
-            historicalChartInstance.destroy();
-        }
-
-        const labels = data.map(d => d.timestamp.toDate().toLocaleTimeString());
-        const datasets = [];
-        const availableKeys = Object.keys(data[0]).filter(k => k !== 'timestamp');
-
-        availableKeys.forEach((key, index) => {
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = `check-${key}`;
-            checkbox.value = key;
-            checkbox.checked = index < 2; // Check first two by default
-            
-            const label = document.createElement('label');
-            label.htmlFor = `check-${key}`;
-            label.textContent = key;
-            label.className = "ml-2 text-sm";
-
-            const div = document.createElement('div');
-            div.className = "flex items-center";
-            div.appendChild(checkbox);
-            div.appendChild(label);
-            historicalChartOptions.appendChild(div);
-
-            checkbox.addEventListener('change', () => updateHistoricalChart(data));
-        });
-
-        updateHistoricalChart(data);
-    }
-
-    function updateHistoricalChart(data) {
-        const labels = data.map(d => d.timestamp.toDate().toLocaleTimeString());
-        const datasets = [];
-        const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
-        let colorIndex = 0;
-
-        document.querySelectorAll('#historical-chart-options input:checked').forEach(checkbox => {
-            const key = checkbox.value;
-            const isEnergy = key.toLowerCase().includes('power');
-            
-            datasets.push({
-                label: key,
-                data: data.map(d => d[key]),
-                type: isEnergy ? 'bar' : 'line',
-                borderColor: colors[colorIndex % colors.length],
-                backgroundColor: isEnergy ? `${colors[colorIndex % colors.length]}80` : 'transparent', // Semi-transparent for bars
-                yAxisID: `y-${key}`,
-                tension: 0.1
-            });
-            colorIndex++;
-        });
-
-        const scales = {};
-        datasets.forEach(ds => {
-            scales[ds.yAxisID] = {
-                type: 'linear',
-                display: true,
-                position: 'left',
-            };
-        });
-
-        if (historicalChartInstance) {
-            historicalChartInstance.data.labels = labels;
-            historicalChartInstance.data.datasets = datasets;
-            historicalChartInstance.options.scales = scales;
-            historicalChartInstance.update();
-        } else {
-            const ctx = document.getElementById('historical-chart').getContext('2d');
-            historicalChartInstance = new Chart(ctx, {
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: scales
-                }
-            });
-        }
-    }
-
     historicalDownloadBtn.addEventListener('click', () => {
         if (lastFetchedHistoricalData.length === 0) {
-            showNotification("No data available to download.", true);
-            return;
+            return showNotification("No data available to download.", true);
         }
 
         const dataToExport = lastFetchedHistoricalData.map(row => {

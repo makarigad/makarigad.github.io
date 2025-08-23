@@ -1293,8 +1293,9 @@
             order: 2
         }];
 
-        const colors = ['#d97706', '#059669', '#db2777', '#6d28d9', '#2563eb', '#8b5cf6', '#ec4899', '#84cc16'];
-        let colorIndex = 0;
+        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E53935', '#1E88E5', '#43A047'];
+        let axisColorIndex = 0;
+        let datasetColorIndex = 0;
         
         const scales = {
             x: {
@@ -1317,7 +1318,6 @@
             }
         };
 
-        // --- NEW: Logic to group axes by unit ---
         const axisMap = new Map();
         
         document.querySelectorAll('#trend-chart-options input:checked').forEach(checkbox => {
@@ -1332,14 +1332,14 @@
                 yAxisID = axisMap.get(unit).id;
             } else {
                 yAxisID = `y-unit-${axisMap.size}`;
-                axisMap.set(unit, { id: yAxisID, color: colors[colorIndex % colors.length], title: unit });
-                colorIndex++;
+                axisMap.set(unit, { id: yAxisID, color: colors[axisColorIndex % colors.length], title: unit });
+                axisColorIndex++;
             }
             
             datasets.push({
                 label: fieldInfo.name,
                 data: historicalData.map(d => ({ x: d.timestamp.toDate(), y: d[key] })).filter(p => p.y !== null),
-                borderColor: axisMap.get(unit).color,
+                borderColor: colors[datasetColorIndex % colors.length],
                 type: 'line',
                 yAxisID: yAxisID,
                 tension: 0.2,
@@ -1347,9 +1347,9 @@
                 borderWidth: 1.5,
                 order: 1
             });
+            datasetColorIndex++;
         });
 
-        // Create the scale definitions from the map
         axisMap.forEach((axisConfig, unit) => {
             scales[axisConfig.id] = {
                 type: 'linear',

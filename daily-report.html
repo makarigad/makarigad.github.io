@@ -6,6 +6,8 @@
     <title>Daily Report - Makari Gad Project</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Library to convert HTML to an image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -78,6 +80,11 @@
                         <span id="refresh-spinner" class="spinner hidden"></span>
                         <span>Refresh</span>
                     </button>
+                    <!-- New Download JPG Button -->
+                    <button id="download-jpg" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2 mt-6">
+                        <span id="download-spinner" class="spinner hidden"></span>
+                        <span>Download JPG</span>
+                    </button>
                 </div>
             </div>
             
@@ -111,20 +118,20 @@
                             </div>
                         </div>
                         <div class="data-card">
-                             <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly PPA Summary</h3>
-                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                 <div>
-                                     <p class="data-label">Cumulative Energy Export (Month)</p><p class="data-value"><span id="val-cumulative-export-month">0.00</span><span class="data-unit">MWh</span></p>
-                                     <p class="data-label mt-4">Guaranteed Energy (PPA for Month)</p><p class="data-value"><span id="val-guaranteed-energy">0.00</span><span class="data-unit">MWh</span></p>
-                                     <p class="data-label mt-4">Availability Declaration</p><p class="data-value"><span id="val-availability-declaration">0.00</span><span class="data-unit">MWh</span></p>
-                                     <p class="data-label mt-4">Energy Difference</p><p class="data-value"><span id="val-energy-difference">0.00</span><span class="data-unit">MWh</span></p>
-                                 </div>
-                                 <div>
-                                     <p class="data-label">Monthly Plant Factor</p><p class="data-value"><span id="val-monthly-plant-factor">0.00</span><span class="data-unit">%</span></p>
-                                     <p class="data-label mt-4">Plant Factor (Till Date)</p><p class="data-value"><span id="val-plant-factor-till-date">0.00</span><span class="data-unit">%</span></p>
-                                     <p class="data-label mt-4">Remaining Days in Month</p><p class="data-value"><span id="val-remaining-days">0</span><span class="data-unit">days</span></p>
-                                 </div>
-                             </div>
+                            <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly PPA Summary</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <p class="data-label">Cumulative Energy Export (Month)</p><p class="data-value"><span id="val-cumulative-export-month">0.00</span><span class="data-unit">MWh</span></p>
+                                    <p class="data-label mt-4">Guaranteed Energy (PPA for Month)</p><p class="data-value"><span id="val-guaranteed-energy">0.00</span><span class="data-unit">MWh</span></p>
+                                    <p class="data-label mt-4">Availability Declaration</p><p class="data-value"><span id="val-availability-declaration">0.00</span><span class="data-unit">MWh</span></p>
+                                    <p class="data-label mt-4">Energy Difference</p><p class="data-value"><span id="val-energy-difference">0.00</span><span class="data-unit">MWh</span></p>
+                                </div>
+                                <div>
+                                    <p class="data-label">Monthly Plant Factor</p><p class="data-value"><span id="val-monthly-plant-factor">0.00</span><span class="data-unit">%</span></p>
+                                    <p class="data-label mt-4">Plant Factor (Till Date)</p><p class="data-value"><span id="val-plant-factor-till-date">0.00</span><span class="data-unit">%</span></p>
+                                    <p class="data-label mt-4">Remaining Days in Month</p><p class="data-value"><span id="val-remaining-days">0</span><span class="data-unit">days</span></p>
+                                </div>
+                            </div>
                         </div>
                          <div class="data-card">
                             <h3 class="font-bold text-lg mb-3 text-gray-800">Monthly Losses & Consumption (Cumulative)</h3>
@@ -155,6 +162,13 @@
                             <hr class="my-4">
                             <p class="data-label">Unit 1 (Cumulative)</p><p class="data-value"><span id="val-unit1-counter">0.00</span><span class="data-unit">hrs</span></p>
                             <p class="data-label mt-2">Unit 2 (Cumulative)</p><p class="data-value"><span id="val-unit2-counter">0.00</span><span class="data-unit">hrs</span></p>
+                        </div>
+                    </div>
+                    <!-- New Trend Chart Section -->
+                    <div class="data-card lg:col-span-3 mt-6">
+                        <h3 class="font-bold text-lg mb-3 text-gray-800">Daily Dispatch Trend (Last 30 Days)</h3>
+                        <div class="relative h-72 w-full">
+                            <canvas id="daily-trend-chart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -201,7 +215,8 @@
 
     let allData = [];
     let contractData = [];
-    let chartInstance = null;
+    let pieChartInstance = null;
+    let trendChartInstance = null;
     let outagesData = [];
     
     const reportDateInput = document.getElementById('report-date');
@@ -212,6 +227,8 @@
     const refreshButton = document.getElementById('refresh-data');
     const refreshSpinner = document.getElementById('refresh-spinner');
     const retryButton = document.getElementById('retry-button');
+    const downloadJpgButton = document.getElementById('download-jpg');
+    const downloadSpinner = document.getElementById('download-spinner');
     
     const NEPALI_MONTHS = ["", "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Asoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
 
@@ -361,7 +378,6 @@
             const nepaliMonthName = NEPALI_MONTHS[billingMonth];
             
             const outageRecord = outagesData.find(o => o.id === previousDayData.id);
-            // **FIX**: Use the correct field name 'reason'.
             const majorEvents = outageRecord?.reason || 'No major events reported.';
 
             const daily = calculateDailyValues(endOfPeriodData, previousDayData);
@@ -486,6 +502,7 @@
         document.getElementById('val-unit2-counter').textContent = formatNumber(workDayData.unit2Counter || 0, 1);
 
         updatePieChart(monthly);
+        updateTrendChart(allData);
     }
     
     function updatePieChart(monthly) {
@@ -507,11 +524,11 @@
                 hoverOffset: 4
             }]
         };
-        if (chartInstance) {
-            chartInstance.data = chartData;
-            chartInstance.update();
+        if (pieChartInstance) {
+            pieChartInstance.data = chartData;
+            pieChartInstance.update();
         } else {
-            chartInstance = new Chart(ctx, {
+            pieChartInstance = new Chart(ctx, {
                 type: 'pie',
                 data: chartData,
                 options: {
@@ -549,9 +566,95 @@
         }
     }
 
+    function updateTrendChart(allData) {
+        const recentData = allData.slice(-31);
+        const labels = [];
+        const dailyValues = [];
+
+        for (let i = 1; i < recentData.length; i++) {
+            const today = recentData[i];
+            const yesterday = recentData[i - 1];
+            const dailyDispatch = today.exportSubstation - yesterday.exportSubstation;
+            
+            labels.push(today.id.slice(5));
+            dailyValues.push(dailyDispatch);
+        }
+
+        const ctx = document.getElementById('daily-trend-chart').getContext('2d');
+        const chartData = {
+            labels: labels,
+            datasets: [{
+                label: 'Energy Dispatched (MWh)',
+                data: dailyValues,
+                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            }]
+        };
+
+        if (trendChartInstance) {
+            trendChartInstance.data = chartData;
+            trendChartInstance.update();
+        } else {
+            trendChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    scales: { y: { beginAtZero: true } },
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // New function to download the report content as a JPG
+    async function downloadAsJPG() {
+        downloadSpinner.classList.remove('hidden');
+        downloadJpgButton.disabled = true;
+
+        const reportElement = document.getElementById('report-content');
+        
+        try {
+            const canvas = await html2canvas(reportElement, {
+                scale: 2, // Higher scale for better image quality
+                useCORS: true,
+                logging: false,
+                // Ensure charts are rendered correctly before capture
+                onclone: (document) => {
+                    // This can be used to apply styles specifically for the capture
+                }
+            });
+
+            const imageURL = canvas.toDataURL('image/jpeg', 0.9);
+
+            const link = document.createElement('a');
+            const nepaliDate = document.getElementById('display-nepali-date').textContent || 'report';
+            link.download = `Makari_Gad_Report_${nepaliDate.replace(/ /g, '_')}.jpg`;
+            link.href = imageURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (error) {
+            console.error('Failed to generate image:', error);
+            // In a real app, you might show a more user-friendly error message
+            alert('Could not generate the image. Please try again.');
+        } finally {
+            downloadSpinner.classList.add('hidden');
+            downloadJpgButton.disabled = false;
+        }
+    }
+
     reportDateInput.addEventListener('change', () => generateReport(reportDateInput.value));
     refreshButton.addEventListener('click', loadData);
     retryButton.addEventListener('click', loadData);
+    downloadJpgButton.addEventListener('click', downloadAsJPG); // Attach event listener
     
     onAuthStateChanged(auth, (user) => {
         if (user) {

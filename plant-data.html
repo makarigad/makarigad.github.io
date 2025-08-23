@@ -351,7 +351,7 @@
       return `
         <tr id="add-new-row" class="bg-indigo-50">
             <td class="tight-cell-input"><input type="date" id="new-date" class="table-input" value="${dateString}" required /></td>
-            <td class="tight-cell-input"><input type="text" id="new-nepali_date" class="table-input" placeholder="YYYY-MM-DD" /></td>
+            <td class="tight-cell-input"><input type="text" id="new-nepali_date" class="table-input" placeholder="YYYY.MM.DD" /></td>
             <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
             <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
             <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
@@ -1135,7 +1135,6 @@
     const viewTrendBtn = document.getElementById('view-trend-btn');
     const trendChartOptionsContainer = document.getElementById('trend-chart-options');
 
-    // --- NEW: Define historical data fields for chart options ---
     const historicalFields = [
         { key: 'waterlevel_cm', name: 'Water Level (cm)' },
         { key: 'pressure_mwc', name: 'Pressure (mWC)' },
@@ -1148,7 +1147,6 @@
         { key: 'u2_activePower_kw', name: 'U2 Power (kW)' }
     ];
 
-    // --- NEW: Populate Nepali date dropdowns and historical chart options ---
     function initializeTrendsTab() {
         const currentNepaliYear = new Date().getFullYear() + 57;
         for (let i = 0; i < 10; i++) {
@@ -1169,21 +1167,18 @@
             trendChartOptionsContainer.appendChild(div);
         });
 
-        // Add event listener to checkboxes to re-render chart without fetching data again
         trendChartOptionsContainer.addEventListener('change', (e) => {
             if (e.target.classList.contains('trend-checkbox')) {
-                viewTrendBtn.click(); // Re-trigger the trend view logic
+                viewTrendBtn.click(); 
             }
         });
     }
     initializeTrendsTab();
 
-
-    // --- NEW: Function to fetch historical data for a given date range ---
     async function fetchHistoricalDataForRange(startDate, endDate) {
         const start = new Date(startDate);
         const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // Ensure the end date is inclusive
+        end.setHours(23, 59, 59, 999); 
         const allHistoricalData = [];
 
         let current = new Date(start.getFullYear(), start.getMonth(), 1);
@@ -1210,7 +1205,6 @@
         return allHistoricalData;
     }
 
-    // --- MODIFIED: Event listener for the "View Trend" button ---
     viewTrendBtn.addEventListener('click', async () => {
         viewTrendBtn.disabled = true;
         viewTrendBtn.textContent = 'Loading...';
@@ -1220,15 +1214,18 @@
         const nepYear = trendNepaliYear.value;
         const nepMonth = trendNepaliMonth.value;
 
-        // Auto-fill dates from Nepali selection if date fields are empty
         if (!startDateValue && !endDateValue && nepYear && nepMonth) {
             const monthIndex = nepaliMonths.indexOf(nepMonth) + 1;
             if (monthIndex > 0) {
-                const monthNumStr = String(monthIndex).padStart(2, '0');
                 const recordsForMonth = allData.filter(d => {
-                    if (!d.nepali_date) return false;
-                    const [year, month] = d.nepali_date.split('-');
-                    return year === nepYear && month === monthNumStr;
+                    if (!d.nepali_date || typeof d.nepali_date !== 'string') return false;
+                    const parts = d.nepali_date.split('.');
+                    if (parts.length !== 3) return false;
+                    
+                    const recordYear = parts[0];
+                    const recordMonth = parseInt(parts[1], 10);
+                    
+                    return recordYear === nepYear && recordMonth === monthIndex;
                 });
 
                 if (recordsForMonth.length > 0) {
@@ -1240,6 +1237,8 @@
                     startDateValue = firstDay.id;
                     endDateValue = lastDay.id;
                     showNotification(`Date range set for ${nepMonth} ${nepYear}`);
+                } else {
+                    showNotification(`No data found for Nepali month: ${nepMonth} ${nepYear}`, true);
                 }
             }
         }
@@ -1262,16 +1261,14 @@
             }
         } else {
             showNotification("Not enough daily data found for the selected period to show a trend.", true);
-            updateTrendChart([]); // Clear the chart
+            updateTrendChart([]);
         }
 
         viewTrendBtn.disabled = false;
         viewTrendBtn.textContent = 'View Trend';
     });
 
-    // --- NEW/REWRITTEN: Chart update function ---
     function updateTrendChart(dailyData, historicalData = []) {
-        // Bar chart data (Daily Dispatch)
         const dailyDispatchData = [];
         for (let i = 1; i < dailyData.length; i++) {
             const today = dailyData[i];
@@ -1293,10 +1290,9 @@
             borderWidth: 1,
             type: 'bar',
             yAxisID: 'y-energy',
-            order: 2 // Ensure bars are drawn behind lines
+            order: 2
         }];
 
-        // Line chart data (Historical SCADA)
         const colors = ['#d97706', '#059669', '#db2777', '#6d28d9', '#2563eb', '#8b5cf6', '#ec4899', '#84cc16'];
         let colorIndex = 0;
         
@@ -1321,35 +1317,51 @@
             }
         };
 
+        // --- NEW: Logic to group axes by unit ---
+        const axisMap = new Map();
+        
         document.querySelectorAll('#trend-chart-options input:checked').forEach(checkbox => {
             const key = checkbox.value;
             const fieldInfo = historicalFields.find(f => f.key === key);
-            if (historicalData && historicalData.length > 0) {
-                const yAxisID = `y-historical-${colorIndex}`;
-                datasets.push({
-                    label: fieldInfo ? fieldInfo.name : key,
-                    data: historicalData.map(d => ({ x: d.timestamp.toDate(), y: d[key] })).filter(p => p.y !== null),
-                    borderColor: colors[colorIndex % colors.length],
-                    type: 'line',
-                    yAxisID: yAxisID,
-                    tension: 0.2,
-                    pointRadius: 0,
-                    borderWidth: 1.5,
-                    order: 1 // Ensure lines are drawn on top of bars
-                });
-                
-                scales[yAxisID] = {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    offset: colorIndex > 0,
-                    title: { display: true, text: fieldInfo ? fieldInfo.name : key, color: colors[colorIndex % colors.length] },
-                    ticks: { color: colors[colorIndex % colors.length] },
-                    grid: { drawOnChartArea: false }
-                };
+            if (!fieldInfo || !historicalData || historicalData.length === 0) return;
+
+            const unit = fieldInfo.name.substring(fieldInfo.name.indexOf('(') + 1, fieldInfo.name.indexOf(')'));
+            let yAxisID;
+
+            if (axisMap.has(unit)) {
+                yAxisID = axisMap.get(unit).id;
+            } else {
+                yAxisID = `y-unit-${axisMap.size}`;
+                axisMap.set(unit, { id: yAxisID, color: colors[colorIndex % colors.length], title: unit });
                 colorIndex++;
             }
+            
+            datasets.push({
+                label: fieldInfo.name,
+                data: historicalData.map(d => ({ x: d.timestamp.toDate(), y: d[key] })).filter(p => p.y !== null),
+                borderColor: axisMap.get(unit).color,
+                type: 'line',
+                yAxisID: yAxisID,
+                tension: 0.2,
+                pointRadius: 0,
+                borderWidth: 1.5,
+                order: 1
+            });
         });
+
+        // Create the scale definitions from the map
+        axisMap.forEach((axisConfig, unit) => {
+            scales[axisConfig.id] = {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                offset: true,
+                title: { display: true, text: axisConfig.title, color: axisConfig.color },
+                ticks: { color: axisConfig.color },
+                grid: { drawOnChartArea: false }
+            };
+        });
+
 
         const ctx = document.getElementById('daily-trend-chart').getContext('2d');
         if (trendChartInstance) {

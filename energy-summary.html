@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Energy Summary - Makari Gad Project</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f7fafc; }
+    th, td {
+        padding: 8px 4px !important;
+        font-size: 0.75rem;
+        white-space: normal;
+        word-wrap: break-word;
+        text-align: right;
+    }
+    th {
+        text-align: center;
+        font-weight: 600;
+        background-color: #f3f4f6;
+        vertical-align: middle;
+        border: 1px solid #e5e7eb; /* Added border for visual separation */
+    }
+    .header-rotate {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        white-space: nowrap;
+    }
+    .main-header { text-align: center; font-weight: bold; font-size: 0.875rem; }
+    .sub-header { text-align: center; font-weight: 600; font-size: 0.8rem; }
+  </style>
+</head>
+<body class="text-gray-800">
+
+  <header class="flex items-center justify-between p-4 bg-white shadow">
+    <div>
+      <h1 class="text-2xl font-bold">Energy Summary</h1>
+      <p class="text-sm text-gray-500">Makari Gad Project | <a href="plant-data.html" class="text-indigo-600 hover:underline">Plant Data</a></p>
+    </div>
+    <div class="flex items-center space-x-3">
+        <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm">Download as Excel</button>
+        <div id="user-info" class="text-sm text-indigo-600 font-semibold cursor-pointer" title="Click to logout"></div>
+    </div>
+  </header>
+
+  <main class="p-4">
+    <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+      <table id="summary-table" class="w-full border-collapse border border-gray-300">
+        <thead>
+          <!-- Row 1: Main Headers -->
+          <tr>
+            <th rowspan="2" class="main-header">Year</th>
+            <th rowspan="2" class="main-header">Month</th>
+            <th rowspan="2" class="main-header">PPA Rate</th>
+            <th colspan="3" class="main-header">Days</th>
+            <th colspan="8" class="main-header">Energy - MWh</th>
+            <th colspan="15" class="main-header">Cashflow - NRs</th>
+            <th rowspan="2" class="main-header">Remarks</th>
+          </tr>
+          <!-- Row 2: Sub Headers -->
+          <tr>
+            <!-- Days -->
+            <th class="sub-header header-rotate">PPA Days</th>
+            <th class="sub-header header-rotate">Actual Days</th>
+            <th class="sub-header header-rotate">Plant Operation days</th>
+            <!-- Energy -->
+            <th class="sub-header header-rotate">Contract Energy as per PPA</th>
+            <th class="sub-header header-rotate">New Contract Energy as per days</th>
+            <th class="sub-header header-rotate">Energy to NEA</th>
+            <th class="sub-header header-rotate">Availability Declaration (AD)</th>
+            <th class="sub-header header-rotate">AD as per actual days</th>
+            <th class="sub-header header-rotate">Exported Energy</th>
+            <th class="sub-header header-rotate">Shutdown days</th>
+            <th class="sub-header header-rotate">Forced Outage</th>
+            <!-- Cashflow -->
+            <th class="sub-header header-rotate">Total energy to NEA</th>
+            <th class="sub-header header-rotate">Penalty</th>
+            <th class="sub-header header-rotate">Excess Energy</th>
+            <th class="sub-header header-rotate">Actual Import (MWh)</th>
+            <th class="sub-header header-rotate">Imported Energy (NRs)</th>
+            <th class="sub-header header-rotate">Excess Energy Charge</th>
+            <th class="sub-header header-rotate">Invoice Amount</th>
+            <th class="sub-header header-rotate">Total Penalty</th>
+            <th class="sub-header header-rotate">Refundable Penalty</th>
+            <th class="sub-header header-rotate">Non-Refundable Penalty</th>
+            <th class="sub-header header-rotate">Royalty 2%</th>
+            <th class="sub-header header-rotate">Bay/Control Charges</th>
+            <th class="sub-header header-rotate">Final Amount</th>
+            <th class="sub-header header-rotate">Refunded</th>
+            <th class="sub-header header-rotate">Cheque</th>
+          </tr>
+        </thead>
+        <tbody id="summary-body" class="bg-white divide-y divide-gray-200">
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script type="module">
+    // Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.7.2/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.7.2/firebase-firestore.js";
+
+    // --- CONFIG ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
+      authDomain: "makari-gad.firebaseapp.com",
+      projectId: "makari-gad",
+      storageBucket: "makari-gad.appspot.com",
+      messagingSenderId: "724611254155",
+      appId: "1:724611254155:web:79851f67861cee3f90918e"
+    };
+
+    // Init
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const summaryBody = document.getElementById("summary-body");
+    const userInfo = document.getElementById("user-info");
+
+    // --- CONSTANTS ---
+    const nepaliMonths = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Asoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
+    const winterMonths = new Set(["Poush","Magh","Falgun","Chaitra"]);
+    const BASE_TARIFF_YEAR = 2079;
+    const RATES_WINTER = [8.4, 8.65, 8.9, 9.16, 9.43, 9.71];
+    const RATES_REST   = [4.8, 4.94, 5.09, 5.24, 5.39, 5.55];
+    const RATE_WINTER_AFTER = 9.71;
+    const RATE_REST_AFTER   = 5.55;
+
+    // --- STATE ---
+    const monthlyContractData = {};
+    let dailyPlantData = [];
+
+    // --- HELPERS ---
+    const n = (v, d=2) => (v==null || isNaN(v)) ? "—" : parseFloat(v).toLocaleString("en-US",{minimumFractionDigits:d, maximumFractionDigits:d});
+
+    function safeSplitNepaliDate(s) {
+      if (typeof s !== "string" || s.length < 8) return null;
+      const normalized = s.replace(/[^\d]/g, '.');
+      const parts = normalized.split('.').filter(p => p);
+      if (parts.length !== 3) return null;
+      const [y, m, d] = parts.map(p => parseInt(p, 10));
+      if (isNaN(y) || isNaN(m) || isNaN(d) || y < 2070 || m < 1 || m > 12 || d < 1 || d > 32) return null;
+      return { y, m, d };
+    }
+
+    function calculatePpaRate(nepYear, monthName) {
+      const idx = Math.max(0, nepYear - BASE_TARIFF_YEAR);
+      if (winterMonths.has(monthName)) {
+        return (idx < RATES_WINTER.length) ? RATES_WINTER[idx] : RATE_WINTER_AFTER;
+      } else {
+        return (idx < RATES_REST.length) ? RATES_REST[idx] : RATE_REST_AFTER;
+      }
+    }
+    
+    function computeRoyalty(year, monthName, invoiceNRs, penaltyNRs, importMWh, ppaRate) {
+      const mIdx = nepaliMonths.indexOf(monthName);
+      const importNRs = (importMWh || 0) * (ppaRate || 0) * 1000;
+      if (year < 2081 || (year === 2081 && mIdx <= nepaliMonths.indexOf("Jestha"))) {
+        return 0.02 * Math.max(0, (invoiceNRs || 0) - (penaltyNRs || 0) - importNRs);
+      }
+      return 0.02 * Math.max(0, (invoiceNRs || 0) - importNRs);
+    }
+
+    function render() {
+      console.log("Render function called.");
+      summaryBody.innerHTML = "";
+
+      const keys = Object.keys(monthlyContractData);
+      console.log(`Rendering summary for ${keys.length} months.`);
+
+      if (keys.length === 0) {
+        summaryBody.innerHTML = `<tr><td colspan="30" class="text-center p-4">No valid monthly contract data found. Please check the 'monthlyContractEnergy' collection in Firestore.</td></tr>`;
+        return;
+      }
+      
+      // Sort keys after the check to ensure the message appears if empty
+      keys.sort((a,b)=>{
+        const [ya, ma] = a.split("_");
+        const [yb, mb] = b.split("_");
+        if (ya !== yb) return yb.localeCompare(ya);
+        return nepaliMonths.indexOf(mb) - nepaliMonths.indexOf(ma);
+      });
+
+      const lastReadingsByMonth = new Map();
+      for (const d of dailyPlantData) {
+        if(d.monthKey) {
+            lastReadingsByMonth.set(d.monthKey, {
+                export: d.exportSubstation,
+                import: d.importSubstation
+            });
+        }
+      }
+
+      for (const key of keys) {
+        const mce = monthlyContractData[key];
+        const year = Number(mce.year);
+        const month = String(mce.month);
+        const ppaDays = Number(mce.noOfDays || 0);
+        const contractEnergy = Number(mce.contractEnergy || 0);
+        const totalAD = Number(mce.totalAD || 0);
+
+        const currentMonthReadings = lastReadingsByMonth.get(key) || { export: 0, import: 0 };
+        
+        const monthIndex = nepaliMonths.indexOf(month);
+        const prevYear = monthIndex === 0 ? year - 1 : year;
+        const prevMonthName = monthIndex === 0 ? "Chaitra" : nepaliMonths[monthIndex - 1];
+        const prevMonthKey = `${prevYear}_${prevMonthName}`;
+        const prevMonthReadings = lastReadingsByMonth.get(prevMonthKey) || { export: 0, import: 0 };
+
+        const exportedEnergy = Math.max(0, currentMonthReadings.export - prevMonthReadings.export);
+        const importMWh = Math.max(0, currentMonthReadings.import - prevMonthReadings.import);
+
+        const actualDays = dailyPlantData.filter(d => d.monthKey === key).length;
+        const plantShutdownDays = Math.max(0, ppaDays - actualDays);
+        const plantOperationDays = actualDays;
+
+        const newContractEnergy = ppaDays > 0 ? (contractEnergy / ppaDays) * actualDays : 0;
+        const adAsPerActualDays = ppaDays > 0 ? (totalAD / ppaDays) * actualDays : 0;
+        const energyToNEA = plantOperationDays > 0 ? (exportedEnergy / plantOperationDays) * actualDays : 0;
+        const forcedOutage = plantOperationDays > 0 ? (exportedEnergy / plantOperationDays) * plantShutdownDays : 0;
+        const totalEnergyToNEA = exportedEnergy + forcedOutage;
+
+        const ppaRate = calculatePpaRate(year, month);
+        
+        const penaltyMWh = Math.max(0, (0.9 * adAsPerActualDays - exportedEnergy)) * 0.1;
+        
+        const excessEnergy = (exportedEnergy > totalAD && exportedEnergy <= newContractEnergy) ? (exportedEnergy - totalAD) : 0;
+        const excessEnergyCharge = excessEnergy * ppaRate * 1000 * 0.5;
+        
+        let invoiceAmount;
+        if (exportedEnergy <= newContractEnergy) {
+            invoiceAmount = (exportedEnergy * ppaRate * 1000) + excessEnergyCharge;
+        } else {
+            invoiceAmount = newContractEnergy * ppaRate * 1000;
+        }
+        
+        const totalPenaltyNRs = penaltyMWh * ppaRate * 1000;
+        let nonRefundableNRs = totalPenaltyNRs;
+        if (key === "2079_Chaitra") nonRefundableNRs = 260663.03;
+        const refundableNRs = Math.max(0, totalPenaltyNRs - nonRefundableNRs);
+
+        const royaltyNRs = computeRoyalty(year, month, invoiceAmount, totalPenaltyNRs, importMWh, ppaRate);
+        const importedEnergyNRs = importMWh * 10.4 * 1000;
+
+        let bayChargesNRs = 0;
+        if (key === "2079_Falgun") bayChargesNRs = 432000;
+        if (key === "2081_Magh") bayChargesNRs = 147724.14;
+
+        const finalAmount = invoiceAmount - importedEnergyNRs - totalPenaltyNRs - royaltyNRs - bayChargesNRs;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${year}</td><td>${month}</td><td>${n(ppaRate)}</td>
+          <td>${ppaDays}</td><td>${actualDays}</td><td>${plantOperationDays}</td>
+          <td>${n(contractEnergy)}</td><td>${n(newContractEnergy)}</td><td>${n(energyToNEA)}</td>
+          <td>${n(totalAD)}</td><td>${n(adAsPerActualDays)}</td><td>${n(exportedEnergy)}</td>
+          <td>${plantShutdownDays}</td><td>${n(forcedOutage)}</td><td>${n(totalEnergyToNEA)}</td>
+          <td>${n(penaltyMWh)}</td><td>${n(excessEnergy)}</td>
+          <td>${n(importMWh,3)}</td><td>${n(importedEnergyNRs)}</td>
+          <td>${n(excessEnergyCharge)}</td><td>${n(invoiceAmount)}</td>
+          <td>${n(totalPenaltyNRs)}</td><td>${n(refundableNRs)}</td><td>${n(nonRefundableNRs)}</td>
+          <td>${n(royaltyNRs)}</td><td>${n(bayChargesNRs)}</td><td>${n(finalAmount)}</td>
+          <td>—</td><td>—</td><td>—</td>
+        `;
+        summaryBody.appendChild(tr);
+      }
+    }
+
+    // --- DATA FETCH ---
+    function fetchAll() {
+      console.log("Starting data fetch...");
+      let gotMCE = false, gotPlant = false;
+      const tryRender = () => { if (gotMCE && gotPlant) render(); };
+
+      onSnapshot(query(collection(db, "monthlyContractEnergy")), snap => {
+        console.log(`Fetched ${snap.size} documents from monthlyContractEnergy.`);
+        monthlyContractData = {}; // Clear previous data
+        snap.forEach(doc => {
+          const d = doc.data();
+          if (d && d.year && d.month) monthlyContractData[`${d.year}_${d.month}`] = d;
+        });
+        console.log(`Processed ${Object.keys(monthlyContractData).length} valid monthly records.`);
+        gotMCE = true; tryRender();
+      }, err => { console.error("monthlyContractEnergy error:", err); gotMCE = true; tryRender(); });
+
+      onSnapshot(query(collection(db, "plantData"), orderBy("date")), snap => {
+        console.log(`Fetched ${snap.size} documents from plantData.`);
+        let invalidDateCount = 0;
+        dailyPlantData = snap.docs.map(doc => {
+          const d = doc.data() || {};
+          let key = "";
+          const parsedDate = safeSplitNepaliDate(String(d.nepali_date));
+          if (parsedDate) {
+            const mName = nepaliMonths[parsedDate.m - 1];
+            if (mName) key = `${parsedDate.y}_${mName}`;
+          } else {
+            if(d.nepali_date) invalidDateCount++;
+          }
+          return {
+            id: doc.id,
+            exportSubstation: Number(d.exportSubstation || 0),
+            importSubstation: Number(d.importSubstation || 0),
+            monthKey: key
+          };
+        });
+        console.log(`Processed ${dailyPlantData.length} daily records.`);
+        if (invalidDateCount > 0) {
+            console.warn(`${invalidDateCount} daily records have an unrecognized 'nepali_date' format.`);
+        }
+        
+        gotPlant = true; tryRender();
+      }, err => { console.error("plantData error:", err); gotPlant = true; tryRender(); });
+    }
+
+    // --- AUTH ---
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        userInfo.textContent = `Logged in as: ${user.email}`;
+        userInfo.onclick = () => signOut(auth);
+        fetchAll();
+      } else {
+        window.location.href = "index.html";
+      }
+    });
+
+    // --- EXPORT ---
+    document.getElementById("download-btn").addEventListener("click", () => {
+      const wb = XLSX.utils.table_to_book(document.getElementById("summary-table"), { sheet: "EnergySummary" });
+      XLSX.writeFile(wb, "EnergySummary_MakariGad.xlsx");
+    });
+  </script>
+</body>
+</html>

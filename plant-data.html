@@ -1,1626 +1,1641 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Plant Data - Makari Gad Project (Merged Tabs)</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Plant Data - Makari Gad Project</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f7fafc; }
-    .tab-button { cursor:pointer; padding:0.5rem 1rem; border-bottom:2px solid transparent; }
-    .tab-button.active { color:#4f46e5; font-weight:600; border-color:#4f46e5; }
-    .table-input { width:100%; padding:0.25rem; border:1px solid #d1d5db; border-radius:0.375rem; font-size:0.875rem; }
-    .tight-cell { padding:0.5rem; vertical-align:top; }
-    .tight-cell-input { padding:0.25rem; vertical-align:middle; }
-    .data-card {
-        background-color: #ffffff;
-        border-radius: 0.75rem;
-        padding: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    }
-    th { white-space: normal !important; }
-    .w-full { table-layout: fixed; width:100%; word-wrap:break-word; }
-    #data-body td, #outages-body td, #mce-body td, #historical-tbody td { font-size: 0.75rem; padding: 4px 3px !important; }
-    thead th { padding: 8px 4px !important; }
-    .reason-col { width: 500px; } /* Increased width for the reason column */
-  </style>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f7fafc; }
+        .tab-button { cursor:pointer; padding:0.5rem 1rem; border-bottom:2px solid transparent; }
+        .tab-button.active { color:#4f46e5; font-weight:600; border-color:#4f46e5; }
+        .table-input { width:100%; padding:0.25rem; border:1px solid #d1d5db; border-radius:0.375rem; font-size:0.875rem; }
+        .tight-cell { padding:0.5rem; vertical-align:top; }
+        .tight-cell-input { padding:0.25rem; vertical-align:middle; }
+        .data-card { background-color: #ffffff; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); }
+        th { white-space: normal !important; }
+        .w-full { table-layout: fixed; width:100%; word-wrap:break-word; }
+        #data-body td, #outages-body td, #mce-body td, #historical-tbody td { font-size: 0.75rem; padding: 4px 3px !important; }
+        thead th { padding: 8px 4px !important; }
+        .reason-col { width: 500px; }
+        .hidden { display:none; }
+        .truncate { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #notification-modal { transition: all 0.25s ease; }
+    </style>
 </head>
 <body class="text-gray-800">
 
-  <header class="flex items-center justify-between p-4 bg-white shadow">
-    <div>
-      <h1 class="text-2xl font-bold">Makari Gad Project</h1>
-      <p class="text-sm text-gray-500">Metering & Contract Energy</p>
+    <header class="flex items-center justify-between p-4 bg-white shadow">
+        <div>
+            <h1 class="text-2xl font-bold">Makari Gad Project</h1>
+            <p class="text-sm text-gray-500">Metering & Contract Energy</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <div id="user-info" class="text-sm text-indigo-600 font-semibold cursor-pointer" title="Click to logout"></div>
+        </div>
+    </header>
+
+    <div class="flex flex-wrap gap-4 p-4 bg-gray-50 border-b">
+        <div class="tab-button active" data-target="daily-tab">Daily Metering</div>
+        <div class="tab-button" data-target="outages-tab">Outages & Losses</div>
+        <div class="tab-button" data-target="monthly-tab">Monthly Contract Energy</div>
+        <div class="tab-button" data-target="trends-tab">Trends</div>
+        <div class="tab-button" data-target="historical-data-tab">Historical Data</div>
     </div>
-    <div class="flex items-center space-x-3">
-      <div id="user-info" class="text-sm text-indigo-600 font-semibold cursor-pointer" title="Click to logout"></div>
-    </div>
-  </header>
 
-  <div class="flex flex-wrap gap-4 p-4 bg-gray-50 border-b">
-    <div class="tab-button active" data-target="daily-tab">Daily Metering</div>
-    <div class="tab-button" data-target="outages-tab">Outages & Losses</div>
-    <div class="tab-button" data-target="monthly-tab">Monthly Contract Energy</div>
-    <div class="tab-button" data-target="trends-tab">Trends</div>
-    <div class="tab-button" data-target="historical-data-tab">Historical Data</div>
-  </div>
+    <main class="p-4">
 
-  <main class="p-4">
-
-    <section id="daily-tab" class="tab-content">
-      <div class="flex justify-between items-start mb-4">
-        <div>
-          <h2 class="text-xl font-semibold">Plant Daily Meter Readings</h2>
-          <p class="text-sm text-gray-500">Makari Gad Project | <a href="index.html" class="text-indigo-600 hover:underline">Home</a></p>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download as Excel</button>
-          <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload</button>
-          <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" title="Upload Excel, CSV, or XLS file" />
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
-        <h3 class="text-lg font-semibold mb-3">Historical Data</h3>
-        <table class="w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English Date</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nepali Date</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Trans</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Plant</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Substation</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Outgoing</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Substation</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Counter</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Counter</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="data-body" class="bg-white divide-y divide-gray-200">
-            </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="outages-tab" class="tab-content hidden">
-       <div class="flex justify-between items-start mb-4">
-        <div>
-          <h2 class="text-xl font-semibold">Outages & Losses Log</h2>
-           <p class="text-sm text-gray-500">Daily log for outages and energy losses.</p>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button id="outages-download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download Excel</button>
-          <button id="outages-upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload Excel</button>
-          <input type="file" id="outages-file-upload" class="hidden" accept=".xlsx, .xls, .csv" />
-        </div>
-      </div>
-       <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
-         <h3 class="text-lg font-semibold mb-3">Event History</h3>
-         <table class="w-full divide-y divide-gray-200">
-           <thead class="bg-gray-50">
-             <tr>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">NEA Curtailed Energy</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">NEA trip loss time (min)</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No of Trippings</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time (Min)</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time for Unit I (Min)</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time for Unit II (Min)</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy loss due to Line Tripping</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy loss due to Other reasons</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total energy loss</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase reason-col">Reason for Tripping</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
-                <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-             </tr>
-           </thead>
-           <tbody id="outages-body" class="bg-white divide-y divide-gray-200">
-             </tbody>
-         </table>
-       </div>
-    </section>
-
-    <section id="monthly-tab" class="tab-content hidden">
-      <div class="flex justify-between items-start mb-4">
-        <div>
-            <h2 class="text-xl font-semibold">Monthly Contract Energy</h2>
-            <p class="text-sm text-gray-500">Manage PPA contract energy values.</p>
-        </div>
-        <div class="flex items-center space-x-2">
-            <button id="mce-download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download Excel</button>
-            <button id="mce-upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload Excel</button>
-            <input type="file" id="mce-file-upload" class="hidden" accept=".xlsx, .xls, .csv" />
-        </div>
-      </div>
-      <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
-        <table class="w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Year</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week1 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week2 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week3 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week4 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week5 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total AD (MWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Contract Energy (MWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No. of Days</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="mce-body" class="bg-white divide-y divide-gray-200"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="trends-tab" class="tab-content hidden">
-        <div class="data-card">
-            <h3 class="font-bold text-lg mb-3 text-gray-800">Generation & Dispatch Trend</h3>
-            <div class="flex flex-wrap items-end gap-4 p-4 border rounded-md bg-gray-50 mb-4">
+        <!-- DAILY METERING -->
+        <section id="daily-tab" class="tab-content">
+            <div class="flex justify-between items-start mb-4">
                 <div>
-                    <label for="trend-start-date" class="block text-sm font-medium text-gray-700">Start Date</label>
-                    <input type="date" id="trend-start-date" class="mt-1 table-input">
+                    <h2 class="text-xl font-semibold">Plant Daily Meter Readings</h2>
+                    <p class="text-sm text-gray-500">Makari Gad Project | <a href="index.html" class="text-indigo-600 hover:underline">Home</a></p>
                 </div>
-                <div>
-                    <label for="trend-end-date" class="block text-sm font-medium text-gray-700">End Date</label>
-                    <input type="date" id="trend-end-date" class="mt-1 table-input">
+                <div class="flex items-center space-x-2">
+                    <button id="download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download as Excel</button>
+                    <button id="upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload</button>
+                    <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv" title="Upload Excel, CSV, or XLS file" />
                 </div>
-                 <div>
-                    <label for="trend-nepali-year" class="block text-sm font-medium text-gray-700">Nepali Year</label>
-                    <select id="trend-nepali-year" class="mt-1 table-input"></select>
-                </div>
-                <div>
-                    <label for="trend-nepali-month" class="block text-sm font-medium text-gray-700">Nepali Month</label>
-                    <select id="trend-nepali-month" class="mt-1 table-input"></select>
-                </div>
-                <button id="view-trend-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 text-sm">View Trend</button>
             </div>
-            <div class="p-4 border rounded-md bg-gray-50 mb-4">
-                <p class="text-sm font-medium text-gray-700 mb-2">Historical Data Overlay (Line Graphs)</p>
-                <div id="trend-chart-options" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
-            </div>
-            <div class="relative h-96 w-full">
-                <canvas id="daily-trend-chart"></canvas>
-            </div>
-        </div>
-    </section>
 
-    <section id="historical-data-tab" class="tab-content hidden">
-        <div class="data-card">
-            <h2 class="text-xl font-semibold mb-2">Historical Interval Data</h2>
-            <p class="text-sm text-gray-500 mb-4">Upload and view high-resolution SCADA data for a specific month.</p>
-            <div class="flex items-end space-x-4 p-4 border rounded-md bg-gray-50">
-                <div>
-                    <label for="historical-year" class="block text-sm font-medium text-gray-700">Year</label>
-                    <select id="historical-year" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
-                </div>
-                <div>
-                    <label for="historical-month" class="block text-sm font-medium text-gray-700">Month</label>
-                    <select id="historical-month" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                        <option value="1">January</option><option value="2">February</option><option value="3">March</option>
-                        <option value="4">April</option><option value="5">May</option><option value="6">June</option>
-                        <option value="7">July</option><option value="8">August</option><option value="9">September</option>
-                        <option value="10">October</option><option value="11">November</option><option value="12">December</option>
-                    </select>
-                </div>
-                <button id="historical-view-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 text-sm">View Data</button>
-                <button id="historical-upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload CSV</button>
-                <input type="file" id="historical-file-upload" class="hidden" accept=".csv" />
-                <button id="historical-download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download Excel</button>
-            </div>
-            <div id="historical-status" class="mt-4 text-sm text-gray-600"></div>
-            <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto mt-4">
+            <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+                <h3 class="text-lg font-semibold mb-3">Historical Data</h3>
                 <table class="w-full divide-y divide-gray-200">
-                    <thead id="historical-thead" class="bg-gray-50"></thead>
-                    <tbody id="historical-tbody" class="bg-white divide-y divide-gray-200"></tbody>
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English Date</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nepali Date</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Trans</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Plant</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Substation</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Outgoing</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Substation</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Counter</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Counter</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-body" class="bg-white divide-y divide-gray-200"></tbody>
                 </table>
             </div>
-        </div>
-    </section>
+        </section>
 
-  </main>
+        <!-- OUTAGES & LOSSES -->
+        <section id="outages-tab" class="tab-content hidden">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h2 class="text-xl font-semibold">Outages & Losses Log</h2>
+                    <p class="text-sm text-gray-500">Daily log for outages and energy losses.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="outages-download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download Excel</button>
+                    <button id="outages-upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload Excel</button>
+                    <input type="file" id="outages-file-upload" class="hidden" accept=".xlsx, .xls, .csv" />
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+                <h3 class="text-lg font-semibold mb-3">Event History</h3>
+                <table class="w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">NEA Curtailed Energy</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">NEA trip loss time (min)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No of Trippings</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time (Min)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time for Unit I (Min)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time for Unit II (Min)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy loss due to Line Tripping</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy loss due to Other reasons</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total energy loss</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase reason-col">Reason for Tripping</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="outages-body" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </section>
 
-  <div id="notification-modal" class="fixed top-5 right-5 bg-white border-l-4 p-4 rounded-md shadow-lg max-w-sm z-50 opacity-0 transform -translate-y-4 pointer-events-none">
-    <p id="notification-message" class="text-sm font-medium"></p>
-  </div>
+        <!-- MONTHLY CONTRACT ENERGY -->
+        <section id="monthly-tab" class="tab-content hidden">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h2 class="text-xl font-semibold">Monthly Contract Energy</h2>
+                    <p class="text-sm text-gray-500">Manage PPA contract energy values.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="mce-download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download Excel</button>
+                    <button id="mce-upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload Excel</button>
+                    <input type="file" id="mce-file-upload" class="hidden" accept=".xlsx, .xls, .csv" />
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+                <table class="w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Year</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week1 AD (kWh)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week2 AD (kWh)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week3 AD (kWh)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week4 AD (kWh)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week5 AD (kWh)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total AD (MWh)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Contract Energy (MWh)</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No. of Days</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
+                            <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mce-body" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </section>
 
-  <div id="confirm-modal-backdrop" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-40 flex items-center justify-center">
-    <div id="confirm-modal" class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md transform scale-95 opacity-0">
-      <h3 id="confirm-title" class="text-lg font-bold text-gray-900">Confirm Action</h3>
-      <p id="confirm-message" class="mt-2 text-sm text-gray-600">Are you sure?</p>
-      <div class="mt-6 flex justify-end space-x-3">
-        <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
-        <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
-      </div>
+        <!-- TRENDS -->
+        <section id="trends-tab" class="tab-content hidden">
+            <div class="data-card">
+                <h3 class="font-bold text-lg mb-3 text-gray-800">Generation & Dispatch Trend</h3>
+                <div class="flex flex-wrap items-end gap-4 p-4 border rounded-md bg-gray-50 mb-4">
+                    <div>
+                        <label for="trend-start-date" class="block text-sm font-medium text-gray-700">Start Date</label>
+                        <input type="date" id="trend-start-date" class="mt-1 table-input">
+                    </div>
+                    <div>
+                        <label for="trend-end-date" class="block text-sm font-medium text-gray-700">End Date</label>
+                        <input type="date" id="trend-end-date" class="mt-1 table-input">
+                    </div>
+                    <div>
+                        <label for="trend-nepali-year" class="block text-sm font-medium text-gray-700">Nepali Year</label>
+                        <select id="trend-nepali-year" class="mt-1 table-input"></select>
+                    </div>
+                    <div>
+                        <label for="trend-nepali-month" class="block text-sm font-medium text-gray-700">Nepali Month</label>
+                        <select id="trend-nepali-month" class="mt-1 table-input"></select>
+                    </div>
+                    <button id="view-trend-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 text-sm">View Trend</button>
+                </div>
+
+                <div class="p-4 border rounded-md bg-gray-50 mb-4">
+                    <p class="text-sm font-medium text-gray-700 mb-2">Select series to show</p>
+                    <div id="trend-chart-options" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+                </div>
+
+                <div class="relative h-96 w-full">
+                    <canvas id="daily-trend-chart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- HISTORICAL DATA -->
+        <section id="historical-data-tab" class="tab-content hidden">
+            <div class="data-card">
+                <h2 class="text-xl font-semibold mb-2">Historical Interval Data</h2>
+                <p class="text-sm text-gray-500 mb-4">Upload and view high-resolution SCADA data for a specific month.</p>
+                <div class="flex items-end space-x-4 p-4 border rounded-md bg-gray-50">
+                    <div>
+                        <label for="historical-year" class="block text-sm font-medium text-gray-700">Year</label>
+                        <select id="historical-year" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
+                    </div>
+                    <div>
+                        <label for="historical-month" class="block text-sm font-medium text-gray-700">Month</label>
+                        <select id="historical-month" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <button id="historical-view-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 text-sm">View Data</button>
+                    <button id="historical-upload-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 text-sm hidden">Upload CSV</button>
+                    <input type="file" id="historical-file-upload" class="hidden" accept=".csv" />
+                    <button id="historical-download-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm hidden">Download Excel</button>
+                </div>
+                <div id="historical-status" class="mt-4 text-sm text-gray-600"></div>
+                <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto mt-4">
+                    <table class="w-full divide-y divide-gray-200">
+                        <thead id="historical-thead" class="bg-gray-50"></thead>
+                        <tbody id="historical-tbody" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="notification-modal" class="fixed top-5 right-5 bg-white border-l-4 p-4 rounded-md shadow-lg max-w-sm z-50 opacity-0 transform -translate-y-4 pointer-events-none">
+        <p id="notification-message" class="text-sm font-medium"></p>
     </div>
-  </div>
 
-  <script type="module">
-    /*************************************************************************
-     * Firebase SDK imports
-     *************************************************************************/
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch, Timestamp, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <div id="confirm-modal-backdrop" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-40 flex items-center justify-center">
+        <div id="confirm-modal" class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md transform scale-95 opacity-0">
+            <h3 id="confirm-title" class="text-lg font-bold text-gray-900">Confirm Action</h3>
+            <p id="confirm-message" class="mt-2 text-sm text-gray-600">Are you sure?</p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
+            </div>
+        </div>
+    </div>
 
-    /*************************************************************************
-     * Config
-     *************************************************************************/
-    const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
-    const adminEmail = "upenjyo@gmail.com";
+    <script type="module">
+        /*************************************************************************
+         * Firebase SDK imports
+         *************************************************************************/
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, query, deleteDoc, writeBatch, Timestamp, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+        /*************************************************************************
+         * Config
+         *************************************************************************/
+        const firebaseConfig = { "apiKey": "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY", "authDomain": "makari-gad.firebaseapp.com", "projectId": "makari-gad", "storageBucket": "makari-gad.appspot.com", "messagingSenderId": "724611254155", "appId": "1:724611254155:web:79851f67861cee3f90918e" };
+        const adminEmail = "upenjyo@gmail.com";
 
-    let trendChartInstance = null;
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-    /*************************************************************************
-     * Tab switching behaviour
-     *************************************************************************/
-    document.querySelectorAll('.tab-button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        const target = btn.dataset.target;
-        document.getElementById(target).classList.remove('hidden');
-      });
-    });
+        let trendChartInstance = null;
+        let currentUser = null;
+        let unsubscribe = null;
+        let allData = [];
+        let editingRowId = null;
+        let allOutages = [];
+        let editingOutageId = null;
+        let allMCE = [];
+        let editingMCEId = null;
+        let lastFetchedHistoricalData = [];
 
-    /*************************************************************************
-     * Notification and confirm helpers
-     *************************************************************************/
-    const notificationModal = document.getElementById('notification-modal');
-    const notificationMessage = document.getElementById('notification-message');
-    function showNotification(msg, isError=false) {
-      notificationMessage.textContent = msg;
-      notificationModal.classList.remove('opacity-0','-translate-y-4');
-      notificationModal.style.borderLeftColor = isError ? '#dc2626' : '#10b981';
-      notificationModal.classList.add('opacity-100');
-      setTimeout(()=> {
-        notificationModal.classList.remove('opacity-100');
-        notificationModal.classList.add('opacity-0','-translate-y-4');
-      },4500);
-    }
-
-    const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
-    const confirmTitle = document.getElementById('confirm-title');
-    const confirmMessage = document.getElementById('confirm-message');
-    const confirmActionBtn = document.getElementById('confirm-action-btn');
-    const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
-
-    function showConfirmation(title, message, onConfirm) {
-      confirmTitle.textContent = title;
-      confirmMessage.textContent = message;
-      confirmModalBackdrop.classList.remove('hidden');
-      document.getElementById('confirm-modal').classList.remove('opacity-0','scale-95');
-      confirmActionBtn.onclick = () => { onConfirm(); hideConfirmation(); };
-    }
-    function hideConfirmation() {
-      confirmModalBackdrop.classList.add('hidden');
-      document.getElementById('confirm-modal').classList.add('opacity-0','scale-95');
-    }
-    confirmCancelBtn.addEventListener('click', hideConfirmation);
-    confirmModalBackdrop.addEventListener('click', (e)=> { if (e.target === confirmModalBackdrop) hideConfirmation(); });
-
-    /*************************************************************************
-     * =============== DAILY METERING logic ======================
-     *************************************************************************/
-    const plantDataPath = "plantData";
-    let currentUser = null;
-    let unsubscribe = null;
-    let allData = [];
-    let editingRowId = null;
-
-    const userInfo = document.getElementById("user-info");
-    const dataBody = document.getElementById("data-body");
-    const downloadBtn = document.getElementById("download-btn");
-    const uploadBtn = document.getElementById("upload-btn");
-    const fileUpload = document.getElementById("file-upload");
-
-    function formatNumber(num, decimals = 3) {
-      if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
-        return '';
-      }
-      const factor = Math.pow(10, decimals);
-      return Math.round(num * factor) / factor;
-    }
-
-    function createInputRow() {
-      const today = new Date();
-      const offset = today.getTimezoneOffset();
-      const localToday = new Date(today.getTime() - (offset * 60 * 1000));
-      const dateString = localToday.toISOString().split('T')[0];
-
-      return `
-        <tr id="add-new-row" class="bg-indigo-50">
-            <td class="tight-cell-input"><input type="date" id="new-date" class="table-input" value="${dateString}" required /></td>
-            <td class="tight-cell-input"><input type="text" id="new-nepali_date" class="table-input" placeholder="YYYY.MM.DD" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-unit2Trans" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-stationTrans" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-exportPlant" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-exportSubstation" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-importOutgoing" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-importSubstation" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"></td>
-            <td class="tight-cell-input"><input type="number" id="new-unit1Counter" step="any" class="table-input" /></td>
-            <td class="tight-cell-input"><input type="number" id="new-unit2Counter" step="any" class="table-input" /></td>
-            <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
-            <td class="tight-cell-input">
-                <button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
-            </td>
-        </tr>
-      `;
-    }
-
-    function createDisplayRowHtml(d) {
-      const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
-      const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
-      return `
-        <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
-        <td class="tight-cell text-sm text-gray-500">${d.nepali_date || ''}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Gen)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Gen)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Trans)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Trans)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.stationTrans)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportPlant)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportSubstation)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importOutgoing)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importSubstation)}</td>
-        <td class="tight-cell text-sm text-gray-500"></td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Counter)}</td>
-        <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Counter)}</td>
-        <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
-        <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
-            ${canEdit ? `<button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
-        </td>`;
-    }
-
-    function createEditRowHtml(docData) {
-      return `
-        <td class="tight-cell-input"><input type="date" class="table-input" value="${docData.id}" disabled /></td>
-        <td class="tight-cell-input"><input type="text" id="edit-nepali_date" class="table-input" value="${docData.nepali_date || ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-unit1Gen" step="any" class="table-input" value="${docData.unit1Gen ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-unit2Gen" step="any" class="table-input" value="${docData.unit2Gen ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-unit1Trans" step="any" class="table-input" value="${docData.unit1Trans ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-unit2Trans" step="any" class="table-input" value="${docData.unit2Trans ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-stationTrans" step="any" class="table-input" value="${docData.stationTrans ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-exportPlant" step="any" class="table-input" value="${docData.exportPlant ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-exportSubstation" step="any" class="table-input" value="${docData.exportSubstation ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-importOutgoing" step="any" class="table-input" value="${docData.importOutgoing ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-importSubstation" step="any" class="table-input" value="${docData.importSubstation ?? ''}" /></td>
-        <td class="tight-cell-input"></td>
-        <td class="tight-cell-input"><input type="number" id="edit-unit1Counter" step="any" class="table-input" value="${docData.unit1Counter ?? ''}" /></td>
-        <td class="tight-cell-input"><input type="number" id="edit-unit2Counter" step="any" class="table-input" value="${docData.unit2Counter ?? ''}" /></td>
-        <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
-        <td class="tight-cell flex space-x-2 whitespace-nowrap">
-            <button class="update-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${docData.id}">Update</button>
-            <button class="cancel-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
-        </td>
-      `;
-    }
-
-    function renderTable(data) {
-      dataBody.innerHTML = createInputRow();
-      data.forEach(d => {
-        const row = document.createElement('tr');
-        row.id = `row-${d.id}`;
-        row.innerHTML = (d.id === editingRowId) ? createEditRowHtml(d) : createDisplayRowHtml(d);
-        dataBody.appendChild(row);
-      });
-    }
-
-    async function handleAddOrUpdateEntry(docId, isUpdate = false) {
-      if (!currentUser) { showNotification("You must be logged in.", true); return; }
-
-      const prefix = isUpdate ? 'edit-' : 'new-';
-      const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`).value;
-      if (!dateVal) { showNotification("Please select an English date.", true); return; }
-
-      const data = {
-        user: currentUser.email,
-        uid: currentUser.uid,
-        date: Timestamp.fromDate(new Date(dateVal)),
-        nepali_date: document.getElementById(`${prefix}nepali_date`).value || null,
-        unit1Gen: parseFloat(document.getElementById(`${prefix}unit1Gen`).value) || null,
-        unit2Gen: parseFloat(document.getElementById(`${prefix}unit2Gen`).value) || null,
-        unit1Trans: parseFloat(document.getElementById(`${prefix}unit1Trans`).value) || null,
-        unit2Trans: parseFloat(document.getElementById(`${prefix}unit2Trans`).value) || null,
-        stationTrans: parseFloat(document.getElementById(`${prefix}stationTrans`).value) || null,
-        exportPlant: parseFloat(document.getElementById(`${prefix}exportPlant`).value) || null,
-        exportSubstation: parseFloat(document.getElementById(`${prefix}exportSubstation`).value) || null,
-        importOutgoing: parseFloat(document.getElementById(`${prefix}importOutgoing`).value) || null,
-        importSubstation: parseFloat(document.getElementById(`${prefix}importSubstation`).value) || null,
-        unit1Counter: parseFloat(document.getElementById(`${prefix}unit1Counter`).value) || null,
-        unit2Counter: parseFloat(document.getElementById(`${prefix}unit2Counter`).value) || null,
-      };
-
-      try {
-        await setDoc(doc(db, plantDataPath, dateVal), data, { merge: true });
-        showNotification(`Data ${isUpdate ? 'updated' : 'added'} successfully!`);
-        if (isUpdate) {
-          editingRowId = null;
-        } else {
-          const addRow = document.getElementById('add-new-row');
-          if (addRow) addRow.querySelectorAll('input').forEach(input => { if (input.type !== 'date') input.value = ''; });
-        }
-      } catch (error) {
-        console.error("Error saving data:", error);
-        showNotification("Error saving data: " + (error.message || error), true);
-      }
-    }
-
-    dataBody.addEventListener('click', e => {
-      if (e.target.id === 'add-entry-btn') handleAddOrUpdateEntry(null, false);
-      if (e.target.classList.contains('edit-btn')) {
-        editingRowId = JSON.parse(e.target.dataset.doc).id;
-        renderTable([...allData].reverse());
-      }
-      if (e.target.classList.contains('delete-btn')) {
-        showDeleteConfirm(e.target.dataset.id);
-      }
-      if (e.target.classList.contains('update-btn')) handleAddOrUpdateEntry(e.target.dataset.id, true);
-      if (e.target.classList.contains('cancel-btn')) {
-        editingRowId = null;
-        renderTable([...allData].reverse());
-      }
-    });
-
-    function showDeleteConfirm(docId) {
-      showConfirmation('Confirm Deletion', `Are you sure you want to delete the entry for ${docId}? This cannot be undone.`, () => deleteEntry(docId));
-    }
-
-    async function deleteEntry(docId) {
-      try {
-        await deleteDoc(doc(db, plantDataPath, docId));
-        showNotification("Entry deleted successfully.");
-      } catch (error) {
-        console.error("Error deleting document:", error);
-        showNotification("Error deleting entry: " + (error.message || error), true);
-      }
-    }
-
-    downloadBtn.addEventListener('click', () => {
-      const dataToExport = [...allData].reverse().map(d => ({
-        'English Date': d.id,
-        'Nepali Date': d.nepali_date,
-        'Unit 1 Generator Reading': d.unit1Gen,
-        'Unit 2 Generator Reading': d.unit2Gen,
-        'Unit 1 Transformer Reading': d.unit1Trans,
-        'Unit 2 Transformer Reading': d.unit2Trans,
-        'Station Transformer Reading': d.stationTrans,
-        'Export at Plant Outgoing Feeder': d.exportPlant,
-        'Export at Substation Feeder': d.exportSubstation,
-        'Import at Outgoing Feeder': d.importOutgoing,
-        'Import at Substation Feeder': d.importSubstation,
-        '': null,
-        'Unit 1 hour counter': d.unit1Counter,
-        'Unit 2 hour counter': d.unit2Counter,
-        'Operator': d.user
-      }));
-      const worksheet = XLSX.utils.json_to_sheet(dataToExport, {header: [
-        "English Date", "Nepali Date", "Unit 1 Generator Reading", "Unit 2 Generator Reading",
-        "Unit 1 Transformer Reading", "Unit 2 Transformer Reading", "Station Transformer Reading",
-        "Export at Plant Outgoing Feeder", "Export at Substation Feeder", "Import at Outgoing Feeder",
-        "Import at Substation Feeder", "", "Unit 1 hour counter", "Unit 2 hour counter", "Operator"
-      ]});
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "PlantData");
-      XLSX.writeFile(workbook, "PlantData_MakariGad.xlsx");
-      showNotification("Downloading Excel file...");
-    });
-
-    uploadBtn.addEventListener('click', () => fileUpload.click());
-    fileUpload.addEventListener('change', (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array'});
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-
-          if (jsonData.length < 2) {
-            return showNotification("File is empty or has no data rows.", true);
-          }
-          showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Continue?`, () => processAndUploadData(jsonData));
-        } catch (error) {
-          console.error("File read error:", error);
-          showNotification("Error reading file. Please ensure it's a valid Excel file.", true);
-        }
-      };
-      reader.readAsArrayBuffer(file);
-      fileUpload.value = '';
-    });
-
-    async function processAndUploadData(jsonData) {
-      if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
-      showNotification("Starting upload...", false);
-
-      const header = jsonData.shift().map(h => String(h ?? "").trim());
-      const headerMap = {
-        englishDate: header.indexOf('English Date'),
-        nepaliDate: header.indexOf('Nepali Date'),
-        unit1Gen: header.indexOf('Unit 1 Generator Reading'),
-        unit2Gen: header.indexOf('Unit 2 Generator Reading'),
-        unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
-        unit2Trans: header.indexOf('Unit 2 Transformer Reading'),
-        stationTrans: header.indexOf('Station Transformer Reading'),
-        exportPlant: header.indexOf('Export at Plant Outgoing Feeder'),
-        exportSubstation: header.indexOf('Export at Substation Feeder'),
-        importOutgoing: header.indexOf('Import at Outgoing Feeder'),
-        importSubstation: header.indexOf('Import at Substation Feeder'),
-        unit1Counter: header.indexOf('Unit 1 hour counter'),
-        unit2Counter: header.indexOf('Unit 2 hour counter'),
-      };
-
-      if (headerMap.englishDate === -1) { return showNotification("Upload failed. 'English Date' column not found.", true); }
-
-      const batch = writeBatch(db);
-      let operationsCount = 0;
-      jsonData.forEach(row => {
-        const dateValue = row[headerMap.englishDate];
-        if (dateValue === null || typeof dateValue === 'undefined') return;
-
-        let correctedDate;
-        if (typeof dateValue === 'number') {
-          const excelDate = XLSX.SSF.parse_date_code(dateValue, { date1904: false });
-          if (excelDate) {
-            correctedDate = new Date(excelDate.y, excelDate.m - 1, excelDate.d);
-          }
-        } else if (dateValue instanceof Date) {
-        correctedDate = new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
-      } else {
-          return;
-        }
-
-        if (!correctedDate || isNaN(correctedDate.getTime())) return;
-
-        const year = correctedDate.getFullYear();
-        const month = String(correctedDate.getMonth() + 1).padStart(2, '0');
-        const day = String(correctedDate.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-
-        const docRef = doc(db, plantDataPath, dateStr);
-        const docData = {
-          user: currentUser.email, uid: currentUser.uid,
-          date: Timestamp.fromDate(correctedDate),
-          nepali_date: row[headerMap.nepaliDate] || null,
-          unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
-          unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
-          unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
-          unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
-          stationTrans: parseFloat(row[headerMap.stationTrans]) || null,
-          exportPlant: parseFloat(row[headerMap.exportPlant]) || null,
-          exportSubstation: parseFloat(row[headerMap.exportSubstation]) || null,
-          importOutgoing: parseFloat(row[headerMap.importOutgoing]) || null,
-          importSubstation: parseFloat(row[headerMap.importSubstation]) || null,
-          unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
-          unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
-        };
-        batch.set(docRef, docData, { merge: true });
-        operationsCount++;
-      });
-
-      if (operationsCount === 0) { return showNotification("No valid data rows found to upload.", true); }
-
-      try {
-        await batch.commit();
-        showNotification(`Successfully uploaded ${operationsCount} records.`, false);
-      } catch (error) {
-        console.error("Batch upload error:", error);
-        showNotification("Upload failed: " + (error.message || error), true);
-      }
-    }
-    function loadAndListenData() {
-      if (unsubscribe) unsubscribe();
-      const dataCollection = collection(db, plantDataPath);
-      const q = query(dataCollection, orderBy("date"));
-      unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const rows = [];
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const dateStr = data.date.toDate().toISOString().split('T')[0];
-            rows.push({ id: dateStr, ...data });
+        /*************************************************************************
+         * Tab switching behaviour
+         *************************************************************************/
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                const target = btn.dataset.target;
+                document.getElementById(target).classList.remove('hidden');
+            });
         });
-        
-        allData = rows;
-        
-        const displayData = [...allData].reverse();
-        renderTable(displayData);
 
-        // Default to last 30 days on initial load
-        if (allData.length > 1) {
-            const last30DaysData = allData.slice(-31);
-            updateTrendChart(last30DaysData);
-        } else {
-            updateTrendChart([]);
+        /*************************************************************************
+         * Notification and confirm helpers
+         *************************************************************************/
+        const notificationModal = document.getElementById('notification-modal');
+        const notificationMessage = document.getElementById('notification-message');
+        function showNotification(msg, isError=false) {
+            notificationMessage.textContent = msg;
+            notificationModal.classList.remove('opacity-0','-translate-y-4');
+            notificationModal.style.borderLeftColor = isError ? '#dc2626' : '#10b981';
+            notificationModal.classList.add('opacity-100');
+            setTimeout(()=> {
+                notificationModal.classList.remove('opacity-100');
+                notificationModal.classList.add('opacity-0','-translate-y-4');
+            },4500);
         }
 
-      }, (error) => {
-        console.error("Error fetching data:", error);
-        showNotification("Error fetching data.", true);
-      });
-    }
+        const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
+        const confirmTitle = document.getElementById('confirm-title');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmActionBtn = document.getElementById('confirm-action-btn');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
 
-    /*************************************************************************
-     * =============== OUTAGES & LOSSES logic ======================
-     *************************************************************************/
-    const outagesDataPath = "outagesAndLosses";
-    const outagesBody = document.getElementById("outages-body");
-    const outagesDownloadBtn = document.getElementById('outages-download-btn');
-    const outagesUploadBtn = document.getElementById('outages-upload-btn');
-    const outagesFileUpload = document.getElementById('outages-file-upload');
-    
-    let allOutages = [];
-    let editingOutageId = null;
+        function showConfirmation(title, message, onConfirm) {
+            confirmTitle.textContent = title;
+            confirmMessage.textContent = message;
+            confirmModalBackdrop.classList.remove('hidden');
+            document.getElementById('confirm-modal').classList.remove('opacity-0','scale-95');
+            confirmActionBtn.onclick = () => { onConfirm(); hideConfirmation(); };
+        }
+        function hideConfirmation() {
+            confirmModalBackdrop.classList.add('hidden');
+            document.getElementById('confirm-modal').classList.add('opacity-0','scale-95');
+        }
+        confirmCancelBtn.addEventListener('click', hideConfirmation);
+        confirmModalBackdrop.addEventListener('click', (e)=> { if (e.target === confirmModalBackdrop) hideConfirmation(); });
 
-    const outageFields = [
-        { key: 'neaCurtailedEnergy', type: 'number'},
-        { key: 'neaTripLossTimeMin', type: 'number'},
-        { key: 'noOfTrippings', type: 'number'},
-        { key: 'lossTimeMin', type: 'number'},
-        { key: 'lossTimeU1Min', type: 'number'},
-        { key: 'lossTimeU2Min', type: 'number'},
-        { key: 'energyLossLineTrip', type: 'number'},
-        { key: 'energyLossOther', type: 'number'},
-        { key: 'totalEnergyLoss', type: 'number'},
-        { key: 'reason', type: 'text'},
-    ];
+        /*************************************************************************
+         * =============== DAILY METERING logic ======================
+         *************************************************************************/
+        const plantDataPath = "plantData";
+        const userInfo = document.getElementById("user-info");
+        const dataBody = document.getElementById("data-body");
+        const downloadBtn = document.getElementById("download-btn");
+        const uploadBtn = document.getElementById("upload-btn");
+        const fileUpload = document.getElementById("file-upload");
 
-    function createOutageInputRow() {
-        const today = new Date();
-        const offset = today.getTimezoneOffset();
-        const localToday = new Date(today.getTime() - (offset * 60 * 1000));
-        const dateString = localToday.toISOString().split('T')[0];
+        function formatNumber(num, decimals = 3) {
+            if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) {
+                return '';
+            }
+            const factor = Math.pow(10, decimals);
+            return Math.round(num * factor) / factor;
+        }
 
-        let inputCells = outageFields.map(f => `
-            <td class="tight-cell-input"><input type="${f.type}" id="new-${f.key}" step="any" class="table-input" /></td>
-        `).join('');
+        function createInputRow() {
+            const today = new Date();
+            const offset = today.getTimezoneOffset();
+            const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+            const dateString = localToday.toISOString().split('T')[0];
 
-        return `
-            <tr id="add-new-outage-row" class="bg-indigo-50">
-                <td class="tight-cell-input"><input type="date" id="new-outage-date" class="table-input" value="${dateString}" required /></td>
-                ${inputCells}
+            return `
+                <tr id="add-new-row" class="bg-indigo-50">
+                    <td class="tight-cell-input"><input type="date" id="new-date" class="table-input" value="${dateString}" required /></td>
+                    <td class="tight-cell-input"><input type="text" id="new-nepali_date" class="table-input" placeholder="YYYY.MM.DD" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit1Gen" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit2Gen" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit1Trans" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit2Trans" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-stationTrans" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-exportPlant" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-exportSubstation" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-importOutgoing" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-importSubstation" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit1Counter" step="any" class="table-input" /></td>
+                    <td class="tight-cell-input"><input type="number" id="new-unit2Counter" step="any" class="table-input" /></td>
+                    <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
+                    <td class="tight-cell-input">
+                        <button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function createDisplayRowHtml(d) {
+            const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
+            const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
+            return `
+                <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
+                <td class="tight-cell text-sm text-gray-500">${d.nepali_date || ''}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Gen)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Gen)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Trans)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Trans)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.stationTrans)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportPlant)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.exportSubstation)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importOutgoing)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.importSubstation)}</td>
+                <td class="tight-cell text-sm text-gray-500"></td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit1Counter)}</td>
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d.unit2Counter)}</td>
+                <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
+                <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
+                    ${canEdit ? `<button class="edit-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
+                </td>`;
+        }
+
+        function createEditRowHtml(docData) {
+            return `
+                <td class="tight-cell-input"><input type="date" class="table-input" value="${docData.id}" disabled /></td>
+                <td class="tight-cell-input"><input type="text" id="edit-nepali_date" class="table-input" value="${docData.nepali_date || ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit1Gen" step="any" class="table-input" value="${docData.unit1Gen ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit2Gen" step="any" class="table-input" value="${docData.unit2Gen ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit1Trans" step="any" class="table-input" value="${docData.unit1Trans ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit2Trans" step="any" class="table-input" value="${docData.unit2Trans ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-stationTrans" step="any" class="table-input" value="${docData.stationTrans ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-exportPlant" step="any" class="table-input" value="${docData.exportPlant ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-exportSubstation" step="any" class="table-input" value="${docData.exportSubstation ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-importOutgoing" step="any" class="table-input" value="${docData.importOutgoing ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-importSubstation" step="any" class="table-input" value="${docData.importSubstation ?? ''}" /></td>
+                <td class="tight-cell-input"></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit1Counter" step="any" class="table-input" value="${docData.unit1Counter ?? ''}" /></td>
+                <td class="tight-cell-input"><input type="number" id="edit-unit2Counter" step="any" class="table-input" value="${docData.unit2Counter ?? ''}" /></td>
                 <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
-                <td class="tight-cell-input">
-                    <button id="add-outage-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
+                <td class="tight-cell flex space-x-2 whitespace-nowrap">
+                    <button class="update-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${docData.id}">Update</button>
+                    <button class="cancel-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
                 </td>
-            </tr>
-        `;
-    }
-
-    function createOutageDisplayRow(d) {
-        const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
-        const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
-        
-        let displayCells = outageFields.map(f => `
-            <td class="tight-cell text-sm text-gray-500 ${f.key === 'reason' ? 'reason-col' : ''}">${d[f.key] ?? ''}</td>
-        `).join('');
-
-        return `
-            <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
-            ${displayCells}
-            <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
-            <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
-                ${canEdit ? `<button class="edit-outage-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-outage-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
-            </td>
-        `;
-    }
-
-    function createOutageEditRow(d) {
-        let editCells = outageFields.map(f => `
-            <td class="tight-cell-input"><input type="${f.type}" id="edit-${f.key}" step="any" class="table-input" value="${d[f.key] ?? ''}" /></td>
-        `).join('');
-
-        return `
-            <td class="tight-cell-input"><input type="date" class="table-input" value="${d.id}" disabled /></td>
-            ${editCells}
-            <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
-            <td class="tight-cell flex space-x-2 whitespace-nowrap">
-                <button class="update-outage-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${d.id}">Update</button>
-                <button class="cancel-outage-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
-            </td>
-      `;
-    }
-    
-    function renderOutagesTable() {
-        if (!currentUser) return;
-        outagesBody.innerHTML = createOutageInputRow();
-        allOutages.forEach(d => {
-            const row = document.createElement('tr');
-            row.id = `outage-row-${d.id}`;
-            row.innerHTML = (d.id === editingOutageId) ? createOutageEditRow(d) : createOutageDisplayRow(d);
-            outagesBody.appendChild(row);
-        });
-    }
-
-    function loadOutagesData() {
-        const q = query(collection(db, outagesDataPath));
-        onSnapshot(q, (snapshot) => {
-            allOutages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            allOutages.sort((a, b) => b.id.localeCompare(a.id));
-            renderOutagesTable();
-        }, (error) => {
-            console.error("Error fetching outages:", error);
-            showNotification("Could not load outage data.", true);
-        });
-    }
-
-    async function handleAddOrUpdateOutage(docId, isUpdate = false) {
-        if (!currentUser) return showNotification("You must be logged in.", true);
-
-        const prefix = isUpdate ? 'edit-' : 'new-';
-        const dateVal = isUpdate ? docId : document.getElementById('new-outage-date').value;
-        if (!dateVal) return showNotification("Date is required.", true);
-
-        const data = {
-            user: currentUser.email,
-            uid: currentUser.uid,
-            updatedAt: Timestamp.now(),
-        };
-        
-        outageFields.forEach(f => {
-            const inputEl = document.getElementById(`${prefix}-${f.key}`);
-            if (f.type === 'number') {
-                data[f.key] = parseFloat(inputEl.value) || null;
-            } else {
-                data[f.key] = inputEl.value || null;
-            }
-        });
-
-        try {
-            const docRef = doc(db, outagesDataPath, dateVal);
-            await setDoc(docRef, data, { merge: true });
-            showNotification(`Outage log ${isUpdate ? 'updated' : 'added'} successfully!`);
-            
-            if (isUpdate) {
-                editingOutageId = null;
-            } else {
-                document.getElementById('add-new-outage-row').querySelectorAll('input[type=number], input[type=text]').forEach(el => el.value = '');
-            }
-        } catch (error) {
-            console.error("Error saving outage:", error);
-            showNotification("Error saving outage data: " + error.message, true);
+            `;
         }
-    }
 
-    outagesBody.addEventListener('click', async (e) => {
-        if (e.target.id === 'add-outage-btn') {
-            handleAddOrUpdateOutage(null, false);
-        } else if (e.target.classList.contains('edit-outage-btn')) {
-            editingOutageId = JSON.parse(e.target.dataset.doc).id;
-            renderOutagesTable();
-        } else if (e.target.classList.contains('update-outage-btn')) {
-            handleAddOrUpdateOutage(e.target.dataset.id, true);
-        } else if (e.target.classList.contains('cancel-outage-btn')) {
-            editingOutageId = null;
-            renderOutagesTable();
-        } else if (e.target.classList.contains('delete-outage-btn')) {
-            const docId = e.target.dataset.id;
-            showConfirmation('Confirm Deletion', `Are you sure you want to delete the log for ${docId}?`, async () => {
-                try {
-                    await deleteDoc(doc(db, outagesDataPath, docId));
-                    showNotification("Outage log deleted.");
-                } catch (error) {
-                    showNotification("Error deleting record: " + error.message, true);
-                }
+        function renderTable(data) {
+            dataBody.innerHTML = createInputRow();
+            data.forEach(d => {
+                const row = document.createElement('tr');
+                row.id = `row-${d.id}`;
+                row.innerHTML = (d.id === editingRowId) ? createEditRowHtml(d) : createDisplayRowHtml(d);
+                dataBody.appendChild(row);
             });
         }
-    });
 
-    outagesDownloadBtn.addEventListener('click', () => {
-        const excelHeaders = {
-            id: 'Date',
-            neaCurtailedEnergy: 'NEA Curtailed Energy',
-            neaTripLossTimeMin: 'NEA trip loss time (min)',
-            noOfTrippings: 'No of Trippings',
-            lossTimeMin: 'Loss Time (Min)',
-            lossTimeU1Min: 'Loss Time for Unit I (Min)',
-            lossTimeU2Min: 'Loss Time for Unit II(Min)',
-            energyLossLineTrip: 'Energy loss due to Line Tripping',
-            energyLossOther: 'Energy loss due to Other reasons',
-            totalEnergyLoss: 'Total energy loss',
-            reason: 'Reason for Tripping',
-            user: 'Operator'
-        };
+        async function handleAddOrUpdateEntry(docId, isUpdate = false) {
+            if (!currentUser) { showNotification("You must be logged in.", true); return; }
 
-        const dataToExport = allOutages.map(d => {
-            let row = {};
-            for (const key in excelHeaders) {
-                row[excelHeaders[key]] = d[key] ?? null;
-            }
-            return row;
-        });
+            const prefix = isUpdate ? 'edit-' : 'new-';
+            const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`).value;
+            if (!dateVal) { showNotification("Please select an English date.", true); return; }
 
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "OutagesAndLosses");
-        XLSX.writeFile(workbook, "OutagesAndLosses_MakariGad.xlsx");
-        showNotification("Downloading Outages Excel file...");
-    });
-    
-    outagesUploadBtn.addEventListener('click', () => outagesFileUpload.click());
-    outagesFileUpload.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
-                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {raw: false});
-                if (jsonData.length === 0) return showNotification("File is empty.", true);
-                showConfirmation('Confirm Upload', `This will upload/overwrite ${jsonData.length} daily outage logs. Continue?`, () => processAndUploadOutages(jsonData));
-            } catch (error) {
-                console.error("File upload error:", error);
-                showNotification("Error reading file. Make sure it's a valid Excel format.", true);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-        outagesFileUpload.value = '';
-    });
-
-    async function processAndUploadOutages(jsonData) {
-        if (!currentUser) return showNotification("Authentication error.", true);
-        showNotification("Starting upload of outage data...");
-
-        const headerMap = {
-            'Date': {key: 'id', type: 'date'},
-            'NEA Curtailed Energy': {key: 'neaCurtailedEnergy', type: 'number'},
-            'NEA trip loss time (min)': {key: 'neaTripLossTimeMin', type: 'number'},
-            'No of Trippings': {key: 'noOfTrippings', type: 'number'},
-            'Loss Time (Min)': {key: 'lossTimeMin', type: 'number'},
-            'Loss Time for Unit I (Min)': {key: 'lossTimeU1Min', type: 'number'},
-            'Loss Time for Unit II(Min)': {key: 'lossTimeU2Min', type: 'number'},
-            'Energy loss due to Line Tripping': {key: 'energyLossLineTrip', type: 'number'},
-            'Energy loss due to Other reasons': {key: 'energyLossOther', type: 'number'},
-            'Total energy loss': {key: 'totalEnergyLoss', type: 'number'},
-            'Reason for Tripping': {key: 'reason', type: 'string'},
-        };
-
-        const batch = writeBatch(db);
-        let count = 0;
-
-        jsonData.forEach(row => {
-            const dateValue = row['Date'];
-            if (!dateValue) return; 
-            
-            let dateObj;
-            if (typeof dateValue === 'number') {
-                 dateObj = XLSX.SSF.parse_date_code(dateValue);
-                 dateObj = new Date(dateObj.y, dateObj.m - 1, dateObj.d);
-            } else {
-                 dateObj = new Date(dateValue);
-            }
-            
-            if (isNaN(dateObj.getTime())) return;
-
-            const localDate = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000));
-            const dateStr = localDate.toISOString().split('T')[0];
-
-            const docRef = doc(db, outagesDataPath, dateStr);
-            const docData = {
+            const data = {
                 user: currentUser.email,
                 uid: currentUser.uid,
-                updatedAt: Timestamp.now()
+                date: Timestamp.fromDate(new Date(dateVal)),
+                nepali_date: document.getElementById(`${prefix}nepali_date`).value || null,
+                unit1Gen: parseFloat(document.getElementById(`${prefix}unit1Gen`).value) || null,
+                unit2Gen: parseFloat(document.getElementById(`${prefix}unit2Gen`).value) || null,
+                unit1Trans: parseFloat(document.getElementById(`${prefix}unit1Trans`).value) || null,
+                unit2Trans: parseFloat(document.getElementById(`${prefix}unit2Trans`).value) || null,
+                stationTrans: parseFloat(document.getElementById(`${prefix}stationTrans`).value) || null,
+                exportPlant: parseFloat(document.getElementById(`${prefix}exportPlant`).value) || null,
+                exportSubstation: parseFloat(document.getElementById(`${prefix}exportSubstation`).value) || null,
+                importOutgoing: parseFloat(document.getElementById(`${prefix}importOutgoing`).value) || null,
+                importSubstation: parseFloat(document.getElementById(`${prefix}importSubstation`).value) || null,
+                unit1Counter: parseFloat(document.getElementById(`${prefix}unit1Counter`).value) || null,
+                unit2Counter: parseFloat(document.getElementById(`${prefix}unit2Counter`).value) || null,
             };
-            
-            for(const header in headerMap){
-                if(row.hasOwnProperty(header)){
-                    const {key, type} = headerMap[header];
-                    if(key !== 'id'){
-                         docData[key] = (type === 'number') ? parseFloat(row[header]) || null : row[header] || null;
-                    }
-                }
-            }
 
-            batch.set(docRef, docData, {merge: true});
-            count++;
-        });
-
-        if (count === 0) return showNotification("No valid outage records with a 'Date' column found in the file.", true);
-
-        try {
-            await batch.commit();
-            showNotification(`Successfully uploaded ${count} outage records.`);
-        } catch (error) {
-            showNotification("Upload failed: " + error.message, true);
-        }
-    }
-
-
-    /*************************************************************************
-     * =============== MONTHLY CONTRACT ENERGY (MCE) logic ===================
-     *************************************************************************/
-    const mceDataPath = "monthlyContractEnergy";
-    const mceBody = document.getElementById('mce-body');
-    const mceDownloadBtn = document.getElementById('mce-download-btn');
-    const mceUploadBtn = document.getElementById('mce-upload-btn');
-    const mceFileUpload = document.getElementById('mce-file-upload');
-    
-    let allMCE = [];
-    let editingMCEId = null; // e.g. "2081_Baisakh"
-
-    const mceFields = [
-        { key: 'week1AD', name: 'Week1 AD (kWh)', type: 'number' },
-        { key: 'week2AD', name: 'Week2 AD (kWh)', type: 'number' },
-        { key: 'week3AD', name: 'Week3 AD (kWh)', type: 'number' },
-        { key: 'week4AD', name: 'Week4 AD (kWh)', type: 'number' },
-        { key: 'week5AD', name: 'Week5 AD (kWh)', type: 'number' },
-        { key: 'totalAD', name: 'Total AD (MWh)', type: 'number' },
-        { key: 'contractEnergy', name: 'Contract Energy (MWh)', type: 'number' },
-        { key: 'noOfDays', name: 'No. of Days', type: 'number' },
-    ];
-
-    const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Asoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-
-    function createMCEInputRow() {
-        const yearOptions = Array.from({length: 10}, (_, i) => new Date().getFullYear() - 5 + i + 57) // BS years
-            .map(y => `<option value="${y}">${y}</option>`).join('');
-        const monthOptions = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
-
-        let inputCells = mceFields.map(f => `
-            <td class="tight-cell-input"><input type="${f.type}" id="new-${f.key}" step="any" class="table-input" /></td>
-        `).join('');
-
-        return `
-            <tr id="add-new-mce-row" class="bg-indigo-50">
-                <td class="tight-cell-input"><select id="new-mce-year" class="table-input">${yearOptions}</select></td>
-                <td class="tight-cell-input"><select id="new-mce-month" class="table-input">${monthOptions}</select></td>
-                ${inputCells}
-                <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
-                <td class="tight-cell-input">
-                    <button id="add-mce-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
-                </td>
-            </tr>
-        `;
-    }
-
-    function createMCEDisplayRow(d) {
-        const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
-        const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
-
-        let displayCells = mceFields.map(f => `
-            <td class="tight-cell text-sm text-gray-500">${formatNumber(d[f.key], 2) ?? ''}</td>
-        `).join('');
-        
-        return `
-            <td class="tight-cell text-sm font-medium text-gray-900">${d.year}</td>
-            <td class="tight-cell text-sm font-medium text-gray-900">${d.month}</td>
-            ${displayCells}
-            <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
-            <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
-                ${canEdit ? `<button class="edit-mce-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-mce-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
-            </td>
-        `;
-    }
-
-    function createMCEEditRow(d) {
-        let editCells = mceFields.map(f => `
-            <td class="tight-cell-input"><input type="${f.type}" id="edit-${f.key}" step="any" class="table-input" value="${d[f.key] ?? ''}" /></td>
-        `).join('');
-
-        return `
-            <td class="tight-cell-input"><input type="text" class="table-input" value="${d.year}" disabled /></td>
-            <td class="tight-cell-input"><input type="text" class="table-input" value="${d.month}" disabled /></td>
-            ${editCells}
-            <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
-            <td class="tight-cell flex space-x-2 whitespace-nowrap">
-                <button class="update-mce-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${d.id}">Update</button>
-                <button class="cancel-mce-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
-            </td>
-        `;
-    }
-
-    function renderMCETable() {
-        if (!currentUser) return;
-        mceBody.innerHTML = createMCEInputRow();
-        allMCE.forEach(d => {
-            const row = document.createElement('tr');
-            row.id = `mce-row-${d.id}`;
-            row.innerHTML = (d.id === editingMCEId) ? createMCEEditRow(d) : createMCEDisplayRow(d);
-            mceBody.appendChild(row);
-        });
-    }
-
-    function loadMCEData() {
-        const q = query(collection(db, mceDataPath));
-        onSnapshot(q, (snapshot) => {
-            allMCE = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            allMCE.sort((a, b) => b.id.localeCompare(a.id));
-            renderMCETable();
-        }, (error) => {
-            console.error("Error fetching MCE data:", error);
-            showNotification("Could not load Monthly Contract Energy data.", true);
-        });
-    }
-
-    async function handleAddOrUpdateMCE(docId, isUpdate = false) {
-        if (!currentUser) return showNotification("You must be logged in.", true);
-
-        const prefix = isUpdate ? 'edit-' : 'new-';
-        let year, month;
-        if(isUpdate) {
-            [year, month] = docId.split('_');
-        } else {
-            year = document.getElementById('new-mce-year').value;
-            month = document.getElementById('new-mce-month').value;
-        }
-
-        if (!year || !month) return showNotification("Year and Month are required.", true);
-        
-        const finalDocId = `${year}_${month}`;
-
-        const data = {
-            year: parseInt(year),
-            month: month,
-            user: currentUser.email,
-            uid: currentUser.uid,
-            updatedAt: Timestamp.now(),
-        };
-
-        mceFields.forEach(f => {
-            const inputEl = document.getElementById(`${prefix}-${f.key}`);
-            data[f.key] = parseFloat(inputEl.value) || null;
-        });
-
-        try {
-            const docRef = doc(db, mceDataPath, finalDocId);
-            await setDoc(docRef, data, { merge: true });
-            showNotification(`Contract Energy ${isUpdate ? 'updated' : 'added'} successfully!`);
-            if (isUpdate) {
-                editingMCEId = null;
-            } else {
-                document.getElementById('add-new-mce-row').querySelectorAll('input').forEach(el => el.value = '');
-            }
-        } catch (error) {
-            console.error("Error saving MCE data:", error);
-            showNotification("Error saving MCE data: " + error.message, true);
-        }
-    }
-
-    mceBody.addEventListener('click', (e) => {
-        if (e.target.id === 'add-mce-btn') {
-            handleAddOrUpdateMCE(null, false);
-        } else if (e.target.classList.contains('edit-mce-btn')) {
-            editingMCEId = JSON.parse(e.target.dataset.doc).id;
-            renderMCETable();
-        } else if (e.target.classList.contains('update-mce-btn')) {
-            handleAddOrUpdateMCE(e.target.dataset.id, true);
-        } else if (e.target.classList.contains('cancel-mce-btn')) {
-            editingMCEId = null;
-            renderMCETable();
-        } else if (e.target.classList.contains('delete-mce-btn')) {
-            const docId = e.target.dataset.id;
-            showConfirmation('Confirm Deletion', `Delete contract energy for ${docId.replace('_', ' ')}?`, async () => {
-                try {
-                    await deleteDoc(doc(db, mceDataPath, docId));
-                    showNotification("Record deleted.");
-                } catch (error) {
-                    showNotification("Error deleting: " + error.message, true);
-                }
-            });
-        }
-    });
-
-    /*************************************************************************
-     * =============== TRENDS logic ======================
-     *************************************************************************/
-    const trendStartDate = document.getElementById('trend-start-date');
-    const trendEndDate = document.getElementById('trend-end-date');
-    const trendNepaliYear = document.getElementById('trend-nepali-year');
-    const trendNepaliMonth = document.getElementById('trend-nepali-month');
-    const viewTrendBtn = document.getElementById('view-trend-btn');
-    const trendChartOptionsContainer = document.getElementById('trend-chart-options');
-
-    const historicalFields = [
-        { key: 'waterlevel_cm', name: 'Water Level (cm)' },
-        { key: 'pressure_mwc', name: 'Pressure (mWC)' },
-        { key: 'activePower_kw', name: 'Active Power (kW)' },
-        { key: 'voltage_kv', name: 'Voltage (kV)' },
-        { key: 'reactivePower_kvar', name: 'Reactive Power (kVar)' },
-        { key: 'u1_spear_pct', name: 'U1 Spear (%)' },
-        { key: 'u1_activePower_kw', name: 'U1 Power (kW)' },
-        { key: 'u2_spear_pct', name: 'U2 Spear (%)' },
-        { key: 'u2_activePower_kw', name: 'U2 Power (kW)' }
-    ];
-
-    function initializeTrendsTab() {
-        const currentNepaliYear = new Date().getFullYear() + 57;
-        for (let i = 0; i < 10; i++) {
-            const year = currentNepaliYear - i;
-            trendNepaliYear.add(new Option(year, year));
-        }
-        nepaliMonths.forEach(month => {
-            trendNepaliMonth.add(new Option(month, month));
-        });
-
-        historicalFields.forEach(field => {
-            const div = document.createElement('div');
-            div.className = 'flex items-center';
-            div.innerHTML = `
-                <input type="checkbox" id="trend-check-${field.key}" value="${field.key}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 trend-checkbox">
-                <label for="trend-check-${field.key}" class="ml-2 block text-sm text-gray-900">${field.name}</label>
-            `;
-            trendChartOptionsContainer.appendChild(div);
-        });
-
-        trendChartOptionsContainer.addEventListener('change', (e) => {
-            if (e.target.classList.contains('trend-checkbox')) {
-                viewTrendBtn.click(); 
-            }
-        });
-    }
-    initializeTrendsTab();
-
-    async function fetchHistoricalDataForRange(startDate, endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); 
-        const allHistoricalData = [];
-
-        let current = new Date(start.getFullYear(), start.getMonth(), 1);
-        while (current <= end) {
-            const year = current.getFullYear();
-            const month = String(current.getMonth() + 1).padStart(2, '0');
-            const collectionPath = `historicalData/${year}_${month}/data`;
-            
             try {
-                const q = query(collection(db, collectionPath), orderBy('timestamp'));
-                const snapshot = await getDocs(q);
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const docDate = data.timestamp.toDate();
-                    if (docDate >= start && docDate <= end) {
-                        allHistoricalData.push(data);
+                await setDoc(doc(db, plantDataPath, dateVal), data, { merge: true });
+                showNotification(`Data ${isUpdate ? 'updated' : 'added'} successfully!`);
+                if (isUpdate) {
+                    editingRowId = null;
+                } else {
+                    const addRow = document.getElementById('add-new-row');
+                    if (addRow) addRow.querySelectorAll('input').forEach(input => { if (input.type !== 'date') input.value = ''; });
+                }
+            } catch (error) {
+                console.error("Error saving data:", error);
+                showNotification("Error saving data: " + (error.message || error), true);
+            }
+        }
+
+        dataBody.addEventListener('click', e => {
+            if (e.target.id === 'add-entry-btn') handleAddOrUpdateEntry(null, false);
+            if (e.target.classList.contains('edit-btn')) {
+                editingRowId = JSON.parse(e.target.dataset.doc).id;
+                renderTable([...allData].reverse());
+            }
+            if (e.target.classList.contains('delete-btn')) {
+                showDeleteConfirm(e.target.dataset.id);
+            }
+            if (e.target.classList.contains('update-btn')) handleAddOrUpdateEntry(e.target.dataset.id, true);
+            if (e.target.classList.contains('cancel-btn')) {
+                editingRowId = null;
+                renderTable([...allData].reverse());
+            }
+        });
+
+        function showDeleteConfirm(docId) {
+            showConfirmation('Confirm Deletion', `Are you sure you want to delete the entry for ${docId}? This cannot be undone.`, () => deleteEntry(docId));
+        }
+
+        async function deleteEntry(docId) {
+            try {
+                await deleteDoc(doc(db, plantDataPath, docId));
+                showNotification("Entry deleted successfully.");
+            } catch (error) {
+                console.error("Error deleting document:", error);
+                showNotification("Error deleting entry: " + (error.message || error), true);
+            }
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const dataToExport = [...allData].reverse().map(d => ({
+                'English Date': d.id,
+                'Nepali Date': d.nepali_date,
+                'Unit 1 Generator Reading': d.unit1Gen,
+                'Unit 2 Generator Reading': d.unit2Gen,
+                'Unit 1 Transformer Reading': d.unit1Trans,
+                'Unit 2 Transformer Reading': d.unit2Trans,
+                'Station Transformer Reading': d.stationTrans,
+                'Export at Plant Outgoing Feeder': d.exportPlant,
+                'Export at Substation Feeder': d.exportSubstation,
+                'Import at Outgoing Feeder': d.importOutgoing,
+                'Import at Substation Feeder': d.importSubstation,
+                '': null,
+                'Unit 1 hour counter': d.unit1Counter,
+                'Unit 2 hour counter': d.unit2Counter,
+                'Operator': d.user
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport, {header: [
+                "English Date", "Nepali Date", "Unit 1 Generator Reading", "Unit 2 Generator Reading",
+                "Unit 1 Transformer Reading", "Unit 2 Transformer Reading", "Station Transformer Reading",
+                "Export at Plant Outgoing Feeder", "Export at Substation Feeder", "Import at Outgoing Feeder",
+                "Import at Substation Feeder", "", "Unit 1 hour counter", "Unit 2 hour counter", "Operator"
+            ]});
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "PlantData");
+            XLSX.writeFile(workbook, "PlantData_MakariGad.xlsx");
+            showNotification("Downloading Excel file...");
+        });
+
+        uploadBtn.addEventListener('click', () => fileUpload.click());
+        fileUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array'});
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+
+                    if (jsonData.length < 2) {
+                        return showNotification("File is empty or has no data rows.", true);
+                    }
+                    showConfirmation('Confirm Upload', `This will upload ${jsonData.length - 1} records. Existing data for the same dates will be overwritten. Continue?`, () => processAndUploadData(jsonData));
+                } catch (error) {
+                    console.error("File read error:", error);
+                    showNotification("Error reading file. Please ensure it's a valid Excel file.", true);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            fileUpload.value = '';
+        });
+
+        async function processAndUploadData(jsonData) {
+            if (!currentUser) { return showNotification("Authentication error. Please re-login.", true); }
+            showNotification("Starting upload...", false);
+
+            const header = jsonData.shift().map(h => String(h ?? "").trim());
+            const headerMap = {
+                englishDate: header.indexOf('English Date'),
+                nepaliDate: header.indexOf('Nepali Date'),
+                unit1Gen: header.indexOf('Unit 1 Generator Reading'),
+                unit2Gen: header.indexOf('Unit 2 Generator Reading'),
+                unit1Trans: header.indexOf('Unit 1 Transformer Reading'),
+                unit2Trans: header.indexOf('Unit 2 Transformer Reading'),
+                stationTrans: header.indexOf('Station Transformer Reading'),
+                exportPlant: header.indexOf('Export at Plant Outgoing Feeder'),
+                exportSubstation: header.indexOf('Export at Substation Feeder'),
+                importOutgoing: header.indexOf('Import at Outgoing Feeder'),
+                importSubstation: header.indexOf('Import at Substation Feeder'),
+                unit1Counter: header.indexOf('Unit 1 hour counter'),
+                unit2Counter: header.indexOf('Unit 2 hour counter'),
+            };
+
+            if (headerMap.englishDate === -1) { return showNotification("Upload failed. 'English Date' column not found.", true); }
+
+            const batch = writeBatch(db);
+            let operationsCount = 0;
+            jsonData.forEach(row => {
+                const dateValue = row[headerMap.englishDate];
+                if (dateValue === null || typeof dateValue === 'undefined') return;
+
+                let correctedDate;
+                if (typeof dateValue === 'number') {
+                    const excelDate = XLSX.SSF.parse_date_code(dateValue, { date1904: false });
+                    if (excelDate) {
+                        correctedDate = new Date(excelDate.y, excelDate.m - 1, excelDate.d);
+                    }
+                } else if (dateValue instanceof Date) {
+                    correctedDate = new Date(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate());
+                } else {
+                    return;
+                }
+
+                if (!correctedDate || isNaN(correctedDate.getTime())) return;
+
+                const year = correctedDate.getFullYear();
+                const month = String(correctedDate.getMonth() + 1).padStart(2, '0');
+                const day = String(correctedDate.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`;
+
+                const docRef = doc(db, plantDataPath, dateStr);
+                const docData = {
+                    user: currentUser.email, uid: currentUser.uid,
+                    date: Timestamp.fromDate(correctedDate),
+                    nepali_date: row[headerMap.nepaliDate] || null,
+                    unit1Gen: parseFloat(row[headerMap.unit1Gen]) || null,
+                    unit2Gen: parseFloat(row[headerMap.unit2Gen]) || null,
+                    unit1Trans: parseFloat(row[headerMap.unit1Trans]) || null,
+                    unit2Trans: parseFloat(row[headerMap.unit2Trans]) || null,
+                    stationTrans: parseFloat(row[headerMap.stationTrans]) || null,
+                    exportPlant: parseFloat(row[headerMap.exportPlant]) || null,
+                    exportSubstation: parseFloat(row[headerMap.exportSubstation]) || null,
+                    importOutgoing: parseFloat(row[headerMap.importOutgoing]) || null,
+                    importSubstation: parseFloat(row[headerMap.importSubstation]) || null,
+                    unit1Counter: parseFloat(row[headerMap.unit1Counter]) || null,
+                    unit2Counter: parseFloat(row[headerMap.unit2Counter]) || null,
+                };
+                batch.set(docRef, docData, { merge: true });
+                operationsCount++;
+            });
+
+            if (operationsCount === 0) { return showNotification("No valid data rows found to upload.", true); }
+
+            try {
+                await batch.commit();
+                showNotification(`Successfully uploaded ${operationsCount} records.`, false);
+            } catch (error) {
+                console.error("Batch upload error:", error);
+                showNotification("Upload failed: " + (error.message || error), true);
+            }
+        }
+        function loadAndListenData() {
+            if (unsubscribe) unsubscribe();
+            const dataCollection = collection(db, plantDataPath);
+            const q = query(dataCollection, orderBy("date"));
+            unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const rows = [];
+                querySnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const dateStr = data.date.toDate().toISOString().split('T')[0];
+                    rows.push({ id: dateStr, ...data });
+                });
+                
+                allData = rows;
+                
+                const displayData = [...allData].reverse();
+                renderTable(displayData);
+
+                // Default to last 30 days on initial load
+                if (allData.length > 1) {
+                    const last30DaysData = allData.slice(-31);
+                    updateTrendChart(last30DaysData);
+                } else {
+                    updateTrendChart([]);
+                }
+
+            }, (error) => {
+                console.error("Error fetching data:", error);
+                showNotification("Error fetching data.", true);
+            });
+        }
+
+        /*************************************************************************
+         * =============== OUTAGES & LOSSES logic ======================
+         *************************************************************************/
+        const outagesDataPath = "outagesAndLosses";
+        const outagesBody = document.getElementById("outages-body");
+        const outagesDownloadBtn = document.getElementById('outages-download-btn');
+        const outagesUploadBtn = document.getElementById('outages-upload-btn');
+        const outagesFileUpload = document.getElementById('outages-file-upload');
+        
+        const outageFields = [
+            { key: 'neaCurtailedEnergy', type: 'number'},
+            { key: 'neaTripLossTimeMin', type: 'number'},
+            { key: 'noOfTrippings', type: 'number'},
+            { key: 'lossTimeMin', type: 'number'},
+            { key: 'lossTimeU1Min', type: 'number'},
+            { key: 'lossTimeU2Min', type: 'number'},
+            { key: 'energyLossLineTrip', type: 'number'},
+            { key: 'energyLossOther', type: 'number'},
+            { key: 'totalEnergyLoss', type: 'number'},
+            { key: 'reason', type: 'text'},
+        ];
+
+        function createOutageInputRow() {
+            const today = new Date();
+            const offset = today.getTimezoneOffset();
+            const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+            const dateString = localToday.toISOString().split('T')[0];
+
+            let inputCells = outageFields.map(f => `
+                <td class="tight-cell-input"><input type="${f.type}" id="new-${f.key}" step="any" class="table-input" /></td>
+            `).join('');
+
+            return `
+                <tr id="add-new-outage-row" class="bg-indigo-50">
+                    <td class="tight-cell-input"><input type="date" id="new-outage-date" class="table-input" value="${dateString}" required /></td>
+                    ${inputCells}
+                    <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
+                    <td class="tight-cell-input">
+                        <button id="add-outage-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function createOutageDisplayRow(d) {
+            const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
+            const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
+            
+            let displayCells = outageFields.map(f => `
+                <td class="tight-cell text-sm text-gray-500 ${f.key === 'reason' ? 'reason-col' : ''}">${d[f.key] ?? ''}</td>
+            `).join('');
+
+            return `
+                <td class="tight-cell text-sm font-medium text-gray-900">${d.id}</td>
+                ${displayCells}
+                <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
+                <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
+                    ${canEdit ? `<button class="edit-outage-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-outage-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
+                </td>
+            `;
+        }
+
+        function createOutageEditRow(d) {
+            let editCells = outageFields.map(f => `
+                <td class="tight-cell-input"><input type="${f.type}" id="edit-${f.key}" step="any" class="table-input" value="${d[f.key] ?? ''}" /></td>
+            `).join('');
+
+            return `
+                <td class="tight-cell-input"><input type="date" class="table-input" value="${d.id}" disabled /></td>
+                ${editCells}
+                <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
+                <td class="tight-cell flex space-x-2 whitespace-nowrap">
+                    <button class="update-outage-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${d.id}">Update</button>
+                    <button class="cancel-outage-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
+                </td>
+            `;
+        }
+        
+        function renderOutagesTable() {
+            if (!currentUser) return;
+            outagesBody.innerHTML = createOutageInputRow();
+            allOutages.forEach(d => {
+                const row = document.createElement('tr');
+                row.id = `outage-row-${d.id}`;
+                row.innerHTML = (d.id === editingOutageId) ? createOutageEditRow(d) : createOutageDisplayRow(d);
+                outagesBody.appendChild(row);
+            });
+        }
+
+        function loadOutagesData() {
+            const q = query(collection(db, outagesDataPath));
+            onSnapshot(q, (snapshot) => {
+                allOutages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allOutages.sort((a, b) => b.id.localeCompare(a.id));
+                renderOutagesTable();
+            }, (error) => {
+                console.error("Error fetching outages:", error);
+                showNotification("Could not load outage data.", true);
+            });
+        }
+
+        async function handleAddOrUpdateOutage(docId, isUpdate = false) {
+            if (!currentUser) return showNotification("You must be logged in.", true);
+
+            const prefix = isUpdate ? 'edit-' : 'new-';
+            const dateVal = isUpdate ? docId : document.getElementById('new-outage-date').value;
+            if (!dateVal) return showNotification("Date is required.", true);
+
+            const data = {
+                user: currentUser.email,
+                uid: currentUser.uid,
+                updatedAt: Timestamp.now(),
+            };
+            
+            outageFields.forEach(f => {
+                const inputEl = document.getElementById(`${prefix}-${f.key}`);
+                if (f.type === 'number') {
+                    data[f.key] = parseFloat(inputEl.value) || null;
+                } else {
+                    data[f.key] = inputEl.value || null;
+                }
+            });
+
+            try {
+                const docRef = doc(db, outagesDataPath, dateVal);
+                await setDoc(docRef, data, { merge: true });
+                showNotification(`Outage log ${isUpdate ? 'updated' : 'added'} successfully!`);
+                
+                if (isUpdate) {
+                    editingOutageId = null;
+                } else {
+                    document.getElementById('add-new-outage-row').querySelectorAll('input[type=number], input[type=text]').forEach(el => el.value = '');
+                }
+            } catch (error) {
+                console.error("Error saving outage:", error);
+                showNotification("Error saving outage data: " + error.message, true);
+            }
+        }
+
+        outagesBody.addEventListener('click', async (e) => {
+            if (e.target.id === 'add-outage-btn') {
+                handleAddOrUpdateOutage(null, false);
+            } else if (e.target.classList.contains('edit-outage-btn')) {
+                editingOutageId = JSON.parse(e.target.dataset.doc).id;
+                renderOutagesTable();
+            } else if (e.target.classList.contains('update-outage-btn')) {
+                handleAddOrUpdateOutage(e.target.dataset.id, true);
+            } else if (e.target.classList.contains('cancel-outage-btn')) {
+                editingOutageId = null;
+                renderOutagesTable();
+            } else if (e.target.classList.contains('delete-outage-btn')) {
+                const docId = e.target.dataset.id;
+                showConfirmation('Confirm Deletion', `Are you sure you want to delete the log for ${docId}?`, async () => {
+                    try {
+                        await deleteDoc(doc(db, outagesDataPath, docId));
+                        showNotification("Outage log deleted.");
+                    } catch (error) {
+                        showNotification("Error deleting record: " + error.message, true);
                     }
                 });
-            } catch (error) {
-                console.warn(`Could not fetch historical data for ${year}-${month}:`, error.message);
             }
-            current.setMonth(current.getMonth() + 1);
-        }
-        return allHistoricalData;
-    }
-
-    viewTrendBtn.addEventListener('click', async () => {
-        viewTrendBtn.disabled = true;
-        viewTrendBtn.textContent = 'Loading...';
-
-        let startDateValue = trendStartDate.value;
-        let endDateValue = trendEndDate.value;
-        const nepYear = trendNepaliYear.value;
-        const nepMonth = trendNepaliMonth.value;
-
-        if (!startDateValue && !endDateValue && nepYear && nepMonth) {
-            const monthIndex = nepaliMonths.indexOf(nepMonth) + 1;
-            if (monthIndex > 0) {
-                const recordsForMonth = allData.filter(d => {
-                    if (!d.nepali_date || typeof d.nepali_date !== 'string') return false;
-                    const parts = d.nepali_date.split('.');
-                    if (parts.length !== 3) return false;
-                    
-                    const recordYear = parts[0];
-                    const recordMonth = parseInt(parts[1], 10);
-                    
-                    return recordYear === nepYear && recordMonth === monthIndex;
-                });
-
-                if (recordsForMonth.length > 0) {
-                    const firstDay = recordsForMonth[0];
-                    const lastDay = recordsForMonth[recordsForMonth.length - 1];
-                    
-                    trendStartDate.value = firstDay.id;
-                    trendEndDate.value = lastDay.id;
-                    startDateValue = firstDay.id;
-                    endDateValue = lastDay.id;
-                    showNotification(`Date range set for ${nepMonth} ${nepYear}`);
-                } else {
-                    showNotification(`No data found for Nepali month: ${nepMonth} ${nepYear}`, true);
-                }
-            }
-        }
-
-        if (!startDateValue || !endDateValue) {
-            showNotification("Please select a date range or a Nepali month/year.", true);
-            viewTrendBtn.disabled = false;
-            viewTrendBtn.textContent = 'View Trend';
-            return;
-        }
-
-        const filteredDailyData = allData.filter(d => d.id >= startDateValue && d.id <= endDateValue);
-
-        if (filteredDailyData.length > 1) {
-            showNotification("Fetching historical data for trend overlay...");
-            const historicalData = await fetchHistoricalDataForRange(startDateValue, endDateValue);
-            updateTrendChart(filteredDailyData, historicalData);
-            if (historicalData.length === 0) {
-                showNotification("No detailed historical data found for this period.", false);
-            }
-        } else {
-            showNotification("Not enough daily data found for the selected period to show a trend.", true);
-            updateTrendChart([]);
-        }
-
-        viewTrendBtn.disabled = false;
-        viewTrendBtn.textContent = 'View Trend';
-    });
-
-    function updateTrendChart(dailyData, historicalData = []) {
-        const dailyDispatchData = [];
-        for (let i = 1; i < dailyData.length; i++) {
-            const today = dailyData[i];
-            const yesterday = dailyData[i - 1];
-            const dailyDispatch = (today.exportSubstation - yesterday.exportSubstation);
-            if (!isNaN(dailyDispatch) && dailyDispatch >= 0) {
-                dailyDispatchData.push({
-                    x: new Date(today.id),
-                    y: dailyDispatch
-                });
-            }
-        }
-
-        const datasets = [{
-            label: 'Daily Energy Dispatched (MWh)',
-            data: dailyDispatchData,
-            backgroundColor: 'rgba(79, 70, 229, 0.6)',
-            borderColor: 'rgba(79, 70, 229, 1)',
-            borderWidth: 1,
-            type: 'bar',
-            yAxisID: 'y-energy',
-            order: 2
-        }];
-
-        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E53935', '#1E88E5', '#43A047'];
-        let axisColorIndex = 0;
-        let datasetColorIndex = 0;
-        
-        const scales = {
-            x: {
-                type: 'time',
-                time: {
-                    unit: 'day',
-                    tooltipFormat: 'MMM d, yyyy HH:mm',
-                    displayFormats: { hour: 'HH:mm', day: 'MMM d', month: 'MMM yyyy' }
-                },
-                grid: { display: false },
-                ticks: { source: 'auto', maxRotation: 0, autoSkip: true }
-            },
-            'y-energy': {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                title: { display: true, text: 'Energy (MWh)', color: '#4f46e5' },
-                ticks: { color: '#4f46e5' },
-                grid: { color: '#e5e7eb' }
-            }
-        };
-
-        const axisMap = new Map();
-        
-        document.querySelectorAll('#trend-chart-options input:checked').forEach(checkbox => {
-            const key = checkbox.value;
-            const fieldInfo = historicalFields.find(f => f.key === key);
-            if (!fieldInfo || !historicalData || historicalData.length === 0) return;
-
-            const unit = fieldInfo.name.substring(fieldInfo.name.indexOf('(') + 1, fieldInfo.name.indexOf(')'));
-            let yAxisID;
-
-            if (axisMap.has(unit)) {
-                yAxisID = axisMap.get(unit).id;
-            } else {
-                yAxisID = `y-unit-${axisMap.size}`;
-                axisMap.set(unit, { id: yAxisID, color: colors[axisColorIndex % colors.length], title: unit });
-                axisColorIndex++;
-            }
-            
-            datasets.push({
-                label: fieldInfo.name,
-                data: historicalData.map(d => ({ x: d.timestamp.toDate(), y: d[key] })).filter(p => p.y !== null),
-                borderColor: colors[datasetColorIndex % colors.length],
-                type: 'line',
-                yAxisID: yAxisID,
-                tension: 0.2,
-                pointRadius: 0,
-                borderWidth: 1.5,
-                order: 1
-            });
-            datasetColorIndex++;
         });
 
-        axisMap.forEach((axisConfig, unit) => {
-            scales[axisConfig.id] = {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                offset: true,
-                title: { display: true, text: axisConfig.title, color: axisConfig.color },
-                ticks: { color: axisConfig.color },
-                grid: { drawOnChartArea: false }
+        outagesDownloadBtn.addEventListener('click', () => {
+            const excelHeaders = {
+                id: 'Date',
+                neaCurtailedEnergy: 'NEA Curtailed Energy',
+                neaTripLossTimeMin: 'NEA trip loss time (min)',
+                noOfTrippings: 'No of Trippings',
+                lossTimeMin: 'Loss Time (Min)',
+                lossTimeU1Min: 'Loss Time for Unit I (Min)',
+                lossTimeU2Min: 'Loss Time for Unit II(Min)',
+                energyLossLineTrip: 'Energy loss due to Line Tripping',
+                energyLossOther: 'Energy loss due to Other reasons',
+                totalEnergyLoss: 'Total energy loss',
+                reason: 'Reason for Tripping',
+                user: 'Operator'
             };
+
+            const dataToExport = allOutages.map(d => {
+                let row = {};
+                for (const key in excelHeaders) {
+                    row[excelHeaders[key]] = d[key] ?? null;
+                }
+                return row;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "OutagesAndLosses");
+            XLSX.writeFile(workbook, "OutagesAndLosses_MakariGad.xlsx");
+            showNotification("Downloading Outages Excel file...");
+        });
+        
+        outagesUploadBtn.addEventListener('click', () => outagesFileUpload.click());
+        outagesFileUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {raw: false});
+                    if (jsonData.length === 0) return showNotification("File is empty.", true);
+                    showConfirmation('Confirm Upload', `This will upload/overwrite ${jsonData.length} daily outage logs. Continue?`, () => processAndUploadOutages(jsonData));
+                } catch (error) {
+                    console.error("File upload error:", error);
+                    showNotification("Error reading file. Make sure it's a valid Excel format.", true);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            outagesFileUpload.value = '';
         });
 
+        async function processAndUploadOutages(jsonData) {
+            if (!currentUser) return showNotification("Authentication error.", true);
+            showNotification("Starting upload of outage data...");
 
-        const ctx = document.getElementById('daily-trend-chart').getContext('2d');
-        if (trendChartInstance) {
-            trendChartInstance.data.datasets = datasets;
-            trendChartInstance.options.scales = scales;
-            trendChartInstance.update();
-        } else {
-            trendChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: { datasets: datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: { tooltip: { position: 'nearest' }, legend: { position: 'top' } },
-                    scales: scales,
+            const headerMap = {
+                'Date': {key: 'id', type: 'date'},
+                'NEA Curtailed Energy': {key: 'neaCurtailedEnergy', type: 'number'},
+                'NEA trip loss time (min)': {key: 'neaTripLossTimeMin', type: 'number'},
+                'No of Trippings': {key: 'noOfTrippings', type: 'number'},
+                'Loss Time (Min)': {key: 'lossTimeMin', type: 'number'},
+                'Loss Time for Unit I (Min)': {key: 'lossTimeU1Min', type: 'number'},
+                'Loss Time for Unit II(Min)': {key: 'lossTimeU2Min', type: 'number'},
+                'Energy loss due to Line Tripping': {key: 'energyLossLineTrip', type: 'number'},
+                'Energy loss due to Other reasons': {key: 'energyLossOther', type: 'number'},
+                'Total energy loss': {key: 'totalEnergyLoss', type: 'number'},
+                'Reason for Tripping': {key: 'reason', type: 'string'},
+            };
+
+            const batch = writeBatch(db);
+            let count = 0;
+
+            jsonData.forEach(row => {
+                const dateValue = row['Date'];
+                if (!dateValue) return; 
+                
+                let dateObj;
+                if (typeof dateValue === 'number') {
+                     dateObj = XLSX.SSF.parse_date_code(dateValue);
+                     dateObj = new Date(dateObj.y, dateObj.m - 1, dateObj.d);
+                } else {
+                     dateObj = new Date(dateValue);
+                }
+                
+                if (isNaN(dateObj.getTime())) return;
+
+                const localDate = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000));
+                const dateStr = localDate.toISOString().split('T')[0];
+
+                const docRef = doc(db, outagesDataPath, dateStr);
+                const docData = {
+                    user: currentUser.email,
+                    uid: currentUser.uid,
+                    updatedAt: Timestamp.now()
+                };
+                
+                for(const header in headerMap){
+                    if(row.hasOwnProperty(header)){
+                        const {key, type} = headerMap[header];
+                        if(key !== 'id'){
+                            docData[key] = (type === 'number') ? parseFloat(row[header]) || null : row[header] || null;
+                        }
+                    }
+                }
+
+                batch.set(docRef, docData, {merge: true});
+                count++;
+            });
+
+            if (count === 0) return showNotification("No valid outage records with a 'Date' column found in the file.", true);
+
+            try {
+                await batch.commit();
+                showNotification(`Successfully uploaded ${count} outage records.`);
+            } catch (error) {
+                showNotification("Upload failed: " + error.message, true);
+            }
+        }
+
+
+        /*************************************************************************
+         * =============== MONTHLY CONTRACT ENERGY (MCE) logic ===================
+         *************************************************************************/
+        const mceDataPath = "monthlyContractEnergy";
+        const mceBody = document.getElementById('mce-body');
+        const mceDownloadBtn = document.getElementById('mce-download-btn');
+        const mceUploadBtn = document.getElementById('mce-upload-btn');
+        const mceFileUpload = document.getElementById('mce-file-upload');
+        
+        const mceFields = [
+            { key: 'week1AD', name: 'Week1 AD (kWh)', type: 'number' },
+            { key: 'week2AD', name: 'Week2 AD (kWh)', type: 'number' },
+            { key: 'week3AD', name: 'Week3 AD (kWh)', type: 'number' },
+            { key: 'week4AD', name: 'Week4 AD (kWh)', type: 'number' },
+            { key: 'week5AD', name: 'Week5 AD (kWh)', type: 'number' },
+            { key: 'totalAD', name: 'Total AD (MWh)', type: 'number' },
+            { key: 'contractEnergy', name: 'Contract Energy (MWh)', type: 'number' },
+            { key: 'noOfDays', name: 'No. of Days', type: 'number' },
+        ];
+
+        const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Asoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+
+        function createMCEInputRow() {
+            const yearOptions = Array.from({length: 10}, (_, i) => new Date().getFullYear() - 5 + i + 57) // BS years
+                .map(y => `<option value="${y}">${y}</option>`).join('');
+            const monthOptions = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
+
+            let inputCells = mceFields.map(f => `
+                <td class="tight-cell-input"><input type="${f.type}" id="new-${f.key}" step="any" class="table-input" /></td>
+            `).join('');
+
+            return `
+                <tr id="add-new-mce-row" class="bg-indigo-50">
+                    <td class="tight-cell-input"><select id="new-mce-year" class="table-input">${yearOptions}</select></td>
+                    <td class="tight-cell-input"><select id="new-mce-month" class="table-input">${monthOptions}</select></td>
+                    ${inputCells}
+                    <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
+                    <td class="tight-cell-input">
+                        <button id="add-mce-btn" class="w-full bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-700">Add</button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function createMCEDisplayRow(d) {
+            const canEdit = currentUser && (currentUser.uid === d.uid || currentUser.email === adminEmail);
+            const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
+
+            let displayCells = mceFields.map(f => `
+                <td class="tight-cell text-sm text-gray-500">${formatNumber(d[f.key], 2) ?? ''}</td>
+            `).join('');
+            
+            return `
+                <td class="tight-cell text-sm font-medium text-gray-900">${d.year}</td>
+                <td class="tight-cell text-sm font-medium text-gray-900">${d.month}</td>
+                ${displayCells}
+                <td class="tight-cell text-sm text-gray-500 truncate" title="${d.user}">${d.user}</td>
+                <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap">
+                    ${canEdit ? `<button class="edit-mce-btn text-indigo-600 hover:text-indigo-900" data-doc='${docDataString}'>Edit</button><button class="delete-mce-btn text-red-600 hover:text-red-900" data-id="${d.id}">Delete</button>` : ''}
+                </td>
+            `;
+        }
+
+        function createMCEEditRow(d) {
+            let editCells = mceFields.map(f => `
+                <td class="tight-cell-input"><input type="${f.type}" id="edit-${f.key}" step="any" class="table-input" value="${d[f.key] ?? ''}" /></td>
+            `).join('');
+
+            return `
+                <td class="tight-cell-input"><input type="text" class="table-input" value="${d.year}" disabled /></td>
+                <td class="tight-cell-input"><input type="text" class="table-input" value="${d.month}" disabled /></td>
+                ${editCells}
+                <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
+                <td class="tight-cell flex space-x-2 whitespace-nowrap">
+                    <button class="update-mce-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${d.id}">Update</button>
+                    <button class="cancel-mce-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
+                </td>
+            `;
+        }
+
+        function renderMCETable() {
+            if (!currentUser) return;
+            mceBody.innerHTML = createMCEInputRow();
+            allMCE.forEach(d => {
+                const row = document.createElement('tr');
+                row.id = `mce-row-${d.id}`;
+                row.innerHTML = (d.id === editingMCEId) ? createMCEEditRow(d) : createMCEDisplayRow(d);
+                mceBody.appendChild(row);
+            });
+        }
+
+        function loadMCEData() {
+            const q = query(collection(db, mceDataPath));
+            onSnapshot(q, (snapshot) => {
+                allMCE = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allMCE.sort((a, b) => b.id.localeCompare(a.id));
+                renderMCETable();
+            }, (error) => {
+                console.error("Error fetching MCE data:", error);
+                showNotification("Could not load Monthly Contract Energy data.", true);
+            });
+        }
+
+        async function handleAddOrUpdateMCE(docId, isUpdate = false) {
+            if (!currentUser) return showNotification("You must be logged in.", true);
+
+            const prefix = isUpdate ? 'edit-' : 'new-';
+            let year, month;
+            if(isUpdate) {
+                [year, month] = docId.split('_');
+            } else {
+                year = document.getElementById('new-mce-year').value;
+                month = document.getElementById('new-mce-month').value;
+            }
+
+            if (!year || !month) return showNotification("Year and Month are required.", true);
+            
+            const finalDocId = `${year}_${month}`;
+
+            const data = {
+                year: parseInt(year),
+                month: month,
+                user: currentUser.email,
+                uid: currentUser.uid,
+                updatedAt: Timestamp.now(),
+            };
+
+            mceFields.forEach(f => {
+                const inputEl = document.getElementById(`${prefix}-${f.key}`);
+                data[f.key] = parseFloat(inputEl.value) || null;
+            });
+
+            try {
+                const docRef = doc(db, mceDataPath, finalDocId);
+                await setDoc(docRef, data, { merge: true });
+                showNotification(`Contract Energy ${isUpdate ? 'updated' : 'added'} successfully!`);
+                if (isUpdate) {
+                    editingMCEId = null;
+                } else {
+                    document.getElementById('add-new-mce-row').querySelectorAll('input').forEach(el => el.value = '');
+                }
+            } catch (error) {
+                console.error("Error saving MCE data:", error);
+                showNotification("Error saving MCE data: " + error.message, true);
+            }
+        }
+
+        mceBody.addEventListener('click', (e) => {
+            if (e.target.id === 'add-mce-btn') {
+                handleAddOrUpdateMCE(null, false);
+            } else if (e.target.classList.contains('edit-mce-btn')) {
+                editingMCEId = JSON.parse(e.target.dataset.doc).id;
+                renderMCETable();
+            } else if (e.target.classList.contains('update-mce-btn')) {
+                handleAddOrUpdateMCE(e.target.dataset.id, true);
+            } else if (e.target.classList.contains('cancel-mce-btn')) {
+                editingMCEId = null;
+                renderMCETable();
+            } else if (e.target.classList.contains('delete-mce-btn')) {
+                const docId = e.target.dataset.id;
+                showConfirmation('Confirm Deletion', `Delete contract energy for ${docId.replace('_', ' ')}?`, async () => {
+                    try {
+                        await deleteDoc(doc(db, mceDataPath, docId));
+                        showNotification("Record deleted.");
+                    } catch (error) {
+                        showNotification("Error deleting: " + error.message, true);
+                    }
+                });
+            }
+        });
+
+        /*************************************************************************
+         * =============== TRENDS logic ======================
+         *************************************************************************/
+        const trendStartDate = document.getElementById('trend-start-date');
+        const trendEndDate = document.getElementById('trend-end-date');
+        const trendNepaliYear = document.getElementById('trend-nepali-year');
+        const trendNepaliMonth = document.getElementById('trend-nepali-month');
+        const viewTrendBtn = document.getElementById('view-trend-btn');
+        const trendChartOptionsContainer = document.getElementById('trend-chart-options');
+
+        const historicalFields = [
+            { key: 'waterlevel_cm', name: 'Water Level (cm)' },
+            { key: 'pressure_mwc', name: 'Pressure (mWC)' },
+            { key: 'activePower_kw', name: 'Active Power (kW)' },
+            { key: 'voltage_kv', name: 'Voltage (kV)' },
+            { key: 'reactivePower_kvar', name: 'Reactive Power (kVar)' },
+            { key: 'u1_spear_pct', name: 'U1 Spear (%)' },
+            { key: 'u1_activePower_kw', name: 'U1 Power (kW)' },
+            { key: 'u2_spear_pct', name: 'U2 Spear (%)' },
+            { key: 'u2_activePower_kw', name: 'U2 Power (kW)' }
+        ];
+
+        function initializeTrendsTab() {
+            const currentNepaliYear = new Date().getFullYear() + 57;
+            for (let i = 0; i < 10; i++) {
+                const year = currentNepaliYear - i;
+                trendNepaliYear.add(new Option(year, year));
+            }
+            nepaliMonths.forEach(month => {
+                trendNepaliMonth.add(new Option(month, month));
+            });
+
+            historicalFields.forEach(field => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center';
+                div.innerHTML = `
+                    <input type="checkbox" id="trend-check-${field.key}" value="${field.key}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 trend-checkbox">
+                    <label for="trend-check-${field.key}" class="ml-2 block text-sm text-gray-900">${field.name}</label>
+                `;
+                trendChartOptionsContainer.appendChild(div);
+            });
+
+            trendChartOptionsContainer.addEventListener('change', (e) => {
+                if (e.target.classList.contains('trend-checkbox')) {
+                    viewTrendBtn.click();  // Automatically refresh the chart
                 }
             });
         }
-    }
+        initializeTrendsTab();
 
-    /*************************************************************************
-     * =============== HISTORICAL DATA logic ======================
-     *************************************************************************/
-    const historicalYearSelect = document.getElementById('historical-year');
-    const historicalMonthSelect = document.getElementById('historical-month');
-    const historicalViewBtn = document.getElementById('historical-view-btn');
-    const historicalUploadBtn = document.getElementById('historical-upload-btn');
-    const historicalFileInput = document.getElementById('historical-file-upload');
-    const historicalDownloadBtn = document.getElementById('historical-download-btn');
-    const historicalStatus = document.getElementById('historical-status');
-    const historicalThead = document.getElementById('historical-thead');
-    const historicalTbody = document.getElementById('historical-tbody');
-
-    let lastFetchedHistoricalData = [];
-
-    const currentYear = new Date().getFullYear();
-    for (let i = 0; i < 5; i++) {
-        const year = currentYear - i;
-        historicalYearSelect.add(new Option(year, year));
-    }
-
-    historicalUploadBtn.addEventListener('click', () => historicalFileInput.click());
-    historicalFileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const year = historicalYearSelect.value;
-        const month = historicalMonthSelect.value;
-        
-        showConfirmation(
-            'Confirm Historical Data Upload', 
-            `Upload data for ${historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text} ${year}? This will overwrite existing data for this month.`,
-            () => {
-                const reader = new FileReader();
-                reader.onload = (e) => processAndUploadHistoricalData(e.target.result, year, month);
-                reader.readAsText(file);
-            }
-        );
-        historicalFileInput.value = '';
-    });
-
-    async function processAndUploadHistoricalData(csvString, year, month) {
-        if (!currentUser) return showNotification("Authentication error.", true);
-        historicalStatus.textContent = "Processing file... This may take a moment.";
-        showNotification("Starting historical data upload...");
-
-        const lines = csvString.split(/\r\n|\n/).filter(line => line.trim() !== '');
-        if (lines.length < 2) {
-            historicalStatus.textContent = "Upload failed. File is empty or has no data rows.";
-            return showNotification("File is empty or invalid.", true);
-        }
-
-        const headerLine = lines.shift();
-        const headers = headerLine.split(';').map(h => h.trim());
-        const collectionPath = `historicalData/${year}_${String(month).padStart(2, '0')}/data`;
-        
-        const headerMap = {
-            'Date': 'date', 'Time': 'time', 'Waterlevel Feedback 1 [cm]': 'waterlevel_cm',
-            'Penstock Pressure [mWC]': 'pressure_mwc', 'Active Power [kW]': 'activePower_kw',
-            'Voltage Grid [KV]': 'voltage_kv', 'Reactive Power Grid [Kvar]': 'reactivePower_kvar',
-            'U1 Spear Opening [%]': 'u1_spear_pct', 'U1 Active Power Generator [kW]': 'u1_activePower_kw',
-            'U2 Spear Opening [%]': 'u2_spear_pct', 'U2 Active Power Generator [kW]': 'u2_activePower_kw'
-        };
-        
-        const mappedIndices = {};
-        for (const key in headerMap) {
-            const index = headers.indexOf(key);
-            if (index === -1) {
-                historicalStatus.textContent = `Upload failed. Missing column: ${key}`;
-                return showNotification(`Header '${key}' not found in CSV.`, true);
-            }
-            mappedIndices[headerMap[key]] = index;
-        }
-
-        const BATCH_SIZE = 490;
-        const batches = [];
-        let currentBatch = writeBatch(db);
-        let operationsInCurrentBatch = 0;
-        let totalCount = 0;
-
-        for (const line of lines) {
-            const values = line.split(';');
-            if (values.length < headers.length) continue;
-
-            const dateParts = values[mappedIndices.date].split('.');
-            const timeParts = values[mappedIndices.time].split(':');
-            if (dateParts.length !== 3 || timeParts.length < 2) continue;
-
-            const timestamp = new Date(Date.UTC(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]));
-            if (isNaN(timestamp.getTime())) continue;
-
-            const docId = timestamp.toISOString();
-            const docRef = doc(db, collectionPath, docId);
-
-            const docData = { timestamp: Timestamp.fromDate(timestamp) };
-            for (const key in mappedIndices) {
-                if (key !== 'date' && key !== 'time') {
-                    const val = values[mappedIndices[key]].replace(',', '.');
-                    docData[key] = isNaN(parseFloat(val)) ? null : parseFloat(val);
-                }
-            }
-            
-            currentBatch.set(docRef, docData);
-            operationsInCurrentBatch++;
-            totalCount++;
-
-            if (operationsInCurrentBatch >= BATCH_SIZE) {
-                batches.push(currentBatch);
-                currentBatch = writeBatch(db);
-                operationsInCurrentBatch = 0;
-            }
-        }
-
-        if (operationsInCurrentBatch > 0) {
-            batches.push(currentBatch);
-        }
-
-        if (totalCount === 0) {
-            historicalStatus.textContent = "Upload failed. No valid data rows found.";
-            return showNotification("No valid data rows found to upload.", true);
-        }
-
-        try {
-            historicalStatus.textContent = `Uploading ${totalCount} records in ${batches.length} batches...`;
-            await Promise.all(batches.map(batch => batch.commit()));
-            showNotification(`Successfully uploaded ${totalCount} records.`, false);
-            historicalStatus.textContent = `Upload complete. ${totalCount} records for ${historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text} ${year} have been saved.`;
-        } catch (error) {
-            console.error("Historical data upload error:", error);
-            showNotification("Upload failed: " + error.message, true);
-            historicalStatus.textContent = `Upload failed. Error: ${error.message}`;
-        }
-    }
-
-    historicalViewBtn.addEventListener('click', async () => {
-        const year = historicalYearSelect.value;
-        const month = historicalMonthSelect.value;
-        const collectionPath = `historicalData/${year}_${String(month).padStart(2, '0')}/data`;
-        
-        historicalStatus.textContent = `Fetching data for ${historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text} ${year}...`;
-        historicalThead.innerHTML = '';
-        historicalTbody.innerHTML = '';
-        lastFetchedHistoricalData = [];
-        historicalDownloadBtn.classList.add('hidden');
-
-        try {
-            const q = query(collection(db, collectionPath), orderBy('timestamp'));
-            const snapshot = await getDocs(q);
-
-            if (snapshot.empty) {
-                historicalStatus.textContent = "No data found for the selected period.";
+        async function updateEnglishDatesFromNepaliSelection() {
+            const year = trendNepaliYear.value;
+            const month = trendNepaliMonth.value;
+            if (!year || !month || allData.length === 0) {
                 return;
             }
 
-            const data = snapshot.docs.map(doc => doc.data());
-            lastFetchedHistoricalData = data;
-            const headers = Object.keys(data[0]);
+            const monthIndex = nepaliMonths.indexOf(month) + 1;
+            const monthPadded = String(monthIndex).padStart(2, '0');
+            const matchPrefix = `${year}.${monthPadded}.`;
 
-            let headerHtml = '<tr>';
-            headers.forEach(h => headerHtml += `<th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">${h}</th>`);
-            headerHtml += '</tr>';
-            historicalThead.innerHTML = headerHtml;
-
-            let bodyHtml = '';
-            data.forEach(row => {
-                bodyHtml += '<tr>';
-                headers.forEach(h => {
-                    let value = row[h];
-                    if (h === 'timestamp' && value.toDate) {
-                        value = value.toDate().toLocaleString('en-GB', { timeZone: 'UTC' });
-                    }
-                    bodyHtml += `<td class="tight-cell text-sm">${value ?? ''}</td>`;
-                });
-                bodyHtml += '</tr>';
+            const recordsForMonth = allData.filter(d => {
+                if (!d.nepali_date || typeof d.nepali_date !== 'string') return false;
+                const parts = d.nepali_date.split('.');
+                if (parts.length !== 3) return false;
+                
+                const recordYear = parts[0];
+                const recordMonth = parseInt(parts[1], 10);
+                
+                return recordYear === year && recordMonth === monthIndex;
             });
-            historicalTbody.innerHTML = bodyHtml;
-            historicalStatus.textContent = `Displaying ${data.length} records.`;
-            historicalDownloadBtn.classList.remove('hidden');
 
-        } catch (error) {
-            console.error("Error fetching historical data:", error);
-            showNotification("Error fetching data: " + error.message, true);
-            historicalStatus.textContent = "Error fetching data.";
-        }
-    });
-
-    historicalDownloadBtn.addEventListener('click', () => {
-        if (lastFetchedHistoricalData.length === 0) {
-            return showNotification("No data available to download.", true);
-        }
-
-        const dataToExport = lastFetchedHistoricalData.map(row => {
-            const newRow = { ...row };
-            if (newRow.timestamp && newRow.timestamp.toDate) {
-                newRow.timestamp = newRow.timestamp.toDate().toLocaleString('en-GB', { timeZone: 'UTC' });
+            if (recordsForMonth.length > 0) {
+                const firstDay = recordsForMonth[0];
+                const lastDay = recordsForMonth[recordsForMonth.length - 1];
+                
+                trendStartDate.value = firstDay.id;
+                trendEndDate.value = lastDay.id;
+                showNotification(`Date range set for ${month} ${year}`);
+            } else {
+                trendStartDate.value = '';
+                trendEndDate.value = '';
+                showNotification(`No daily data found for Nepali month: ${month} ${year}`, true);
             }
-            return newRow;
+        }
+        trendNepaliYear.addEventListener('change', updateEnglishDatesFromNepaliSelection);
+        trendNepaliMonth.addEventListener('change', updateEnglishDatesFromNepaliSelection);
+
+        async function fetchHistoricalDataForRange(startDate, endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999); 
+            const allHistoricalData = [];
+
+            let current = new Date(start.getFullYear(), start.getMonth(), 1);
+            while (current <= end) {
+                const year = current.getFullYear();
+                const month = String(current.getMonth() + 1).padStart(2, '0');
+                const collectionPath = `historicalData/${year}_${month}/data`;
+                
+                try {
+                    const q = query(collection(db, collectionPath), orderBy('timestamp'));
+                    const snapshot = await getDocs(q);
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const docDate = data.timestamp.toDate();
+                        if (docDate >= start && docDate <= end) {
+                            allHistoricalData.push(data);
+                        }
+                    });
+                } catch (error) {
+                    console.warn(`Could not fetch historical data for ${year}-${month}:`, error.message);
+                }
+                current.setMonth(current.getMonth() + 1);
+            }
+            return allHistoricalData;
+        }
+
+        viewTrendBtn.addEventListener('click', async () => {
+            viewTrendBtn.disabled = true;
+            viewTrendBtn.textContent = 'Loading...';
+
+            let startDateValue = trendStartDate.value;
+            let endDateValue = trendEndDate.value;
+
+            if (!startDateValue || !endDateValue) {
+                showNotification("Please select a date range or a Nepali month/year.", true);
+                viewTrendBtn.disabled = false;
+                viewTrendBtn.textContent = 'View Trend';
+                return;
+            }
+
+            const filteredDailyData = allData.filter(d => d.id >= startDateValue && d.id <= endDateValue);
+
+            if (filteredDailyData.length > 1) {
+                showNotification("Fetching historical data for trend overlay...");
+                const historicalData = await fetchHistoricalDataForRange(startDateValue, endDateValue);
+                updateTrendChart(filteredDailyData, historicalData);
+                if (historicalData.length === 0) {
+                    showNotification("No detailed historical data found for this period.", false);
+                }
+            } else {
+                showNotification("Not enough daily data found for the selected period to show a trend.", true);
+                updateTrendChart([]);
+            }
+
+            viewTrendBtn.disabled = false;
+            viewTrendBtn.textContent = 'View Trend';
         });
 
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "HistoricalData");
-        
-        const year = historicalYearSelect.value;
-        const month = historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text;
-        XLSX.writeFile(workbook, `HistoricalData_${month}_${year}.xlsx`);
-        showNotification("Downloading Excel file...");
-    });
+        function updateTrendChart(dailyData, historicalData = []) {
+            const dailyDispatchData = [];
+            for (let i = 1; i < dailyData.length; i++) {
+                const today = dailyData[i];
+                const yesterday = dailyData[i - 1];
+                const dailyDispatch = (today.exportSubstation - yesterday.exportSubstation);
+                if (!isNaN(dailyDispatch) && dailyDispatch >= 0) {
+                    dailyDispatchData.push({
+                        x: new Date(today.id),
+                        y: dailyDispatch
+                    });
+                }
+            }
 
-    /*************************************************************************
-     * Auth state and initial startup
-     *************************************************************************/
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        userInfo.textContent = `Logged in as: ${user.email}`;
-        userInfo.onclick = () => showConfirmation('Confirm Logout', 'Are you sure you want to log out?', () => signOut(auth));
+            const datasets = [{
+                label: 'Daily Energy Dispatched (MWh)',
+                data: dailyDispatchData,
+                backgroundColor: 'rgba(79, 70, 229, 0.6)',
+                borderColor: 'rgba(79, 70, 229, 1)',
+                borderWidth: 1,
+                type: 'bar',
+                yAxisID: 'y-energy',
+                order: 2
+            }];
 
-        if (currentUser.email === adminEmail) {
-          downloadBtn.classList.remove('hidden');
-          uploadBtn.classList.remove('hidden');
-          mceUploadBtn.classList.remove('hidden');
-          mceDownloadBtn.classList.remove('hidden');
-          outagesDownloadBtn.classList.remove('hidden');
-          outagesUploadBtn.classList.remove('hidden');
-          historicalUploadBtn.classList.remove('hidden');
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E53935', '#1E88E5', '#43A047'];
+            let axisColorIndex = 0;
+            let datasetColorIndex = 0;
+            
+            const scales = {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        tooltipFormat: 'MMM d, yyyy HH:mm',
+                        displayFormats: { hour: 'HH:mm', day: 'MMM d', month: 'MMM yyyy' }
+                    },
+                    grid: { display: false },
+                    ticks: { source: 'auto', maxRotation: 0, autoSkip: true }
+                },
+                'y-energy': {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: { display: true, text: 'Energy (MWh)', color: '#4f46e5' },
+                    ticks: { color: '#4f46e5' },
+                    grid: { color: '#e5e7eb' }
+                }
+            };
+
+            const axisMap = new Map();
+            
+            document.querySelectorAll('#trend-chart-options input:checked').forEach(checkbox => {
+                const key = checkbox.value;
+                const fieldInfo = historicalFields.find(f => f.key === key);
+                if (!fieldInfo || !historicalData || historicalData.length === 0) return;
+
+                const unitMatch = fieldInfo.name.match(/\((.*?)\)/);
+                const unit = unitMatch ? unitMatch[1] : fieldInfo.name;
+                let yAxisID;
+
+                if (axisMap.has(unit)) {
+                    yAxisID = axisMap.get(unit).id;
+                } else {
+                    yAxisID = `y-unit-${axisMap.size}`;
+                    axisMap.set(unit, { id: yAxisID, color: colors[axisColorIndex % colors.length], title: unit });
+                    axisColorIndex++;
+                }
+                
+                datasets.push({
+                    label: fieldInfo.name,
+                    data: historicalData.map(d => ({ x: d.timestamp.toDate(), y: d[key] })).filter(p => p.y !== null),
+                    borderColor: colors[datasetColorIndex % colors.length],
+                    type: 'line',
+                    yAxisID: yAxisID,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 1.5,
+                    order: 1
+                });
+                datasetColorIndex++;
+            });
+
+            axisMap.forEach((axisConfig, unit) => {
+                scales[axisConfig.id] = {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    offset: true,
+                    title: { display: true, text: axisConfig.title, color: axisConfig.color },
+                    ticks: { color: axisConfig.color },
+                    grid: { drawOnChartArea: false }
+                };
+            });
+
+
+            const ctx = document.getElementById('daily-trend-chart').getContext('2d');
+            if (trendChartInstance) {
+                trendChartInstance.data.datasets = datasets;
+                trendChartInstance.options.scales = scales;
+                trendChartInstance.update();
+            } else {
+                trendChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: { datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: { tooltip: { position: 'nearest' }, legend: { position: 'top' } },
+                        scales: scales,
+                    }
+                });
+            }
         }
 
-        loadAndListenData();
-        loadMCEData();
-        loadOutagesData();
-      } else {
-        const currentPath = window.location.pathname;
-        const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/index.html';
-        window.location.href = newPath;
-      }
-    });
 
-  </script>
+        /*************************************************************************
+         * =============== HISTORICAL DATA logic ======================
+         *************************************************************************/
+        const historicalYearSelect = document.getElementById('historical-year');
+        const historicalMonthSelect = document.getElementById('historical-month');
+        const historicalViewBtn = document.getElementById('historical-view-btn');
+        const historicalUploadBtn = document.getElementById('historical-upload-btn');
+        const historicalFileInput = document.getElementById('historical-file-upload');
+        const historicalDownloadBtn = document.getElementById('historical-download-btn');
+        const historicalStatus = document.getElementById('historical-status');
+        const historicalThead = document.getElementById('historical-thead');
+        const historicalTbody = document.getElementById('historical-tbody');
+
+        const currentYear = new Date().getFullYear();
+        for (let i = 0; i < 5; i++) {
+            const year = currentYear - i;
+            historicalYearSelect.add(new Option(year, year));
+        }
+
+        historicalUploadBtn.addEventListener('click', () => historicalFileInput.click());
+        historicalFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const year = historicalYearSelect.value;
+            const month = historicalMonthSelect.value;
+            
+            showConfirmation(
+                'Confirm Historical Data Upload', 
+                `Upload data for ${historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text} ${year}? This will overwrite existing data for this month.`,
+                () => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => processAndUploadHistoricalData(e.target.result, year, month);
+                    reader.readAsText(file);
+                }
+            );
+            historicalFileInput.value = '';
+        });
+
+        async function processAndUploadHistoricalData(csvString, year, month) {
+            if (!currentUser) return showNotification("Authentication error.", true);
+            historicalStatus.textContent = "Processing file... This may take a moment.";
+            showNotification("Starting historical data upload...");
+
+            const lines = csvString.split(/\r\n|\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                historicalStatus.textContent = "Upload failed. File is empty or has no data rows.";
+                return showNotification("File is empty or invalid.", true);
+            }
+
+            const headerLine = lines.shift();
+            const headers = headerLine.split(';').map(h => h.trim());
+            const collectionPath = `historicalData/${year}_${String(month).padStart(2, '0')}/data`;
+            
+            const headerMap = {
+                'Date': 'date', 'Time': 'time', 'Waterlevel Feedback 1 [cm]': 'waterlevel_cm',
+                'Penstock Pressure [mWC]': 'pressure_mwc', 'Active Power [kW]': 'activePower_kw',
+                'Voltage Grid [KV]': 'voltage_kv', 'Reactive Power Grid [Kvar]': 'reactivePower_kvar',
+                'U1 Spear Opening [%]': 'u1_spear_pct', 'U1 Active Power Generator [kW]': 'u1_activePower_kw',
+                'U2 Spear Opening [%]': 'u2_spear_pct', 'U2 Active Power Generator [kW]': 'u2_activePower_kw'
+            };
+            
+            const mappedIndices = {};
+            for (const key in headerMap) {
+                const index = headers.indexOf(key);
+                if (index === -1) {
+                    historicalStatus.textContent = `Upload failed. Missing column: ${key}`;
+                    return showNotification(`Header '${key}' not found in CSV.`, true);
+                }
+                mappedIndices[headerMap[key]] = index;
+            }
+
+            const BATCH_SIZE = 490;
+            const batches = [];
+            let currentBatch = writeBatch(db);
+            let operationsInCurrentBatch = 0;
+            let totalCount = 0;
+
+            for (const line of lines) {
+                const values = line.split(';');
+                if (values.length < headers.length) continue;
+
+                const dateParts = values[mappedIndices.date].split('.');
+                const timeParts = values[mappedIndices.time].split(':');
+                if (dateParts.length !== 3 || timeParts.length < 2) continue;
+
+                const timestamp = new Date(Date.UTC(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]));
+                if (isNaN(timestamp.getTime())) continue;
+
+                const docId = timestamp.toISOString();
+                const docRef = doc(db, collectionPath, docId);
+
+                const docData = { timestamp: Timestamp.fromDate(timestamp) };
+                for (const key in mappedIndices) {
+                    if (key !== 'date' && key !== 'time') {
+                        const val = values[mappedIndices[key]].replace(',', '.');
+                        docData[key] = isNaN(parseFloat(val)) ? null : parseFloat(val);
+                    }
+                }
+                
+                currentBatch.set(docRef, docData);
+                operationsInCurrentBatch++;
+                totalCount++;
+
+                if (operationsInCurrentBatch >= BATCH_SIZE) {
+                    batches.push(currentBatch);
+                    currentBatch = writeBatch(db);
+                    operationsInCurrentBatch = 0;
+                }
+            }
+
+            if (operationsInCurrentBatch > 0) {
+                batches.push(currentBatch);
+            }
+
+            if (totalCount === 0) {
+                historicalStatus.textContent = "Upload failed. No valid data rows found.";
+                return showNotification("No valid data rows found to upload.", true);
+            }
+
+            try {
+                historicalStatus.textContent = `Uploading ${totalCount} records in ${batches.length} batches...`;
+                await Promise.all(batches.map(batch => batch.commit()));
+                showNotification(`Successfully uploaded ${totalCount} records.`, false);
+                historicalStatus.textContent = `Upload complete. ${totalCount} records for ${historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text} ${year} have been saved.`;
+            } catch (error) {
+                console.error("Historical data upload error:", error);
+                showNotification("Upload failed: " + error.message, true);
+                historicalStatus.textContent = `Upload failed. Error: ${error.message}`;
+            }
+        }
+
+        historicalViewBtn.addEventListener('click', async () => {
+            const year = historicalYearSelect.value;
+            const month = historicalMonthSelect.value;
+            const collectionPath = `historicalData/${year}_${String(month).padStart(2, '0')}/data`;
+            
+            historicalStatus.textContent = `Fetching data for ${historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text} ${year}...`;
+            historicalThead.innerHTML = '';
+            historicalTbody.innerHTML = '';
+            lastFetchedHistoricalData = [];
+            historicalDownloadBtn.classList.add('hidden');
+
+            try {
+                const q = query(collection(db, collectionPath), orderBy('timestamp'));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    historicalStatus.textContent = "No data found for the selected period.";
+                    return;
+                }
+
+                const data = snapshot.docs.map(doc => doc.data());
+                lastFetchedHistoricalData = data;
+                const headers = Object.keys(data[0]);
+
+                let headerHtml = '<tr>';
+                headers.forEach(h => headerHtml += `<th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">${h}</th>`);
+                headerHtml += '</tr>';
+                historicalThead.innerHTML = headerHtml;
+
+                let bodyHtml = '';
+                data.forEach(row => {
+                    bodyHtml += '<tr>';
+                    headers.forEach(h => {
+                        let value = row[h];
+                        if (h === 'timestamp' && value.toDate) {
+                            value = value.toDate().toLocaleString('en-GB', { timeZone: 'UTC' });
+                        }
+                        bodyHtml += `<td class="tight-cell text-sm">${value ?? ''}</td>`;
+                    });
+                    bodyHtml += '</tr>';
+                });
+                historicalTbody.innerHTML = bodyHtml;
+                historicalStatus.textContent = `Displaying ${data.length} records.`;
+                historicalDownloadBtn.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error fetching historical data:", error);
+                showNotification("Error fetching data: " + error.message, true);
+                historicalStatus.textContent = "Error fetching data.";
+            }
+        });
+
+        historicalDownloadBtn.addEventListener('click', () => {
+            if (lastFetchedHistoricalData.length === 0) {
+                return showNotification("No data available to download.", true);
+            }
+
+            const dataToExport = lastFetchedHistoricalData.map(row => {
+                const newRow = { ...row };
+                if (newRow.timestamp && newRow.timestamp.toDate) {
+                    newRow.timestamp = newRow.timestamp.toDate().toLocaleString('en-GB', { timeZone: 'UTC' });
+                }
+                return newRow;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "HistoricalData");
+            
+            const year = historicalYearSelect.value;
+            const month = historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text;
+            XLSX.writeFile(workbook, `HistoricalData_${month}_${year}.xlsx`);
+            showNotification("Downloading Excel file...");
+        });
+
+        /*************************************************************************
+         * Auth state and initial startup
+         *************************************************************************/
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                userInfo.textContent = `Logged in as: ${user.email}`;
+                userInfo.onclick = () => showConfirmation('Confirm Logout', 'Are you sure you want to log out?', () => signOut(auth));
+
+                if (currentUser.email === adminEmail) {
+                    document.getElementById('download-btn').classList.remove('hidden');
+                    document.getElementById('upload-btn').classList.remove('hidden');
+                    document.getElementById('mce-upload-btn').classList.remove('hidden');
+                    document.getElementById('mce-download-btn').classList.remove('hidden');
+                    document.getElementById('outages-download-btn').classList.remove('hidden');
+                    document.getElementById('outages-upload-btn').classList.remove('hidden');
+                    document.getElementById('historical-upload-btn').classList.remove('hidden');
+                }
+
+                loadAndListenData();
+                loadMCEData();
+                loadOutagesData();
+            } else {
+                const currentPath = window.location.pathname;
+                const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/index.html';
+                window.location.href = newPath;
+            }
+        });
+    </script>
 </body>
 </html>

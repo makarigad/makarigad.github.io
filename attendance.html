@@ -1,0 +1,478 @@
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, addDoc, updateDoc, collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
+
+// Initialize Firebase with global variables provided by the environment
+const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [dutyType, setDutyType] = useState(null);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [isAttendanceStarted, setIsAttendanceStarted] = useState(false);
+  const [currentAttendanceDocId, setCurrentAttendanceDocId] = useState(null);
+  const [isBreakStarted, setIsBreakStarted] = useState(false);
+  const [currentPage, setCurrentPage] = useState('login'); // login | dutySelection | main | summary
+  const [message, setMessage] = useState({ text: '', type: '' }); // type: 'info', 'success', 'error'
+  const [loading, setLoading] = useState(true);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Global variables for the application
+  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+  const userId = user?.uid || crypto.randomUUID();
+
+  // Handle network status
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setMessage({ text: 'You are back online. Your data will now sync.', type: 'info' });
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setMessage({ text: 'You are offline. Data will be saved locally and synced when you reconnect.', type: 'info' });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+
+  // Initialize Auth and Listen for changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        try {
+          // Sign in anonymously if no auth token is provided
+          if (typeof __initial_auth_token !== 'undefined') {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+        } catch (error) {
+          console.error("Firebase auth failed:", error);
+        }
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Listen for attendance records and sync with local state
+  useEffect(() => {
+    if (user) {
+      const recordsCollectionRef = collection(db, 'artifacts', appId, 'users', userId, 'attendance');
+      const q = query(recordsCollectionRef);
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const records = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          date: doc.data().date.toDate(),
+          startTime: doc.data().startTime?.toDate() || null,
+          stopTime: doc.data().stopTime?.toDate() || null,
+          breakStartTime: doc.data().breakStartTime?.toDate() || null,
+          breakStopTime: doc.data().breakStopTime?.toDate() || null,
+        }));
+        setAttendanceRecords(records.sort((a, b) => b.date - a.date));
+
+        // Find the latest active attendance record to sync state
+        const latestActiveRecord = records.find(record => !record.stopTime && record.startTime);
+        if (latestActiveRecord) {
+          setIsAttendanceStarted(true);
+          setCurrentAttendanceDocId(latestActiveRecord.id);
+          setDutyType(latestActiveRecord.dutyType);
+          setIsBreakStarted(!!latestActiveRecord.breakStartTime && !latestActiveRecord.breakStopTime);
+        } else {
+          setIsAttendanceStarted(false);
+          setCurrentAttendanceDocId(null);
+          setIsBreakStarted(false);
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [user, appId, userId]);
+
+  const getCurrentCoordinates = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject('Geolocation is not supported by your browser');
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              lat: position.coords.latitude,
+              lon: position.coords.longitude,
+            });
+          },
+          (error) => {
+            reject(`Geolocation error: ${error.message}`);
+          }
+        );
+      }
+    });
+  };
+
+  const handleDutySelection = (type) => {
+    setDutyType(type);
+    setCurrentPage('main');
+  };
+
+  const isAttendanceStartAllowed = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    if (isAttendanceStarted) return false;
+
+    switch (dutyType) {
+      case 'Day Duty':
+        return currentHour >= 4 && currentHour < 8;
+      case 'Night Duty':
+        return currentHour >= 19 && currentHour <= 21;
+      case 'Outdoor Duty':
+        return currentHour >= 6 && currentHour <= 22;
+      default:
+        return false;
+    }
+  };
+
+  const isBreakAllowed = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    return isAttendanceStarted && (currentHour >= 12 && currentHour < 13);
+  };
+
+  const isAttendanceStopAllowed = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    if (!isAttendanceStarted) return false;
+
+    switch (dutyType) {
+      case 'Day Duty':
+        return currentHour >= 17 && currentHour < 20;
+      case 'Night Duty':
+        // Next day between 3:30 AM and 8:00 AM
+        return (currentHour >= 3 && currentHour < 8) && (currentHour > 3 || (currentHour === 3 && currentMinute >= 30));
+      case 'Outdoor Duty':
+        return currentHour >= 6 && currentHour <= 22;
+      default:
+        return false;
+    }
+  };
+
+  const handleStartAttendance = async () => {
+    if (!isAttendanceStartAllowed()) {
+      setMessage({ text: 'Attendance cannot be started at this time.', type: 'error' });
+      return;
+    }
+    setMessage({ text: 'Starting attendance...', type: 'info' });
+    try {
+      const coords = await getCurrentCoordinates();
+      const newRecord = {
+        userId: userId,
+        dutyType: dutyType,
+        startTime: Timestamp.now(),
+        startCoords: coords,
+        date: Timestamp.fromDate(new Date()),
+        stopTime: null,
+        breakStartTime: null,
+        breakStopTime: null,
+      };
+      const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'attendance'), newRecord);
+      setCurrentAttendanceDocId(docRef.id);
+      setIsAttendanceStarted(true);
+      setMessage({ text: `Attendance started for ${dutyType}.`, type: 'success' });
+    } catch (e) {
+      console.error("Error adding document: ", e);
+      setMessage({ text: `Error: ${e}`, type: 'error' });
+    }
+  };
+
+  const handleStopAttendance = async () => {
+    if (!currentAttendanceDocId || !isAttendanceStopAllowed()) {
+      setMessage({ text: 'Attendance cannot be stopped at this time.', type: 'error' });
+      return;
+    }
+    setShowConfirmModal(false);
+    setMessage({ text: 'Stopping attendance...', type: 'info' });
+    try {
+      const coords = await getCurrentCoordinates();
+      const docRef = doc(db, 'artifacts', appId, 'users', userId, 'attendance', currentAttendanceDocId);
+      await updateDoc(docRef, {
+        stopTime: Timestamp.now(),
+        stopCoords: coords,
+      });
+      setMessage({ text: 'Attendance stopped successfully.', type: 'success' });
+    } catch (e) {
+      console.error("Error updating document: ", e);
+      setMessage({ text: `Error: ${e}`, type: 'error' });
+    }
+  };
+
+  const handleBreak = async () => {
+    if (!currentAttendanceDocId || !isBreakAllowed()) {
+      setMessage({ text: 'Break cannot be started at this time.', type: 'error' });
+      return;
+    }
+    setMessage({ text: isBreakStarted ? 'Stopping break...' : 'Starting break...', type: 'info' });
+    try {
+      const coords = await getCurrentCoordinates();
+      const docRef = doc(db, 'artifacts', appId, 'users', userId, 'attendance', currentAttendanceDocId);
+      if (!isBreakStarted) {
+        await updateDoc(docRef, {
+          breakStartTime: Timestamp.now(),
+          breakStartCoords: coords,
+        });
+        setMessage({ text: 'Break started.', type: 'success' });
+      } else {
+        await updateDoc(docRef, {
+          breakStopTime: Timestamp.now(),
+          breakStopCoords: coords,
+        });
+        setMessage({ text: 'Break stopped.', type: 'success' });
+      }
+    } catch (e) {
+      console.error("Error updating document: ", e);
+      setMessage({ text: `Error: ${e}`, type: 'error' });
+    }
+  };
+
+  const getMessageStyle = (type) => {
+    switch (type) {
+      case 'success':
+        return "bg-green-100 text-green-700";
+      case 'error':
+        return "bg-red-100 text-red-700";
+      case 'info':
+        return "bg-blue-100 text-blue-700";
+      default:
+        return "bg-transparent text-gray-600";
+    }
+  };
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'login':
+        return (
+          <div className="flex flex-col items-center justify-center h-full space-y-4">
+            <h1 className="text-4xl font-extrabold text-blue-800">Staff Attendance</h1>
+            <p className="text-gray-600 text-sm">User ID: <span className="font-mono text-xs text-gray-500">{userId}</span></p>
+            <button
+              onClick={() => setCurrentPage('dutySelection')}
+              className="mt-6 bg-blue-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg hover:bg-blue-700 transition transform hover:scale-105"
+            >
+              Login to Get Started
+            </button>
+          </div>
+        );
+      case 'dutySelection':
+        return (
+          <div className="flex flex-col items-center justify-center h-full space-y-6">
+            <h1 className="text-3xl font-bold">Select Duty Type</h1>
+            <div className="space-y-4">
+              <button
+                onClick={() => handleDutySelection('Day Duty')}
+                className="w-64 bg-emerald-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:bg-emerald-700 transition transform hover:scale-105"
+              >
+                Day Duty
+              </button>
+              <button
+                onClick={() => handleDutySelection('Night Duty')}
+                className="w-64 bg-indigo-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:bg-indigo-700 transition transform hover:scale-105"
+              >
+                Night Duty
+              </button>
+              <button
+                onClick={() => handleDutySelection('Outdoor Duty')}
+                className="w-64 bg-orange-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:bg-orange-700 transition transform hover:scale-105"
+              >
+                Outdoor Duty
+              </button>
+            </div>
+          </div>
+        );
+      case 'main':
+        return (
+          <div className="flex flex-col items-center justify-center h-full p-4 space-y-6">
+            <h1 className="text-3xl font-bold">{dutyType}</h1>
+            <div className={`w-full max-w-sm p-4 rounded-xl shadow-lg transition duration-300 ${isAttendanceStarted ? 'bg-green-50' : 'bg-white'}`}>
+              <div className="flex items-center justify-center mb-4">
+                <div className={`w-3 h-3 rounded-full mr-2 ${isAttendanceStarted ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                <p className="text-sm font-medium text-gray-600">{isAttendanceStarted ? 'Attendance Active' : 'Attendance Inactive'}</p>
+              </div>
+              {message.text && (
+                <div className={`p-3 text-center rounded-lg mb-4 ${getMessageStyle(message.type)}`}>
+                  <p>{message.text}</p>
+                </div>
+              )}
+              {!isAttendanceStarted ? (
+                <button
+                  onClick={handleStartAttendance}
+                  className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl shadow-md hover:bg-blue-700 transition duration-300 disabled:bg-gray-400 disabled:shadow-none"
+                  disabled={!isAttendanceStartAllowed()}
+                >
+                  Attendance Start
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowConfirmModal(true)}
+                    className="w-full bg-red-600 text-white font-semibold py-3 rounded-xl shadow-md hover:bg-red-700 transition duration-300 disabled:bg-gray-400 disabled:shadow-none"
+                    disabled={!isAttendanceStopAllowed()}
+                  >
+                    Attendance Stop
+                  </button>
+                  <button
+                    onClick={handleBreak}
+                    className={`mt-4 w-full font-semibold py-3 rounded-xl shadow-md transition duration-300 disabled:bg-gray-400 disabled:shadow-none ${
+                      isBreakStarted ? 'bg-amber-500 hover:bg-amber-600' : 'bg-gray-400 hover:bg-gray-500'
+                    } text-white`}
+                    disabled={!isBreakAllowed()}
+                  >
+                    {isBreakStarted ? 'Stop Break' : 'Start Break'}
+                  </button>
+                </>
+              )}
+            </div>
+            <button
+              onClick={() => setCurrentPage('summary')}
+              className="mt-4 bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-full hover:bg-gray-300 transition duration-300"
+            >
+              Attendance Summary
+            </button>
+            <button
+              onClick={() => {
+                setDutyType(null);
+                setCurrentPage('dutySelection');
+              }}
+              className="mt-4 text-sm text-gray-500 hover:text-gray-700 transition duration-300"
+            >
+              Change Duty
+            </button>
+            {showConfirmModal && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full text-center space-y-4">
+                  <h2 className="text-xl font-bold">Confirm Stop Attendance</h2>
+                  <p>Are you sure you want to stop your attendance?</p>
+                  <div className="flex justify-center space-x-4">
+                    <button
+                      onClick={handleStopAttendance}
+                      className="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600"
+                    >
+                      Yes, Stop
+                    </button>
+                    <button
+                      onClick={() => setShowConfirmModal(false)}
+                      className="bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-400"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case 'summary':
+        const getMonthlySummary = () => {
+          const monthlyData = {};
+          const now = new Date();
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
+
+          attendanceRecords.forEach(record => {
+            const recordDate = record.date;
+            if (recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear) {
+              const day = recordDate.getDate();
+              const month = recordDate.toLocaleString('default', { month: 'short' });
+              const year = recordDate.getFullYear();
+              const dateKey = `${day} ${month} ${year}`;
+              if (!monthlyData[dateKey]) {
+                monthlyData[dateKey] = [];
+              }
+              monthlyData[dateKey].push(record);
+            }
+          });
+          return monthlyData;
+        };
+
+        const monthlySummary = getMonthlySummary();
+
+        return (
+          <div className="flex flex-col items-center h-full p-4 overflow-y-auto">
+            <h1 className="text-3xl font-bold mb-4">Monthly Attendance Summary</h1>
+            <p className="text-gray-600 mb-6">User ID: <span className="font-mono text-sm">{userId}</span></p>
+            {Object.keys(monthlySummary).length === 0 ? (
+              <p className="text-gray-500">No attendance records for this month.</p>
+            ) : (
+              <div className="w-full max-w-2xl space-y-4">
+                {Object.keys(monthlySummary).map(dateKey => (
+                  <div key={dateKey} className="bg-white p-4 rounded-xl shadow-lg">
+                    <h2 className="text-lg font-semibold mb-2">{dateKey}</h2>
+                    {monthlySummary[dateKey].map((record, index) => (
+                      <div key={index} className="border-b border-gray-200 py-2 last:border-b-0">
+                        <p><strong>Duty:</strong> {record.dutyType}</p>
+                        <p><strong>Start:</strong> {record.startTime?.toLocaleTimeString() || 'N/A'} (Lat: {record.startCoords?.lat.toFixed(4)}, Lon: {record.startCoords?.lon.toFixed(4)})</p>
+                        {record.stopTime && (
+                          <p><strong>Stop:</strong> {record.stopTime?.toLocaleTimeString() || 'N/A'} (Lat: {record.stopCoords?.lat.toFixed(4)}, Lon: {record.stopCoords?.lon.toFixed(4)})</p>
+                        )}
+                        {record.breakStartTime && (
+                          <p><strong>Break Start:</strong> {record.breakStartTime?.toLocaleTimeString() || 'N/A'}</p>
+                        )}
+                        {record.breakStopTime && (
+                          <p><strong>Break Stop:</strong> {record.breakStopTime?.toLocaleTimeString() || 'N/A'}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setCurrentPage('main')}
+              className="mt-6 bg-blue-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:bg-blue-700 transition duration-300"
+            >
+              Back to Main
+            </button>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-lg font-semibold text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 font-sans">
+      <script src="https://cdn.tailwindcss.com"></script>
+      <div className="relative w-full max-w-md h-screen md:h-auto md:max-h-[95vh] bg-white rounded-none md:rounded-3xl shadow-2xl p-6 flex flex-col items-center">
+        <div className="absolute top-4 right-4 flex items-center space-x-2">
+          <span className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
+          <span className="text-xs text-gray-500">{isOnline ? 'Online' : 'Offline'}</span>
+        </div>
+        {renderPage()}
+      </div>
+    </div>
+  );
+};
+
+export default App;

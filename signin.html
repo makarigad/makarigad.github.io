@@ -2,42 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Operator Login</title>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js"></script>
-  <script>
-    const firebaseConfig = {
-  apiKey: "AIzaSyA8UJViacRzajLMJ0lonhrbuuEGO54uOJ4",
-  authDomain: "makari-c4270.firebaseapp.com",
-  projectId: "makari-c4270",
-  storageBucket: "makari-c4270.firebasestorage.app",
-  messagingSenderId: "188970014713",
-  appId: "1:188970014713:web:980629f953af694e81cf28"
-};
-    firebase.initializeApp(firebaseConfig);
-  </script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h2>Operator Login</h2>
-  <input type="email" id="email" placeholder="Email"><br><br>
-  <input type="password" id="password" placeholder="Password"><br><br>
-  <button onclick="login()">Sign In</button>
 
-  <script>
-    function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+  <div class="login-container">
+    <form id="login-form">
+      <h2>Operator Login</h2>
+      <p id="error-message" class="error-message"></p>
+      
+      <div class="input-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      
+      <div class="input-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      
+      <button type="submit" id="login-button">Sign In</button>
+    </form>
+  </div>
 
-      firebase.auth().signInWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-          alert("Login successful!");
-          window.location.href = "data-entry.html"; // redirect to secure page
-        })
-        .catch((error) => {
-          alert("Login failed: " + error.message);
-        });
-    }
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+  <script src="auth.js"></script>
+
 </body>
 </html>

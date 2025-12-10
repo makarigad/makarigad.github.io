@@ -22,7 +22,7 @@
     th { white-space: normal !important; }
     .w-full { table-layout: fixed; width:100%; word-wrap:break-word; }
     #data-body td, #outages-body td, #mce-body td, #historical-tbody td { font-size: 0.75rem; padding: 4px 3px !important; }
-    thead th { padding: 8px 4px !important; }
+    thead th { padding: 8px 4px !important; font-size: 0.75rem; }
     .reason-col { width: 500px; }
     .hidden { display:none; }
     .truncate { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -50,7 +50,6 @@
   </div>
 
   <main class="p-4">
-    <!-- Daily tab (unchanged layout) -->
     <section id="daily-tab" class="tab-content">
       <div class="flex justify-between items-start mb-4">
         <div>
@@ -69,22 +68,22 @@
         <table class="w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English Date</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nepali Date</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Station Trans</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Plant</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Substation</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Outgoing</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Import Substation</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 1 Counter</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit 2 Counter</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operator</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">English Date</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Nepali Date</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Unit 1 Gen</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Unit 2 Gen</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Unit 1 Trans</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Unit 2 Trans</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Station Trans</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Export Plant</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Export Substation</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Import Outgoing</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Import Substation</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider"></th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Unit 1 Counter</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Unit 2 Counter</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Operator</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody id="data-body" class="bg-white divide-y divide-gray-200"></tbody>
@@ -92,7 +91,6 @@
       </div>
     </section>
 
-    <!-- Outages (same) -->
     <section id="outages-tab" class="tab-content hidden">
       <div class="flex justify-between items-start mb-4">
         <div>
@@ -110,19 +108,19 @@
         <table class="w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">NEA Curtailed Energy</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">NEA trip loss time (min)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No of Trippings</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time (Min)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time for Unit I (Min)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Loss Time for Unit II (Min)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy loss due to Line Tripping</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Energy loss due to Other reasons</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total energy loss</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase reason-col">Reason for Tripping</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Date</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">NEA Curtailed Energy</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">NEA trip loss time (min)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">No of Trippings</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Loss Time (Min)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Loss Time for Unit I (Min)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Loss Time for Unit II (Min)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Energy loss due to Line Tripping</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Energy loss due to Other reasons</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Total energy loss</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase reason-col">Reason for Tripping</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Operator</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody id="outages-body" class="bg-white divide-y divide-gray-200"></tbody>
@@ -130,7 +128,6 @@
       </div>
     </section>
 
-    <!-- Monthly Contract Energy -->
     <section id="monthly-tab" class="tab-content hidden">
       <div class="flex justify-between items-start mb-4">
         <div>
@@ -147,18 +144,18 @@
         <table class="w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Year</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week1 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week2 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week3 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week4 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Week5 AD (kWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Total AD (MWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Contract Energy (MWh)</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">No. of Days</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
-              <th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Year</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Month</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Week1 AD (kWh)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Week2 AD (kWh)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Week3 AD (kWh)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Week4 AD (kWh)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Week5 AD (kWh)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Total AD (MWh)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Contract Energy (MWh)</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">No. of Days</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Operator</th>
+              <th class="tight-cell text-left font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody id="mce-body" class="bg-white divide-y divide-gray-200"></tbody>
@@ -166,7 +163,6 @@
       </div>
     </section>
 
-    <!-- Trends -->
     <section id="trends-tab" class="tab-content hidden">
       <div class="data-card">
         <h3 class="font-bold text-lg mb-3 text-gray-800">Generation & Dispatch Trend</h3>
@@ -191,7 +187,7 @@
         </div>
 
         <div class="p-4 border rounded-md bg-gray-50 mb-4">
-          <p class="text-sm font-medium text-gray-700 mb-2">Select series to show</p>
+          <p class="text-sm font-medium text-gray-700 mb-2">Select historical series to show (Daily Energy is always shown as bars)</p>
           <div id="trend-chart-options" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
         </div>
 
@@ -201,7 +197,6 @@
       </div>
     </section>
 
-    <!-- Historical Data (year is ENGLISH year now) -->
     <section id="historical-data-tab" class="tab-content hidden">
       <div class="data-card">
         <h2 class="text-xl font-semibold mb-2">Historical Interval Data</h2>
@@ -235,7 +230,7 @@
         </div>
         <div id="historical-status" class="mt-4 text-sm text-gray-600"></div>
         <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto mt-4">
-          <table class="w-full divide-y divide-gray-200">
+          <table class="w-full divide-y divide-gray-200" id="historical-table">
             <thead id="historical-thead" class="bg-gray-50"></thead>
             <tbody id="historical-tbody" class="bg-white divide-y divide-gray-200"></tbody>
           </table>
@@ -282,7 +277,7 @@
     let allMCE = [];
     let editingMCEId = null;
 
-    // Nepali months order (user-specified)
+    // Nepali months order
     const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
     const nepaliMonthIndex = {};
     nepaliMonths.forEach((m,i)=> nepaliMonthIndex[m] = i);
@@ -338,7 +333,7 @@
       return Math.round(num * factor) / factor;
     }
 
-    /* ---------------- Daily logic (same as before, unchanged semantics) ---------------- */
+    /* ---------------- Daily Metering Logic ---------------- */
     const plantDataPath = "plantData";
     const userInfo = document.getElementById("user-info");
     const dataBody = document.getElementById("data-body");
@@ -418,7 +413,7 @@
         <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
         <td class="tight-cell flex space-x-2 whitespace-nowrap">
           <button class="update-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${docData.id}">Update</button>
-          <button class="cancel-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
+          <button class="cancel-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-green-700">Cancel</button>
         </td>
       `;
     }
@@ -648,7 +643,7 @@
       });
     }
 
-    /* ---------------- Outages (unchanged behavior) ---------------- */
+    /* ---------------- Outages Logic ---------------- */
     const outagesDataPath = "outagesAndLosses";
     const outagesBody = document.getElementById("outages-body");
     const outagesDownloadBtn = document.getElementById('outages-download-btn');
@@ -708,7 +703,7 @@
         <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
         <td class="tight-cell flex space-x-2 whitespace-nowrap">
           <button class="update-outage-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${d.id}">Update</button>
-          <button class="cancel-outage-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
+          <button class="cancel-outage-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-green-700">Cancel</button>
         </td>
       `;
     }
@@ -841,7 +836,6 @@
         const docRef = doc(db, outagesDataPath, dateStr);
         const docData = { user: currentUser.email, uid: currentUser.uid, updatedAt: Timestamp.now() };
         for(const header in row){
-          // map headers leniently (simple approach)
           const val = row[header];
           const low = String(header || '').toLowerCase();
           if (low.includes('nea curtailed')) docData.neaCurtailedEnergy = parseFloat(val) || null;
@@ -863,7 +857,7 @@
       catch (error) { showNotification("Upload failed: " + error.message, true); }
     }
 
-    /* ---------------- MCE (robust mapping + fixes) ---------------- */
+    /* ---------------- MCE Logic ---------------- */
     const mceDataPath = "monthlyContractEnergy";
     const mceBody = document.getElementById('mce-body');
     const mceDownloadBtn = document.getElementById('mce-download-btn');
@@ -882,7 +876,6 @@
     ];
 
     function createMCEInputRow() {
-      // generate BS years centered around current nepali year
       const currentNepaliYear = new Date().getFullYear() + 57;
       const years = [];
       for (let i = -5; i <= 4; i++) years.push(currentNepaliYear + i);
@@ -926,7 +919,7 @@
         <td class="tight-cell text-sm truncate" title="${currentUser ? currentUser.email : ''}">${currentUser ? currentUser.email : ''}</td>
         <td class="tight-cell flex space-x-2 whitespace-nowrap">
           <button class="update-mce-btn bg-green-600 text-white font-semibold py-1 px-3 rounded-md hover:bg-green-700" data-id="${d.id}">Update</button>
-          <button class="cancel-mce-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-gray-300">Cancel</button>
+          <button class="cancel-mce-btn bg-gray-200 text-gray-700 font-semibold py-1 px-3 rounded-md hover:bg-green-700">Cancel</button>
         </td>
       `;
     }
@@ -934,7 +927,6 @@
     function renderMCETable() {
       if (!currentUser) return;
       mceBody.innerHTML = createMCEInputRow();
-      // sort descending by year then month (Nepali order)
       allMCE.sort((a,b) => {
         const ay = (typeof a.year === 'number') ? a.year : parseInt(a.year) || a.year;
         const by = (typeof b.year === 'number') ? b.year : parseInt(b.year) || b.year;
@@ -1044,7 +1036,6 @@
       mceFileUpload.value = '';
     });
 
-    // robust MCE upload (keeps earlier improvements)
     function normalizeKey(s) { if (s === null || s === undefined) return ''; return String(s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
     function looksLikeMonthValue(v) { if (v === null || v === undefined) return false; const s = String(v).trim(); if (!s) return false; const sLower = s.toLowerCase(); if (/^\d+$/.test(sLower)) return true; return nepaliMonths.some(m => m.toLowerCase() === sLower); }
 
@@ -1054,7 +1045,6 @@
       const batch = writeBatch(db);
       let count = 0;
 
-      // headers are keys of jsonData[0]
       const headerKeys = Object.keys(jsonData[0] || {});
       const normalizedHeaderMap = {};
       headerKeys.forEach(k => normalizedHeaderMap[normalizeKey(k)] = k);
@@ -1074,7 +1064,6 @@
       const yearCandidates = ['year','bsyear','bs_year','bs','nepaliyear','bs year'];
       const monthCandidates = ['month','monthname','month_name','monthnamebs','bsmonth'];
 
-      // map each expected mce field to candidate names
       const fieldCandidateNames = {};
       mceFields.forEach(f => {
         const names = [];
@@ -1162,7 +1151,7 @@
       }
     }
 
-    /* ---------------- Trends (fixed to use {x,y} and default to last Nepali month) ---------------- */
+    /* ---------------- Trends Logic (Fixed) ---------------- */
     const trendStartDate = document.getElementById('trend-start-date');
     const trendEndDate = document.getElementById('trend-end-date');
     const trendNepaliYear = document.getElementById('trend-nepali-year');
@@ -1170,7 +1159,7 @@
     const viewTrendBtn = document.getElementById('view-trend-btn');
     const trendChartOptionsContainer = document.getElementById('trend-chart-options');
 
-    // series list - include the extra fields you mentioned (water level, spear valve, etc.)
+    // Define available historical series
     const trendSeries = [
       { key: 'waterlevel_cm', name: 'Water Level (cm)' },
       { key: 'pressure_mwc', name: 'Pressure (mWC)' },
@@ -1181,19 +1170,9 @@
       { key: 'u1_activePower_kw', name: 'U1 Power (kW)' },
       { key: 'u2_spear_pct', name: 'U2 Spear (%)' },
       { key: 'u2_activePower_kw', name: 'U2 Power (kW)' },
-      // daily metering series
-      { key: 'unit1Gen', name: 'Unit 1 Gen' },
-      { key: 'unit2Gen', name: 'Unit 2 Gen' },
-      { key: 'exportPlant', name: 'Export Plant' },
-      { key: 'exportSubstation', name: 'Export Substation' },
-      { key: 'importOutgoing', name: 'Import Outgoing' },
-      { key: 'importSubstation', name: 'Import Substation' },
-      { key: 'unit1Counter', name: 'Unit 1 Counter' },
-      { key: 'unit2Counter', name: 'Unit 2 Counter' }
     ];
 
     function initializeTrendsTab() {
-      // populate some default Nepali years
       trendNepaliYear.innerHTML = '';
       const currentNepaliYear = new Date().getFullYear() + 57;
       for (let i = 0; i < 10; i++) {
@@ -1203,7 +1182,6 @@
       trendNepaliMonth.innerHTML = '';
       nepaliMonths.forEach(month => trendNepaliMonth.add(new Option(month, month)));
 
-      // create checkboxes for each series
       trendChartOptionsContainer.innerHTML = '';
       trendSeries.forEach((field, idx) => {
         const div = document.createElement('div');
@@ -1219,22 +1197,15 @@
     }
     initializeTrendsTab();
 
-    // Given a BS year & BS month name, find English date mapping from allData:
-    //   - start: find record in allData whose nepali_date == `${year}.${monthIndex}.1`
-    //   - end: find record whose nepali_date == nextMonthYear.nextMonthIndex.1
-    // If exact day-1 not found, fallback: start = first record with that nepali month, end = last record with that nepali month
     function findEnglishRangeForNepaliMonth(bsYear, bsMonthName) {
-      // bsMonthName must be like "Baisakh" etc.
       if (!bsYear || !bsMonthName) return null;
       const monthIndex = nepaliMonths.indexOf(bsMonthName) + 1;
       if (monthIndex === 0) return null;
       const nextMonthIndex = (monthIndex === 12) ? 1 : monthIndex + 1;
       const nextMonthYear = (monthIndex === 12) ? (String(Number(bsYear) + 1)) : bsYear;
 
-      // helper to find exact day=1
       const findExact = (year, mIndex) => {
         const needle = `${year}.${String(mIndex).padStart(2,'0')}.01`;
-        // look for nepali_date equal to needle
         for (const rec of allData) {
           if (rec.nepali_date && String(rec.nepali_date).trim() === needle) return rec.id;
         }
@@ -1246,7 +1217,6 @@
 
       if (startExact && endExact) return { start: startExact, end: endExact };
 
-      // fallback: first record where nepali month matches
       const monthRecords = allData.filter(rec => {
         if (!rec.nepali_date) return false;
         const parts = String(rec.nepali_date).split('.');
@@ -1257,7 +1227,6 @@
       if (monthRecords.length === 0) return null;
 
       const start = monthRecords[0];
-      // find next month's first date in allData; if none, set end to last record of current month + 1 day? Better: set end to last record of current month
       const end = (endExact) ? endExact : monthRecords[monthRecords.length - 1];
       return { start, end };
     }
@@ -1279,7 +1248,6 @@
     trendNepaliYear.addEventListener('change', updateEnglishDatesFromNepaliSelection);
     trendNepaliMonth.addEventListener('change', updateEnglishDatesFromNepaliSelection);
 
-    // fetch historical interval data across months in a date range (unchanged path)
     async function fetchHistoricalDataForRange(startDate, endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
@@ -1310,94 +1278,146 @@
       viewTrendBtn.disabled = true; viewTrendBtn.textContent = 'Loading...';
       let startDateValue = trendStartDate.value; let endDateValue = trendEndDate.value;
       if (!startDateValue || !endDateValue) { showNotification("Please select a date range or a Nepali month/year.", true); viewTrendBtn.disabled = false; viewTrendBtn.textContent = 'View Trend'; return; }
+      
+      // Filter daily data for the range (already sorted by date)
       const filteredDailyData = allData.filter(d => d.id >= startDateValue && d.id <= endDateValue);
+      
       let historicalData = [];
-      if (filteredDailyData.length > 1) historicalData = await fetchHistoricalDataForRange(startDateValue, endDateValue);
-      const selectedKeys = Array.from(document.querySelectorAll('.trend-checkbox:checked')).map(el => el.value);
-      if (selectedKeys.length === 0) { selectedKeys.push('unit1Gen'); document.getElementById('trend-check-unit1Gen').checked = true; }
-      updateTrendChart(filteredDailyData, historicalData, selectedKeys);
+      // Only fetch historical if we have a valid daily range
+      if (filteredDailyData.length > 0) {
+          historicalData = await fetchHistoricalDataForRange(startDateValue, endDateValue);
+      }
+      
+      updateTrendChart(filteredDailyData, historicalData);
       viewTrendBtn.disabled = false; viewTrendBtn.textContent = 'View Trend';
     });
 
-    // build line chart using datapoints {x: date, y: value}
-    function updateTrendChart(dailyData, historicalData = [], selectedKeys = null) {
-      if (!selectedKeys) selectedKeys = Array.from(document.querySelectorAll('.trend-checkbox:checked')).map(el => el.value);
-      if (selectedKeys.length === 0) selectedKeys = ['unit1Gen'];
+    // Function to update the chart with both bars (daily) and lines (historical)
+    function updateTrendChart(dailyData, historicalData = []) {
+        // 1. Calculate Daily Dispatch Bar Data from dailyData
+        const dailyDispatchData = [];
+        for (let i = 1; i < dailyData.length; i++) {
+            const today = dailyData[i];
+            const yesterday = dailyData[i - 1];
+            // Ensure both values exist before subtracting
+            if (today.exportSubstation != null && yesterday.exportSubstation != null) {
+                const dispatch = today.exportSubstation - yesterday.exportSubstation;
+                // Only add positive, sensible amounts
+                if (dispatch >= 0) {
+                     // Use midday to align bars better with continuous line data
+                    const dateParts = today.id.split('-');
+                    // Note: Month is 0-indexed in JS Date constructor
+                    const middayDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], 12, 0, 0);
+                    dailyDispatchData.push({ x: middayDate, y: dispatch });
+                }
+            }
+        }
 
-      // prepare datasets as time-typed data arrays
-      const datasets = selectedKeys.map((key, idx) => {
-        const label = (trendSeries.find(s => s.key === key)?.name) || key;
-        const dataPoints = dailyData.map(d => {
-          const y = (d[key] === null || typeof d[key] === 'undefined') ? null : Number(d[key]);
-          return { x: d.id, y };
-        }).filter(pt => pt.y !== null); // remove nulls so chart isn't noisy; Chart will show gaps if you want nulls retained
-        return {
-          label,
-          data: dataPoints,
-          borderWidth: 2,
-          tension: 0.2,
-          fill: false,
-          pointRadius: 2,
-          spanGaps: true,
-          borderColor: undefined // Chart.js picks default palette
-        };
-      });
+        // Base dataset: The Bars on the left axis
+        const datasets = [{
+            label: 'Daily Energy Dispatched (MWh)',
+            data: dailyDispatchData,
+            backgroundColor: 'rgba(79, 70, 229, 0.6)', // Indigo color
+            borderColor: 'rgba(79, 70, 229, 1)',
+            borderWidth: 1,
+            type: 'bar',
+            yAxisID: 'y-energy',
+            order: 2 // Draw behind lines
+        }];
 
-      const ctx = document.getElementById('daily-trend-chart').getContext('2d');
-      if (trendChartInstance) {
-        trendChartInstance.data.datasets = datasets;
-        trendChartInstance.update();
-      } else {
-        trendChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: { datasets },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            parsing: false,
-            normalized: true,
-            scales: {
-              x: {
+        // 2. Add Historical Line Data on right axes
+        const selectedKeys = Array.from(document.querySelectorAll('.trend-checkbox:checked')).map(el => el.value);
+        // Palette for line charts
+        const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899'];
+        
+        // Initial scales configuration
+        const scales = {
+            x: {
                 type: 'time',
-                time: { parser: 'yyyy-MM-dd', unit: 'day', tooltipFormat: 'PP' },
-                title: { display: true, text: 'Date' }
-              },
-              y: { title: { display: true, text: 'Value' }, beginAtZero: false }
+                time: { unit: 'day', tooltipFormat: 'PP HH:mm' },
+                title: { display: true, text: 'Date' },
+                grid: { display: false }
             },
-            plugins: {
-              legend: { position: 'top' },
-              tooltip: { mode: 'nearest', intersect: false }
-            },
-            interaction: { mode: 'nearest', intersect: false }
-          }
+            'y-energy': {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'Energy (MWh)', color: '#4f46e5' },
+                ticks: { color: '#4f46e5' }
+            }
+        };
+
+        selectedKeys.forEach((key, index) => {
+            const fieldInfo = trendSeries.find(s => s.key === key);
+            if (!fieldInfo || historicalData.length === 0) return;
+
+            const yAxisID = `y-${key}`;
+            const color = colors[index % colors.length];
+
+            datasets.push({
+                label: fieldInfo.name,
+                // Map historical data, converting Firestore timestamp to JS Date
+                data: historicalData.map(d => ({
+                    x: d.timestamp.toDate(),
+                    y: d[key] ?? null
+                })).filter(pt => pt.y !== null),
+                borderColor: color,
+                backgroundColor: color,
+                borderWidth: 2,
+                tension: 0.2,
+                pointRadius: 0, // cleaner look for high-res data
+                yAxisID: yAxisID,
+                type: 'line',
+                order: 1 // Draw on top of bars
+            });
+
+            // Add right-side Y-axis configuration dynamically
+            scales[yAxisID] = {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                grid: { drawOnChartArea: false }, // Don't clutter grid
+                title: { display: true, text: fieldInfo.name, color: color },
+                ticks: { color: color }
+            };
         });
-      }
+
+        // Chart init/update logic
+        const ctx = document.getElementById('daily-trend-chart').getContext('2d');
+        if (trendChartInstance) {
+            trendChartInstance.data.datasets = datasets;
+            trendChartInstance.options.scales = scales;
+            trendChartInstance.update();
+        } else {
+            trendChartInstance = new Chart(ctx, {
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    stacked: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: scales
+                }
+            });
+        }
     }
 
-    // set default trend to last Nepali month found in allData
     function setDefaultTrendToLastNepaliMonth() {
-      // find latest record with nepali_date, parse to get year&month
       for (let i = allData.length - 1; i >= 0; i--) {
         const rec = allData[i];
         if (!rec.nepali_date) continue;
         const parts = String(rec.nepali_date).split('.');
         if (parts.length === 3) {
           const bsYear = parts[0];
-          const bsMonthIndex = parseInt(parts[1], 10);
-          const bsMonthName = nepaliMonths[bsMonthIndex - 1];
+          const bsMonthName = nepaliMonths[parseInt(parts[1], 10) - 1];
           if (bsMonthName) {
-            // set selects
             trendNepaliYear.value = bsYear;
-            // ensure month option exists then set
             if ([...trendNepaliMonth.options].some(opt => opt.value === bsMonthName)) trendNepaliMonth.value = bsMonthName;
-            // compute english range
             const mapped = findEnglishRangeForNepaliMonth(String(bsYear), bsMonthName);
             if (mapped) {
               trendStartDate.value = mapped.start;
               trendEndDate.value = mapped.end;
-              // auto-render default trend for last month
-              // select default 2 series
-              document.querySelectorAll('.trend-checkbox').forEach((cb, idx) => { cb.checked = idx < 2; });
               viewTrendBtn.click();
             }
             break;
@@ -1406,15 +1426,15 @@
       }
     }
 
-    /* ------------ Historical Data (YEAR is English year) ---------- */
+    /* ------------ Historical Data (Fixed: Split Date/Time & Download) ---------- */
     const historicalYearSelect = document.getElementById('historical-year');
     const historicalMonthSelect = document.getElementById('historical-month');
     const historicalViewBtn = document.getElementById('historical-view-btn');
     const historicalStatus = document.getElementById('historical-status');
     const historicalThead = document.getElementById('historical-thead');
     const historicalTbody = document.getElementById('historical-tbody');
+    const historicalDownloadBtn = document.getElementById('historical-download-btn');
 
-    // populate historical year dropdown from allData English years
     function populateHistoricalYearsFromAllData() {
       const yearsSet = new Set();
       allData.forEach(d => {
@@ -1440,6 +1460,7 @@
       historicalStatus.textContent = 'Loading historical data...';
       historicalThead.innerHTML = '';
       historicalTbody.innerHTML = '';
+      historicalDownloadBtn.classList.add('hidden'); // Hide until loaded
 
       try {
         const monthPadded = String(month).padStart(2, '0');
@@ -1450,27 +1471,53 @@
           historicalStatus.textContent = 'No historical data found for that month.';
           return;
         }
-        // build header from first doc
+        // build header from first doc, excluding timestamp but adding Date and Time columns
         const firstDoc = snapshot.docs[0].data();
-        const keys = Object.keys(firstDoc).sort();
-        // force timestamp as first column if present
-        const ordered = ['timestamp', ...keys.filter(k => k !== 'timestamp')];
-        const headerHtml = `<tr>${ordered.map(h=>`<th class="tight-cell text-left text-xs font-medium text-gray-500 uppercase">${h}</th>`).join('')}</tr>`;
+        const keys = Object.keys(firstDoc).filter(k => k !== 'timestamp').sort();
+        
+        let headerHtml = `<tr><th class="tight-cell text-left font-medium text-gray-500 uppercase">Date</th><th class="tight-cell text-left font-medium text-gray-500 uppercase">Time</th>`;
+        keys.forEach(h => headerHtml += `<th class="tight-cell text-left font-medium text-gray-500 uppercase">${h}</th>`);
+        headerHtml += '</tr>';
         historicalThead.innerHTML = headerHtml;
+
         const rows = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
-          const ts = data.timestamp ? data.timestamp.toDate().toISOString() : '';
-          const rowHtml = `<tr>${ordered.map(k => `<td class="tight-cell text-xs">${k==='timestamp'?ts:(data[k] ?? '')}</td>`).join('')}</tr>`;
+          let dateStr = '', timeStr = '';
+          if (data.timestamp) {
+              const dateObj = data.timestamp.toDate();
+              // Format date and time separately based on local locale (should match Nepal time if system is set correctly)
+              dateStr = dateObj.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+              timeStr = dateObj.toLocaleTimeString('en-GB', { hour12: false }); // HH:mm:ss
+          }
+          
+          let rowHtml = `<tr><td class="tight-cell">${dateStr}</td><td class="tight-cell">${timeStr}</td>`;
+          keys.forEach(k => rowHtml += `<td class="tight-cell">${data[k] ?? ''}</td>`);
+          rowHtml += '</tr>';
           rows.push(rowHtml);
         });
         historicalTbody.innerHTML = rows.join('');
         historicalStatus.textContent = `Loaded ${rows.length} records.`;
+        historicalDownloadBtn.classList.remove('hidden'); // Show download button
       } catch (error) {
         console.error("Error fetching historical data:", error);
         historicalStatus.textContent = 'Error loading historical data.';
         showNotification("Error fetching historical data.", true);
       }
+    });
+
+    // Download Handler for Historical Data
+    historicalDownloadBtn.addEventListener('click', () => {
+        if (historicalTbody.rows.length === 0) {
+            return showNotification("No data available to download.", true);
+        }
+        const wb = XLSX.utils.book_new();
+        // Convert the currently displayed table to a sheet
+        const ws = XLSX.utils.table_to_sheet(document.getElementById('historical-table'));
+        XLSX.utils.book_append_sheet(wb, ws, "HistoricalData");
+        const year = historicalYearSelect.value;
+        const monthName = historicalMonthSelect.options[historicalMonthSelect.selectedIndex].text;
+        XLSX.writeFile(wb, `Historical_Data_${monthName}_${year}.xlsx`);
     });
 
     /* ---------------- Auth state and boot ---------------- */
@@ -1486,6 +1533,7 @@
           document.getElementById('mce-download-btn').classList.remove('hidden');
           document.getElementById('outages-download-btn').classList.remove('hidden');
           document.getElementById('outages-upload-btn').classList.remove('hidden');
+          // Historical upload/download is visible to admin
           document.getElementById('historical-upload-btn').classList.remove('hidden');
         }
         loadAndListenData();

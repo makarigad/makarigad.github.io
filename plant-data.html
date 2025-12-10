@@ -255,7 +255,7 @@
             <h3 id="confirm-title" class="text-lg font-bold text-gray-900">Confirm Action</h3>
             <p id="confirm-message" class="mt-2 text-sm text-gray-600">Are you sure?</p>
             <div class="mt-6 flex justify-end space-x-3">
-                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                <button id="confirm-cancel-btn" class="px-4 py-2 BG-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
                 <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm</button>
             </div>
         </div>
@@ -1083,7 +1083,7 @@
             const finalDocId = `${year}_${month}`;
 
             const data = {
-                year: parseInt(year),
+                year: isNaN(parseInt(year)) ? year : parseInt(year),
                 month: month,
                 user: currentUser.email,
                 uid: currentUser.uid,
@@ -1135,7 +1135,7 @@
         });
 
         // -------------------------
-        // MCE Download & Upload handlers (ADDED)
+        // MCE Download & Upload handlers (ADDED/IMPROVED)
         // -------------------------
         mceDownloadBtn.addEventListener('click', () => {
             // Build rows using display names from mceFields
@@ -1176,6 +1176,23 @@
             mceFileUpload.value = '';
         });
 
+        // Helper: case-insensitive key finder and month recognition
+        function findKeyCaseInsensitive(obj, testFn) {
+            const keys = Object.keys(obj || {});
+            for (const k of keys) {
+                const clean = String(k || '').trim().toLowerCase();
+                if (testFn(clean, k)) return k;
+            }
+            return null;
+        }
+
+        function valueLooksLikeNepaliMonth(val) {
+            if (!val && val !== 0) return false;
+            const s = String(val).trim().toLowerCase();
+            if (!s) return false;
+            return nepaliMonths.some(m => m.toLowerCase() === s);
+        }
+
         async function processAndUploadMCE(jsonData) {
             if (!currentUser) return showNotification("Authentication error.", true);
             showNotification("Starting upload of MCE data...");
@@ -1183,47 +1200,97 @@
             const batch = writeBatch(db);
             let count = 0;
 
-            jsonData.forEach(row => {
-                // Try common column headers for Year/Month
-                const yearVal = row['Year'] ?? row['year'] ?? row['BS Year'] ?? row['BSYear'] ?? null;
-                const monthVal = row['Month'] ?? row['month'] ?? row['Month Name'] ?? null;
+            jsonData.forEach((row, idx) => {
+                // row is an object mapping header->value
+                // Find Year key (case-insensitive)
+                const yearKey = findKeyCaseInsensitive(row, (clean) => clean === 'year' || clean.includes('bs year') || clean === 'bsyear' || clean === 'bs_year' || clean.includes('bs'));
+                // Find Month key (case-insensitive)
+                const monthKey = findKeyCaseInsensitive(row, (clean) => clean === 'month' || clean.includes('month name') || clean.includes('monthname'));
+
+                // fallback: if there is no header explicitly named 'Month', try to find a column whose VALUE looks like a Nepali month for this row
+                let yearVal = yearKey ? row[yearKey] : null;
+                let monthVal = monthKey ? row[monthKey] : null;
+
+                // If month column not found, search row values for a Nepali month string
+                if (!monthVal) {
+                    for (const k of Object.keys(row)) {
+                        const v = row[k];
+                        if (valueLooksLikeNepaliMonth(v)) {
+                            monthVal = v;
+                            break;
+                        }
+                    }
+                }
+
+                // If year key not found, try to detect keys that include 'year'
+                if (!yearVal) {
+                    const altYearKey = findKeyCaseInsensitive(row, (clean) => clean.includes('year') || clean.includes('bs'));
+                    if (altYearKey) yearVal = row[altYearKey];
+                }
+
+                // final sanitization: trim and coerce
+                if (yearVal !== null && typeof yearVal !== 'undefined') {
+                    const yrStr = String(yearVal).trim();
+                    // if numeric like 2079.0, parseInt will handle
+                    yearVal = yrStr;
+                }
+                if (monthVal !== null && typeof monthVal !== 'undefined') {
+                    monthVal = String(monthVal).trim();
+                    // if month is numeric in file (1..12), keep as number string
+                    if (/^\d+(\.\d+)?$/.test(monthVal)) {
+                        const num = parseInt(parseFloat(monthVal), 10);
+                        if (num >= 1 && num <= 12) {
+                            // keep numeric month (user can decide naming)
+                            monthVal = String(num);
+                        }
+                    } else {
+                        // try to normalize month name (capitalize first letter)
+                        monthVal = monthVal.charAt(0).toUpperCase() + monthVal.slice(1);
+                    }
+                }
 
                 if (!yearVal || !monthVal) {
-                    // Skip rows without year/month
+                    // Skip rows that don't have both year and month
                     return;
                 }
 
-                const year = String(yearVal).trim();
-                const month = String(monthVal).trim();
+                const year = isNaN(parseInt(yearVal)) ? yearVal : parseInt(yearVal);
+                const month = monthVal;
 
                 const docId = `${year}_${month}`;
-
                 const docRef = doc(db, mceDataPath, docId);
+
                 const docData = {
-                    year: isNaN(parseInt(year)) ? year : parseInt(year),
+                    year: year,
                     month: month,
                     user: currentUser.email,
                     uid: currentUser.uid,
                     updatedAt: Timestamp.now()
                 };
 
-                // For each expected field, attempt to read either by display name or key
+                // For each expected field, attempt to read by multiple possible header forms
                 mceFields.forEach(f => {
                     let rawVal = null;
-                    // prefer header with display name first
+
+                    // prefer display name first (exact)
                     if (Object.prototype.hasOwnProperty.call(row, f.name)) rawVal = row[f.name];
+                    // then the key (if someone exported with column names equal to keys)
                     else if (Object.prototype.hasOwnProperty.call(row, f.key)) rawVal = row[f.key];
                     else {
-                        // try some common alternate header forms (without units)
-                        const alt = f.name.replace(/\s*\(.*\)$/, '').trim(); // e.g., "Week1 AD" from "Week1 AD (kWh)"
-                        if (Object.prototype.hasOwnProperty.call(row, alt)) rawVal = row[alt];
+                        // try alt forms: header without unit, or lowercased trimmed header matches
+                        const altHeader = f.name.replace(/\s*\(.*\)$/, '').trim(); // remove units like (kWh)
+                        // find any key in row that matches altHeader (case-insensitive)
+                        const candidateKey = findKeyCaseInsensitive(row, (clean, original) => clean === altHeader.toLowerCase() || clean === altHeader.toLowerCase().replace(/\s+/g,''));
+                        if (candidateKey) rawVal = row[candidateKey];
                     }
 
                     if (rawVal === null || rawVal === '') {
                         docData[f.key] = null;
                     } else {
-                        const cleaned = String(rawVal).toString().replace(',', '.').trim();
-                        docData[f.key] = isNaN(parseFloat(cleaned)) ? null : parseFloat(cleaned);
+                        // clean numbers with commas and different decimal separators
+                        const cleaned = String(rawVal).replace(/,/g, '').trim();
+                        const parsed = parseFloat(cleaned);
+                        docData[f.key] = isNaN(parsed) ? null : parsed;
                     }
                 });
 
@@ -1232,7 +1299,7 @@
             });
 
             if (count === 0) {
-                return showNotification("No valid MCE records found in the file. Ensure your file has Year and Month columns.", true);
+                return showNotification("No valid MCE records found in the file. Ensure your file has Year and Month columns (or a Month value like 'Chaitra').", true);
             }
 
             try {
@@ -1396,7 +1463,7 @@
             viewTrendBtn.textContent = 'View Trend';
         });
 
-        // ... (the rest of your trends/historical chart code remains unchanged) ...
+        // ... (rest of trend/historical chart code remains unchanged) ...
 
         /*************************************************************************
          * Auth state and initial startup

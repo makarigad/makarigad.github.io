@@ -1,94 +1,82 @@
-// --- Security Best Practice ---
-// It is strongly recommended to store your Firebase config in a secure
-// way, for example, using environment variables on a server, rather than
-// exposing them directly in client-side code.
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyA8UJViacRzajLMJ0lonhrbuuEGO54uOJ4",
-  authDomain: "makari-c4270.firebaseapp.com",
-  projectId: "makari-c4270",
-  storageBucket: "makari-c4270.firebasestorage.app",
-  messagingSenderId: "188970014713",
-  appId: "1:188970014713:web:980629f953af694e81cf28"
+  apiKey: "AIzaSyB9yreNlyZw9DFiuGlwMAecaDkdwn5cxDY",
+  authDomain: "makari-gad.firebaseapp.com",
+  projectId: "makari-gad",
+  storageBucket: "makari-gad.appspot.com",
+  messagingSenderId: "724611254155",
+  appId: "1:724611254155:web:79851f67861cee3f90918e"
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-// --- DOM Elements ---
-const loginForm = document.getElementById('login-form');
-const emailInput = document.getElementById('email');
-const passwordInput = document.getElementById('password');
-const loginButton = document.getElementById('login-button');
-const errorMessage = document.getElementById('error-message');
+const form = document.getElementById("login-form");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const errorBox = document.getElementById("error-message");
+const loginBtn = document.getElementById("login-button");
 
-// --- Event Listener ---
-loginForm.addEventListener('submit', (e) => {
-  // Prevent default form submission which reloads the page
-  e.preventDefault();
-
-  // 1. Get user input
-  const email = emailInput.value;
-  const password = passwordInput.value;
-
-  // 2. Simple validation
-  if (!email || !password) {
-    showError("Please enter both email and password.");
-    return;
-  }
-  
-  // 3. Set loading state
-  setLoading(true);
-
-  // 4. Sign in with Firebase
-  auth.signInWithEmailAndPassword(email, password)
-    .then((userCredential) => {
-      // Login successful
-      console.log("Login successful!", userCredential.user);
-      window.location.href = "data-entry.html"; // Redirect to secure page
-    })
-    .catch((error) => {
-      // Handle different authentication errors
-      let friendlyMessage = "An error occurred. Please try again.";
-      switch (error.code) {
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-          friendlyMessage = "Invalid email or password.";
-          break;
-        case 'auth/invalid-email':
-          friendlyMessage = "Please enter a valid email address.";
-          break;
-      }
-      showError(friendlyMessage);
-    })
-    .finally(() => {
-      // 5. Reset loading state regardless of outcome
-      setLoading(false);
-    });
-});
-
-
-// --- Helper Functions ---
-
-/**
- * Displays an error message to the user.
- * @param {string} message The message to display.
- */
-function showError(message) {
-  errorMessage.textContent = message;
-  errorMessage.style.display = 'block';
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.remove("hidden");
+  errorBox.style.display = "block";
 }
 
-/**
- * Toggles the loading state of the login button.
- * @param {boolean} isLoading True to set loading state, false to reset.
- */
+function clearError() {
+  errorBox.textContent = "";
+  errorBox.classList.add("hidden");
+  errorBox.style.display = "none";
+}
+
 function setLoading(isLoading) {
-  if (isLoading) {
-    loginButton.disabled = true;
-    loginButton.textContent = 'Signing In...';
-  } else {
-    loginButton.disabled = false;
-    loginButton.textContent = 'Sign In';
-  }
+  loginBtn.disabled = isLoading;
+  loginBtn.textContent = isLoading ? "Signing In..." : "Sign In";
+}
+
+if(form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      clearError();
+    
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+    
+      if (!email || !password) {
+        showError("Please enter both email and password.");
+        return;
+      }
+    
+      setLoading(true);
+    
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
+          window.location.href = "plant-data.html";
+        })
+        .catch((error) => {
+          console.error(error);
+          let msg = "Login failed. Please try again.";
+    
+          switch (error.code) {
+            case "auth/user-not-found":
+            case "auth/invalid-credential":
+              msg = "Invalid email or password.";
+              break;
+            case "auth/wrong-password":
+              msg = "Incorrect password.";
+              break;
+            case "auth/invalid-email":
+              msg = "Invalid email address.";
+              break;
+            case "auth/too-many-requests":
+              msg = "Too many attempts. Please try again later.";
+              break;
+          }
+    
+          showError(msg);
+        })
+        .finally(() => setLoading(false));
+    });
 }

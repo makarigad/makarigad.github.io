@@ -1,10 +1,6 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: #f4f7f9;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
   margin: 0;
 }
 
@@ -15,6 +11,7 @@ body {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 400px;
+  margin: 2rem auto;
 }
 
 h2 {
@@ -40,7 +37,7 @@ input[type="password"] {
   padding: 0.75rem;
   border: 1px solid #ccc;
   border-radius: 4px;
-  box-sizing: border-box; /* Important for padding and width */
+  box-sizing: border-box;
   transition: border-color 0.3s;
 }
 
@@ -80,6 +77,5 @@ button:disabled {
   padding: 0.75rem;
   margin-bottom: 1rem;
   text-align: center;
-  /* Hide by default */
   display: none; 
 }

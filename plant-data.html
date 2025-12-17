@@ -184,6 +184,7 @@
             <select id="trend-nepali-month" class="mt-1 table-input"></select>
           </div>
           <button id="view-trend-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 text-sm">View Trend</button>
+          <button id="download-trend-btn" class="ml-2 bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 text-sm">Download JPG</button>
         </div>
 
         <div class="p-4 border rounded-md bg-gray-50 mb-4">
@@ -1291,6 +1292,38 @@
       updateTrendChart(filteredDailyData, historicalData);
       viewTrendBtn.disabled = false; viewTrendBtn.textContent = 'View Trend';
     });
+
+    /* ---------------- Download Trend Chart Logic ---------------- */
+    const downloadTrendBtn = document.getElementById('download-trend-btn');
+    if (downloadTrendBtn) {
+        downloadTrendBtn.addEventListener('click', () => {
+            const canvas = document.getElementById('daily-trend-chart');
+            if (!canvas) {
+                showNotification("No chart available to download", true);
+                return;
+            }
+
+            // Create a temporary canvas to ensure a white background
+            // (Standard Chart.js canvases are transparent, which turns black in JPGs)
+            const newCanvas = document.createElement('canvas');
+            newCanvas.width = canvas.width;
+            newCanvas.height = canvas.height;
+            const ctx = newCanvas.getContext('2d');
+
+            // Fill with white background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+
+            // Draw the original chart onto the white background
+            ctx.drawImage(canvas, 0, 0);
+
+            // Trigger the download
+            const link = document.createElement('a');
+            link.download = `Trend_Chart_${new Date().toISOString().slice(0, 10)}.jpg`;
+            link.href = newCanvas.toDataURL('image/jpeg', 1.0); // 1.0 = Highest Quality
+            link.click();
+        });
+    }
 
     // Function to update the chart with both bars (daily) and lines (historical)
     function updateTrendChart(dailyData, historicalData = []) {

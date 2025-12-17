@@ -1520,6 +1520,150 @@
         XLSX.writeFile(wb, `Historical_Data_${monthName}_${year}.xlsx`);
     });
 
+    /* ---------------- Historical Upload Logic ---------------- */
+    const historicalUploadBtn = document.getElementById('historical-upload-btn');
+    const historicalFileUpload = document.getElementById('historical-file-upload');
+
+    if (historicalUploadBtn && historicalFileUpload) {
+        historicalUploadBtn.addEventListener('click', () => {
+            historicalFileUpload.click();
+        });
+
+        historicalFileUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/);
+                if (lines.length < 2) {
+                    showNotification("File is empty or missing headers", true);
+                    return;
+                }
+
+                // Headers are separated by semicolon for this CSV format
+                const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
+                
+                // Column mapping based on the attached CSV headers
+                const mapKeys = {
+                    'waterlevel feedback 1': 'waterlevel_cm',
+                    'penstock pressure': 'pressure_mwc',
+                    'active power [kw]': 'activePower_kw',
+                    'voltage grid': 'voltage_kv',
+                    'reactive power grid': 'reactivePower_kvar',
+                    'u1 spear opening': 'u1_spear_pct',
+                    'u1 active power generator': 'u1_activePower_kw',
+                    'u2 spear opening': 'u2_spear_pct',
+                    'u2 active power generator': 'u2_activePower_kw'
+                };
+
+                // Create a mapping of CSV index -> Database Key
+                const colMap = {};
+                headers.forEach((h, i) => {
+                    for (const [key, val] of Object.entries(mapKeys)) {
+                        if (h.includes(key)) {
+                            colMap[i] = val;
+                            break;
+                        }
+                    }
+                });
+
+                const dateIdx = headers.findIndex(h => h === 'date');
+                const timeIdx = headers.findIndex(h => h === 'time');
+
+                if (dateIdx === -1 || timeIdx === -1) {
+                    showNotification("Could not find 'Date' or 'Time' columns in CSV", true);
+                    return;
+                }
+
+                const parsedData = [];
+                // Iterate through rows (skipping header)
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    const cols = line.split(';');
+                    
+                    if (cols[dateIdx] && cols[timeIdx]) {
+                        // Parse Date (DD.MM.YYYY) and Time (HH:MM)
+                        const dateParts = cols[dateIdx].split('.'); 
+                        const timeParts = cols[timeIdx].split(':'); 
+                        
+                        if (dateParts.length === 3 && timeParts.length === 2) {
+                            const day = parseInt(dateParts[0], 10);
+                            const month = parseInt(dateParts[1], 10);
+                            const year = parseInt(dateParts[2], 10);
+                            const hour = parseInt(timeParts[0], 10);
+                            const minute = parseInt(timeParts[1], 10);
+                            
+                            // Create Javascript Date and Firestore Timestamp
+                            const dateObj = new Date(year, month - 1, day, hour, minute);
+                            const timestamp = Timestamp.fromDate(dateObj);
+
+                            const row = { timestamp }; 
+                            
+                            // Extract and clean data values
+                            for (const [idx, key] of Object.entries(colMap)) {
+                                let val = cols[idx];
+                                if (val) {
+                                    val = val.replace(',', '.'); // Fix comma decimals (e.g., 861,1 -> 861.1)
+                                    const num = parseFloat(val);
+                                    if (!isNaN(num)) row[key] = num;
+                                }
+                            }
+                            
+                            // Grouping keys for Firestore
+                            const groupKey = `${year}_${String(month).padStart(2, '0')}`;
+                            // Unique ID: YYYYMMDD_HHmm
+                            const docId = `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}_${String(hour).padStart(2, '0')}${String(minute).padStart(2, '0')}`;
+
+                            parsedData.push({ groupKey, docId, data: row });
+                        }
+                    }
+                }
+
+                if (parsedData.length === 0) {
+                    showNotification("No valid data rows found", true);
+                    return;
+                }
+
+                showConfirmation('Confirm Upload', `Found ${parsedData.length} records to upload. Proceed?`, async () => {
+                    const batches = {};
+                    // Group data by collection (Year_Month)
+                    parsedData.forEach(item => {
+                        if (!batches[item.groupKey]) batches[item.groupKey] = [];
+                        batches[item.groupKey].push(item);
+                    });
+
+                    let total = 0;
+                    try {
+                        for (const [groupKey, items] of Object.entries(batches)) {
+                            const collectionRef = collection(db, `historicalData/${groupKey}/data`);
+                            
+                            // Batch writes (limit is 500 per batch)
+                            for (let i = 0; i < items.length; i += 500) {
+                                const chunk = items.slice(i, i + 500);
+                                const batch = writeBatch(db);
+                                chunk.forEach(item => {
+                                    const docRef = doc(collectionRef, item.docId);
+                                    batch.set(docRef, item.data);
+                                });
+                                await batch.commit();
+                                total += chunk.length;
+                            }
+                        }
+                        showNotification(`Successfully uploaded ${total} records.`);
+                    } catch (err) {
+                        console.error(err);
+                        showNotification("Error uploading: " + err.message, true);
+                    }
+                });
+            };
+            reader.readAsText(file);
+            historicalFileUpload.value = ''; // Reset input
+        });
+    }
+
     /* ---------------- Auth state and boot ---------------- */
     onAuthStateChanged(auth, (user) => {
       if (user) {

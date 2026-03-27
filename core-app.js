@@ -10,7 +10,7 @@ export let userRole = 'operator';
 
 export async function initializeApplication(requireAuth = true) {
     try {
-        // Supabase checks local memory for the session, so this works perfectly offline!
+        // Supabase checks local memory for the session, so this works offline!
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session && session.user) {
@@ -55,7 +55,7 @@ export async function initializeApplication(requireAuth = true) {
             window.userRole = userRole; 
             const href = window.location.href.toLowerCase();
             
-            // SECURITY GUARDS: Kick unauthorized users to the Hub
+            // SECURITY GUARDS
             if (userRole === 'operator' && (href.includes('energy-summary') || href.includes('nepali-calendar') || href.includes('user-management'))) {
                 window.location.href = 'index.html';
                 return null;
@@ -84,7 +84,7 @@ async function loadGlobalUI() {
     try {
         let headerContainer = document.getElementById('global-header-container') || document.getElementById('global-header');
         if (headerContainer) {
-            // FIXED: Removed the '?v=Date.now()' cache-buster so the Service Worker can find this file offline!
+            // FIXED: Removed the ?v=Date.now() cache-buster so it works perfectly offline
             const headerRes = await fetch('./header.html'); 
             if (headerRes.ok) headerContainer.innerHTML = await headerRes.text();
         }
@@ -99,7 +99,7 @@ async function loadGlobalUI() {
             if (logoutBtn) logoutBtn.classList.remove('hidden');
             if (headerEmail) {
                 headerEmail.classList.remove('hidden');
-                headerEmail.classList.add('flex'); // Ensuring it unhides properly
+                headerEmail.classList.add('flex');
                 headerEmail.innerText = currentUser.email.split('@')[0];
             }
             if (logoutBtn) logoutBtn.onclick = async () => { await window.supabaseClient.auth.signOut(); window.location.href = "index.html"; };

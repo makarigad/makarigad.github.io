@@ -281,7 +281,6 @@
 
     async function loadDatabasePreview() {
         try {
-            // Establish EXACT "Today" and "Yesterday" based on Nepal Timezone
             const nepalTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
             const yyyy = nepalTime.getFullYear();
             const mm = String(nepalTime.getMonth() + 1).padStart(2, '0');
@@ -295,9 +294,12 @@
             const y_dd = String(yDate.getDate()).padStart(2, '0');
             const yesterdayEngDate = `${y_yyyy}-${y_mm}-${y_dd}`;
 
-            const { data: calData } = await supabase.from('calendar_mappings').select('nep_date_str, nep_year, nep_month').eq('eng_date', todayEngDate).maybeSingle();
-            const displayNepDate = calData ? calData.nep_date_str : todayEngDate;
+            // Try to fetch the Nepali Date. If offline, this will trigger the 'catch' block below!
+            const { data: calData, error: calErr } = await supabase.from('calendar_mappings').select('nep_date_str, nep_year, nep_month').eq('eng_date', todayEngDate).maybeSingle();
             
+            if (calErr) throw calErr; // Network is down, abort and go to 'catch'
+
+            const displayNepDate = calData ? calData.nep_date_str : todayEngDate;
             document.getElementById('card-update').textContent = 'Today: ' + displayNepDate;
 
             // Fetch ONLY Today and Yesterday's data
@@ -341,7 +343,19 @@
                 }
             }
 
-        } catch (e) { console.error('Preview error:', e); }
+        } catch (e) { 
+            // FIXED: If offline, gracefully show dashes instead of permanently freezing!
+            console.warn('Dashboard is offline:', e.message); 
+            document.getElementById('card-update').textContent = 'Status: Offline Mode';
+            document.getElementById('card-gen').textContent = '—';
+            document.getElementById('card-export').textContent = '—';
+            document.getElementById('card-pf').textContent = '—';
+            document.getElementById('card-outages').textContent = '—';
+            document.getElementById('card-u1-hrs').textContent = '—';
+            document.getElementById('card-u2-hrs').textContent = '—';
+            document.getElementById('card-mce').textContent = '—';
+            document.getElementById('card-ad').textContent = '—';
+        }
     }
 
     async function attemptScadaFetch() {

@@ -368,7 +368,7 @@ window.validateForm = function() {
     chk('t_pressure', 830, 900, 'Pressure');
     ['tr_1_temp', 'tr_2_temp', 'tr_aux_temp'].forEach(id => chk(id, 15, 70, 'Transformer Temp'));
     ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, 3, 9.5, 'Trans Oil Level')); chk('tr_aux_lvl', 70, 90, 'Aux Oil Level');
-    chk('dg_batt', 11, 13.9, 'DG Battery'); chk('dg_fuel', 10, 100, 'DG Fuel %');
+    chk('dg_batt', 11, 14.3, 'DG Battery'); chk('dg_fuel', 10, 100, 'DG Fuel %');
 
     // Smart Oil Flow Validation
     ['t_u1_flow', 't_u2_flow'].forEach(id => {
@@ -1668,16 +1668,31 @@ window.processLegacyImport = async function() {
                         let timeStr = String(hour).padStart(2, '0') + ":00:00";
                         let logData = { log_date: parsedDate, log_time: timeStr };
 
-                        if (importType === 'generation') {
+                      if (importType === 'generation') {
                             logData.u1_status = str(r[1]); logData.u2_status = str(r[2]);
                             logData.u1_hour_counter = num(r[3]); logData.u2_hour_counter = num(r[4]);
-                            logData.u1_load = num(r[5]); logData.u2_load = num(r[6]);
-                            logData.u1_pf = num(r[7]); logData.u2_pf = num(r[8]);
-                            logData.u1_pmu_reading = num(r[9]); logData.u2_pmu_reading = num(r[10]);
+                            
+                            // Mirrored Columns (MW)
+                            logData.u1_load = num(r[5]); logData.e_u1_mw = num(r[5]);
+                            logData.u2_load = num(r[6]); logData.e_u2_mw = num(r[6]);
+                            
+                            // Mirrored Columns (Power Factor)
+                            logData.u1_pf = num(r[7]); logData.e_u1_cos = num(r[7]);
+                            logData.u2_pf = num(r[8]); logData.e_u2_cos = num(r[8]);
+                            
+                            // Mirrored Columns (PMU / GWh)
+                            logData.u1_pmu_reading = num(r[9]); logData.e_u1_gwh = num(r[9]);
+                            logData.u2_pmu_reading = num(r[10]); logData.e_u2_gwh = num(r[10]);
+                            
                             logData.u1_feeder = num(r[11]); logData.u2_feeder = num(r[12]);
-                            logData.sst = num(r[13]); logData.outgoing = num(r[14]);
+                            logData.sst = num(r[13]); 
+                            
+                            // Mirrored Column (Outgoing)
+                            logData.outgoing = num(r[14]); logData.e_out_mwh = num(r[14]);
+                            
                             logData.import_mwh = num(r[15]); logData.water_level = num(r[16]);
-                            logData.remarks = str(r[17]);
+                            logData.remarks = str(r[17]); 
+                        
                         }
                         else if (importType === 'tempoil') {
                             logData.t_u1_u = num(r[1]); logData.t_u1_v = num(r[2]); logData.t_u1_w = num(r[3]); logData.t_u1_de = num(r[4]); logData.t_u1_nde = num(r[5]);

@@ -10,6 +10,7 @@ export let userRole = 'operator';
 
 export async function initializeApplication(requireAuth = true) {
     try {
+        // Supabase checks local memory for the session, so this works perfectly offline!
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session && session.user) {
@@ -20,6 +21,7 @@ export async function initializeApplication(requireAuth = true) {
             window.currentUser = null;
         }
 
+        // Load the UI first
         await loadGlobalUI();
 
         if (error) throw error;
@@ -27,12 +29,27 @@ export async function initializeApplication(requireAuth = true) {
         if (session?.user) {
             let isAdmin = currentUser.email.toLowerCase() === 'upenjyo@gmail.com';
             if (!isAdmin) {
-                const { data } = await supabase.from('user_roles').select('role').eq('email', currentUser.email).maybeSingle();
-                if (data && data.role === 'admin') isAdmin = true;
-                else if (data && data.role === 'staff') userRole = 'staff'; 
-                else userRole = 'operator';
+                try {
+                    // Try to fetch role from the live database
+                    const { data, error: dbErr } = await supabase.from('user_roles').select('role').eq('email', currentUser.email).maybeSingle();
+                    if (data && !dbErr) {
+                        if (data.role === 'admin') isAdmin = true;
+                        else if (data.role === 'staff') userRole = 'staff'; 
+                        else userRole = 'operator';
+                        
+                        // Save the role to local storage so the app remembers it when offline
+                        localStorage.setItem('makarigad_offline_role', userRole);
+                    } else {
+                        throw new Error("Offline or DB error");
+                    }
+                } catch (e) {
+                    // OFFLINE FALLBACK: Use the role we saved previously
+                    userRole = localStorage.getItem('makarigad_offline_role') || 'operator';
+                    if (userRole === 'admin') isAdmin = true;
+                }
             } else {
                 userRole = 'admin';
+                localStorage.setItem('makarigad_offline_role', 'admin');
             }
             
             window.userRole = userRole; 
@@ -67,7 +84,8 @@ async function loadGlobalUI() {
     try {
         let headerContainer = document.getElementById('global-header-container') || document.getElementById('global-header');
         if (headerContainer) {
-            const headerRes = await fetch('header.html?v=' + Date.now()); 
+            // FIXED: Removed the '?v=Date.now()' cache-buster so the Service Worker can find this file offline!
+            const headerRes = await fetch('./header.html'); 
             if (headerRes.ok) headerContainer.innerHTML = await headerRes.text();
         }
         const mainNav = document.getElementById('main-nav');
@@ -81,6 +99,7 @@ async function loadGlobalUI() {
             if (logoutBtn) logoutBtn.classList.remove('hidden');
             if (headerEmail) {
                 headerEmail.classList.remove('hidden');
+                headerEmail.classList.add('flex'); // Ensuring it unhides properly
                 headerEmail.innerText = currentUser.email.split('@')[0];
             }
             if (logoutBtn) logoutBtn.onclick = async () => { await window.supabaseClient.auth.signOut(); window.location.href = "index.html"; };
@@ -117,7 +136,6 @@ function applyRoleBasedUI() {
 
 window.addEventListener('online', async () => { await processSyncQueue(); });
 
-// 🔥 FIXED: This will now actively display Supabase Database rejections so you can fix RLS!
 export async function safeUpsert(tableName, payload) {
     if (navigator.onLine) {
         try {

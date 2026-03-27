@@ -4,12 +4,31 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Command Center | Makari Gad 10MW</title>
-  <link rel="manifest" href="manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="manifest" href="./manifest.json">
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #f4f6f8; }
     ::-webkit-scrollbar { display: none; }
+    
+    .clickable-username {
+        cursor: pointer !important;
+        color: #4f46e5 !important;
+        text-decoration: underline !important;
+        text-decoration-style: dashed !important;
+        text-underline-offset: 4px !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
+        transition: all 0.2s ease-in-out !important;
+        display: inline-block !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        z-index: 100 !important;
+    }
+    .clickable-username:hover { color: #312e81 !important; background-color: #e0e7ff !important; }
+    
+    .offline-disabled { opacity: 0.5 !important; cursor: not-allowed !important; text-decoration: none !important; pointer-events: none !important; }
+
     .live-dot { height: 12px; width: 12px; background-color: #10b981; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse-green 2s infinite; }
     @keyframes pulse-green { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
   </style>
@@ -115,11 +134,11 @@
         <form id="login-form" class="space-y-5">
             <div>
                 <label class="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Email</label>
-                <input type="email" id="login-email" required placeholder="Enter your email" title="Email Address" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                <input type="email" id="login-email" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition" />
             </div>
             <div>
                 <label class="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Password</label>
-                <input type="password" id="login-password" required placeholder="Enter your password" title="Password" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                <input type="password" id="login-password" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition" />
             </div>
             <div id="login-error" class="text-rose-500 text-xs font-bold hidden text-center bg-rose-50 p-3 rounded-lg border border-rose-100"></div>
             <button type="submit" class="w-full py-3.5 mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5 text-sm uppercase tracking-wide">Authenticate</button>
@@ -133,38 +152,42 @@
         <h2 class="text-2xl font-black text-indigo-900 mb-6 flex items-center gap-2">👤 My Profile</h2>
         
         <form id="profile-form" class="space-y-4">
+            <div id="offline-profile-warning" class="hidden bg-amber-50 border-l-4 border-amber-500 p-3 text-xs text-amber-800 font-bold mb-4">
+                ⚠️ You are offline. Profile edits and password changes require an internet connection.
+            </div>
+
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Email Address <span class="text-rose-500 lowercase font-normal">(Cannot be changed)</span></label>
-                <input type="email" id="prof-email" title="Email Address" placeholder="Email Address" class="w-full border border-slate-200 bg-slate-100 text-slate-500 font-bold rounded p-2.5 text-sm cursor-not-allowed" readonly>
+                <input type="email" id="prof-email" class="w-full border border-slate-200 bg-slate-100 text-slate-500 font-bold rounded p-2.5 text-sm cursor-not-allowed" readonly>
             </div>
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name</label>
-                <input type="text" id="prof-name" title="Full Name" placeholder="Enter full name" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                <input type="text" id="prof-name" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Position / Title</label>
-                    <input type="text" id="prof-position" title="Position or Title" placeholder="e.g. Plant Operator" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                    <input type="text" id="prof-position" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phone Number</label>
-                    <input type="text" id="prof-phone" title="Phone Number" placeholder="Phone number" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                    <input type="text" id="prof-phone" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date of Birth</label>
-                    <input type="date" id="prof-dob" title="Date of Birth" placeholder="Date of birth" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                    <input type="date" id="prof-dob" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Company</label>
-                    <input type="text" id="prof-company" title="Company Name" placeholder="Company name" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                    <input type="text" id="prof-company" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
                 </div>
             </div>
             
             <div class="my-4 border-t border-slate-200 pt-4">
                 <label class="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Change Password <span class="text-slate-400 lowercase font-normal">(Leave blank to keep current password)</span></label>
-                <input type="password" id="prof-password" title="New Password" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" placeholder="Type new password (min 6 chars)">
+                <input type="password" id="prof-password" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" placeholder="Type new password (min 6 chars)">
             </div>
             
             <button type="submit" id="save-prof-btn" class="w-full bg-indigo-600 text-white font-bold py-3 mt-2 rounded-lg shadow hover:bg-indigo-700 transition uppercase tracking-widest text-sm">Save Profile Changes</button>
@@ -172,11 +195,75 @@
     </div>
   </div>
 
+  <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Offline Mode Ready!', reg))
+            .catch(err => console.error('Offline Mode Failed:', err));
+        });
+    }
+  </script>
+
 <script type="module">
     import { supabase, initializeApplication } from './core-app.js';
 
     window.currentUserEmail = null;
     window.userRole = 'normal';
+
+    // Helper to enforce 3-second timeout on hanging network requests
+    const fetchWithTimeout = async (promise, ms = 3000) => {
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Network Timeout')), ms);
+        });
+        return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+    };
+
+    // Watcher to hook into the dynamic header
+    const observer = new MutationObserver(() => {
+        const userNameEl = document.getElementById('display-user-name');
+        if (userNameEl && !userNameEl.hasAttribute('data-click-bound') && userNameEl.innerText !== 'Loading...') {
+            userNameEl.setAttribute('data-click-bound', 'true'); 
+            userNameEl.classList.add('clickable-username');
+            userNameEl.title = "Click to Edit Profile";
+            
+            // Visually disable the button if offline
+            if (!navigator.onLine) {
+                userNameEl.classList.add('offline-disabled');
+                userNameEl.title = "Offline: Cannot edit profile";
+            }
+            
+            userNameEl.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); 
+                if (!navigator.onLine) {
+                    return alert("⚠️ You are currently offline.\n\nYou must have an internet connection to modify your profile or change your password.");
+                }
+                const modal = document.getElementById('profile-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.getElementById('prof-password').value = ''; 
+            });
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Update UI dynamically if internet drops or returns while using the app
+    window.addEventListener('offline', () => {
+        const userNameEl = document.getElementById('display-user-name');
+        if (userNameEl) {
+            userNameEl.classList.add('offline-disabled');
+            userNameEl.title = "Offline: Cannot edit profile";
+        }
+    });
+    window.addEventListener('online', () => {
+        const userNameEl = document.getElementById('display-user-name');
+        if (userNameEl) {
+            userNameEl.classList.remove('offline-disabled');
+            userNameEl.title = "Click to Edit Profile";
+        }
+    });
 
     async function startPage() {
         const sessionData = await initializeApplication(false); 
@@ -184,7 +271,7 @@
         if (sessionData && sessionData.user) {
             window.currentUserEmail = sessionData.user.email;
             window.userRole = sessionData.role;
-            fetchUserProfile(sessionData.user.email);
+            if (navigator.onLine) fetchUserProfile(sessionData.user.email);
         }
 
         loadDatabasePreview();
@@ -197,6 +284,8 @@
     // -- Login Logic --
     document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
+        if(!navigator.onLine) return alert("⚠️ No Internet Connection.\n\nYou cannot authenticate offline.");
+
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         const errEl = document.getElementById('login-error');
@@ -216,25 +305,31 @@
         }
     });
 
-    // Fetch details to fill the form when page loads
+    // Fetch details to fill the form
     async function fetchUserProfile(email) {
         document.getElementById('prof-email').value = email; 
-        
-        const { data, error } = await supabase.from('user_roles').select('*').eq('email', email).maybeSingle();
-        if (data) {
-            if(data.full_name) document.getElementById('prof-name').value = data.full_name;
-            if(data.position) document.getElementById('prof-position').value = data.position;
-            if(data.phone) document.getElementById('prof-phone').value = data.phone;
-            if(data.dob) document.getElementById('prof-dob').value = data.dob;
-            if(data.company) document.getElementById('prof-company').value = data.company;
-        } else {
-            document.getElementById('prof-company').value = 'Makari Gad Hydroelectric Project';
+        try {
+            const query = supabase.from('user_roles').select('*').eq('email', email).maybeSingle();
+            const { data, error } = await fetchWithTimeout(query, 3000);
+            if (data) {
+                if(data.full_name) document.getElementById('prof-name').value = data.full_name;
+                if(data.position) document.getElementById('prof-position').value = data.position;
+                if(data.phone) document.getElementById('prof-phone').value = data.phone;
+                if(data.dob) document.getElementById('prof-dob').value = data.dob;
+                if(data.company) document.getElementById('prof-company').value = data.company;
+            } else {
+                document.getElementById('prof-company').value = 'Makari Gad Hydroelectric Project';
+            }
+        } catch(e) {
+            console.warn("Could not fetch profile (offline or slow)");
         }
     }
 
     // Save profile logic
     document.getElementById('profile-form').addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (!navigator.onLine) return alert("⚠️ You are offline. Cannot save profile changes.");
+
         const btn = document.getElementById('save-prof-btn');
         const newPassword = document.getElementById('prof-password').value;
         const email = window.currentUserEmail;
@@ -266,10 +361,9 @@
             document.getElementById('profile-modal').classList.add('hidden');
             document.getElementById('profile-modal').classList.remove('flex');
             
-            // Instantly update their name on the header button without reloading
             if (payload.full_name) {
-                const headerEmailBtn = document.getElementById('header-email');
-                if(headerEmailBtn) headerEmailBtn.innerText = payload.full_name;
+                const nameHeader = document.getElementById('display-user-name');
+                if(nameHeader) nameHeader.innerText = payload.full_name;
             }
             
         } catch (err) {
@@ -294,17 +388,25 @@
             const y_dd = String(yDate.getDate()).padStart(2, '0');
             const yesterdayEngDate = `${y_yyyy}-${y_mm}-${y_dd}`;
 
-            // Try to fetch the Nepali Date. If offline, this will trigger the 'catch' block below!
-            const { data: calData, error: calErr } = await supabase.from('calendar_mappings').select('nep_date_str, nep_year, nep_month').eq('eng_date', todayEngDate).maybeSingle();
+            // Check if offline before trying to fetch
+            if (!navigator.onLine) {
+                throw new Error("Offline Mode");
+            }
+
+            // Use the 3-Second Timeout rule
+            const calQuery = supabase.from('calendar_mappings').select('nep_date_str, nep_year, nep_month').eq('eng_date', todayEngDate).maybeSingle();
+            const { data: calData, error: calErr } = await fetchWithTimeout(calQuery, 3000);
             
-            if (calErr) throw calErr; // Network is down, abort and go to 'catch'
+            if (calErr) throw calErr; 
 
             const displayNepDate = calData ? calData.nep_date_str : todayEngDate;
             document.getElementById('card-update').textContent = 'Today: ' + displayNepDate;
 
-            // Fetch ONLY Today and Yesterday's data
-            const { data: todayData } = await supabase.from('plant_data').select('*').eq('id', todayEngDate).maybeSingle();
-            const { data: prevData } = await supabase.from('plant_data').select('*').eq('id', yesterdayEngDate).maybeSingle();
+            const todayQuery = supabase.from('plant_data').select('*').eq('id', todayEngDate).maybeSingle();
+            const prevQuery = supabase.from('plant_data').select('*').eq('id', yesterdayEngDate).maybeSingle();
+            
+            const { data: todayData } = await fetchWithTimeout(todayQuery, 3000);
+            const { data: prevData } = await fetchWithTimeout(prevQuery, 3000);
 
             let dailyGrossGen = 0;
             let dailyExport = 0;
@@ -332,11 +434,14 @@
             document.getElementById('card-export').textContent = (todayData && exportMWh > 0) ? exportMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh';
             document.getElementById('card-pf').textContent = (todayData && grossMWh > 0) ? ((grossMWh / 240) * 100).toFixed(1) + '%' : '0.0%';
 
-            const { data: oData } = await supabase.from('outages').select('loss_time_min').eq('id', todayEngDate).maybeSingle();
+            const oQuery = supabase.from('outages').select('loss_time_min').eq('id', todayEngDate).maybeSingle();
+            const { data: oData } = await fetchWithTimeout(oQuery, 3000);
+            
             document.getElementById('card-outages').textContent = (oData && oData.loss_time_min) ? (oData.loss_time_min / 60).toFixed(1) + ' h' : '0.0 h';
 
             if (calData && calData.nep_year && calData.nep_month) {
-                const { data: mceData } = await supabase.from('contract_energy').select('contract_energy, total_ad').eq('id', `${calData.nep_year}_${calData.nep_month}`).maybeSingle();
+                const mceQuery = supabase.from('contract_energy').select('contract_energy, total_ad').eq('id', `${calData.nep_year}_${calData.nep_month}`).maybeSingle();
+                const { data: mceData } = await fetchWithTimeout(mceQuery, 3000);
                 if (mceData) {
                     document.getElementById('card-mce').textContent = mceData.contract_energy ? mceData.contract_energy.toLocaleString('en-US') + ' MWh' : '—';
                     document.getElementById('card-ad').textContent = mceData.total_ad ? mceData.total_ad.toLocaleString('en-US') + ' MWh' : '—';
@@ -344,9 +449,13 @@
             }
 
         } catch (e) { 
-            // FIXED: If offline, gracefully show dashes instead of permanently freezing!
+            // If network times out, gracefully handle offline state!
             console.warn('Dashboard is offline:', e.message); 
             document.getElementById('card-update').textContent = 'Status: Offline Mode';
+            document.getElementById('card-update').classList.replace('text-indigo-600', 'text-amber-600');
+            document.getElementById('card-update').classList.replace('bg-indigo-50', 'bg-amber-50');
+            document.getElementById('card-update').classList.replace('border-indigo-100', 'border-amber-200');
+            
             document.getElementById('card-gen').textContent = '—';
             document.getElementById('card-export').textContent = '—';
             document.getElementById('card-pf').textContent = '—';
@@ -361,7 +470,7 @@
     async function attemptScadaFetch() {
         const statusEl = document.getElementById('scada-status');
         try {
-            const response = await fetch('https://makari-scada-proxy.upenjyo.workers.dev/');
+            const response = await fetchWithTimeout(fetch('https://makari-scada-proxy.upenjyo.workers.dev/'), 5000);
             if (!response.ok) throw new Error('Proxy error');
             const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
 
@@ -377,19 +486,15 @@
         } catch (error) {
             statusEl.textContent = 'Connection Lost';
             statusEl.className = 'text-[11px] font-bold text-rose-700 bg-rose-50 px-4 py-2 rounded-xl border border-rose-200';
+            
+            document.getElementById('scada-power').textContent = '--';
+            document.getElementById('scada-control').textContent = '--';
+            document.getElementById('scada-level').textContent = '--';
+            document.getElementById('scada-total').textContent = '--';
+            document.getElementById('scada-month').textContent = '--';
+            document.getElementById('scada-day').textContent = '--';
         }
     }
 </script>
-
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Offline Mode Ready!', reg))
-            .catch(err => console.error('Offline Mode Failed:', err));
-        });
-    }
-  </script>
-
 </body>
 </html>

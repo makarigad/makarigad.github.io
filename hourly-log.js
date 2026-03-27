@@ -604,10 +604,12 @@ async function startPage() {
         if (sessionData) {
             window.currentUser = sessionData.user;
             window.userRole = sessionData.role;
-            const userNameEl = document.getElementById('display-user-name');
+            
+            // FIXED: Using unique IDs so it doesn't conflict with the header
+            const userNameEl = document.getElementById('hourly-user-name');
             if (userNameEl) userNameEl.innerText = sessionData.user.email.split('@')[0];
             
-            const userRoleEl = document.getElementById('display-user-role');
+            const userRoleEl = document.getElementById('hourly-user-role');
             if (userRoleEl) userRoleEl.innerText = sessionData.role.toUpperCase();
             
             const logOpEl = document.getElementById('log-operator');
@@ -626,12 +628,12 @@ async function startPage() {
             }
             updateDates(); 
         } else {
-            const userNameEl = document.getElementById('display-user-name');
+            const userNameEl = document.getElementById('hourly-user-name');
             if (userNameEl) userNameEl.innerText = "Not Logged In";
         }
     } catch (e) {
         console.error("Auth Error:", e);
-        const userNameEl = document.getElementById('display-user-name');
+        const userNameEl = document.getElementById('hourly-user-name');
         if (userNameEl) userNameEl.innerText = "Auth Error";
     }
 }

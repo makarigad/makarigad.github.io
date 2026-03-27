@@ -370,15 +370,14 @@ window.validateForm = function() {
     ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, 3, 9.5, 'Trans Oil Level')); chk('tr_aux_lvl', 70, 90, 'Aux Oil Level');
     chk('dg_batt', 11, 13.9, 'DG Battery'); chk('dg_fuel', 10, 100, 'DG Fuel %');
 
-    // FIX: Smart Oil Flow Validation
+    // Smart Oil Flow Validation
     ['t_u1_flow', 't_u2_flow'].forEach(id => {
         const v = val(id);
         const unitNum = id.includes('u1') ? '1' : '2';
         const stat = document.getElementById(`u${unitNum}-status`)?.value;
         if (v !== null) {
-            // Allow exactly 0 if the Unit is down (S or B)
             if ((stat === 'S' || stat === 'B') && v === 0) {
-                // Valid, do nothing
+                // Valid
             } else if (v < 40 || v > 50) {
                 errors.push(`Unit ${unitNum} Oil Flow must be between 40 and 50 (or 0 if Unit Status is S/B).`);
                 markErr(id);
@@ -629,7 +628,6 @@ async function startPage() {
             window.currentUser = sessionData.user;
             window.userRole = sessionData.role;
             
-            // FIX: Securely fetch Full Name for the Operator Signature and UI
             let fullName = sessionData.user.email.split('@')[0];
             if (navigator.onLine) {
                 try {
@@ -654,7 +652,7 @@ async function startPage() {
             if (userRoleEl) userRoleEl.innerText = sessionData.role.toUpperCase();
             
             const logOpEl = document.getElementById('log-operator');
-            if (logOpEl) logOpEl.value = fullName; // Securely locks the full name into the signature
+            if (logOpEl) logOpEl.value = fullName; 
 
             if (sessionData.role === 'staff') {
                 document.querySelectorAll('#hourly-form input, #hourly-form select, #hourly-form textarea').forEach(el => { el.disabled = true; el.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-70'); });
@@ -1406,176 +1404,6 @@ window.originalPreviewExportData = async function() {
     }
 };
 
-// ==========================================
-// RESTORED LEGACY EXCEL IMPORT FUNCTIONALITY
-// ==========================================
-window.processLegacyImport = function() {
-    const fileInput = document.getElementById('legacy-upload');
-    const typeSelect = document.getElementById('import-type');
-    const statusDiv = document.getElementById('import-status');
-    const targetDate = document.getElementById('log-date').value;
-    const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
-
-    if (!fileInput.files.length) { alert("Please select an Excel file first."); return; }
-    if (!targetDate) { alert("Please select an English Date at the top of the form first."); return; }
-
-    statusDiv.classList.remove('hidden');
-    statusDiv.className = "mt-3 text-xs font-bold text-amber-600";
-    statusDiv.innerText = "⏳ Processing Excel file... please wait.";
-
-    const file = fileInput.files[0];
-    const reader = new FileReader();
-
-    reader.onload = async function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            
-            // Convert to JSON with specific handling for headers
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
-            
-            if (jsonData.length < 5) throw new Error("Excel file seems empty or invalid format.");
-
-            statusDiv.innerText = "⏳ Uploading 24 hours of data to Supabase...";
-            
-            const p = (val) => {
-                if (val === undefined || val === null || val === '-' || String(val).trim() === '') return null;
-                const num = parseFloat(val);
-                return isNaN(num) ? null : num;
-            };
-
-            const s = (val) => {
-                if (val === undefined || val === null) return null;
-                const str = String(val).trim().toUpperCase();
-                return (str === 'O' || str === 'S' || str === 'B') ? str : 'O';
-            };
-
-            const type = typeSelect.value;
-            let payloads = [];
-
-            // We assume the data starts around row 4 or 5 depending on the template
-            // We look for time strings like "00:00" or "0"
-            let rowOffset = 0;
-            for(let i=0; i<10; i++) {
-                let firstCell = String(Object.values(jsonData[i] || {})[0] || '').trim();
-                if(firstCell === '00:00' || firstCell === '0' || firstCell === '0:00' || firstCell === '24:00') {
-                    rowOffset = i;
-                    break;
-                }
-            }
-
-            for (let i = 0; i < 24; i++) {
-                const row = jsonData[rowOffset + i];
-                if (!row) continue;
-                
-                let hrStr = i.toString().padStart(2, '0');
-                let timeStr = `${hrStr}:00:00`;
-                
-                let logData = {
-                    log_date: targetDate,
-                    log_time: timeStr,
-                    nepali_date: nepaliDateStr,
-                    created_by: window.currentUser ? window.currentUser.id : null,
-                    remarks: `[Legacy Import: ${type.toUpperCase()}]`
-                };
-
-                const cols = Object.values(row);
-
-                if (type === 'generation') {
-                    logData.u1_status = s(cols[1]); logData.u2_status = s(cols[2]);
-                    logData.u1_hour_counter = p(cols[3]); logData.u2_hour_counter = p(cols[4]);
-                    logData.u1_load = p(cols[5]); logData.u2_load = p(cols[6]);
-                    logData.u1_pf = p(cols[7]); logData.u2_pf = p(cols[8]);
-                    logData.u1_pmu_reading = p(cols[9]); logData.u2_pmu_reading = p(cols[10]);
-                    logData.u1_feeder = p(cols[11]); logData.u2_feeder = p(cols[12]);
-                    logData.sst = p(cols[13]); logData.outgoing = p(cols[14]);
-                    logData.import_mwh = p(cols[15]); logData.water_level = p(cols[16]);
-                } 
-                else if (type === 'tempoil') {
-                    logData.t_u1_u = p(cols[1]); logData.t_u1_v = p(cols[2]); logData.t_u1_w = p(cols[3]); logData.t_u1_de = p(cols[4]); logData.t_u1_nde = p(cols[5]);
-                    logData.t_u2_u = p(cols[6]); logData.t_u2_v = p(cols[7]); logData.t_u2_w = p(cols[8]); logData.t_u2_de = p(cols[9]); logData.t_u2_nde = p(cols[10]);
-                    logData.t_u1_gov_temp = p(cols[11]); logData.t_u1_hyd_temp = p(cols[12]); logData.t_u1_oil_flow = p(cols[13]); logData.t_u1_oil_level = String(cols[14]||'').toLowerCase();
-                    logData.t_u2_gov_temp = p(cols[15]); logData.t_u2_hyd_temp = p(cols[16]); logData.t_u2_oil_flow = p(cols[17]); logData.t_u2_oil_level = String(cols[18]||'').toLowerCase();
-                    logData.t_temp_out = p(cols[19]); logData.t_temp_in = p(cols[20]); logData.t_temp_intake = p(cols[21]); logData.t_pressure = p(cols[22]);
-                }
-                else if (type === 'transformer') {
-                    if (i % 2 !== 0) continue; // Transformer logs are typically every 2 hours
-                    logData.tr_1_temp = p(cols[1]); logData.tr_1_lvl = p(cols[2]);
-                    logData.tr_2_temp = p(cols[3]); logData.tr_2_lvl = p(cols[4]);
-                    logData.tr_aux_temp = p(cols[5]); logData.tr_aux_lvl = p(cols[6]);
-                    logData.dg_batt = p(cols[7]); logData.dg_fuel = p(cols[8]); logData.dg_runtime = String(cols[9]||'');
-                }
-                else if (type === 'schedule3') {
-                    logData.e_u1_v_ry = p(cols[1]); logData.e_u1_v_yb = p(cols[2]); logData.e_u1_v_br = p(cols[3]);
-                    logData.e_u1_a_i1 = p(cols[4]); logData.e_u1_a_i2 = p(cols[5]); logData.e_u1_a_i3 = p(cols[6]);
-                    logData.e_u1_mw = p(cols[7]); logData.e_u1_kvar = p(cols[8]); logData.e_u1_cos = p(cols[9]); logData.e_u1_hz = p(cols[10]); logData.e_u1_gwh = p(cols[11]);
-                    
-                    logData.e_u2_v_ry = p(cols[12]); logData.e_u2_v_yb = p(cols[13]); logData.e_u2_v_br = p(cols[14]);
-                    logData.e_u2_a_i1 = p(cols[15]); logData.e_u2_a_i2 = p(cols[16]); logData.e_u2_a_i3 = p(cols[17]);
-                    logData.e_u2_mw = p(cols[18]); logData.e_u2_kvar = p(cols[19]); logData.e_u2_cos = p(cols[20]); logData.e_u2_hz = p(cols[21]); logData.e_u2_gwh = p(cols[22]);
-                    
-                    logData.e_out_v_ry = p(cols[23]); logData.e_out_v_yb = p(cols[24]); logData.e_out_v_br = p(cols[25]);
-                    logData.e_out_a_i1 = p(cols[26]); logData.e_out_a_i2 = p(cols[27]); logData.e_out_a_i3 = p(cols[28]);
-                    logData.e_out_mw = p(cols[29]); logData.e_out_kvar = p(cols[30]); logData.e_out_cos = p(cols[31]); logData.e_out_hz = p(cols[32]); logData.e_out_mwh = p(cols[33]);
-                }
-
-                // Check if row already exists to do an UPDATE instead of INSERT
-                const existingLog = window.currentDayLogs.find(l => l.log_time && l.log_time === timeStr);
-                if (existingLog && existingLog.id) { 
-                    logData.id = existingLog.id; 
-                }
-
-                payloads.push(logData);
-            }
-
-            const { error } = await supabase.from('hourly_logs').upsert(payloads, { onConflict: 'log_date, log_time' });
-            
-            if (error) throw error;
-
-            statusDiv.className = "mt-3 text-xs font-bold text-emerald-600";
-            statusDiv.innerText = "✅ Successfully imported data! Refreshing view...";
-            
-            // Reload the view
-            setTimeout(() => { window.fetchLogs(); }, 1000);
-
-        } catch (err) {
-            statusDiv.className = "mt-3 text-xs font-bold text-rose-600";
-            statusDiv.innerText = "❌ Import Failed: " + err.message;
-        }
-    };
-    reader.readAsArrayBuffer(file);
-};
-
-window.purgeMonthData = async function() {
-    const year = document.getElementById('export-year').value;
-    const monthSelect = document.getElementById('export-month');
-    const monthName = monthSelect.options[monthSelect.selectedIndex].text;
-
-    if (!confirm(`🚨 CRITICAL WARNING 🚨\n\nAre you absolutely sure you want to permanently delete ALL hourly logs for ${monthName} ${year}?\n\nThis cannot be undone.`)) return;
-
-    try {
-        const { data: plantData } = await supabase.from('calendar_mappings')
-            .select('eng_date')
-            .eq('nep_year', year)
-            .eq('nep_month', monthName); 
-
-        if (!plantData || plantData.length === 0) return alert("No dates found in calendar for this month.");
-
-        const engDates = plantData.map(p => p.eng_date);
-        
-        const { error } = await supabase.from('hourly_logs').delete().in('log_date', engDates);
-        
-        if (error) throw error;
-        alert(`✅ All data for ${monthName} ${year} has been permanently deleted.`);
-        window.fetchLogs();
-
-    } catch (err) {
-        alert("❌ Failed to delete: " + err.message);
-    }
-};
-
 window.downloadExcel = async function() {
     if (!window.previewDataCache || window.previewDataCache.length === 0) { await window.previewExportData(); }
     setTimeout(async () => {
@@ -1660,6 +1488,292 @@ window.downloadPDF = async function() {
 window.prevPreviewPage = function() { const dayInput = document.getElementById('export-day'); let d = parseInt(dayInput.value) || 2; if(d > 1) { dayInput.value = d - 1; window.previewExportData(); } };
 window.nextPreviewPage = function() { const dayInput = document.getElementById('export-day'); let d = parseInt(dayInput.value) || 1; if(d < 32) { dayInput.value = d + 1; window.previewExportData(); } };
 window.toggleExportRange = function() { window.isDailyExport = document.querySelector('input[name="export-range"]:checked').value === 'daily'; document.getElementById('export-day-container').style.display = window.isDailyExport ? 'block' : 'none'; }
+
+
+// ==========================================
+// ADMIN EXPORTS: PURGE DATA ENGINE
+// ==========================================
+
+window.purgeMonthData = async function() {
+    if(window.userRole !== 'admin') return;
+    const year = document.getElementById('export-year').value;
+    const monthSelect = document.getElementById('export-month');
+    const monthName = monthSelect.options[monthSelect.selectedIndex].text;
+    const rawMonth = monthSelect.value;
+    
+    if(!confirm(`⚠️ DANGER: Are you sure you want to permanently delete ALL hourly logs for Nepali Month: ${monthName} ${year}? This cannot be undone.`)) return;
+
+    try {
+        const mPad = String(rawMonth).padStart(2, '0');
+        const mUnpad = parseInt(rawMonth).toString();
+        const search1 = `${year}.${mPad}.%`;
+        const search2 = `${year}.${mUnpad}.%`;
+        
+        const { data: plantData, error: plantError } = await supabase
+            .from('plant_data')
+            .select('id, nepali_date')
+            .or(`nepali_date.ilike.${search1},nepali_date.ilike.${search2}`);
+
+        if (plantError) throw plantError;
+        if (!plantData || plantData.length === 0) {
+            alert(`No mapped dates found for ${monthName} ${year}.`);
+            return;
+        }
+
+        const engDates = plantData.map(pd => pd.id);
+
+        const { error } = await supabase.from('hourly_logs').delete().in('log_date', engDates);
+        if (error) throw error;
+
+        alert(`✅ Successfully deleted all records for ${monthName} ${year}.`);
+        window.previewExportData(); 
+    } catch (e) {
+        alert("Delete Error: " + e.message);
+    }
+};
+
+// ==========================================
+// ADMIN EXPORTS: RESTORED SMART LEGACY IMPORT
+// ==========================================
+
+window.processLegacyImport = async function() {
+    const fileInput = document.getElementById('legacy-upload');
+    const statusDiv = document.getElementById('import-status');
+    const importType = document.getElementById('import-type').value;
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert("Please select an Excel or CSV file first.");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    statusDiv.innerHTML = "⏳ Reading workbook... (This may take a moment)";
+    statusDiv.classList.remove('hidden', 'text-emerald-700');
+    statusDiv.classList.add('text-rose-800');
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            
+            const payloads = [];
+            let processedSheets = 0;
+            let skippedSheets = 0;
+
+            const num = (val) => {
+                if(val === null || val === undefined || val === '') return null;
+                if(typeof val === 'number') return val;
+                if(typeof val === 'string') {
+                    let cleaned = val.replace(/[^\d.-]/g, ''); 
+                    if(cleaned === '' || cleaned === '.' || cleaned === '-') return null;
+                    return parseFloat(cleaned);
+                }
+                return null;
+            };
+            const str = (val) => {
+                if (val === null || val === undefined || val === '') return null;
+                let s = String(val).trim();
+                return s === '' ? null : s;
+            };
+
+            for (let sheetName of workbook.SheetNames) {
+                const worksheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
+
+                // --- SAFETY NET COMPLETELY REMOVED ---
+
+                let parsedDate = null;
+                let nepaliDateStr = null;
+
+                for(let i=0; i<30 && i<rows.length; i++) {
+                    let row = rows[i];
+                    if(!row) continue;
+                    
+                    for(let j=0; j<row.length; j++) {
+                        let cell = row[j];
+                        if(cell === null || cell === "") continue;
+                        
+                        if (typeof cell === 'number' && cell > 40000 && cell < 60000 && !parsedDate) {
+                            const dateObj = XLSX.SSF.parse_date_code(cell);
+                            parsedDate = `${dateObj.y}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`;
+                        }
+                        
+                        if (typeof cell === 'string' && !parsedDate) {
+                            let s = cell.trim();
+                            let m1 = s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); 
+                            if (m1 && parseInt(m1[1]) > 2000) parsedDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
+
+                            let m2 = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); 
+                            if (m2 && parseInt(m2[3]) > 2000 && !parsedDate) {
+                                parsedDate = `${m2[3]}-${m2[2].padStart(2, '0')}-${m2[1].padStart(2, '0')}`;
+                            }
+                        }
+                    }
+
+                    let rowStr = row.join(" ");
+                    if (!nepaliDateStr) {
+                        let match = rowStr.match(/Nepali Date.*?(\d{1,2})\D+(\d{1,2})\D+(\d{4})/i);
+                        if(match) {
+                            nepaliDateStr = `${match[3]}.${match[2].padStart(2,'0')}.${match[1].padStart(2,'0')}`;
+                        }
+                    }
+                }
+
+                if (!parsedDate && nepaliDateStr) {
+                    statusDiv.innerHTML = `⏳ Bridging Nepali Date (${nepaliDateStr}) on sheet ${sheetName}...`;
+                    const parts = nepaliDateStr.split('.');
+                    const py = parts[0], pm = parseInt(parts[1]).toString(), pd = parseInt(parts[2]).toString();
+                    
+                    const { data: pdData } = await supabase.from('plant_data').select('id')
+                        .or(`nepali_date.eq.${py}.${parts[1]}.${parts[2]},nepali_date.eq.${py}.${pm}.${pd},nepali_date.eq.${py}-${parts[1]}-${parts[2]},nepali_date.eq.${py}-${pm}-${pd}`)
+                        .limit(1);
+                    
+                    if (pdData && pdData.length > 0) {
+                        parsedDate = pdData[0].id;
+                    }
+                }
+
+                if (!parsedDate) {
+                    console.warn(`Skipping sheet ${sheetName}: Could not extract a valid Date.`);
+                    skippedSheets++;
+                    continue;
+                }
+
+                let rowsFound = 0;
+
+                for (let i=0; i<rows.length; i++) {
+                    let r = rows[i];
+                    if(!r || r.length < 2) continue;
+
+                    let hour = -1;
+                    let firstCell = r[0];
+
+                    // Smart detection of the Hour in column A
+                    if (firstCell !== null && firstCell !== "") {
+                        if (typeof firstCell === 'number') {
+                            if (firstCell >= 0 && firstCell < 1) hour = Math.round(firstCell * 24); 
+                            else if (firstCell >= 0 && firstCell <= 24) hour = Math.floor(firstCell); 
+                        } else if (typeof firstCell === 'string') {
+                            let s = String(firstCell).trim();
+                            let m = s.match(/^(\d{1,2}):\d{2}/);
+                            if (m) hour = parseInt(m[1], 10);
+                            else if (s.match(/^(\d{1,2})$/)) hour = parseInt(s, 10);
+                        }
+                    }
+
+                    if (hour === 24) hour = 0;
+
+                    if (hour >= 0 && hour <= 23) {
+                        let timeStr = String(hour).padStart(2, '0') + ":00:00";
+                        let logData = { log_date: parsedDate, log_time: timeStr };
+
+                        if (importType === 'generation') {
+                            logData.u1_status = str(r[1]); logData.u2_status = str(r[2]);
+                            logData.u1_hour_counter = num(r[3]); logData.u2_hour_counter = num(r[4]);
+                            logData.u1_load = num(r[5]); logData.u2_load = num(r[6]);
+                            logData.u1_pf = num(r[7]); logData.u2_pf = num(r[8]);
+                            logData.u1_pmu_reading = num(r[9]); logData.u2_pmu_reading = num(r[10]);
+                            logData.u1_feeder = num(r[11]); logData.u2_feeder = num(r[12]);
+                            logData.sst = num(r[13]); logData.outgoing = num(r[14]);
+                            logData.import_mwh = num(r[15]); logData.water_level = num(r[16]);
+                            logData.remarks = str(r[17]);
+                        }
+                        else if (importType === 'tempoil') {
+                            logData.t_u1_u = num(r[1]); logData.t_u1_v = num(r[2]); logData.t_u1_w = num(r[3]); logData.t_u1_de = num(r[4]); logData.t_u1_nde = num(r[5]);
+                            logData.t_u2_u = num(r[6]); logData.t_u2_v = num(r[7]); logData.t_u2_w = num(r[8]); logData.t_u2_de = num(r[9]); logData.t_u2_nde = num(r[10]);
+                            logData.t_u1_gov_temp = num(r[11]); logData.t_u1_hyd_temp = num(r[12]); logData.t_u1_oil_flow = num(r[13]); logData.t_u1_oil_level = str(r[14]);
+                            logData.t_u2_gov_temp = num(r[15]); logData.t_u2_hyd_temp = num(r[16]); logData.t_u2_oil_flow = num(r[17]); logData.t_u2_oil_level = str(r[18]);
+                            logData.t_temp_out = num(r[19]); logData.t_temp_in = num(r[20]); logData.t_temp_intake = num(r[21]); logData.t_pressure = num(r[22]);
+                        }
+                        else if (importType === 'transformer') {
+                            logData.tr_1_temp = num(r[1]); logData.tr_1_lvl = num(r[2]);
+                            logData.tr_2_temp = num(r[3]); logData.tr_2_lvl = num(r[4]);
+                            logData.tr_aux_temp = num(r[5]); logData.tr_aux_lvl = num(r[6]);
+                            logData.dg_batt = num(r[7]); logData.dg_fuel = num(r[8]); 
+                            logData.dg_runtime = str(r[9]);
+                        }
+                        else if (importType === 'schedule3') {
+                            logData.e_u1_v_ry = num(r[1]); logData.e_u1_v_yb = num(r[2]); logData.e_u1_v_br = num(r[3]);
+                            logData.e_u1_a_i1 = num(r[4]); logData.e_u1_a_i2 = num(r[5]); logData.e_u1_a_i3 = num(r[6]);
+                            logData.e_u1_mw = num(r[7]); logData.e_u1_kvar = num(r[8]); logData.e_u1_cos = num(r[9]);
+                            logData.e_u1_hz = num(r[10]); logData.e_u1_gwh = num(r[11]);
+
+                            logData.e_u2_v_ry = num(r[12]); logData.e_u2_v_yb = num(r[13]); logData.e_u2_v_br = num(r[14]);
+                            logData.e_u2_a_i1 = num(r[15]); logData.e_u2_a_i2 = num(r[16]); logData.e_u2_a_i3 = num(r[17]);
+                            logData.e_u2_mw = num(r[18]); logData.e_u2_kvar = num(r[19]); logData.e_u2_cos = num(r[20]);
+                            logData.e_u2_hz = num(r[21]); logData.e_u2_gwh = num(r[22]);
+
+                            logData.e_out_v_ry = num(r[23]); logData.e_out_v_yb = num(r[24]); logData.e_out_v_br = num(r[25]);
+                            logData.e_out_a_i1 = num(r[26]); logData.e_out_a_i2 = num(r[27]); logData.e_out_a_i3 = num(r[28]);
+                            logData.e_out_mw = num(r[29]); logData.e_out_kvar = num(r[30]); logData.e_out_cos = num(r[31]);
+                            logData.e_out_hz = num(r[32]); logData.e_out_mwh = num(r[33]);
+                        }
+
+                        logData.created_by = window.currentUser ? window.currentUser.id : null;
+                        payloads.push(logData);
+                        rowsFound++;
+
+                        if (timeStr === '23:00:00' || (importType === 'transformer' && timeStr === '22:00:00')) {
+                            break; 
+                        }
+                    }
+                }
+                if (rowsFound > 0) processedSheets++;
+            }
+
+            if (payloads.length === 0) throw new Error("No readable data rows found in ANY sheet.");
+
+            statusDiv.innerHTML = `⏳ Merging duplicate entries...`;
+
+            // Merge duplicates safely without assigning IDs
+            const uniquePayloads = new Map();
+            payloads.forEach(p => {
+                const key = p.log_date + '_' + p.log_time;
+                
+                // CRITICAL FIX: Ensure 'id' is completely deleted so Supabase doesn't force it to 'null'
+                delete p.id; 
+
+                if (!uniquePayloads.has(key)) {
+                    uniquePayloads.set(key, p);
+                } else {
+                    const existing = uniquePayloads.get(key);
+                    for (let k in p) {
+                        if (p[k] !== null && p[k] !== undefined && p[k] !== "") existing[k] = p[k];
+                    }
+                }
+            });
+
+            const finalPayloads = Array.from(uniquePayloads.values());
+
+            statusDiv.innerHTML = `⏳ Uploading ${finalPayloads.length} rows...`;
+
+            const CHUNK_SIZE = 150;
+            for (let i = 0; i < finalPayloads.length; i += CHUNK_SIZE) {
+                const chunk = finalPayloads.slice(i, i + CHUNK_SIZE);
+                const { error } = await supabase.from('hourly_logs').upsert(chunk, { onConflict: 'log_date, log_time' });
+                if (error) throw error;
+            }
+
+            let successMsg = `✅ Successfully imported ${finalPayloads.length} rows from ${processedSheets} sheets!`;
+            if (skippedSheets > 0) successMsg += ` (Skipped ${skippedSheets} empty/invalid sheets).`;
+            
+            statusDiv.innerHTML = successMsg;
+            statusDiv.classList.replace('text-rose-800', 'text-emerald-700');
+            
+            if (window.isDailyExport) {
+                window.previewExportData();
+            } else {
+                window.fetchLogs();
+            }
+
+        } catch (err) {
+            console.error(err);
+            statusDiv.innerHTML = `❌ Error: ${err.message}`;
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
 
 // Start the whole process
 startPage();

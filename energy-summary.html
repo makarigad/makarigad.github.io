@@ -1051,7 +1051,7 @@ startPage();
         return series;
     }
 
-    async function loadData() {
+   async function loadData() {
         try {
             document.getElementById('recon-body').innerHTML = '<tr><td colspan="24" class="text-center py-8 text-slate-500 font-bold">Loading Data Engine...</td></tr>';
             
@@ -1316,7 +1316,7 @@ startPage();
     let currentReportDailySeries = [];
     let previousYearRow = null;
 
-   function populateReportDropdowns() {
+    function populateReportDropdowns() {
         const ySel = document.getElementById('rep-year'); const mSel = document.getElementById('rep-month');
         const currY = ySel.value; const currM = mSel.value;
         

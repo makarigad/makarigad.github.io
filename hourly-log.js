@@ -7,6 +7,7 @@ window.currentDayLogs = [];
 window.latestLog = null; 
 window.currentUser = null;
 window.userRole = 'normal';
+window.currentUserName = '';
 window.isDailyExport = true;
 window.previewDataCache = []; 
 window.outagesDataCache = []; 
@@ -30,7 +31,7 @@ window.clearMasterFormInputsOnly = function() {
     
     document.getElementById('log-date').value = d;
     document.getElementById('log-time').value = t;
-    document.getElementById('log-operator').value = window.currentUser ? window.currentUser.email.split('@')[0] : '';
+    document.getElementById('log-operator').value = window.currentUserName || '';
     
     localStorage.removeItem('makarigad_hourly_draft'); 
     window.validateForm();
@@ -111,7 +112,6 @@ window.fetchLogs = async function() {
         const { data, error } = await supabase.from('hourly_logs').select('*').eq('log_date', todayDate).order('log_time', { ascending: true });
         
         if (error) { 
-            // Graceful offline fallback instead of screaming error alert
             if (error.message === 'Failed to fetch' || !navigator.onLine) {
                 console.warn('Offline mode: Showing cached data if available.');
             } else {
@@ -364,12 +364,27 @@ window.validateForm = function() {
     const chk = (id, min, max, name) => { const v=val(id); if(v!==null && (v<min || v>max)) { errors.push(`${name} must be between ${min} and ${max}.`); markErr(id); } };
     ['t_u1_u', 't_u1_v', 't_u1_w', 't_u1_de', 't_u1_nde', 't_u2_u', 't_u2_v', 't_u2_w', 't_u2_de', 't_u2_nde'].forEach(id => chk(id, 15, 95, id.toUpperCase() + ' Temp'));
     ['t_u1_gov', 't_u1_hyd', 't_u2_gov', 't_u2_hyd'].forEach(id => chk(id, 15, 45, 'Governor/Hyd Temp'));
-    ['t_u1_flow', 't_u2_flow'].forEach(id => chk(id, 40, 50, 'Oil Flow'));
     chk('t_temp_out', 10, 50, 'Outside Temp'); chk('t_temp_in', 10, 50, 'Inside Temp'); chk('t_temp_intake', -5, 30, 'Intake Temp');
     chk('t_pressure', 830, 900, 'Pressure');
     ['tr_1_temp', 'tr_2_temp', 'tr_aux_temp'].forEach(id => chk(id, 15, 70, 'Transformer Temp'));
     ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, 3, 9.5, 'Trans Oil Level')); chk('tr_aux_lvl', 70, 90, 'Aux Oil Level');
     chk('dg_batt', 11, 13.9, 'DG Battery'); chk('dg_fuel', 10, 100, 'DG Fuel %');
+
+    // FIX: Smart Oil Flow Validation
+    ['t_u1_flow', 't_u2_flow'].forEach(id => {
+        const v = val(id);
+        const unitNum = id.includes('u1') ? '1' : '2';
+        const stat = document.getElementById(`u${unitNum}-status`)?.value;
+        if (v !== null) {
+            // Allow exactly 0 if the Unit is down (S or B)
+            if ((stat === 'S' || stat === 'B') && v === 0) {
+                // Valid, do nothing
+            } else if (v < 40 || v > 50) {
+                errors.push(`Unit ${unitNum} Oil Flow must be between 40 and 50 (or 0 if Unit Status is S/B).`);
+                markErr(id);
+            }
+        }
+    });
 
     window.currentValidationErrors = errors;
 
@@ -614,15 +629,32 @@ async function startPage() {
             window.currentUser = sessionData.user;
             window.userRole = sessionData.role;
             
-            // FIXED: Using unique IDs so it doesn't conflict with the header
+            // FIX: Securely fetch Full Name for the Operator Signature and UI
+            let fullName = sessionData.user.email.split('@')[0];
+            if (navigator.onLine) {
+                try {
+                    const { data: roleData } = await supabase.from('user_roles').select('full_name').eq('email', sessionData.user.email).maybeSingle();
+                    if (roleData && roleData.full_name) {
+                        fullName = roleData.full_name;
+                        localStorage.setItem('makarigad_user_fullname', fullName);
+                    }
+                } catch (e) {
+                    console.warn("Could not fetch full name, using cached offline name.");
+                    fullName = localStorage.getItem('makarigad_user_fullname') || fullName;
+                }
+            } else {
+                fullName = localStorage.getItem('makarigad_user_fullname') || fullName;
+            }
+            window.currentUserName = fullName;
+            
             const userNameEl = document.getElementById('hourly-user-name');
-            if (userNameEl) userNameEl.innerText = sessionData.user.email.split('@')[0];
+            if (userNameEl) userNameEl.innerText = fullName;
             
             const userRoleEl = document.getElementById('hourly-user-role');
             if (userRoleEl) userRoleEl.innerText = sessionData.role.toUpperCase();
             
             const logOpEl = document.getElementById('log-operator');
-            if (logOpEl) logOpEl.value = sessionData.user.email.split('@')[0];
+            if (logOpEl) logOpEl.value = fullName; // Securely locks the full name into the signature
 
             if (sessionData.role === 'staff') {
                 document.querySelectorAll('#hourly-form input, #hourly-form select, #hourly-form textarea').forEach(el => { el.disabled = true; el.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-70'); });
@@ -647,6 +679,7 @@ async function startPage() {
     }
 }
 
+// Fault and summary logic remains identical below...
 const faultCategories = ['Dispatch instruction', 'Non-Dispatch', 'Grid Faults', '132 kV line faults', '33 kV line fault', 'penstock pipe fault', 'plant equipment issue'];
 
 document.getElementById('dd-entry-time')?.addEventListener('change', (e) => {
@@ -751,7 +784,6 @@ if(btnNoon) {
         try {
             const targetDate = document.getElementById('dd-entry-date').value;
             
-            // Save Balanch First
             const balPayload = {
                 eng_date: targetDate,
                 main_export: parseFloat(document.getElementById('inp-bal-main-exp').value) || 0,
@@ -761,15 +793,9 @@ if(btnNoon) {
             };
             await supabase.from('balanch_readings').upsert(balPayload);
 
-            // ===============================================
-            // FIX: Overwrite vs Append Logic
-            // ===============================================
-            
-            // 1. Fetch any faults quietly saved earlier today
             const { data: existingOutage } = await supabase.from('outages').select('*').eq('id', targetDate).maybeSingle();
             let faultDetailsArray = existingOutage && existingOutage.fault_details ? [...existingOutage.fault_details] : [];
 
-            // 2. Gather new faults from the screen
             let newDetailsArray = [];
             const u1Stat = document.getElementById('u1-status')?.value || 'O';
             const u2Stat = document.getElementById('u2-status')?.value || 'O';
@@ -798,10 +824,8 @@ if(btnNoon) {
                 });
             });
 
-            // 3. Combine Old + New Faults
             faultDetailsArray = [...faultDetailsArray, ...newDetailsArray];
 
-            // 4. Recalculate Totals based on the FULL combined list
             let agg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0, loss_time_min: 0, nea_trip: 0, u1_min: 0, u2_min: 0, trippings: faultDetailsArray.length };
             let reasonsText = [];
 
@@ -821,7 +845,6 @@ if(btnNoon) {
                 }
             });
 
-            // Preserve legacy manual entries if no detailed arrays existed
             if (existingOutage && (!existingOutage.fault_details || existingOutage.fault_details.length === 0)) {
                  agg.disp += Number(existingOutage.nea_curtailed_energy || 0);
                  agg.grid += Number(existingOutage.energy_loss_line_trip || 0);
@@ -847,7 +870,6 @@ if(btnNoon) {
             const { error: outErr } = await supabase.from('outages').upsert(outagePayload);
             if(outErr) console.error("Outages Sync Error: ", outErr);
 
-            // 5. Contract Energy Sync (Add ONLY the NEW faults so we don't double count!)
             if (newDetailsArray.length > 0) {
                 let newAgg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0 };
                 newDetailsArray.forEach(f => {
@@ -888,7 +910,6 @@ if(btnNoon) {
                 }
             }
 
-            // 6. CLEAR the fault container so they don't double-save
             document.getElementById('faults-container').innerHTML = '';
             alert("✅ 12:00 PM Sync Complete!");
 

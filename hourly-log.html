@@ -106,20 +106,20 @@
                                             <option value="O">O</option><option value="S">S</option><option value="B">B</option>
                                         </select>
                                     </td>
-                                    <td><input type="number" id="u1-hour" step="0.1" class="excel-input"></td>
-                                    <td><input type="number" id="u2-hour" step="0.1" class="excel-input"></td>
-                                    <td><input type="number" id="u1-load" step="0.01" class="excel-input font-bold text-indigo-700"></td>
-                                    <td><input type="number" id="u2-load" step="0.01" class="excel-input font-bold text-indigo-700"></td>
-                                    <td><input type="number" id="u1-pf" step="0.01" class="excel-input"></td>
-                                    <td><input type="number" id="u2-pf" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="u1-hour" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="u2-hour" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="u1-load" step="0.001" class="excel-input font-bold text-indigo-700"></td>
+                                    <td><input type="number" id="u2-load" step="0.001" class="excel-input font-bold text-indigo-700"></td>
+                                    <td><input type="number" id="u1-pf" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="u2-pf" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="u1-pmu" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="u2-pmu" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="u1-feeder" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="u2-feeder" step="0.001" class="excel-input"></td>
-                                    <td><input type="number" id="sst-kwh" class="excel-input"></td>
-                                    <td><input type="number" id="outgoing-kwh" step="0.001" class="excel-input font-bold text-rose-700"></td>
+                                    <td><input type="number" id="sst-kwh" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="outgoing-kwh" step="0.001" class="excel-input font-bold text-indigo-700"></td>
                                     <td><input type="number" id="import-mwh" step="0.001" class="excel-input"></td>
-                                    <td><input type="number" id="water-level" step="0.1" class="excel-input"></td>
+                                    <td><input type="number" id="water-level" step="0.001" class="excel-input"></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -140,12 +140,12 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="number" id="e_u1_v_ry" step="0.01" class="excel-input"></td><td><input type="number" id="e_u1_v_yb" step="0.01" class="excel-input"></td><td><input type="number" id="e_u1_v_br" step="0.01" class="excel-input"></td>
-                                    <td><input type="number" id="e_u1_a_i1" class="excel-input"></td><td><input type="number" id="e_u1_a_i2" class="excel-input"></td><td><input type="number" id="e_u1_a_i3" class="excel-input"></td>
+                                    <td><input type="number" id="e_u1_v_ry" step="0.001" class="excel-input"></td><td><input type="number" id="e_u1_v_yb" step="0.001" class="excel-input"></td><td><input type="number" id="e_u1_v_br" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="e_u1_a_i1" step="0.001" class="excel-input"></td><td><input type="number" id="e_u1_a_i2" step="0.001" class="excel-input"></td><td><input type="number" id="e_u1_a_i3" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="e_u1_mw" step="0.001" class="excel-input bg-slate-50 font-bold" readonly tabindex="-1" title="Edit in Generation Summary"></td>
-                                    <td><input type="number" id="e_u1_kvar" class="excel-input"></td>
-                                    <td><input type="number" id="e_u1_cos" step="0.01" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
-                                    <td><input type="number" id="e_u1_hz" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_u1_kvar" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="e_u1_cos" step="0.001" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                    <td><input type="number" id="e_u1_hz" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="e_u1_gwh" step="0.001" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
                                 </tr>
                             </tbody>
@@ -165,37 +165,37 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="number" id="e_u2_v_ry" step="0.01" class="excel-input"></td><td><input type="number" id="e_u2_v_yb" step="0.01" class="excel-input"></td><td><input type="number" id="e_u2_v_br" step="0.01" class="excel-input"></td>
-                                    <td><input type="number" id="e_u2_a_i1" class="excel-input"></td><td><input type="number" id="e_u2_a_i2" class="excel-input"></td><td><input type="number" id="e_u2_a_i3" class="excel-input"></td>
+                                    <td><input type="number" id="e_u2_v_ry" step="0.001" class="excel-input"></td><td><input type="number" id="e_u2_v_yb" step="0.001" class="excel-input"></td><td><input type="number" id="e_u2_v_br" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="e_u2_a_i1" step="0.001" class="excel-input"></td><td><input type="number" id="e_u2_a_i2" step="0.001" class="excel-input"></td><td><input type="number" id="e_u2_a_i3" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="e_u2_mw" step="0.001" class="excel-input bg-slate-50 font-bold" readonly tabindex="-1" title="Edit in Generation Summary"></td>
-                                    <td><input type="number" id="e_u2_kvar" class="excel-input"></td>
-                                    <td><input type="number" id="e_u2_cos" step="0.01" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
-                                    <td><input type="number" id="e_u2_hz" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_u2_kvar" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="e_u2_cos" step="0.001" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                    <td><input type="number" id="e_u2_hz" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="e_u2_gwh" step="0.001" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="flex items-center gap-2 mb-1 pl-1"><span class="font-bold text-xs text-rose-700">33kV Outgoing Line</span></div>
+                    <div class="flex items-center gap-2 mb-1 pl-1"><span class="font-bold text-xs text-indigo-700">33kV Outgoing Line</span></div>
                     <div class="excel-table-wrapper mb-8 w-full overflow-x-auto">
-                        <table class="excel-table border-2 border-rose-200">
+                        <table class="excel-table border-2 border-indigo-200">
                             <thead>
                                 <tr>
-                                    <th colspan="3" class="bg-rose-50">Line Voltage (kV)</th><th colspan="3" class="bg-rose-50">33kV Current (A)</th><th rowspan="2" class="bg-rose-50">MW</th><th rowspan="2" class="bg-rose-50">KVAR</th><th rowspan="2" class="bg-rose-50">PF<br>Cosø</th><th rowspan="2" class="bg-rose-50">Freq<br>Hz</th><th rowspan="2" class="bg-rose-50">Energy<br>MWh</th>
+                                    <th colspan="3" class="bg-indigo-50">Line Voltage (kV)</th><th colspan="3" class="bg-indigo-50">33kV Current (A)</th><th rowspan="2" class="bg-indigo-50">MW</th><th rowspan="2" class="bg-indigo-50">KVAR</th><th rowspan="2" class="bg-indigo-50">PF<br>Cosø</th><th rowspan="2" class="bg-indigo-50">Freq<br>Hz</th><th rowspan="2" class="bg-indigo-50">Energy<br>MWh</th>
                                 </tr>
                                 <tr>
-                                    <th class="bg-rose-50">R-Y</th><th class="bg-rose-50">Y-B</th><th class="bg-rose-50">B-R</th><th class="bg-rose-50">I1</th><th class="bg-rose-50">I2</th><th class="bg-rose-50">I3</th>
+                                    <th class="bg-indigo-50">R-Y</th><th class="bg-indigo-50">Y-B</th><th class="bg-indigo-50">B-R</th><th class="bg-indigo-50">I1</th><th class="bg-indigo-50">I2</th><th class="bg-indigo-50">I3</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="number" id="e_out_v_ry" step="0.01" class="excel-input"></td><td><input type="number" id="e_out_v_yb" step="0.01" class="excel-input"></td><td><input type="number" id="e_out_v_br" step="0.01" class="excel-input"></td>
-                                    <td><input type="number" id="e_out_a_i1" class="excel-input"></td><td><input type="number" id="e_out_a_i2" class="excel-input"></td><td><input type="number" id="e_out_a_i3" class="excel-input"></td>
-                                    <td><input type="number" id="e_out_mw" step="0.001" class="excel-input font-bold text-rose-700"></td>
-                                    <td><input type="number" id="e_out_kvar" class="excel-input"></td>
-                                    <td><input type="number" id="e_out_cos" step="0.01" class="excel-input bg-slate-50" readonly tabindex="-1" title="Auto Calculated"></td>
-                                    <td><input type="number" id="e_out_hz" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_out_v_ry" step="0.001" class="excel-input"></td><td><input type="number" id="e_out_v_yb" step="0.001" class="excel-input"></td><td><input type="number" id="e_out_v_br" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="e_out_a_i1" step="0.001" class="excel-input"></td><td><input type="number" id="e_out_a_i2" step="0.001" class="excel-input"></td><td><input type="number" id="e_out_a_i3" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="e_out_mw" step="0.001" class="excel-input font-bold text-indigo-700"></td>
+                                    <td><input type="number" id="e_out_kvar" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="e_out_cos" step="0.001" class="excel-input bg-slate-50" readonly tabindex="-1" title="Auto Calculated"></td>
+                                    <td><input type="number" id="e_out_hz" step="0.001" class="excel-input"></td>
                                     <td><input type="number" id="e_out_mwh" step="0.001" class="excel-input bg-slate-50 font-bold" readonly tabindex="-1" title="Edit in Generation Summary"></td>
                                 </tr>
                             </tbody>
@@ -226,40 +226,40 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="number" id="t_u1_u" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u1_v" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u1_w" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u1_de" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u1_nde" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_u" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_v" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_w" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_de" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_nde" step="0.001" class="excel-input" style="min-width: 45px;"></td>
                                     
-                                    <td><input type="number" id="t_u2_u" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u2_v" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u2_w" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u2_de" class="excel-input" style="min-width: 45px;"></td>
-                                    <td class="border-r-2 border-slate-400"><input type="number" id="t_u2_nde" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_u" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_v" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_w" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_de" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td class="border-r-2 border-slate-400"><input type="number" id="t_u2_nde" step="0.001" class="excel-input" style="min-width: 45px;"></td>
                                     
-                                    <td><input type="number" id="t_u1_gov" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u1_hyd" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u1_flow" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_gov" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_hyd" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_flow" step="0.001" class="excel-input" style="min-width: 45px;"></td>
                                     <td>
                                         <select id="t_u1_lvl" class="excel-input excel-select font-bold" style="min-width: 65px; padding: 0 4px;">
                                             <option value="ok">Ok</option><option value="low">Low</option><option value="high">High</option>
                                         </select>
                                     </td>
                                     
-                                    <td><input type="number" id="t_u2_gov" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u2_hyd" class="excel-input" style="min-width: 45px;"></td>
-                                    <td><input type="number" id="t_u2_flow" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_gov" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_hyd" step="0.001" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_flow" step="0.001" class="excel-input" style="min-width: 45px;"></td>
                                     <td class="border-r-2 border-slate-400">
                                         <select id="t_u2_lvl" class="excel-input excel-select font-bold" style="min-width: 65px; padding: 0 4px;">
                                             <option value="ok">Ok</option><option value="low">Low</option><option value="high">High</option>
                                         </select>
                                     </td>
                                     
-                                    <td><input type="number" id="t_temp_out" step="0.1" class="excel-input" style="min-width: 50px;"></td>
-                                    <td><input type="number" id="t_temp_in" step="0.1" class="excel-input" style="min-width: 50px;"></td>
-                                    <td><input type="number" id="t_temp_intake" step="0.1" class="excel-input" style="min-width: 50px;"></td>
-                                    <td><input type="number" id="t_pressure" step="0.1" class="excel-input" style="min-width: 60px;"></td>
+                                    <td><input type="number" id="t_temp_out" step="0.001" class="excel-input" style="min-width: 50px;"></td>
+                                    <td><input type="number" id="t_temp_in" step="0.001" class="excel-input" style="min-width: 50px;"></td>
+                                    <td><input type="number" id="t_temp_intake" step="0.001" class="excel-input" style="min-width: 50px;"></td>
+                                    <td><input type="number" id="t_pressure" step="0.001" class="excel-input" style="min-width: 60px;"></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -280,10 +280,10 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="number" id="tr_1_temp" class="excel-input"></td><td><input type="number" id="tr_1_lvl" step="0.1" class="excel-input"></td>
-                                    <td><input type="number" id="tr_2_temp" class="excel-input"></td><td><input type="number" id="tr_2_lvl" step="0.1" class="excel-input"></td>
-                                    <td><input type="number" id="tr_aux_temp" class="excel-input"></td><td class="border-r-2 border-slate-300"><input type="number" id="tr_aux_lvl" step="0.1" class="excel-input"></td>
-                                    <td><input type="number" id="dg_batt" step="0.1" class="excel-input"></td><td><input type="number" id="dg_fuel" step="0.01" class="excel-input"></td><td><input type="text" id="dg_runtime" class="excel-input"></td>
+                                    <td><input type="number" id="tr_1_temp" step="0.001" class="excel-input"></td><td><input type="number" id="tr_1_lvl" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="tr_2_temp" step="0.001" class="excel-input"></td><td><input type="number" id="tr_2_lvl" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="tr_aux_temp" step="0.001" class="excel-input"></td><td class="border-r-2 border-slate-300"><input type="number" id="tr_aux_lvl" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="dg_batt" step="0.001" class="excel-input"></td><td><input type="number" id="dg_fuel" step="0.001" class="excel-input"></td><td><input type="text" id="dg_runtime" class="excel-input"></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -291,8 +291,8 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-4 border-t-2 border-indigo-100 pt-6 mt-8">
                         <div class="md:col-span-3">
-                            <label class="form-label text-indigo-900">Operator Signature</label>
-                            <input type="text" id="log-operator" class="table-input font-bold bg-slate-100 text-slate-500 border-transparent shadow-inner" readonly>
+                            <label class="form-label text-indigo-900">Operator Signature (Locked)</label>
+                            <input type="text" id="log-operator" class="table-input font-bold bg-slate-100 text-slate-500 border-transparent shadow-inner" readonly title="Automatically filled from your profile.">
                         </div>
                         <div class="md:col-span-3">
                             <label class="form-label text-indigo-900">Remark Category</label>

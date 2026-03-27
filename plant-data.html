@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Powerhouse Operations - Makari Gad Project</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <link rel="stylesheet" href="plant-data.css" />
+</head>
+<body class="flex flex-col h-screen text-slate-800 relative">
+
+        <div id="global-header-container" class="shrink-0 no-print z-50 relative"></div>
+
+    <div class="bg-slate-100 px-4 border-b border-slate-300 flex space-x-2 shrink-0 pt-2 overflow-x-auto custom-scroll">
+        <div class="tab-btn active rounded-t-lg" data-target="daily-tab">📊 Daily Metering</div>
+        <div class="tab-btn rounded-t-lg" data-target="balanch-tab">⚡ Substation Metering</div>
+        <div class="tab-btn rounded-t-lg" data-target="outages-tab">⚠️ Outages & Losses</div>
+        <div class="tab-btn rounded-t-lg" data-target="monthly-tab">📑 Contract Energy</div>
+        <div class="tab-btn rounded-t-lg" data-target="trends-tab">📈 Operations Trend</div>
+        <div class="tab-btn rounded-t-lg" data-target="historical-data-tab">🕒 SCADA History</div>
+        <div class="tab-btn rounded-t-lg" data-target="rainfall-tab">🌧️ Rainfall Data</div>
+        <div class="tab-btn rounded-t-lg" data-target="expenses-tab">💰 Site Expenses</div>
+    </div>
+
+    <main class="p-4 flex-grow overflow-hidden relative">
+
+        <section id="daily-tab" class="h-full flex flex-col">
+            <div class="flex justify-between items-center mb-3 shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Powerhouse Daily Meter Readings</h2>
+                    <p class="text-xs text-slate-500 font-medium">Log internal generator readings, unit running hours, and transformer data.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
+                    <button id="daily-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Bulk Upload</button>
+                    <button id="download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export Tab</button>
+                </div>
+            </div>
+            <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll">
+                <table class="w-full border-collapse">
+                    <thead class="bg-slate-200">
+                        <tr>
+                            <th>English Date</th>
+                            <th>Nepali Date</th>
+                            <th>Unit 1 Gen (kWh)</th>
+                            <th>Unit 2 Gen (kWh)</th>
+                            <th>Unit 1 Trans (kWh)</th>
+                            <th>Unit 2 Trans (kWh)</th>
+                            <th>Station Trans (kWh)</th>
+                            <th>Export Plant (kWh)</th>
+                            <th>Export Substation</th>
+                            <th>Import Outgoing</th>
+                            <th>Import Substation</th>
+                            <th>Unit 1 Hrs</th>
+                            <th>Unit 2 Hrs</th>
+                            <th>Operator</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-body" class="bg-white divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="balanch-tab" class="tab-content hidden-tab h-full flex flex-col">
+            <div class="flex justify-between items-start mb-4 shrink-0">
+                <div>
+                    <h2 class="text-xl font-semibold text-slate-800">Balanch Substation Readings</h2>
+                    <p class="text-sm text-slate-500">Log main and check meter readings at the 132kV grid connection.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="balanch-file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
+                    <button id="balanch-upload-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700 shadow-sm text-sm transition role-hidden">Bulk Upload</button>
+                    <button id="balanch-download-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700 shadow-sm text-sm transition hidden">Export Tab</button>
+                </div>
+            </div>
+            <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll overflow-x-auto">
+                <table class="w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th rowspan="2" class="tight-cell text-left font-medium text-gray-500 uppercase border-r border-gray-200">English Date</th>
+                            <th rowspan="2" class="tight-cell text-left font-medium text-gray-500 uppercase border-r border-gray-200">Nepali Date</th>
+                            <th colspan="2" class="tight-cell text-center font-medium text-indigo-700 bg-indigo-50 border-b border-r border-indigo-200 uppercase">Main Meter (kWh)</th>
+                            <th colspan="2" class="tight-cell text-center font-medium text-emerald-700 bg-emerald-50 border-b border-r border-emerald-200 uppercase">Check Meter (kWh)</th>
+                            <th rowspan="2" class="tight-cell text-left font-medium text-gray-500 uppercase min-w-[200px] border-r border-gray-200">Remarks</th>
+                            <th rowspan="2" class="tight-cell text-left font-medium text-gray-500 uppercase border-r border-gray-200">Operator</th>
+                            <th rowspan="2" class="tight-cell text-left font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                        <tr>
+                            <th class="tight-cell text-left font-medium text-indigo-600 bg-indigo-50 border-r border-indigo-100 uppercase">Export</th>
+                            <th class="tight-cell text-left font-medium text-indigo-600 bg-indigo-50 border-r border-indigo-200 uppercase">Import</th>
+                            <th class="tight-cell text-left font-medium text-emerald-600 bg-emerald-50 border-r border-emerald-100 uppercase">Export</th>
+                            <th class="tight-cell text-left font-medium text-emerald-600 bg-emerald-50 border-r border-emerald-200 uppercase">Import</th>
+                        </tr>
+                    </thead>
+                    <tbody id="balanch-body" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="outages-tab" class="hidden-tab h-full flex flex-col">
+            <div class="flex justify-between items-center mb-3 shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Outages & Energy Losses Log</h2>
+                    <p class="text-xs text-slate-500 font-medium">Record line trips, internal faults, and curtailed parameters.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="outages-file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
+                    <button id="outages-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Bulk Upload</button>
+                    <button id="outages-download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export Tab</button>
+                </div>
+            </div>
+            <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll">
+                <table class="w-full border-collapse">
+                    <thead class="bg-slate-200">
+                        <tr>
+                            <th>Date</th>
+                            <th>NEA Curtailed</th>
+                            <th>NEA Trip Loss (min)</th>
+                            <th>No. Trippings</th>
+                            <th>Total Loss (min)</th>
+                            <th>U1 Loss (min)</th>
+                            <th>U2 Loss (min)</th>
+                            <th>Line Trip Loss (MWh)</th>
+                            <th>Other Loss (MWh)</th>
+                            <th>Total Energy Loss</th>
+                            <th class="reason-col">Reason for Tripping / Remarks</th>
+                            <th>Operator</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="outages-body" class="bg-white divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="monthly-tab" class="hidden-tab h-full flex flex-col">
+            <div class="flex justify-between items-center mb-3 shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Monthly Contract Energy (MCE)</h2>
+                    <p class="text-xs text-slate-500 font-medium">Manage PPA contract energy declarations and target baselines.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="mce-file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
+                    <button id="mce-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Bulk Upload</button>
+                    <button id="mce-download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export Tab</button>
+                </div>
+            </div>
+            <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll">
+                <table class="w-full border-collapse">
+                    <thead class="bg-slate-200">
+                        <tr>
+                            <th>Year</th>
+                            <th>Month</th>
+                            <th>Week1 AD (kWh)</th>
+                            <th>Week2 AD (kWh)</th>
+                            <th>Week3 AD (kWh)</th>
+                            <th>Week4 AD (kWh)</th>
+                            <th>Week5 AD (kWh)</th>
+                            <th class="bg-indigo-100 text-indigo-900 border-l border-indigo-200">Total AD (MWh)</th>
+                            <th class="bg-indigo-100 text-indigo-900">Contract Energy (MWh)</th>
+                            <th class="bg-indigo-100 text-indigo-900 border-r border-indigo-200">No. of Days</th>
+                            <th>Operator</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mce-body" class="bg-white divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="trends-tab" class="hidden-tab h-full flex flex-col overflow-y-auto custom-scroll">
+            <div class="bg-white rounded-xl shadow border border-slate-300 p-6 mb-4 shrink-0">
+                <h3 class="font-bold text-lg mb-3 text-slate-800">Generation & Dispatch Trend Parameter Settings</h3>
+                <div class="flex flex-wrap items-end gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200 mb-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Start Date</label>
+                        <input type="date" id="trend-start-date" class="input-cell mt-1">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">End Date</label>
+                        <input type="date" id="trend-end-date" class="input-cell mt-1">
+                    </div>
+                    <div class="border-l border-slate-300 pl-4">
+                        <label class="block text-[11px] font-bold text-indigo-500 uppercase tracking-wider">Or Sync to Nepali Year</label>
+                        <select id="trend-nepali-year" class="input-cell mt-1 w-24 text-indigo-700 font-bold bg-indigo-50"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-indigo-500 uppercase tracking-wider">Nepali Month</label>
+                        <select id="trend-nepali-month" class="input-cell mt-1 w-32 text-indigo-700 font-bold bg-indigo-50"></select>
+                    </div>
+                    <button id="view-trend-btn" class="bg-indigo-600 text-white font-bold py-1.5 px-4 rounded shadow hover:bg-indigo-700 transition">Render Chart</button>
+                    <button id="download-trend-btn" class="bg-emerald-600 text-white font-bold py-1.5 px-4 rounded shadow hover:bg-emerald-700 transition">Save JPG</button>
+                </div>
+                <div class="p-4 border rounded-lg bg-slate-50 mb-4">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Overlay SCADA Metrics (Daily Energy automatically included)</p>
+                    <div id="trend-chart-options" class="flex flex-wrap gap-4"></div>
+                </div>
+                <div class="relative h-[400px] w-full border border-slate-200 rounded-lg p-2 bg-white">
+                    <canvas id="daily-trend-chart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="historical-data-tab" class="hidden-tab h-full flex flex-col">
+            <div class="flex justify-between items-center mb-3 shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Historical Interval SCADA Data</h2>
+                    <p class="text-xs text-slate-500 font-medium">High-resolution operations data parsed from control room CSVs.</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow border border-slate-300 flex-grow flex flex-col overflow-hidden">
+                <div class="flex items-end space-x-4 p-4 border-b border-slate-200 bg-slate-50 shrink-0">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Year</label>
+                        <select id="historical-year" class="input-cell mt-1 w-24"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Month</label>
+                        <select id="historical-month" class="input-cell mt-1 w-32">
+                            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                        </select>
+                    </div>
+                    <button id="historical-view-btn" class="bg-indigo-600 text-white font-bold py-1.5 px-4 rounded shadow hover:bg-indigo-700 transition text-sm">Fetch Table</button>
+                    <div class="border-l border-slate-300 pl-4 flex space-x-2">
+                        <input type="file" id="historical-file-upload" class="hidden" accept=".csv"/>
+                        <button id="historical-upload-btn" class="bg-slate-800 text-white font-bold py-1.5 px-4 rounded shadow hover:bg-slate-700 transition text-sm role-hidden">Ingest SCADA CSV</button>
+                        <button id="historical-download-btn" class="bg-emerald-600 text-white font-bold py-1.5 px-4 rounded shadow hover:bg-emerald-700 transition text-sm hidden">Export Data</button>
+                    </div>
+                </div>
+                <div id="historical-status" class="p-2 text-xs font-bold text-indigo-600 bg-indigo-50 border-b border-indigo-100 text-center shrink-0">Select a timeframe and click Fetch Table</div>
+                <div class="table-container flex-grow custom-scroll">
+                    <table class="w-full border-collapse" id="historical-table">
+                        <thead id="historical-thead" class="bg-slate-200"></thead>
+                        <tbody id="historical-tbody" class="bg-white divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="rainfall-tab" class="hidden-tab h-full flex flex-col">
+            <div class="flex justify-between items-center mb-3 shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Monthly Rainfall & Flow Data</h2>
+                    <p class="text-xs text-slate-500 font-medium">Log Headworks and Powerhouse daily measurements.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="rf-file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
+                    <button id="rf-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Import Data</button>
+                    <button id="rf-download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export Tab</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow border border-slate-300 p-4 mb-4 shrink-0">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-lg text-slate-800">Monthly View (Grid)</h3>
+                    <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                        <span class="text-xs font-bold text-slate-500 uppercase">Period:</span>
+                        <select id="grid-rf-year" class="input-cell w-24 font-bold text-indigo-700 bg-white"></select>
+                        <select id="grid-rf-month" class="input-cell w-32 font-bold text-indigo-700 bg-white"></select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto border border-slate-200 rounded custom-scroll">
+                    <table class="w-full text-center border-collapse text-[11px]" id="rainfall-grid-table">
+                        </table>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow border border-slate-300 p-4 mb-4 shrink-0">
+                <h3 class="font-bold text-lg mb-2 text-slate-800">Compare Years by Month (Chart)</h3>
+                <div class="flex flex-wrap items-end gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200 mb-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Month</label>
+                        <select id="rf-chart-month" class="input-cell mt-1 w-32 font-bold text-indigo-700 bg-white">
+                            </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Metric</label>
+                        <select id="rf-chart-metric" class="input-cell mt-1 w-32 font-bold text-indigo-700 bg-white">
+                            <option value="headworks">Headworks</option>
+                            <option value="powerhouse">Dam</option>
+                        </select>
+                    </div>
+                    <div class="border-l border-slate-300 pl-4 flex-grow">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Select Years</label>
+                        <div id="rf-year-checkboxes" class="flex flex-wrap gap-3">
+                            </div>
+                    </div>
+                </div>
+                <div class="relative h-[250px] w-full border border-slate-200 rounded-lg p-2 bg-white">
+                    <canvas id="rainfall-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll">
+                <table class="w-full border-collapse">
+                    <thead class="bg-slate-200">
+                        <tr>
+                            <th>Year</th>
+                            <th>Month</th>
+                            <th>Day</th>
+                            <th>Headworks</th>
+                            <th>Dam</th>
+                            <th>Operator</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rainfall-body" class="bg-white divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="expenses-tab" class="hidden-tab h-full flex flex-col bg-slate-100">
+            <div class="flex justify-between items-center mb-3 shrink-0 px-2 pt-2">
+                <div>
+                    <h2 class="text-xl font-black text-slate-800">Site Expenses Ledger</h2>
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Categorized reporting</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="exp-file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
+                    <button id="exp-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Import Excel</button>
+                    <button id="exp-download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export Tab</button>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-slate-300 shrink-0 z-10 relative mb-3 mx-1">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Period:</span>
+                <select id="filter-exp-year" class="input-cell w-28 font-bold text-indigo-700"></select>
+                <select id="filter-exp-month" class="input-cell w-32 font-bold text-indigo-700"></select>
+                <div class="border-l border-slate-300 pl-3 ml-1 flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Category:</span>
+                    <select id="filter-exp-category" class="input-cell w-40 font-bold text-indigo-700">
+                        <option value="All">All Categories</option>
+                        <option value="Petty Cash">Petty Cash</option>
+                        <option value="Diesel">Diesel</option>
+                        <option value="Petrol">Petrol</option>
+                        <option value="Salary">Salary</option>
+                        <option value="Vehicle">Vehicle Hiring</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="expenses-tables-container" class="flex-grow min-h-0 custom-scroll overflow-y-auto px-1">
+                </div>
+        </section>
+
+    </main>
+
+    <div id="notification-modal" class="fixed top-20 right-5 bg-white border-l-4 p-4 rounded-md shadow-xl max-w-sm z-50 opacity-0 transform -translate-y-4 pointer-events-none">
+        <p id="notification-message" class="text-sm font-bold text-slate-700"></p>
+    </div>
+
+    <div id="confirm-modal-backdrop" class="hidden fixed inset-0 bg-slate-900 bg-opacity-50 z-[60] flex items-center justify-center backdrop-blur-sm">
+        <div id="confirm-modal" class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md transform scale-95 opacity-0 transition-all">
+            <h3 id="confirm-title" class="text-lg font-black text-slate-800 border-b pb-2 mb-3">Confirm Action</h3>
+            <p id="confirm-message" class="text-sm font-medium text-slate-600">Are you sure?</p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-slate-200 text-slate-800 font-bold rounded-md hover:bg-slate-300 transition">Cancel</button>
+                <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white font-bold rounded-md hover:bg-red-700 shadow transition">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="plant-data.js"></script>
+</body>
+</html>

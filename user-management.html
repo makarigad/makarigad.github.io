@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User & HR Management - Makari Gad</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+    th, td { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    th { background-color: #f1f5f9; font-weight: 700; color: #334155; }
+    .input-field { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; transition: border 0.2s; }
+    .input-field:focus { border-color: #4f46e5; }
+  </style>
+</head>
+<body class="flex flex-col h-screen text-slate-800">
+
+  <header class="bg-white shadow-sm p-4 flex justify-between items-center z-20">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Team & HR Management</h1>
+      <p class="text-sm text-slate-500">Create accounts and manage profiles for the Makari Gad Dashboard</p>
+    </div>
+    <div class="flex items-center space-x-4">
+        <a href="index.html" class="text-indigo-600 hover:underline font-bold text-sm">← Back to Hub</a>
+        <div id="user-info" class="text-sm font-bold text-slate-600 cursor-pointer bg-slate-100 px-3 py-1 rounded"></div>
+    </div>
+  </header>
+
+  <div id="access-denied" class="hidden flex-grow flex items-center justify-center">
+      <div class="text-center">
+          <h2 class="text-3xl font-bold text-red-600 mb-2">Access Denied</h2>
+          <p class="text-slate-600">You must be an Administrator to view this page.</p>
+      </div>
+  </div>
+
+  <main id="admin-panel" class="p-6 hidden max-w-7xl mx-auto w-full flex-grow overflow-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Register / Update Employee</h2>
+                
+                <form id="user-form" class="space-y-4">
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Account Credentials</h3>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Email Address *</label>
+                            <input type="email" id="u-email" required placeholder="user@makarigad.com" class="input-field w-full">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Password (Leave blank to keep existing)</label>
+                            <input type="text" id="u-password" placeholder="Set a secure password..." class="input-field w-full">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">System Access Level *</label>
+                            <select id="u-role" class="input-field w-full bg-white font-medium">
+                                <option value="normal">Normal (Guest - Daily Data Only)</option>
+                                <option value="operator">Operator (Plant Staff - Add/Edit Daily Data)</option>
+                                <option value="staff">Staff (Management - Read All Reports & Financials)</option>
+                                <option value="admin">Admin (Full Control)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-200">
+
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Employee Profile</h3>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">Full Name</label><input type="text" id="u-name" placeholder="John Doe" class="input-field w-full"></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Position / Title</label><input type="text" id="u-position" placeholder="Plant Operator" class="input-field w-full"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Phone Number</label><input type="text" id="u-phone" placeholder="98XXXXXXXX" class="input-field w-full"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Date of Birth</label><input type="date" id="u-dob" class="input-field w-full text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Company</label><input type="text" id="u-company" value="Makari Gad Hydroelectric Project" class="input-field w-full text-sm"></div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit" id="save-btn" class="w-full bg-indigo-600 text-white font-bold py-2.5 rounded shadow hover:bg-indigo-700 transition">Create / Update User</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th>Employee Details</th>
+                            <th>Contact & Company</th>
+                            <th>Role</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import { supabase, initializeApplication } from './core-app.js';
+
+    async function startPage() {
+        const sessionData = await initializeApplication(true);
+        
+        if (sessionData) {
+            document.getElementById('user-info').innerText = sessionData.user.email.split('@')[0];
+            
+            if (sessionData.role === 'admin') {
+                document.getElementById('admin-panel').classList.remove('hidden');
+                loadUsers();
+            } else {
+                document.getElementById('access-denied').classList.remove('hidden');
+            }
+        }
+    }
+
+    async function loadUsers() {
+        const { data, error } = await supabase.from('user_roles').select('*').order('role', { ascending: true });
+        if (error) return;
+
+        const tbody = document.getElementById('users-body');
+        tbody.innerHTML = '';
+
+        data.forEach(user => {
+            let roleColor = 'bg-slate-100 text-slate-600';
+            if (user.role === 'admin') roleColor = 'bg-red-100 text-red-700';
+            if (user.role === 'operator') roleColor = 'bg-indigo-100 text-indigo-700';
+            if (user.role === 'staff') roleColor = 'bg-emerald-100 text-emerald-700';
+
+            const isMaster = user.email === 'upenjyo@gmail.com';
+            const actionBtn = isMaster 
+                ? `<span class="text-xs text-slate-400 font-bold">MASTER</span>`
+                : `<button onclick="editUser('${user.email}')" class="text-indigo-600 hover:underline font-bold text-xs mr-3">Edit</button>
+                   <button onclick="deleteUser('${user.email}')" class="text-red-600 hover:underline font-bold text-xs">Del</button>`;
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50";
+            tr.innerHTML = `
+                <td>
+                    <div class="font-bold text-slate-800">${user.full_name || '—'}</div>
+                    <div class="text-xs text-slate-500">${user.position || 'No Title'}</div>
+                </td>
+                <td>
+                    <div class="text-sm font-medium text-slate-700">${user.email}</div>
+                    <div class="text-xs text-slate-500">${user.phone || ''} | ${user.company || ''}</div>
+                </td>
+                <td><span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${roleColor}">${user.role}</span></td>
+                <td class="text-center">${actionBtn}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.editUser = async (email) => {
+        const { data } = await supabase.from('user_roles').select('*').eq('email', email).single();
+        if (data) {
+            document.getElementById('u-email').value = data.email;
+            document.getElementById('u-role').value = data.role;
+            document.getElementById('u-name').value = data.full_name || '';
+            document.getElementById('u-position').value = data.position || '';
+            document.getElementById('u-phone').value = data.phone || '';
+            document.getElementById('u-dob').value = data.dob || '';
+            document.getElementById('u-company').value = data.company || 'Makari Gad Hydroelectric Project';
+            document.getElementById('u-password').value = ''; 
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
+    document.getElementById('user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('u-email').value.trim().toLowerCase();
+        const password = document.getElementById('u-password').value;
+        const btn = document.getElementById('save-btn');
+        btn.innerText = "Processing...";
+
+        try {
+            // Note: Depending on your Supabase settings, standard users might not be able to 
+            // sign up other users. If this fails, you must create accounts in the Supabase Dashboard.
+            if (password.length > 0) {
+                if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+                const { error: authError } = await supabase.auth.signUp({ email: email, password: password });
+                if (authError && authError.message !== "User already registered") throw authError;
+            }
+
+            const { error: dbError } = await supabase.from('user_roles').upsert({
+                email: email,
+                role: document.getElementById('u-role').value,
+                full_name: document.getElementById('u-name').value.trim() || null,
+                position: document.getElementById('u-position').value.trim() || null,
+                phone: document.getElementById('u-phone').value.trim() || null,
+                dob: document.getElementById('u-dob').value || null,
+                company: document.getElementById('u-company').value.trim() || null,
+                updated_at: new Date().toISOString()
+            });
+
+            if (dbError) throw dbError;
+            
+            document.getElementById('user-form').reset();
+            document.getElementById('u-company').value = 'Makari Gad Hydroelectric Project';
+            alert("Employee successfully saved!");
+            loadUsers();
+        } catch (err) {
+            alert("Error: " + err.message);
+        } finally {
+            btn.innerText = "Create / Update User";
+        }
+    });
+
+    window.deleteUser = async (email) => {
+        if(confirm(`Remove profile for ${email}?`)) {
+            const { error } = await supabase.from('user_roles').delete().eq('email', email);
+            if (error) {
+                alert("Error deleting user: " + error.message);
+            } else {
+                loadUsers();
+            }
+        }
+    };
+
+    startPage();
+  </script>
+</body>
+</html>

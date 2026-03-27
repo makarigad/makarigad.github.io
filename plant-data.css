@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body { 
+    font-family: 'Inter', sans-serif; 
+    background: #f8fafc; 
+    overflow: hidden; 
+}
+
+th, td { 
+    padding: 6px 8px !important; 
+    font-size: 0.75rem; 
+    border: 1px solid #cbd5e1; 
+}
+
+th { 
+    background-color: #f1f5f9; 
+    font-weight: 700; 
+    text-align: left; 
+    color: #334155; 
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
+    white-space: nowrap; 
+}
+
+.table-container { 
+    overflow: auto; 
+    background: #fff; 
+    max-height: calc(100vh - 190px); 
+}
+
+.input-cell { 
+    width: 100%; 
+    padding: 4px 6px; 
+    border: 1px solid #cbd5e1; 
+    border-radius: 4px; 
+    outline: none; 
+    font-size: 0.75rem; 
+    background: #fff; 
+}
+
+.input-cell:focus { 
+    border-color: #4f46e5; 
+    box-shadow: 0 0 0 1px #4f46e5; 
+}
+
+.tab-btn { 
+    padding: 10px 20px; 
+    font-weight: 600; 
+    color: #64748b; 
+    cursor: pointer; 
+    border-bottom: 2px solid transparent; 
+    transition: all 0.2s; 
+    white-space: nowrap; 
+}
+
+.tab-btn.active { 
+    color: #4f46e5; 
+    border-bottom-color: #4f46e5; 
+    background-color: #fff; 
+}
+
+.hidden-tab { display: none !important; }
+.role-hidden { display: none !important; }
+.reason-col { min-width: 300px; }
+
+.truncate-text { 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    white-space: nowrap; 
+    max-width: 150px; 
+}
+
+.custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+.custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+
+#notification-modal { transition: all 0.25s ease; }

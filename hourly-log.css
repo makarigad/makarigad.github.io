@@ -1,0 +1,38 @@
+body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+
+.table-input { width: 100%; padding: 0.4rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.875rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s; }
+.table-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
+.table-input:disabled, .table-input[readonly] { background-color: #f1f5f9; color: #64748b; border-color: #e2e8f0; cursor: not-allowed; }
+
+.validation-warning { color: #dc2626 !important; background-color: #fef2f2 !important; border-color: #ef4444 !important; font-weight: bold; }
+
+.form-label { display: block; font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+
+.section-tab { cursor: pointer; border-bottom: 2px solid transparent; }
+.section-tab.active { border-bottom-color: #4f46e5; color: #4f46e5; font-weight: 700; background-color: #e0e7ff; }
+
+.section-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+.section-content.active { display: block; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+.custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+.role-hidden { display: none !important; }
+
+/* OPTIMIZED MASTER INPUT TABLES (NO SCROLLING + TIMES NEW ROMAN) */
+.excel-table-wrapper { overflow-x: hidden; background: white; border-radius: 0.5rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.excel-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: 'Times New Roman', Times, serif; font-size: 1.05rem; }
+.excel-table th { background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 4px 2px; font-size: 0.85rem; font-weight: 700; text-align: center; color: #334155; line-height: 1.2; font-family: 'Inter', sans-serif; }
+.excel-table td { border: 1px solid #cbd5e1; padding: 0; background-color: #fff; position: relative; height: 36px; }
+.excel-input { width: 100%; height: 100%; border: none; background: transparent; text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 1.1rem; font-weight: 600; color: #0f172a; outline: none; padding: 0; }
+.excel-input:focus { background-color: #e0e7ff; outline: 2px solid #4f46e5; outline-offset: -2px; z-index: 10; position: relative; }
+.excel-select { appearance: none; cursor: pointer; text-align: center; font-size: 0.95rem; }
+
+/* Read-Only Sync Backgrounds */
+.synced-bg { background-color: #f1f5f9; color: #64748b; cursor: not-allowed; }
+.synced-bg:focus { outline: none; background-color: #f1f5f9; }
+
+.preview-table-container table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white;}
+.preview-table-container th, .preview-table-container td { border: 1px solid #000; padding: 6px; text-align: center; }
+.preview-table-container th { background-color: #f3f4f6; font-weight: bold; }

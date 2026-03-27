@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Makari Gad Dashboard - Master Inputs</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <script src="hourly-log-tools.js"></script>
+    <link rel="stylesheet" href="hourly-log.css">
+</head>
+<body class="flex flex-col min-h-screen text-slate-800">
+
+    <div id="global-header-container" class="shrink-0 no-print"></div>
+
+    <main class="flex-grow p-4 md:p-6 w-full flex flex-col gap-6 max-w-[1600px] mx-auto">
+        
+        <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Hourly Log Master Input</h1>
+                <div class="text-sm mt-1">
+                    <span class="mr-2 text-slate-500">👤 User: <span id="display-user-name" class="font-bold text-indigo-600">Authenticating...</span></span>
+                    <span id="display-user-role" class="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded text-xs font-bold uppercase tracking-wider">...</span>
+                </div>
+            </div>
+            <button type="button" onclick="deleteAllLogsForDay()" class="admin-only role-hidden bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 font-bold py-1.5 px-3 rounded text-sm shadow-sm transition">
+                ⚠️ Delete All Data For Day
+            </button>
+        </div>
+
+        <div id="validation-banner" class="hidden fixed bottom-6 right-6 z-[100] w-[400px] max-h-[50vh] overflow-y-auto p-5 rounded-xl bg-white border-l-4 border-rose-500 text-rose-800 text-sm shadow-2xl custom-scroll"></div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            
+            <div class="flex overflow-x-auto bg-slate-50 border-b border-slate-200 custom-scroll no-print" id="form-tabs">
+                <div class="section-tab active px-5 py-3.5 text-sm font-bold text-indigo-700 transition-colors whitespace-nowrap cursor-pointer" data-target="hourly-form">📝 Master Inputs</div>
+                <div class="section-tab px-5 py-3.5 text-sm font-medium text-slate-600 transition-colors whitespace-nowrap cursor-pointer hover:bg-slate-200" data-target="tab-daily-data">📅 Daily Data Master</div>
+                <div class="section-tab px-5 py-3.5 text-sm font-medium text-slate-600 transition-colors whitespace-nowrap cursor-pointer hover:bg-slate-200" data-target="tab-gen">1. Gen Summary</div>
+                <div class="section-tab px-5 py-3.5 text-sm font-medium text-slate-600 transition-colors whitespace-nowrap cursor-pointer hover:bg-slate-200" data-target="tab-elec">2. Schedule 3</div>
+                <div class="section-tab px-5 py-3.5 text-sm font-medium text-slate-600 transition-colors whitespace-nowrap cursor-pointer hover:bg-slate-200" data-target="tab-temp">3. Temp & Oil Log</div>
+                <div class="section-tab px-5 py-3.5 text-sm font-medium text-slate-600 transition-colors whitespace-nowrap cursor-pointer hover:bg-slate-200" data-target="tab-trans">4. Transformer & DG</div>
+                <div class="section-tab px-5 py-3.5 text-sm font-medium text-slate-600 transition-colors whitespace-nowrap cursor-pointer hover:bg-slate-200" data-target="tab-daily-summary">📊 View Daily Summary</div>
+                <div class="section-tab px-5 py-3.5 text-sm font-bold text-rose-600 transition-colors whitespace-nowrap admin-only role-hidden cursor-pointer hover:bg-slate-200" data-target="tab-admin">⚙️ Admin Exports</div>
+            </div>
+
+            <div class="p-6 flex-grow relative">
+                
+                <form id="hourly-form" class="section-content active">
+                    
+                    <div class="flex flex-wrap items-end justify-between bg-indigo-50 p-4 rounded-lg border border-indigo-200 mb-6 gap-4 sticky top-0 z-40 shadow-sm">
+                        <div class="flex flex-wrap items-end gap-4 w-full md:w-auto">
+                            <div>
+                                <label class="form-label text-indigo-900 mb-1">English Date</label>
+                                <input type="date" id="log-date" class="table-input font-bold text-indigo-700 py-1.5 w-40 border-indigo-300" required>
+                            </div>
+                            <div>
+                                <label class="form-label text-indigo-900 mb-1">Nepali Date</label>
+                                <div id="nepali-date-display" class="table-input bg-white font-bold text-emerald-700 py-1.5 min-w-[200px] border-indigo-300 pointer-events-none">Loading...</div>
+                            </div>
+                            <div>
+                                <label class="form-label text-indigo-900 mb-1">Select Hour</label>
+                                <select id="log-time" class="table-input font-black text-indigo-900 py-1.5 w-32 border-indigo-300 bg-white" required>
+                                    <option value="00:00:00">00:00</option><option value="01:00:00">01:00</option><option value="02:00:00">02:00</option><option value="03:00:00">03:00</option>
+                                    <option value="04:00:00">04:00</option><option value="05:00:00">05:00</option><option value="06:00:00">06:00</option><option value="07:00:00">07:00</option>
+                                    <option value="08:00:00">08:00</option><option value="09:00:00">09:00</option><option value="10:00:00">10:00</option><option value="11:00:00">11:00</option>
+                                    <option value="12:00:00">12:00</option><option value="13:00:00">13:00</option><option value="14:00:00">14:00</option><option value="15:00:00">15:00</option>
+                                    <option value="16:00:00">16:00</option><option value="17:00:00">17:00</option><option value="18:00:00">18:00</option><option value="19:00:00">19:00</option>
+                                    <option value="20:00:00">20:00</option><option value="21:00:00">21:00</option><option value="22:00:00">22:00</option><option value="23:00:00">23:00</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+                            <button type="button" onclick="clearMasterFormInputsOnly()" class="px-4 py-2 text-slate-600 bg-white border border-slate-300 font-bold rounded shadow-sm hover:bg-slate-50 transition">Clear Entries</button>
+                            <button type="button" id="scada-audit-btn" class="px-4 py-2 bg-slate-800 text-white font-bold rounded shadow-sm hover:bg-slate-700 transition role-hidden flex items-center"><span class="mr-2">📡</span> SCADA</button>
+                            <button type="submit" id="save-btn" class="px-6 py-2 bg-indigo-600 text-white font-black rounded shadow-md hover:bg-indigo-700 transition min-w-[200px]">💾 Save New Data</button>
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold text-slate-800 mb-2 pl-1 uppercase tracking-wider text-sm text-indigo-700">1. Generation Summary</h3>
+                    <div class="excel-table-wrapper w-full overflow-x-auto mb-8">
+                        <table class="excel-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Status</th><th colspan="2">Hour Counter</th><th colspan="2">Load (MW)</th><th colspan="2">PF (Cosø)</th><th colspan="2">PMU (GWh)</th><th colspan="2">Feeder (MWh)</th>
+                                    <th rowspan="2">SST<br>(kWh)</th><th rowspan="2">Outgoing<br>(MWh)</th><th rowspan="2">Import<br>(MWh)</th><th rowspan="2">Water<br>Lvl (cm)</th>
+                                </tr>
+                                <tr>
+                                    <th>U1</th><th>U2</th><th>U1</th><th>U2</th><th>U1</th><th>U2</th><th>U1</th><th>U2</th><th>U1</th><th>U2</th><th>U1</th><th>U2</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <select id="u1-status" class="excel-input bg-transparent font-bold">
+                                            <option value="O">O</option><option value="S">S</option><option value="B">B</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select id="u2-status" class="excel-input bg-transparent font-bold">
+                                            <option value="O">O</option><option value="S">S</option><option value="B">B</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" id="u1-hour" step="0.1" class="excel-input"></td>
+                                    <td><input type="number" id="u2-hour" step="0.1" class="excel-input"></td>
+                                    <td><input type="number" id="u1-load" step="0.01" class="excel-input font-bold text-indigo-700"></td>
+                                    <td><input type="number" id="u2-load" step="0.01" class="excel-input font-bold text-indigo-700"></td>
+                                    <td><input type="number" id="u1-pf" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="u2-pf" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="u1-pmu" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="u2-pmu" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="u1-feeder" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="u2-feeder" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="sst-kwh" class="excel-input"></td>
+                                    <td><input type="number" id="outgoing-kwh" step="0.001" class="excel-input font-bold text-rose-700"></td>
+                                    <td><input type="number" id="import-mwh" step="0.001" class="excel-input"></td>
+                                    <td><input type="number" id="water-level" step="0.1" class="excel-input"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 class="font-bold text-slate-800 mb-1 pl-1 uppercase tracking-wider text-sm text-indigo-700">2. Schedule 3 (Electrical Log)</h3>
+                    
+                    <div class="flex items-center gap-2 mb-1 pl-1"><span class="font-bold text-xs text-slate-600">Generating Unit 1</span></div>
+                    <div class="excel-table-wrapper mb-4 w-full overflow-x-auto">
+                        <table class="excel-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="3">Gen Voltage (kV)</th><th colspan="3">Gen Current (A)</th><th colspan="2">Gen Output</th><th rowspan="2">PF<br>Cosø</th><th rowspan="2">Freq<br>Hz</th><th rowspan="2">Energy<br>GWh</th>
+                                </tr>
+                                <tr>
+                                    <th>R-Y</th><th>Y-B</th><th>B-R</th><th>I1</th><th>I2</th><th>I3</th><th>MW</th><th>KVAR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="number" id="e_u1_v_ry" step="0.01" class="excel-input"></td><td><input type="number" id="e_u1_v_yb" step="0.01" class="excel-input"></td><td><input type="number" id="e_u1_v_br" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_u1_a_i1" class="excel-input"></td><td><input type="number" id="e_u1_a_i2" class="excel-input"></td><td><input type="number" id="e_u1_a_i3" class="excel-input"></td>
+                                    <td><input type="number" id="e_u1_mw" step="0.001" class="excel-input bg-slate-50 font-bold" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                    <td><input type="number" id="e_u1_kvar" class="excel-input"></td>
+                                    <td><input type="number" id="e_u1_cos" step="0.01" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                    <td><input type="number" id="e_u1_hz" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_u1_gwh" step="0.001" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex items-center gap-2 mb-1 pl-1"><span class="font-bold text-xs text-slate-600">Generating Unit 2</span></div>
+                    <div class="excel-table-wrapper mb-4 w-full overflow-x-auto">
+                        <table class="excel-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="3">Gen Voltage (kV)</th><th colspan="3">Gen Current (A)</th><th colspan="2">Gen Output</th><th rowspan="2">PF<br>Cosø</th><th rowspan="2">Freq<br>Hz</th><th rowspan="2">Energy<br>GWh</th>
+                                </tr>
+                                <tr>
+                                    <th>R-Y</th><th>Y-B</th><th>B-R</th><th>I1</th><th>I2</th><th>I3</th><th>MW</th><th>KVAR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="number" id="e_u2_v_ry" step="0.01" class="excel-input"></td><td><input type="number" id="e_u2_v_yb" step="0.01" class="excel-input"></td><td><input type="number" id="e_u2_v_br" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_u2_a_i1" class="excel-input"></td><td><input type="number" id="e_u2_a_i2" class="excel-input"></td><td><input type="number" id="e_u2_a_i3" class="excel-input"></td>
+                                    <td><input type="number" id="e_u2_mw" step="0.001" class="excel-input bg-slate-50 font-bold" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                    <td><input type="number" id="e_u2_kvar" class="excel-input"></td>
+                                    <td><input type="number" id="e_u2_cos" step="0.01" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                    <td><input type="number" id="e_u2_hz" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_u2_gwh" step="0.001" class="excel-input bg-slate-50" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex items-center gap-2 mb-1 pl-1"><span class="font-bold text-xs text-rose-700">33kV Outgoing Line</span></div>
+                    <div class="excel-table-wrapper mb-8 w-full overflow-x-auto">
+                        <table class="excel-table border-2 border-rose-200">
+                            <thead>
+                                <tr>
+                                    <th colspan="3" class="bg-rose-50">Line Voltage (kV)</th><th colspan="3" class="bg-rose-50">33kV Current (A)</th><th rowspan="2" class="bg-rose-50">MW</th><th rowspan="2" class="bg-rose-50">KVAR</th><th rowspan="2" class="bg-rose-50">PF<br>Cosø</th><th rowspan="2" class="bg-rose-50">Freq<br>Hz</th><th rowspan="2" class="bg-rose-50">Energy<br>MWh</th>
+                                </tr>
+                                <tr>
+                                    <th class="bg-rose-50">R-Y</th><th class="bg-rose-50">Y-B</th><th class="bg-rose-50">B-R</th><th class="bg-rose-50">I1</th><th class="bg-rose-50">I2</th><th class="bg-rose-50">I3</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="number" id="e_out_v_ry" step="0.01" class="excel-input"></td><td><input type="number" id="e_out_v_yb" step="0.01" class="excel-input"></td><td><input type="number" id="e_out_v_br" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_out_a_i1" class="excel-input"></td><td><input type="number" id="e_out_a_i2" class="excel-input"></td><td><input type="number" id="e_out_a_i3" class="excel-input"></td>
+                                    <td><input type="number" id="e_out_mw" step="0.001" class="excel-input font-bold text-rose-700"></td>
+                                    <td><input type="number" id="e_out_kvar" class="excel-input"></td>
+                                    <td><input type="number" id="e_out_cos" step="0.01" class="excel-input bg-slate-50" readonly tabindex="-1" title="Auto Calculated"></td>
+                                    <td><input type="number" id="e_out_hz" step="0.01" class="excel-input"></td>
+                                    <td><input type="number" id="e_out_mwh" step="0.001" class="excel-input bg-slate-50 font-bold" readonly tabindex="-1" title="Edit in Generation Summary"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 class="font-bold text-slate-800 mb-2 pl-1 uppercase tracking-wider text-sm text-indigo-700">3. Generator Temp & Oil Log</h3>
+                    <div class="excel-table-wrapper w-full overflow-x-auto mb-8">
+                        <table class="excel-table" style="table-layout: auto !important; min-width: 1200px;">
+                            <thead>
+                                <tr>
+                                    <th colspan="10" style="padding:4px 8px;">Generator Details</th>
+                                    <th colspan="8" style="padding:4px 8px;">Governor & Hydrostatic</th>
+                                    <th colspan="3" style="padding:4px 8px;">Temp (°C)</th>
+                                    <th rowspan="3" style="padding:4px 8px;">Pressure<br>(mWC)</th>
+                                </tr>
+                                <tr>
+                                    <th colspan="5">Unit 1</th><th colspan="5">Unit 2</th>
+                                    <th colspan="4">Unit 1</th><th colspan="4">Unit 2</th>
+                                    <th rowspan="2">Out</th><th rowspan="2">In</th><th rowspan="2">Intake</th>
+                                </tr>
+                                <tr>
+                                    <th>U</th><th>V</th><th>W</th><th>DE</th><th>NDE</th>
+                                    <th>U</th><th>V</th><th>W</th><th>DE</th><th>NDE</th>
+                                    <th>Gov</th><th>Hyd</th><th>Flow</th><th>Lvl</th>
+                                    <th>Gov</th><th>Hyd</th><th>Flow</th><th>Lvl</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="number" id="t_u1_u" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_v" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_w" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_de" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_nde" class="excel-input" style="min-width: 45px;"></td>
+                                    
+                                    <td><input type="number" id="t_u2_u" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_v" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_w" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_de" class="excel-input" style="min-width: 45px;"></td>
+                                    <td class="border-r-2 border-slate-400"><input type="number" id="t_u2_nde" class="excel-input" style="min-width: 45px;"></td>
+                                    
+                                    <td><input type="number" id="t_u1_gov" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_hyd" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u1_flow" class="excel-input" style="min-width: 45px;"></td>
+                                    <td>
+                                        <select id="t_u1_lvl" class="excel-input excel-select font-bold" style="min-width: 65px; padding: 0 4px;">
+                                            <option value="ok">Ok</option><option value="low">Low</option><option value="high">High</option>
+                                        </select>
+                                    </td>
+                                    
+                                    <td><input type="number" id="t_u2_gov" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_hyd" class="excel-input" style="min-width: 45px;"></td>
+                                    <td><input type="number" id="t_u2_flow" class="excel-input" style="min-width: 45px;"></td>
+                                    <td class="border-r-2 border-slate-400">
+                                        <select id="t_u2_lvl" class="excel-input excel-select font-bold" style="min-width: 65px; padding: 0 4px;">
+                                            <option value="ok">Ok</option><option value="low">Low</option><option value="high">High</option>
+                                        </select>
+                                    </td>
+                                    
+                                    <td><input type="number" id="t_temp_out" step="0.1" class="excel-input" style="min-width: 50px;"></td>
+                                    <td><input type="number" id="t_temp_in" step="0.1" class="excel-input" style="min-width: 50px;"></td>
+                                    <td><input type="number" id="t_temp_intake" step="0.1" class="excel-input" style="min-width: 50px;"></td>
+                                    <td><input type="number" id="t_pressure" step="0.1" class="excel-input" style="min-width: 60px;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 class="font-bold text-slate-800 mb-2 pl-1 uppercase tracking-wider text-sm text-indigo-700">4. Transformers & Diesel Gen</h3>
+                    <div class="excel-table-wrapper mb-8 w-full overflow-x-auto">
+                        <table class="excel-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Trans #01</th><th colspan="2">Trans #02</th><th colspan="2" class="border-r-2 border-slate-300">Aux (100kVA)</th>
+                                    <th colspan="3">Diesel Generator (125KVA)</th>
+                                </tr>
+                                <tr>
+                                    <th>Temp</th><th>Lvl</th><th>Temp</th><th>Lvl</th><th>Temp</th><th class="border-r-2 border-slate-300">Lvl</th>
+                                    <th>Batt (V)</th><th>Fuel (%)</th><th>Runtime</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="number" id="tr_1_temp" class="excel-input"></td><td><input type="number" id="tr_1_lvl" step="0.1" class="excel-input"></td>
+                                    <td><input type="number" id="tr_2_temp" class="excel-input"></td><td><input type="number" id="tr_2_lvl" step="0.1" class="excel-input"></td>
+                                    <td><input type="number" id="tr_aux_temp" class="excel-input"></td><td class="border-r-2 border-slate-300"><input type="number" id="tr_aux_lvl" step="0.1" class="excel-input"></td>
+                                    <td><input type="number" id="dg_batt" step="0.1" class="excel-input"></td><td><input type="number" id="dg_fuel" step="0.01" class="excel-input"></td><td><input type="text" id="dg_runtime" class="excel-input"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 border-t-2 border-indigo-100 pt-6 mt-8">
+                        <div class="md:col-span-3">
+                            <label class="form-label text-indigo-900">Operator Signature</label>
+                            <input type="text" id="log-operator" class="table-input font-bold bg-slate-100 text-slate-500 border-transparent shadow-inner" readonly>
+                        </div>
+                        <div class="md:col-span-3">
+                            <label class="form-label text-indigo-900">Remark Category</label>
+                            <select id="remark-category" class="table-input font-bold text-indigo-700 border-indigo-300 cursor-pointer">
+                                <option value="Generation">1. Generation Summary</option>
+                                <option value="Schedule3">2. Schedule 3 (Electrical)</option>
+                                <option value="TempOil">3. Temp & Oil Log</option>
+                                <option value="Transformers">4. Transformers & DG</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-6">
+                            <label class="form-label text-indigo-900">Remarks</label>
+                            <input type="text" id="log-remarks" class="table-input border-indigo-300" placeholder="Type observation or event here...">
+                        </div>
+                    </div>
+                </form>
+
+                <div id="tab-daily-data" class="section-content hidden">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Entry Date</label>
+                            <input type="date" id="dd-entry-date" class="border border-slate-300 p-2 rounded outline-none font-bold text-indigo-700">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Select Time Window</label>
+                            <select id="dd-entry-time" class="border border-slate-300 p-2 rounded outline-none font-bold text-indigo-700 w-48">
+                                <option value="">-- Select Time --</option>
+                                <option value="08:00">08:00 AM (Rainfall)</option>
+                                <option value="12:00">12:00 PM (Balanch & Faults)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="section-rainfall" class="bg-white p-6 rounded-xl shadow-sm border border-blue-200 mb-6 hidden">
+                        <h2 class="text-lg font-bold text-blue-900 border-b border-blue-100 pb-2 mb-4">🌧️ 8:00 AM Rainfall Data</h2>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Dam / Headworks (mm)</label><input type="number" id="inp-rain-dam" step="any" class="w-full border p-2 rounded text-sm"></div>
+                            <div><label class="block text-xs font-bold text-slate-600 mb-1">Powerhouse (mm)</label><input type="number" id="inp-rain-ph" step="any" class="w-full border p-2 rounded text-sm"></div>
+                        </div>
+                        <button id="btn-save-rainfall" class="mt-4 bg-blue-600 text-white px-6 py-2 rounded text-sm font-bold shadow hover:bg-blue-700 transition">Save 8:00 AM Data</button>
+                    </div>
+
+                    <div id="section-noon" class="hidden">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-200 mb-6">
+                            <h2 class="text-lg font-bold text-emerald-900 border-b border-emerald-100 pb-2 mb-4">⚡ 12:00 PM Balanch Substation Readings</h2>
+                            <div class="grid grid-cols-4 gap-4">
+                                <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Main Export</label><input type="number" id="inp-bal-main-exp" step="any" class="w-full border p-2 rounded text-sm"></div>
+                                <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Main Import</label><input type="number" id="inp-bal-main-imp" step="any" class="w-full border p-2 rounded text-sm"></div>
+                                <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Check Export</label><input type="number" id="inp-bal-chk-exp" step="any" class="w-full border p-2 rounded text-sm bg-slate-50"></div>
+                                <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Check Import</label><input type="number" id="inp-bal-chk-imp" step="any" class="w-full border p-2 rounded text-sm bg-slate-50"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-rose-200 mb-6">
+                            <div class="flex justify-between items-center border-b border-rose-100 pb-2 mb-4">
+                                <h2 class="text-lg font-bold text-rose-900">⚠️ 12:00 PM Outages & Losses</h2>
+                                <button id="btn-add-fault" class="bg-rose-100 hover:bg-rose-200 transition text-rose-700 px-3 py-1 rounded text-xs font-bold">+ Add Fault</button>
+                            </div>
+                            <div id="faults-container" class="space-y-4"></div>
+                        </div>
+                        
+                        <button id="btn-save-noon" class="w-full bg-indigo-600 hover:bg-indigo-700 transition text-white px-6 py-3 rounded-lg text-lg font-bold shadow-lg">Sync 12:00 PM Data to Database</button>
+                    </div>
+
+                    <div id="section-waiting" class="text-center py-10 border border-dashed border-slate-300 rounded-xl bg-slate-50"><p class="text-slate-500 font-bold text-lg">⏳ Select a time window above to begin.</p></div>
+                </div>
+
+                <div id="tab-gen" class="section-content hidden">
+                    <div class="preview-table-container custom-scroll overflow-x-auto pb-4" id="view-gen-container">Loading view...</div>
+                </div>
+                <div id="tab-elec" class="section-content hidden">
+                    <div class="preview-table-container custom-scroll overflow-x-auto pb-4" id="view-elec-container">Loading view...</div>
+                </div>
+                <div id="tab-temp" class="section-content hidden">
+                    <div class="preview-table-container custom-scroll overflow-x-auto pb-4" id="view-temp-container">Loading view...</div>
+                </div>
+                <div id="tab-trans" class="section-content hidden">
+                    <div class="preview-table-container custom-scroll overflow-x-auto pb-4" id="view-trans-container">Loading view...</div>
+                </div>
+
+                <div id="tab-daily-summary" class="section-content hidden">
+                    <div class="flex justify-between items-center mb-6 bg-slate-100 p-4 rounded-xl shadow-sm border border-slate-200">
+                        <h2 class="text-xl font-bold text-slate-800">Daily Submission Summary</h2>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 mr-2">Check Date:</label>
+                            <input type="date" id="summary-date-picker" class="border border-slate-300 p-1.5 rounded text-sm font-bold text-indigo-700 outline-none bg-white">
+                            <button id="btn-load-summary" class="ml-2 bg-slate-800 hover:bg-slate-900 transition text-white px-4 py-1.5 rounded text-sm font-bold shadow">Load</button>
+                        </div>
+                    </div>
+
+                    <div id="summary-content" class="space-y-6 hidden">
+                        <div class="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm relative">
+                            <h3 class="font-bold text-emerald-900 mb-3 border-b border-emerald-100 pb-2">⚡ Balanch Readings</h3>
+                            <div class="grid grid-cols-4 gap-4 text-sm">
+                                <div><span class="text-slate-500 text-xs block">Main Export</span><span id="sum-bal-m-exp" class="font-bold text-lg text-emerald-700">0</span></div>
+                                <div><span class="text-slate-500 text-xs block">Main Import</span><span id="sum-bal-m-imp" class="font-bold text-lg text-emerald-700">0</span></div>
+                                <div><span class="text-slate-500 text-xs block">Check Export</span><span id="sum-bal-c-exp" class="font-bold text-slate-600">0</span></div>
+                                <div><span class="text-slate-500 text-xs block">Check Import</span><span id="sum-bal-c-imp" class="font-bold text-slate-600">0</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-blue-200 shadow-sm">
+                            <h3 class="font-bold text-blue-900 mb-3 border-b border-blue-100 pb-2">🌧️ Rainfall Data</h3>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div><span class="text-slate-500 text-xs block">Dam / Headworks</span><span id="sum-rain-dam" class="font-bold text-lg text-blue-700">0</span> <span class="text-xs text-slate-400">mm</span></div>
+                                <div><span class="text-slate-500 text-xs block">Powerhouse</span><span id="sum-rain-ph" class="font-bold text-lg text-blue-700">0</span> <span class="text-xs text-slate-400">mm</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm">
+                            <h3 class="font-bold text-rose-900 mb-3 border-b border-rose-100 pb-2">⚠️ Aggregated Outages & Losses</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Trippings</span><span id="sum-out-trips" class="font-black text-xl text-rose-700">0</span></div>
+                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Grid Faults (MWh)</span><span id="sum-out-grid" class="font-bold text-slate-800">0</span></div>
+                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">132kV Faults (MWh)</span><span id="sum-out-132" class="font-bold text-slate-800">0</span></div>
+                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Dispatch (MWh)</span><span id="sum-out-disp" class="font-bold text-slate-800">0</span></div>
+                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Non-Dispatch (MWh)</span><span id="sum-out-force" class="font-bold text-slate-800">0</span></div>
+                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Plant Loss Time</span><span id="sum-out-time" class="font-bold text-slate-800">0</span> <span class="text-xs text-slate-400">mins</span></div>
+                            </div>
+                            
+                            <div class="mt-6 pt-4 border-t border-rose-100 flex justify-end col-actions">
+                                <button onclick="alert('Admin Edit functionality will open the data grid here.')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Admin Edit</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-admin" class="section-content hidden admin-only role-hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 col-span-12 lg:col-span-8">
+                            <h2 class="text-lg font-bold text-indigo-900 mb-2 border-b border-indigo-200 pb-2">📥 Data Preview & Export</h2>
+                            
+                            <div class="flex items-center gap-4 mb-4">
+                                <label class="font-bold text-indigo-800 text-sm"><input type="radio" name="export-range" value="daily" checked onclick="toggleExportRange()"> Daily Export</label>
+                                <label class="font-bold text-indigo-800 text-sm"><input type="radio" name="export-range" value="monthly" onclick="toggleExportRange()"> Monthly Export</label>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-3 mb-4">
+                                <div>
+                                    <label class="form-label text-indigo-900">Nepali Year</label>
+                                    <select id="export-year" class="table-input"><option value="2081">2081</option><option value="2082" selected>2082</option><option value="2083">2083</option></select>
+                                </div>
+                                <div>
+                                    <label class="form-label text-indigo-900">Nepali Month</label>
+                                    <select id="export-month" class="table-input">
+                                        <option value="1">Baisakh</option><option value="2">Jestha</option><option value="3">Ashadh</option>
+                                        <option value="4">Shrawan</option><option value="5">Bhadra</option><option value="6">Ashoj</option>
+                                        <option value="7">Kartik</option><option value="8">Mangsir</option><option value="9">Poush</option>
+                                        <option value="10">Magh</option><option value="11" selected>Falgun</option><option value="12">Chaitra</option>
+                                    </select>
+                                </div>
+                                <div id="export-day-container">
+                                    <label class="form-label text-indigo-900">Day</label>
+                                    <input type="number" id="export-day" min="1" max="32" value="15" class="table-input">
+                                </div>
+                            </div>
+
+                            <label class="form-label text-indigo-900">Select Format</label>
+                            <select id="export-type" class="table-input mb-4 font-bold text-indigo-800">
+                                <option value="generation">1. Generation Summary</option>
+                                <option value="schedule3">2. Schedule 3 (Electrical)</option>
+                                <option value="tempoil">3. Temp & Oil Log</option>
+                                <option value="transformer">4. Transformer & DG</option>
+                                <option value="outages">5. Outages & Losses</option> 
+                            </select>
+
+                            <div class="flex gap-2">
+                                <button type="button" onclick="previewExportData()" class="w-1/3 bg-white border-2 border-indigo-600 text-indigo-700 font-bold py-2 px-2 rounded shadow-sm hover:bg-indigo-50 transition text-sm">👀 Preview</button>
+                                <button type="button" onclick="downloadExcel()" class="w-1/3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-2 rounded shadow transition text-sm">📊 Excel</button>
+                                <button type="button" onclick="downloadPDF()" class="w-1/3 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-2 rounded shadow transition text-sm">📄 PDF</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-rose-50 p-6 rounded-xl border border-rose-100 col-span-12 lg:col-span-4">
+                            <h2 class="text-lg font-bold text-rose-900 mb-2 border-b border-rose-200 pb-2">⚠️ Admin Controls</h2>
+                            <button type="button" onclick="purgeMonthData()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow transition mb-4">
+                                🗑️ Delete Current Month Data
+                            </button>
+
+                            <h2 class="text-lg font-bold text-rose-900 mb-2 border-b border-rose-200 pb-2">📥 Legacy Import</h2>
+                            <label class="form-label text-rose-900">Select Format to Import</label>
+                            <select id="import-type" class="table-input mb-3 font-bold text-rose-800">
+                                <option value="generation">1. Generation Summary</option>
+                                <option value="schedule3">2. Schedule 3 (Electrical)</option>
+                                <option value="tempoil">3. Temp & Oil Log</option>
+                                <option value="transformer">4. Transformer & DG</option>
+                            </select>
+
+                            <label class="form-label text-rose-900">Upload Excel</label>
+                            <input type="file" id="legacy-upload" accept=".xlsx, .xls, .csv" class="table-input bg-white mb-4">
+
+                            <button type="button" onclick="processLegacyImport()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-4 rounded shadow transition">
+                                Process Excel Data
+                            </button>
+                            <div id="import-status" class="mt-3 text-xs font-semibold text-rose-800 hidden"></div>
+                        </div>
+
+                        <div class="col-span-12 mt-4 hidden bg-white border border-slate-300 rounded shadow-sm p-4" id="preview-wrapper">
+                            <div class="flex justify-between items-center mb-3">
+                                <button type="button" onclick="prevPreviewPage()" class="px-3 py-1 bg-slate-200 hover:bg-slate-300 rounded font-bold text-slate-700 text-xs">◀ Prev Day</button>
+                                <div id="preview-page-info" class="font-bold text-indigo-700 text-sm">Preview</div>
+                                <button type="button" onclick="nextPreviewPage()" class="px-3 py-1 bg-slate-200 hover:bg-slate-300 rounded font-bold text-slate-700 text-xs">Next Day ▶</button>
+                            </div>
+                            <div class="overflow-x-auto custom-scroll pb-4 preview-table-container" id="preview-table-container"></div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="audit-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl relative flex flex-col max-h-[90vh]">
+            <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-800 rounded-t-2xl">
+                <h2 class="text-xl font-black text-white flex items-center"><span class="mr-2 text-2xl">📡</span> SCADA Telemetry Audit</h2>
+                <button type="button" id="close-audit-btn" class="text-2xl text-slate-400 hover:text-white transition">&times;</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scroll flex-grow bg-slate-50">
+                <div id="audit-status" class="mb-4 text-sm font-bold text-indigo-600 bg-indigo-50 p-4 rounded-lg border border-indigo-100 flex items-center gap-3"></div>
+                
+                <div id="audit-content" class="hidden">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Comparison Report</p>
+                    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                        <table class="w-full border-collapse" id="audit-table">
+                            <thead>
+                                <tr class="bg-slate-100 text-left text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                                    <th class="p-3">Parameter</th>
+                                    <th class="p-3 border-l border-slate-200">Manual Entry</th>
+                                    <th class="p-3 border-l border-slate-200 text-indigo-700">SCADA DB</th>
+                                    <th class="p-3 border-l border-slate-200 text-center w-24">Overwrite</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
+                        </table>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-3">* Note: Pressures are auto-converted from bar to mWC. Voltage/kVAR are grid averages for check-purposes only.</p>
+                </div>
+            </div>
+            
+            <div class="p-5 border-t border-slate-200 bg-white rounded-b-2xl flex justify-end gap-3 hidden" id="audit-actions">
+                <button type="button" id="audit-cancel-btn" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition">Dismiss</button>
+                <button type="button" id="audit-apply-btn" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition flex items-center">
+                    <span class="mr-2">⚡</span> Apply Selected Fixes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="global-footer-container" class="shrink-0 no-print"></div>
+
+    <script type="module" src="hourly-log.js"></script>
+</body>
+</html>

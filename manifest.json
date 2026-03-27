@@ -8,12 +8,12 @@
   "description": "Offline-capable dashboard for the 10MW Makari Gad Hydroelectric Project.",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "https://www.github.com/fluidicon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "https://www.github.com/fluidicon.png",
       "sizes": "512x512",
       "type": "image/png"
     }

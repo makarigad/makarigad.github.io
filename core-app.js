@@ -10,7 +10,6 @@ export let userRole = 'operator';
 
 export async function initializeApplication(requireAuth = true) {
     try {
-        // Supabase checks local memory for the session, so this works offline!
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session && session.user) {
@@ -21,7 +20,6 @@ export async function initializeApplication(requireAuth = true) {
             window.currentUser = null;
         }
 
-        // Load the UI first
         await loadGlobalUI();
 
         if (error) throw error;
@@ -30,20 +28,14 @@ export async function initializeApplication(requireAuth = true) {
             let isAdmin = currentUser.email.toLowerCase() === 'upenjyo@gmail.com';
             if (!isAdmin) {
                 try {
-                    // Try to fetch role from the live database
                     const { data, error: dbErr } = await supabase.from('user_roles').select('role').eq('email', currentUser.email).maybeSingle();
                     if (data && !dbErr) {
                         if (data.role === 'admin') isAdmin = true;
                         else if (data.role === 'staff') userRole = 'staff'; 
                         else userRole = 'operator';
-                        
-                        // Save the role to local storage so the app remembers it when offline
                         localStorage.setItem('makarigad_offline_role', userRole);
-                    } else {
-                        throw new Error("Offline or DB error");
-                    }
+                    } else { throw new Error("Offline"); }
                 } catch (e) {
-                    // OFFLINE FALLBACK: Use the role we saved previously
                     userRole = localStorage.getItem('makarigad_offline_role') || 'operator';
                     if (userRole === 'admin') isAdmin = true;
                 }
@@ -55,27 +47,21 @@ export async function initializeApplication(requireAuth = true) {
             window.userRole = userRole; 
             const href = window.location.href.toLowerCase();
             
-            // SECURITY GUARDS
             if (userRole === 'operator' && (href.includes('energy-summary') || href.includes('nepali-calendar') || href.includes('user-management'))) {
-                window.location.href = 'index.html';
-                return null;
+                window.location.href = 'index.html'; return null;
             }
             if (userRole === 'staff' && (href.includes('nepali-calendar') || href.includes('user-management'))) {
-                window.location.href = 'index.html';
-                return null;
+                window.location.href = 'index.html'; return null;
             }
 
             applyRoleBasedUI();
             return { user: currentUser, role: userRole };
 
         } else if (requireAuth) {
-            window.location.href = "index.html";
-            return null;
-        } else {
-            return null; 
-        }
+            window.location.href = "index.html"; return null;
+        } else { return null; }
     } catch (err) {
-        console.error("Critical Auth Error:", err);
+        console.error("Auth Error:", err);
         if (requireAuth) window.location.href = "index.html";
     }
 }
@@ -84,35 +70,38 @@ async function loadGlobalUI() {
     try {
         let headerContainer = document.getElementById('global-header-container') || document.getElementById('global-header');
         if (headerContainer) {
-            // FIXED: Removed the ?v=Date.now() cache-buster so it works perfectly offline
             const headerRes = await fetch('./header.html'); 
             if (headerRes.ok) headerContainer.innerHTML = await headerRes.text();
         }
+        
         const mainNav = document.getElementById('main-nav');
         const loginBtn = document.getElementById('login-btn');
         const logoutBtn = document.getElementById('logout-btn'); 
-        const headerEmail = document.getElementById('header-email'); 
+        const profileBtn = document.getElementById('profile-btn');
 
         if (currentUser) {
             if (mainNav) { mainNav.classList.remove('hidden'); mainNav.classList.add('flex'); }
             if (loginBtn) loginBtn.classList.add('hidden');
             if (logoutBtn) logoutBtn.classList.remove('hidden');
-            if (headerEmail) {
-                headerEmail.classList.remove('hidden');
-                headerEmail.classList.add('flex');
-                headerEmail.innerText = currentUser.email.split('@')[0];
+            
+            if (profileBtn) {
+                profileBtn.classList.remove('hidden');
+                profileBtn.classList.add('flex');
+                profileBtn.onclick = () => {
+                    const modal = document.getElementById('profile-modal');
+                    if(modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+                };
             }
             if (logoutBtn) logoutBtn.onclick = async () => { await window.supabaseClient.auth.signOut(); window.location.href = "index.html"; };
         } else {
             if (mainNav) { mainNav.classList.add('hidden'); mainNav.classList.remove('flex'); }
             if (logoutBtn) logoutBtn.classList.add('hidden');
-            if (headerEmail) headerEmail.classList.add('hidden');
+            if (profileBtn) profileBtn.classList.add('hidden');
             if (loginBtn) {
                 loginBtn.classList.remove('hidden');
                 loginBtn.onclick = () => {
                     const modal = document.getElementById('login-modal');
-                    if (modal) modal.classList.remove('hidden');
-                    else window.location.href = "index.html";
+                    if (modal) modal.classList.remove('hidden'); else window.location.href = "index.html";
                 };
             }
         }
@@ -129,9 +118,9 @@ function applyRoleBasedUI() {
     }
     
     const nameDisplay = document.getElementById('display-user-name');
-    if (nameDisplay) nameDisplay.innerText = currentUser.email.split('@')[0];
+    if (nameDisplay && currentUser) nameDisplay.innerText = currentUser.email.split('@')[0];
     const roleDisplay = document.getElementById('display-user-role');
-    if (roleDisplay) roleDisplay.innerText = userRole.toUpperCase();
+    if (roleDisplay) roleDisplay.innerText = userRole;
 }
 
 window.addEventListener('online', async () => { await processSyncQueue(); });
@@ -141,13 +130,11 @@ export async function safeUpsert(tableName, payload) {
         try {
             const { error } = await supabase.from(tableName).upsert(payload);
             if (error) {
-                alert(`❌ DATABASE REJECTED SAVE!\n\nError: ${error.message}\n\nTip: You need to update Supabase Row Level Security (RLS) to allow Operators to save.`);
+                alert(`❌ DATABASE REJECTED SAVE!\n\nError: ${error.message}`);
                 return { success: false, queued: false };
             }
             return { success: true, queued: false };
-        } catch (e) {
-            return { success: false, queued: false };
-        }
+        } catch (e) { return { success: false, queued: false }; }
     } else {
         queueForSync(tableName, payload);
         return { success: true, queued: true };

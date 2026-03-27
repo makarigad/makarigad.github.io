@@ -104,12 +104,21 @@ async function updateDates() {
 window.fetchLogs = async function() {
     const todayDate = dateInput.value;
     document.querySelectorAll('.preview-table-container').forEach(el => {
-        el.innerHTML = '<div class="p-6 text-center text-indigo-600 font-bold animate-pulse">Loading data from database...</div>';
+        el.innerHTML = '<div class="p-6 text-center text-indigo-600 font-bold animate-pulse">Loading data...</div>';
     });
 
     try {
         const { data, error } = await supabase.from('hourly_logs').select('*').eq('log_date', todayDate).order('log_time', { ascending: true });
-        if (error) { alert(`❌ DATABASE READ ERROR!\n\nError: ${error.message}`); throw error; }
+        
+        if (error) { 
+            // Graceful offline fallback instead of screaming error alert
+            if (error.message === 'Failed to fetch' || !navigator.onLine) {
+                console.warn('Offline mode: Showing cached data if available.');
+            } else {
+                alert(`❌ DATABASE READ ERROR!\n\nError: ${error.message}`); 
+            }
+            throw error; 
+        }
 
         window.currentDayLogs = data || [];
         window.latestLog = data && data.length > 0 ? data[data.length - 1] : null;

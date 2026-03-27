@@ -1,13 +1,3 @@
-<style>
-    /* This adds the edit pencil icon permanently without letting core-app.js overwrite it */
-    #header-email::after {
-        content: ' ';
-        font-size: 11px;
-        margin-left: 8px;
-        opacity: 0.8;
-    }
-</style>
-
 <div class="bg-white shadow-sm border-b border-slate-200 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
         
@@ -22,30 +12,20 @@
         <nav id="main-nav" class="hidden flex-wrap justify-center items-center gap-2 md:gap-4 text-xs font-bold text-slate-600 uppercase tracking-wide">
             <a href="index.html" class="hover:text-indigo-600 transition px-2 py-1 rounded hover:bg-slate-100">Hub</a>
             <a href="plant-data.html" class="hover:text-indigo-600 transition px-2 py-1 rounded hover:bg-slate-100">Data Entry</a>
-            
             <a href="energy-summary.html" class="staff-only role-hidden hover:text-indigo-600 transition px-2 py-1 rounded hover:bg-slate-100 text-emerald-700">Reports</a>
-            
             <a href="hourly-log.html" class="hover:text-indigo-600 transition px-2 py-1 rounded hover:bg-slate-100 text-emerald-600">Hourly Log</a>
-            
             <a href="nepali-calendar.html" class="admin-only role-hidden hover:text-indigo-600 transition px-2 py-1 rounded hover:bg-slate-100 text-amber-600">🗓️ Calendar</a>
             <a href="user-management.html" class="admin-only role-hidden hover:text-indigo-600 transition px-2 py-1 rounded hover:bg-slate-100 text-red-600">Users</a>
         </nav>
         
         <div class="flex items-center gap-3 w-full md:w-auto justify-center md:justify-end">
-            
             <button id="login-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-black shadow-md transition">System Login</button>
             
-            <div class="flex items-center justify-center">
-                <button 
-                    id="header-email" 
-                    onclick="if(document.getElementById('profile-modal')){ document.getElementById('profile-modal').classList.remove('hidden'); document.getElementById('profile-modal').classList.add('flex'); document.getElementById('prof-password').value = ''; }" 
-                    class="hidden text-sm font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg border border-indigo-200 shadow-sm transition cursor-pointer" 
-                    title="Click to Edit Profile"
-                ></button>
-                
-                <div id="display-user-role" class="hidden"></div>
-                <span id="display-user-name" class="hidden"></span>
-            </div>
+            <button id="profile-btn" class="hidden items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 transition cursor-pointer shadow-sm" title="Edit Profile">
+                <span id="display-user-name" class="font-bold text-sm"></span>
+                <span id="display-user-role" class="text-[9px] uppercase bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded font-black tracking-widest"></span>
+                <span class="text-xs ml-1 opacity-80">✏️</span>
+            </button>
 
             <button id="logout-btn" class="hidden bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition ml-1">Sign Out</button>
         </div>

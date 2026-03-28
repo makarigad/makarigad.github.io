@@ -8,9 +8,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>  
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="plant-data.css" />
+      
+    
 </head>
 <body class="flex flex-col h-screen text-slate-800 relative">
 
@@ -247,7 +249,7 @@
             </div>
         </section>
 
-        <section id="rainfall-tab" class="hidden-tab h-full flex flex-col">
+       <section id="rainfall-tab" class="hidden-tab h-full flex flex-col">
             <div class="flex justify-between items-center mb-3 shrink-0">
                 <div>
                     <h2 class="text-xl font-bold text-slate-800">Monthly Rainfall & Flow Data</h2>
@@ -257,6 +259,38 @@
                     <input type="file" id="rf-file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
                     <button id="rf-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Import Data</button>
                     <button id="rf-download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export Tab</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-300 p-4 mb-4 shrink-0">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-lg text-slate-800">Monthly Summary</h3>
+                    <button id="quick-fill-zero" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-1 px-3 rounded shadow transition">Quick Fill Zero</button>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Headworks</div>
+                        <div class="flex items-baseline space-x-1"><div id="sum-headworks" class="text-2xl font-black text-indigo-700">0</div><div class="text-[10px] text-slate-400 font-bold">mm</div></div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Dam</div>
+                        <div class="flex items-baseline space-x-1"><div id="sum-dam" class="text-2xl font-black text-emerald-700">0</div><div class="text-[10px] text-slate-400 font-bold">mm</div></div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg. Daily Headworks</div>
+                        <div class="flex items-baseline space-x-1"><div id="avg-headworks" class="text-2xl font-black text-indigo-700">0</div><div class="text-[10px] text-slate-400 font-bold">mm</div></div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Rainy Days ( >0 )</div>
+                        <div class="flex items-baseline space-x-1"><div id="rainy-days" class="text-2xl font-black text-slate-800">0</div><div class="text-[10px] text-slate-400 font-bold">days</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-300 p-4 mb-4 shrink-0">
+                <h3 class="font-bold text-lg mb-2 text-slate-800">Cumulative Rainfall</h3>
+                <div class="relative h-64 w-full">
+                    <canvas id="cumulative-rainfall-chart"></canvas>
                 </div>
             </div>
 
@@ -270,8 +304,7 @@
                     </div>
                 </div>
                 <div class="overflow-x-auto border border-slate-200 rounded custom-scroll">
-                    <table class="w-full text-center border-collapse text-[11px]" id="rainfall-grid-table">
-                        </table>
+                    <table class="w-full text-center border-collapse text-[11px]" id="rainfall-grid-table"></table>
                 </div>
             </div>
 
@@ -280,8 +313,7 @@
                 <div class="flex flex-wrap items-end gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200 mb-3">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Month</label>
-                        <select id="rf-chart-month" class="input-cell mt-1 w-32 font-bold text-indigo-700 bg-white">
-                            </select>
+                        <select id="rf-chart-month" class="input-cell mt-1 w-32 font-bold text-indigo-700 bg-white"></select>
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Metric</label>
@@ -290,10 +322,13 @@
                             <option value="powerhouse">Dam</option>
                         </select>
                     </div>
+                    <div class="flex items-center space-x-2 mb-1.5 border-l border-slate-300 pl-4">
+                        <input type="checkbox" id="show-both-metrics" class="w-4 h-4 accent-indigo-600 cursor-pointer">
+                        <label for="show-both-metrics" class="text-xs font-bold text-slate-700 cursor-pointer">Show both metrics</label>
+                    </div>
                     <div class="border-l border-slate-300 pl-4 flex-grow">
                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Select Years</label>
-                        <div id="rf-year-checkboxes" class="flex flex-wrap gap-3">
-                            </div>
+                        <div id="rf-year-checkboxes" class="flex flex-wrap gap-3"></div>
                     </div>
                 </div>
                 <div class="relative h-[250px] w-full border border-slate-200 rounded-lg p-2 bg-white">

@@ -228,47 +228,46 @@ window.generateTableHTML = function(logs, nepD, dateEng, monthName, isPdf = fals
 
     html += `</tbody></table>`;
     
-    if (type === 'schedule3') {
-        html += `
-        <div style="margin-top: 20px; font-size:12px; font-family: 'Times New Roman', Times, serif;">
-            <table style="width: 100%; border: none;">
+   if (type === 'schedule3') {
+        html += `<div style="margin-top: 30px; page-break-inside: avoid;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'Times New Roman', Times, serif;">
                 <tr>
-                    <td style="width: 35%; border: none; text-align: left;">Shift A</td>
-                    <td style="width: 35%; border: none; text-align: left;">Shift B</td>
-                    <td style="width: 30%; border: none; text-align: left;">Shift C</td>
-                </tr>
-                <tr><td colspan="3" style="border: none; height: 15px;"></td></tr>
-                <tr>
-                    <td style="border: none; text-align: left;">Signature: .............................</td>
-                    <td style="border: none; text-align: left;">Signature: .............................</td>
-                    <td style="border: none; text-align: left;">Signature: .............................</td>
+                    <td style="border: none; text-align: left; width: 22%;"><strong>Shift A</strong></td>
+                    <td style="border: none; width: 10%;"></td>
+                    <td style="border: none; text-align: left; width: 22%;"><strong>Shift B</strong></td>
+                    <td style="border: none; width: 10%;"></td>
+                    <td style="border: none; text-align: left; width: 22%;"><strong>Shift C</strong></td>
                 </tr>
                 <tr>
                     <td style="border: none; text-align: left;">Name: ${shiftA}</td>
+                    <td style="border: none;"></td>
                     <td style="border: none; text-align: left;">Name: ${shiftB}</td>
+                    <td style="border: none;"></td>
                     <td style="border: none; text-align: left;">Name: ${shiftC}</td>
                 </tr>
-                <tr><td colspan="3" style="border: none; height: 30px;"></td></tr>
                 <tr>
-                    <td style="border: none; text-align: left;">Signature: .............................</td>
+                    <td style="border: none; text-align: left; padding-bottom: 20px;">Signature: ....................</td>
                     <td style="border: none;"></td>
+                    <td style="border: none; text-align: left; padding-bottom: 20px;">Signature: ....................</td>
                     <td style="border: none;"></td>
+                    <td style="border: none; text-align: left; padding-bottom: 20px;">Signature: ....................</td>
                 </tr>
-                <tr><td colspan="3" style="border: none; height: 10px;"></td></tr>
+                
+                <tr><td colspan="5" style="border: none; height: 35px;"></td></tr>
+                <tr><td colspan="5" style="border: none; height: 35px;"></td></tr>
+
                 <tr>
-                    <td style="border: none; text-align: left;">Name: Upendra Chand</td>
-                    <td style="border: none;"></td>
-                    <td style="border: none;"></td>
+                    <td colspan="5" style="border: none; text-align: left;">Signature: ........................................</td>
+                </tr>
+                <tr><td colspan="5" style="border: none; height: 10px;"></td></tr>
+                <tr>
+                    <td colspan="5" style="border: none; text-align: left;"><strong>Name: Upendra Chand</strong></td>
                 </tr>
                 <tr>
-                    <td style="border: none; text-align: left;">Designation: Plant Manager</td>
-                    <td style="border: none;"></td>
-                    <td style="border: none;"></td>
+                    <td colspan="5" style="border: none; text-align: left;">Designation: Plant Manager</td>
                 </tr>
                 <tr>
-                    <td style="border: none; text-align: left;">Official Seal</td>
-                    <td style="border: none;"></td>
-                    <td style="border: none;"></td>
+                    <td colspan="5" style="border: none; text-align: left;">Official Seal</td>
                 </tr>
             </table>
         </div>`;

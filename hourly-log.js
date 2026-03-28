@@ -988,7 +988,7 @@ if(btnNoon) {
                 check_export: parseFloat(document.getElementById('inp-bal-chk-exp').value) || 0,
                 check_import: parseFloat(document.getElementById('inp-bal-chk-imp').value) || 0,
                 operator_email: window.currentUser?.email || null,
-                //operator_uid: window.currentUser?.id || null,
+                operator_uid: window.currentUser?.id || null,
             };
             const { error: balErr } = await supabase.from('balanch_readings').upsert(balPayload);
             if (balErr) throw new Error("Substation Save Error: " + balErr.message);
@@ -1894,9 +1894,9 @@ window.processLegacyImport = async function() {
                     continue;
                 }
 
-                // Now scan for hour rows and extract data
                 let inDataBlock = false;
                 let rowsFound = 0;
+                let sheetPayloads = []; // NEW: Array to hold this sheet's rows
 
                 for (let i=0; i<rows.length; i++) {
                     let r = rows[i];
@@ -1947,14 +1947,6 @@ window.processLegacyImport = async function() {
                         let o = offset;
 
                         if (importType === 'generation') {
-                            if (rowsFound === 0) {
-                                console.log(`\n--- Generation Summary Row (hour ${hour}) ---`);
-                                console.log(`Row length: ${r.length}`);
-                                console.log(`Hour column index: ${offset} -> value:`, r[offset]);
-                                console.log(`Data columns (offset+1 to offset+18):`, r.slice(offset+1, offset+19));
-                                console.log(`Expected mapping: [U1_status, U2_status, U1_hour, U2_hour, U1_load, U2_load, U1_pf, U2_pf, U1_pmu, U2_pmu, U1_feeder, U2_feeder, SST, Outgoing, Import, Water, Operator]`);
-                            }
-                            
                             logData.u1_status = str(r[1+o]); logData.u2_status = str(r[2+o]);
                             logData.u1_hour_counter = num(r[3+o]); logData.u2_hour_counter = num(r[4+o]);
                             logData.u1_load = num(r[5+o]); logData.e_u1_mw = num(r[5+o]);
@@ -1984,71 +1976,83 @@ window.processLegacyImport = async function() {
                             logData.dg_runtime = str(r[9+o]);
                         }
                         else if (importType === 'schedule3') {
-                            if (rowsFound === 0) {
-                                console.log(`\nFirst Schedule 3 row (hour ${hour}):`);
-                                console.log(`Row length: ${r.length}`);
-                                console.log(`Hour at column ${offset}:`, r[offset]);
-                                console.log(`Full row preview:`, r.slice(0, 35));
-                            }
-                            
                             const dataStartCol = 1 + o;
-                            if (r.length < dataStartCol + 33) {
-                                console.warn(`Row ${i}: Not enough columns! Need ${dataStartCol + 33}, have ${r.length}`);
-                                continue;
-                            }
-                            
-                            logData.e_u1_v_ry = num(r[dataStartCol + 0]);
-                            logData.e_u1_v_yb = num(r[dataStartCol + 1]);
-                            logData.e_u1_v_br = num(r[dataStartCol + 2]);
-                            logData.e_u1_a_i1 = num(r[dataStartCol + 3]);
-                            logData.e_u1_a_i2 = num(r[dataStartCol + 4]);
-                            logData.e_u1_a_i3 = num(r[dataStartCol + 5]);
-                            logData.e_u1_mw = num(r[dataStartCol + 6]);
-                            logData.e_u1_kvar = num(r[dataStartCol + 7]);
-                            logData.e_u1_cos = num(r[dataStartCol + 8]);
-                            logData.e_u1_hz = num(r[dataStartCol + 9]);
-                            logData.e_u1_gwh = num(r[dataStartCol + 10]);
+                            if (r.length >= dataStartCol + 33) {
+                                logData.e_u1_v_ry = num(r[dataStartCol + 0]); logData.e_u1_v_yb = num(r[dataStartCol + 1]); logData.e_u1_v_br = num(r[dataStartCol + 2]);
+                                logData.e_u1_a_i1 = num(r[dataStartCol + 3]); logData.e_u1_a_i2 = num(r[dataStartCol + 4]); logData.e_u1_a_i3 = num(r[dataStartCol + 5]);
+                                logData.e_u1_mw = num(r[dataStartCol + 6]); logData.e_u1_kvar = num(r[dataStartCol + 7]); logData.e_u1_cos = num(r[dataStartCol + 8]);
+                                logData.e_u1_hz = num(r[dataStartCol + 9]); logData.e_u1_gwh = num(r[dataStartCol + 10]);
 
-                            logData.e_u2_v_ry = num(r[dataStartCol + 11]);
-                            logData.e_u2_v_yb = num(r[dataStartCol + 12]);
-                            logData.e_u2_v_br = num(r[dataStartCol + 13]);
-                            logData.e_u2_a_i1 = num(r[dataStartCol + 14]);
-                            logData.e_u2_a_i2 = num(r[dataStartCol + 15]);
-                            logData.e_u2_a_i3 = num(r[dataStartCol + 16]);
-                            logData.e_u2_mw = num(r[dataStartCol + 17]);
-                            logData.e_u2_kvar = num(r[dataStartCol + 18]);
-                            logData.e_u2_cos = num(r[dataStartCol + 19]);
-                            logData.e_u2_hz = num(r[dataStartCol + 20]);
-                            logData.e_u2_gwh = num(r[dataStartCol + 21]);
+                                logData.e_u2_v_ry = num(r[dataStartCol + 11]); logData.e_u2_v_yb = num(r[dataStartCol + 12]); logData.e_u2_v_br = num(r[dataStartCol + 13]);
+                                logData.e_u2_a_i1 = num(r[dataStartCol + 14]); logData.e_u2_a_i2 = num(r[dataStartCol + 15]); logData.e_u2_a_i3 = num(r[dataStartCol + 16]);
+                                logData.e_u2_mw = num(r[dataStartCol + 17]); logData.e_u2_kvar = num(r[dataStartCol + 18]); logData.e_u2_cos = num(r[dataStartCol + 19]);
+                                logData.e_u2_hz = num(r[dataStartCol + 20]); logData.e_u2_gwh = num(r[dataStartCol + 21]);
 
-                            logData.e_out_v_ry = num(r[dataStartCol + 22]);
-                            logData.e_out_v_yb = num(r[dataStartCol + 23]);
-                            logData.e_out_v_br = num(r[dataStartCol + 24]);
-                            logData.e_out_a_i1 = num(r[dataStartCol + 25]);
-                            logData.e_out_a_i2 = num(r[dataStartCol + 26]);
-                            logData.e_out_a_i3 = num(r[dataStartCol + 27]);
-                            logData.e_out_mw = num(r[dataStartCol + 28]);
-                            logData.e_out_kvar = num(r[dataStartCol + 29]);
-                            logData.e_out_cos = num(r[dataStartCol + 30]);
-                            logData.e_out_hz = num(r[dataStartCol + 31]);
-                            logData.e_out_mwh = num(r[dataStartCol + 32]);
-                            
-                            logData.remarks = '';
-                            
-                            if (rowsFound === 0) {
-                                console.log(`U1 MW: ${logData.e_u1_mw}`);
-                                console.log(`U2 MW: ${logData.e_u2_mw}`);
-                                console.log(`Out MW: ${logData.e_out_mw}`);
+                                logData.e_out_v_ry = num(r[dataStartCol + 22]); logData.e_out_v_yb = num(r[dataStartCol + 23]); logData.e_out_v_br = num(r[dataStartCol + 24]);
+                                logData.e_out_a_i1 = num(r[dataStartCol + 25]); logData.e_out_a_i2 = num(r[dataStartCol + 26]); logData.e_out_a_i3 = num(r[dataStartCol + 27]);
+                                logData.e_out_mw = num(r[dataStartCol + 28]); logData.e_out_kvar = num(r[dataStartCol + 29]); logData.e_out_cos = num(r[dataStartCol + 30]);
+                                logData.e_out_hz = num(r[dataStartCol + 31]); logData.e_out_mwh = num(r[dataStartCol + 32]);
+                                logData.remarks = '';
                             }
                         }
 
                         logData.created_by = window.currentUser ? window.currentUser.id : null;
-                        payloads.push(logData);
+                        sheetPayloads.push(logData); // Save to temp array
                         rowsFound++;
 
                         if (timeStr === '23:00:00' || (importType === 'transformer' && timeStr === '22:00:00')) break;
                     }
                 }
+
+                // --- NAME NORMALIZATION HELPER ---
+                const formatOperatorName = (nameStr) => {
+                    if (!nameStr) return null;
+                    const n = nameStr.trim();
+                    const lower = n.toLowerCase();
+                    if (lower === "janak") return "Janak Thagunna";
+                    if (lower === "nirajan") return "Nirajan Bist";
+                    if (lower === "ashok") return "Ashok Nath";
+                    if (lower === "bhupendra") return "Bhupendra Singh";
+                    if (lower === "jaman") return "Jaman Dhami";
+                    return n; // Returns original name if no match
+                };
+
+                // --- NEW: EXTRACT SIGNATURE NAMES FROM BOTTOM OF EXCEL ---
+                let shiftAName = null, shiftBName = null, shiftCName = null;
+                for (let k = 0; k < rows.length; k++) {
+                    if (!rows[k]) continue;
+                    for (let j = 0; j < rows[k].length; j++) {
+                        let cellStr = String(rows[k][j] || "").trim();
+                        
+                        // Find cells containing "Name :"
+                        if (cellStr.toLowerCase().includes("name :") || cellStr.toLowerCase().includes("name:")) {
+                            let parts = cellStr.split(/:/);
+                            if (parts.length > 1) {
+                                let cleanName = formatOperatorName(parts[1]);
+                                if (cleanName) {
+                                    if (!shiftAName) shiftAName = cleanName;
+                                    else if (!shiftBName) shiftBName = cleanName;
+                                    else if (!shiftCName) shiftCName = cleanName;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Auto-fill extracted names into the 05:00, 13:00, and 21:00 hour logs
+                sheetPayloads.forEach(p => {
+                    // Normalize the name even if it was typed directly into the hourly row
+                    if (p.remarks) p.remarks = formatOperatorName(p.remarks);
+
+                    // Inject the extracted bottom-of-page names
+                    if (p.log_time === '05:00:00' && shiftAName && !p.remarks) p.remarks = shiftAName;
+                    if (p.log_time === '13:00:00' && shiftBName && !p.remarks) p.remarks = shiftBName;
+                    if (p.log_time === '21:00:00' && shiftCName && !p.remarks) p.remarks = shiftCName;
+                });
+
+                payloads.push(...sheetPayloads); // Add modified rows to main upload queue
+                // ---------------------------------------------------------
+
                 console.log(`Sheet ${sheetName}: Found ${rowsFound} rows of data`);
                 if (rowsFound > 0) processedSheets++;
             }

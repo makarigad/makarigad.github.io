@@ -21,10 +21,11 @@ body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
 .role-hidden { display: none !important; }
 
 /* OPTIMIZED MASTER INPUT TABLES (NO SCROLLING + TIMES NEW ROMAN) */
-.excel-table-wrapper { overflow-x: hidden; background: white; border-radius: 0.5rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-.excel-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: 'Times New Roman', Times, serif; font-size: 1.05rem; }
-.excel-table th { background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 4px 2px; font-size: 0.85rem; font-weight: 700; text-align: center; color: #334155; line-height: 1.2; font-family: 'Inter', sans-serif; }
-.excel-table td { border: 1px solid #cbd5e1; padding: 0; background-color: #fff; position: relative; height: 36px; }
+
+.excel-table-wrapper { overflow-x: auto; background: white; border-radius: 0.5rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.excel-table { width: 100%; min-width: 1400px; border-collapse: collapse; table-layout: auto; font-family: 'Times New Roman', Times, serif; font-size: 1.05rem; }
+.excel-table th { background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 4px; font-size: 0.85rem; font-weight: 700; text-align: center; color: #334155; line-height: 1.2; font-family: 'Inter', sans-serif; white-space: normal; word-wrap: break-word; }
+.excel-table td { border: 1px solid #cbd5e1; padding: 0; background-color: #fff; position: relative; height: 36px; white-space: normal; word-wrap: break-word; }
 .excel-input { width: 100%; height: 100%; border: none; background: transparent; text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 1.1rem; font-weight: 600; color: #0f172a; outline: none; padding: 0; }
 .excel-input:focus { background-color: #e0e7ff; outline: 2px solid #4f46e5; outline-offset: -2px; z-index: 10; position: relative; }
 .excel-select { appearance: none; cursor: pointer; text-align: center; font-size: 0.95rem; }

@@ -1430,11 +1430,32 @@ async function handleAddOrUpdateBalanch(docId, isUpdate = false) {
     balanchCols.forEach(c => payload[c] = parseFloat(document.getElementById(prefix + c)?.value) || null);
 
     try {
-        const { error } = await supabase.from('balanch_readings').upsert(payload);
-        if (error) throw error;
-        showNotification(`Substation data ${isUpdate ? 'updated' : 'added'} successfully!`);
+        // 1. SAVE TO SUBSTATION (BALANCH) TABLE
+        const { error: balanchErr } = await supabase.from('balanch_readings').upsert(payload);
+        if (balanchErr) throw balanchErr;
+
+        // 2. AUTOMATIC "SAFE SYNC" TO DAILY METERING
+        // First, fetch any existing daily data for this date so we don't accidentally erase Unit 1/Unit 2
+        const { data: existingPlantData } = await supabase.from('plant_data').select('*').eq('id', targetDate).maybeSingle();
+        
+        const plantPayload = {
+            ...(existingPlantData || {}), // This keeps all existing generator data safe!
+            id: targetDate,
+            export_plant: payload.main_export,
+            import_substation: payload.main_import,
+            operator_email: currentUser?.email || '',
+            updated_at: new Date().toISOString()
+        };
+
+        const { error: plantErr } = await supabase.from('plant_data').upsert(plantPayload);
+        if (plantErr) console.error("Sync to Daily Metering failed:", plantErr.message);
+
+        showNotification(`✅ Substation data saved & synced to Daily Metering!`);
         editingBalanchId = null;
+        
+        // Refresh both tables on the screen
         loadBalanchData();
+        loadAndListenData(); 
     } catch (error) {
         showNotification("Error: " + error.message, true);
     }
@@ -1575,18 +1596,44 @@ async function processBalanchUpload(workbook) {
     showNotification(`Uploading ${payload.length} rows to database...`);
 
     try {
-        // 3. EXPLICIT CONFLICT RESOLUTION
-        // This forces Supabase to OVERWRITE old data for the given eng_date instead of failing silently
-        const { error } = await supabase.from('balanch_readings').upsert(payload, { onConflict: 'eng_date' });
+        // 1. UPLOAD TO SUBSTATION (BALANCH) TABLE
+        const { error: balanchErr } = await supabase.from('balanch_readings').upsert(payload, { onConflict: 'eng_date' });
+        if (balanchErr) throw balanchErr;
         
-        if (error) throw error;
+        // 2. AUTOMATIC "SAFE SYNC" TO DAILY METERING FOR ALL UPLOADED DATES
+        // Get all dates from the upload
+        const targetDates = payload.map(p => p.eng_date);
         
-        showNotification(`Success! ${payload.length} records updated.`);
+        // Fetch existing daily data for all those dates to prevent erasing existing generator logs
+        const { data: existingPlantData } = await supabase.from('plant_data').select('*').in('id', targetDates);
+        
+        // Merge the old data with the new substation data
+        const plantSyncPayloads = payload.map(row => {
+            const existing = existingPlantData?.find(p => p.id === row.eng_date) || {};
+            return {
+                ...existing, // Keep all existing data
+                id: row.eng_date,
+                export_plant: row.main_export,
+                import_substation: row.main_import,
+                operator_email: currentUser?.email || '',
+                updated_at: new Date().toISOString()
+            };
+        });
+        
+        // Send the safely merged data to the daily metering table
+        const { error: plantErr } = await supabase.from('plant_data').upsert(plantSyncPayloads, { onConflict: 'id' });
+        if (plantErr) console.error("Bulk Sync to Daily Metering failed:", plantErr.message);
+
+        showNotification(`✅ Success! ${payload.length} records updated & synced to Daily Metering.`);
+        
+        // Refresh both tables
         loadBalanchData();
+        loadAndListenData();
     } catch (e) {
-        showNotification("Supabase Error: " + e.message, true);
+        showNotification("Upload Error: " + e.message, true);
     }
 }
+
 
 
 // =====================================

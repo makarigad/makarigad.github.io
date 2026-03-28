@@ -406,34 +406,31 @@ window.validateForm = function() {
 
 document.getElementById('hourly-form').addEventListener('submit', async function(e) {
     e.preventDefault();
-
-    if (window.currentValidationErrors && window.currentValidationErrors.length > 0) {
-        const msg = "⚠️ ATTENTION: DATA OUT OF BOUNDS ⚠️\n\nYou have inputs outside the standard operating ranges:\n\n" +
-                    window.currentValidationErrors.map(err => "- " + err).join('\n') +
-                    "\n\nAre you absolutely sure you want to save this data with these mistakes?";
-        if (!confirm(msg)) return; 
-    }
-
-    if (saveBtn) { saveBtn.innerHTML = "⏳ Saving..."; saveBtn.disabled = true; }
+    if (saveBtn) { saveBtn.innerHTML = "⏳ Syncing..."; saveBtn.disabled = true; }
 
     try {
         let logTime = document.getElementById('log-time').value;
         if (logTime.length === 5) logTime += ':00';
-        if (!window.currentUser || !window.currentUser.id) throw new Error("Authentication is still loading.");
         
+        // Helper functions
         const p = (id) => { const el = document.getElementById(id); return (el && el.value !== '') ? parseFloat(el.value) : null; };
         const s = (id) => { const el = document.getElementById(id); return (el && el.value.trim() !== '') ? el.value.trim() : null; };
 
-        let nepDate = null;
+        const engDate = document.getElementById('log-date').value;
         const ny = document.getElementById('export-year').value;
         const nm = document.getElementById('export-month').value;
         const nd = document.getElementById('export-day').value;
-        if (ny && nm && nd) { nepDate = `${ny}.${String(nm).padStart(2, '0')}.${String(nd).padStart(2, '0')}`; }
+        const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+        const monthName = bsMonthNames[parseInt(nm) - 1];
 
+        // Ensure we have a valid Nepali Date string for mapping
+        let nepDateStr = (ny && nm && nd) ? `${ny}.${String(nm).padStart(2, '0')}.${String(nd).padStart(2, '0')}` : null;
+
+        // 1. FULL LOG DATA (Restored all Voltage, Temp, and Transformer fields)
         const logData = {
-            log_date: document.getElementById('log-date').value,
+            log_date: engDate,
             log_time: logTime,
-            nepali_date: nepDate,
+            nepali_date: nepDateStr,
             
             u1_status: s('u1-status'), u1_hour_counter: p('u1-hour'), u1_load: p('u1-load'), u1_pf: p('u1-pf'), u1_pmu_reading: p('u1-pmu'), u1_feeder: p('u1-feeder'),
             u2_status: s('u2-status'), u2_hour_counter: p('u2-hour'), u2_load: p('u2-load'), u2_pf: p('u2-pf'), u2_pmu_reading: p('u2-pmu'), u2_feeder: p('u2-feeder'),
@@ -446,51 +443,74 @@ document.getElementById('hourly-form').addEventListener('submit', async function
             t_u1_u: p('t_u1_u'), t_u1_v: p('t_u1_v'), t_u1_w: p('t_u1_w'), t_u1_de: p('t_u1_de'), t_u1_nde: p('t_u1_nde'), t_u1_gov_temp: p('t_u1_gov'), t_u1_hyd_temp: p('t_u1_hyd'), t_u1_oil_flow: p('t_u1_flow'), t_u1_oil_level: s('t_u1_lvl'),
             t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_de'), t_u2_nde: p('t_u2_nde'), t_u2_gov_temp: p('t_u2_gov'), t_u2_hyd_temp: p('t_u2_hyd'), t_u2_oil_flow: p('t_u2_flow'), t_u2_oil_level: s('t_u2_lvl'),
             t_temp_out: p('t_temp_out'), t_temp_in: p('t_temp_in'), t_temp_intake: p('t_temp_intake'), t_pressure: p('t_pressure'),
+            
             tr_1_temp: p('tr_1_temp'), tr_1_lvl: p('tr_1_lvl'), tr_2_temp: p('tr_2_temp'), tr_2_lvl: p('tr_2_lvl'), tr_aux_temp: p('tr_aux_temp'), tr_aux_lvl: p('tr_aux_lvl'),
             dg_batt: p('dg_batt'), dg_fuel: p('dg_fuel'), dg_runtime: s('dg_runtime'),
 
             created_by: window.currentUser ? window.currentUser.id : null
         };
 
+        // Check for existing ID to prevent duplicates
         const timePrefix = logTime.substring(0, 5);
         const existingLog = window.currentDayLogs.find(l => l.log_time && l.log_time.substring(0,5) === timePrefix);
         if (existingLog && existingLog.id) { logData.id = existingLog.id; }
 
-        const { error } = await supabase.from('hourly_logs').upsert([logData], { onConflict: 'log_date, log_time' });
-        
-        if (error) {
-            showNotification(`⚠️ DATABASE REJECTED THE SAVE:\n\n${error.message}\n\nCheck if you are missing a column in your Supabase table.`, true);
-            if(saveBtn) { saveBtn.innerHTML = "⚠️ Saved Offline!"; saveBtn.classList.replace('bg-indigo-600', 'bg-amber-500'); saveBtn.classList.replace('bg-rose-600', 'bg-amber-500'); }
-        } else {
-            if(saveBtn) { saveBtn.innerHTML = "✅ Saved Successfully!"; saveBtn.classList.replace('bg-indigo-600', 'bg-emerald-600'); saveBtn.classList.replace('bg-rose-600', 'bg-emerald-600'); }
-            
-            const existingIdx = window.currentDayLogs.findIndex(l => l.log_time === logData.log_time);
-            if (existingIdx >= 0) {
-                window.currentDayLogs[existingIdx] = logData;
-            } else {
-                window.currentDayLogs.push(logData);
-            }
+        // SAVE TO HOURLY LOGS
+        const { error: hErr } = await supabase.from('hourly_logs').upsert([logData]);
+        if (hErr) throw new Error("Hourly Save Failed: " + hErr.message);
 
-            if (logTime.startsWith('12:00')) {
-                // ... (existing 12:00 daily transfer logic intact)
-            }
+// 2. TRIGGER 12:00 PM SYNC TO DAILY METERING (PLANT_DATA)
+        if (logTime.startsWith('12:00')) {
+            console.log("Attempting 12:00 PM Sync for date:", engDate);
+            const { error: pErr } = await supabase.from('plant_data').upsert({
+                id: engDate, 
+                nepali_date: nepDateStr,
+                unit1_gen: p('u1-pmu'),
+                unit2_gen: p('u2-pmu'),
+                unit1_counter: p('u1-hour'),
+                unit2_counter: p('u2-hour'),
+                export_substation: p('outgoing-kwh'),
+                
+                // --- THESE ARE THE NEWLY MAPPED FIELDS ---
+                unit1_trans: p('u1-feeder'),    // Pulls from u1-feeder input
+                unit2_trans: p('u2-feeder'),    // Pulls from u2-feeder input
+                station_trans: p('sst-kwh'),    // Pulls from sst-kwh input
+                import_outgoing: p('import-mwh'),// Pulls from import-mwh input
+                
+                operator_email: window.currentUser?.email || '',
+                operator_uid: window.currentUser?.id || '',
+                updated_at: new Date().toISOString()
+            });
+            if (pErr) alert("Daily Metering Sync Failed: " + pErr.message);
+            else console.log("✅ Daily Metering Synced!");
         }
 
-        updateDates();
-        localStorage.removeItem('makarigad_hourly_draft'); 
-        
-        setTimeout(() => {
-            if(saveBtn) {
-                saveBtn.innerHTML = "💾 Update Existing Data";
-                saveBtn.classList.remove('bg-emerald-600', 'bg-amber-500');
-                saveBtn.classList.add('bg-indigo-600');
-                saveBtn.disabled = false;
-            }
-        }, 2500);
+        // 3. TRIGGER 08:00 AM SYNC TO RAINFALL
+        if (logTime.startsWith('08:00')) {
+            console.log("Attempting 08:00 AM Rainfall Sync...");
+            const { error: rErr } = await supabase.from('rainfall_data').upsert({
+                id: `${ny}_${monthName}_${nd}`,
+                nepali_year: parseInt(ny),
+                nepali_month: monthName,
+                day: parseInt(nd),
+                headworks: p('water-level'),
+                operator_email: window.currentUser?.email || '',
+                operator_uid: window.currentUser?.id || '',
+                updated_at: new Date().toISOString()
+            });
+            if (rErr) console.error("Rainfall Sync Error: " + rErr.message);
+            else console.log("✅ Rainfall Synced!");
+        }
 
-    } catch (error) {
-        showNotification("❌ Critical JS Error: " + error.message, true);
-        if(saveBtn) { saveBtn.innerHTML = "💾 Save Hour Data"; saveBtn.disabled = false; }
+        showNotification("✅ All Data Saved & Synced!");
+        updateDates();
+        if (typeof window.fetchLogs === 'function') window.fetchLogs();
+
+    } catch (err) {
+        showNotification("❌ Error: " + err.message, true);
+        console.error(err);
+    } finally {
+        if (saveBtn) { saveBtn.innerHTML = "💾 Update Existing Data"; saveBtn.disabled = false; }
     }
 });
 

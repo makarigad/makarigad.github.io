@@ -13,235 +13,920 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
-    /* styles unchanged – keep as is */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&display=swap');
     body { font-family: 'Inter', sans-serif; }
-    /* ... all existing CSS ... */
+    
+    /* Main Table Styles */
+    th, td { padding: 8px 6px !important; font-size: 0.75rem; border: 1px solid #e2e8f0; text-align: right; }
+    thead { position: sticky; top: 0; z-index: 20; }
+    th { background-color: #f1f5f9; font-weight: 700; text-align: center; vertical-align: bottom; color: #334155; }
+    .table-container { overflow: auto; background: white; height: 100%; }
+    .sticky-col { position: sticky; left: 0; background: #f8fafc; z-index: 10; border-right: 2px solid #cbd5e1; }
+    th.sticky-col { background-color: #f1f5f9; z-index: 30; }
+    .bg-green-light { background-color: #ecfdf5; color: #065f46; font-weight: 600; }
+    tr:hover td { background-color: #f1f5f9; }
+    
+    /* Navigation & Utility */
+    .role-hidden, .hidden-tab { display: none !important; }
+    .tab-btn { padding: 10px 20px; font-weight: 700; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+    .tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; background-color: white; }
+    .table-input { width:100%; padding:0.35rem; border:1px solid #cbd5e1; border-radius:0.375rem; font-size:0.875rem; outline:none; }
+    .form-textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem; font-size: 0.875rem; outline: none; min-height: 80px; }
+    .form-textarea:focus, .table-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 1px #4f46e5; }
+    
+    .custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+
+    /* =========================================================
+       MODERN CORPORATE REPORT STYLES (Maximized for Page Length)
+       ========================================================= */
+    .doc-page {
+        background: white; width: 210mm; min-height: 297mm; margin: 0 auto; padding: 25mm;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1); font-family: 'Merriweather', serif; color: #0f172a; text-align: left;
+    }
+    
+    .cover-page { min-height: 240mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+    .cover-title { font-size: 38pt; font-weight: 900; color: #1e3a8a; margin-bottom: 25px; font-family: 'Inter', sans-serif; text-transform: uppercase; line-height: 1.2;}
+    .cover-subtitle { font-size: 20pt; font-weight: 600; color: #334155; margin-bottom: 80px; font-family: 'Inter', sans-serif; }
+    .cover-details { font-size: 14pt; color: #475569; line-height: 2.5; margin-top: 50px; border-top: 3px solid #cbd5e1; padding-top: 40px; width: 85%; margin-left: auto; margin-right: auto;}
+    
+    .doc-h1 { font-size: 20pt; font-weight: 900; color: #1e40af; border-bottom: 3px solid #1e40af; padding-bottom: 10px; margin-top: 50px; margin-bottom: 25px; font-family: 'Inter', sans-serif; page-break-after: avoid; text-transform: uppercase;}
+    .doc-h2 { font-size: 15pt; font-weight: 700; color: #334155; margin-top: 35px; margin-bottom: 15px; font-family: 'Inter', sans-serif; page-break-after: avoid; border-left: 5px solid #3b82f6; padding-left: 10px;}
+    .doc-p { text-align: justify; font-size: 11.5pt; line-height: 1.9; margin-bottom: 20px; }
+    .doc-ul { list-style-type: disc; margin-left: 24px; margin-bottom: 20px; color: #334155; }
+    .doc-li { font-size: 11.5pt; line-height: 1.9; margin-bottom: 8px; }
+    
+    .doc-table-report { width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 10.5pt; font-family: 'Inter', sans-serif; page-break-inside: auto;}
+    .doc-table-report tr { page-break-inside: avoid; page-break-after: auto; }
+    .doc-table-report th, .doc-table-report td { border: 1.5px solid #94a3b8; padding: 14px 10px; text-align: left; }
+    .doc-table-report th { background-color: #f1f5f9; font-weight: 700; text-align: center; color: #0f172a; text-transform: uppercase; font-size: 9.5pt;}
+    .doc-table-report td.text-right { text-align: right !important; }
+    .doc-table-report td.text-center { text-align: center !important; }
+
+    .page-break { page-break-before: always; }
+
+    @media print {
+        body { background: white; overflow: auto; }
+        header, footer, .tab-btn, details, #tab-recon, #tab-operations, #tab-compare, #tab-trends, .no-print { display: none !important; }
+        #main-content { display: block; overflow: visible; background: white; padding: 0; }
+        #tab-report { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white; border: none; box-shadow: none; overflow: visible; padding: 0; }
+        #report-preview-view { padding: 0 !important; }
+        .doc-page { box-shadow: none; margin: 0; padding: 0; width: 100%; }
+        .page-break { page-break-before: always; }
+    }
+
+    /* Daily Report Styles */
+    .data-card { background-color: #ffffff; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; }
+    .data-label { font-size: 0.875rem; font-weight: 500; color: #4b5563; }
+    .data-value { font-size: 1.25rem; font-weight: 700; color: #1e3a8a; }
+    .data-unit { font-size: 0.875rem; font-weight: 500; color: #6b7280; margin-left: 0.5rem; }
+    .spinner { border: 2px solid #f3f3f3; border-radius: 50%; border-top: 2px solid #3498db; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
   </style>
 </head>
 <body class="flex flex-col min-h-screen bg-slate-50 text-slate-800">
 
   <div id="global-header-container" class="shrink-0 no-print"></div>
 
-  <div class="flex px-4 pt-2 border-b border-slate-300 bg-slate-200 shrink-0 overflow-x-auto custom-scroll no-print">
-    <div class="tab-btn rounded-t-lg" data-target="tab-daily">📅 Daily Report</div>
-    <div class="tab-btn active rounded-t-lg" data-target="tab-recon">💰 Energy Summary</div>
-    <div class="tab-btn rounded-t-lg" data-target="tab-operations">⚙️ Ops & Losses</div>
-    <div class="tab-btn rounded-t-lg" data-target="tab-report">📑 Enterprise Report Builder</div>
-    <div class="tab-btn rounded-t-lg" data-target="tab-compare">📈 Multi-Year Analytics</div>
-    <div class="tab-btn rounded-t-lg" data-target="tab-trends">📉 Operations Trend</div>
+ <div class="flex px-4 pt-2 border-b border-slate-300 bg-slate-200 shrink-0 overflow-x-auto custom-scroll no-print">
+      <div class="tab-btn rounded-t-lg" data-target="tab-daily">📅 Daily Report</div>
+      <div class="tab-btn active rounded-t-lg" data-target="tab-recon">💰 Energy Summary</div>
+      <div class="tab-btn rounded-t-lg" data-target="tab-operations">⚙️ Ops & Losses</div>
+      <div class="tab-btn rounded-t-lg" data-target="tab-report">📑 Enterprise Report Builder</div>
+      <div class="tab-btn rounded-t-lg" data-target="tab-compare">📈 Multi-Year Analytics</div>
+      <div class="tab-btn rounded-t-lg" data-target="tab-trends">📉 Operations Trend</div>
   </div>
 
   <main id="main-content" class="flex-grow flex flex-col overflow-hidden p-4 relative">
 
-    <!-- Daily Report tab (unchanged) -->
     <div id="tab-daily" class="hidden-tab rounded-xl table-container flex-grow custom-scroll bg-slate-100 overflow-y-auto p-4 relative">
-      <!-- ... content unchanged ... -->
-    </div>
+            <div class="data-card max-w-7xl mx-auto">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Daily Generation Report</h1>
+                        <p class="text-sm text-gray-500 mt-1">Select a date to view the detailed summary</p>
+                    </div>
+                    <div class="mt-4 sm:mt-0 flex flex-wrap items-center gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Report Date</label>
+                            <input type="date" id="dr-report-date" class="mt-1 table-input font-bold text-indigo-700">
+                        </div>
+                        <button id="dr-download-jpg" class="bg-emerald-600 text-white px-4 py-2.5 rounded-md hover:bg-emerald-700 flex items-center space-x-2 mt-5 shadow-sm transition font-bold">
+                            <span id="dr-download-spinner" class="spinner hidden"></span>
+                            <span>📸 Download JPG</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="dr-report-content" class="hidden">
+                    <div class="mb-6 p-4 rounded-md bg-indigo-50 border border-indigo-200 text-center">
+                        <h2 class="text-xl font-semibold text-gray-800">
+                            Energy Summary for the month of <span id="dr-display-nepali-month" class="text-indigo-600 font-bold"></span>
+                            <br><span class="text-sm font-medium text-gray-500">Date: <span id="dr-display-nepali-date" class="text-slate-800 font-bold"></span></span>
+                        </h2>
+                    </div>
 
-    <!-- Energy Summary tab (unchanged) -->
-    <div id="tab-recon" class="rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-white">
-      <!-- ... content unchanged ... -->
-    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="data-card">
+                                    <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Daily Performance</h3>
+                                    <div class="space-y-4">
+                                        <div><p class="data-label">Avg Load at Generator</p><p class="data-value"><span id="dr-val-avg-load-powerhouse">0.00</span><span class="data-unit">kW</span></p></div>
+                                        <div><p class="data-label">Avg Load at Substation</p><p class="data-value"><span id="dr-val-avg-load-substation">0.00</span><span class="data-unit">kW</span></p></div>
+                                        <div><p class="data-label">Daily Plant Factor</p><p class="data-value"><span id="dr-val-plant-factor">0.00</span><span class="data-unit">%</span></p></div>
+                                    </div>
+                                </div>
+                                <div class="data-card">
+                                    <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Daily Energy</h3>
+                                    <div class="space-y-4">
+                                        <div><p class="data-label">Generation (Generator Term.)</p><p class="data-value text-indigo-700"><span id="dr-val-generation">0.00</span><span class="data-unit">MWh</span></p></div>
+                                        <div><p class="data-label">Dispatch (Plant Feeder)</p><p class="data-value text-blue-700"><span id="dr-val-export-plant">0.00</span><span class="data-unit">MWh</span></p></div>
+                                        <div><p class="data-label">Dispatch (Substation)</p><p class="data-value text-emerald-700"><span id="dr-val-export-substation">0.00</span><span class="data-unit">MWh</span></p></div>
+                                    </div>
+                                </div>
+                            </div>
 
-    <!-- Operations tab (unchanged) -->
-    <div id="tab-operations" class="hidden-tab rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-white">
-      <!-- ... content unchanged ... -->
-    </div>
+                            <div class="data-card">
+                                <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Monthly PPA Summary</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <p class="data-label">Cumulative Energy Export</p><p class="data-value text-emerald-700"><span id="dr-val-cumulative-export-month">0.00</span><span class="data-unit">MWh</span></p>
+                                        <p class="data-label mt-4">Guaranteed Energy (PPA)</p><p class="data-value"><span id="dr-val-guaranteed-energy">0.00</span><span class="data-unit">MWh</span></p>
+                                        <p class="data-label mt-4">Availability Declaration</p><p class="data-value"><span id="dr-val-availability-declaration">0.00</span><span class="data-unit">MWh</span></p>
+                                        <p class="data-label mt-4">Energy Difference</p><p class="data-value"><span id="dr-val-energy-difference">0.00</span><span class="data-unit">MWh</span></p>
+                                    </div>
+                                    <div>
+                                        <p class="data-label">Monthly Plant Factor</p><p class="data-value"><span id="dr-val-monthly-plant-factor">0.00</span><span class="data-unit">%</span></p>
+                                        <p class="data-label mt-4">Plant Factor (Till Date)</p><p class="data-value text-indigo-600"><span id="dr-val-plant-factor-till-date">0.00</span><span class="data-unit">%</span></p>
+                                        <p class="data-label mt-4">Remaining Days in Month</p><p class="data-value"><span id="dr-val-remaining-days">0</span><span class="data-unit">days</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="data-card bg-orange-50 border border-orange-100">
+                                <h3 class="font-bold text-lg mb-3 text-orange-900 border-b border-orange-200 pb-2">Monthly Losses & Consumption (Cumulative)</h3>
+                                <div class="grid grid-cols-2 gap-4 pt-2">
+                                    <div><p class="data-label text-orange-800">Transformer losses at PH</p><p class="data-value text-orange-700"><span id="dr-val-transformer-loss-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                    <div><p class="data-label text-orange-800">Station Consumption</p><p class="data-value text-orange-700"><span id="dr-val-station-consumption-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                    <div><p class="data-label text-red-800">Transmission Loss</p><p class="data-value text-red-600"><span id="dr-val-transmission-loss-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                    <div><p class="data-label text-red-800">NEA Curtailed</p><p class="data-value text-red-600"><span id="dr-val-nea-curtailed-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                    <div class="col-span-2 pt-2 border-t border-orange-200">
+                                        <p class="data-label text-red-800">Other Faults & Losses</p><p class="data-value text-red-600"><span id="dr-val-other-losses-month">0.00</span><span class="data-unit">MWh</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-    <!-- Enterprise Report Builder tab (DUPLICATE REMOVED – only one copy remains) -->
-    <div id="tab-report" class="hidden-tab flex-grow flex flex-col bg-white rounded-xl shadow border border-slate-300 overflow-hidden relative">
-      <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0 z-20 no-print shadow-sm">
-        <div class="flex space-x-4 items-center">
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select Year</label>
-            <select id="rep-year" class="mt-1 table-input w-24 font-bold text-indigo-700"></select>
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select Month</label>
-            <select id="rep-month" class="mt-1 table-input w-32 font-bold text-indigo-700"></select>
-          </div>
-          <button id="btn-load-report" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded text-sm font-bold shadow-md transition mt-4">Load Data</button>
+                        <div class="lg:col-span-1 space-y-6">
+                            <div class="data-card">
+                                <h3 class="font-bold text-lg mb-3 text-gray-800 text-center">Monthly Energy Fate</h3>
+                                <div class="relative h-64 w-full"><canvas id="dr-energy-pie-chart"></canvas></div>
+                            </div>
+                            <div class="data-card bg-slate-50">
+                                <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Major Events / Comments</h3>
+                                <p id="dr-val-major-events" class="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed italic"></p>
+                            </div>
+                            <div class="data-card">
+                                <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Unit Running Hours</h3>
+                                <div class="flex justify-between items-end mb-2"><p class="data-label">Unit 1 (For the Day)</p><p class="data-value text-lg"><span id="dr-val-unit1-hours-day">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
+                                <div class="flex justify-between items-end mb-4"><p class="data-label">Unit 2 (For the Day)</p><p class="data-value text-lg"><span id="dr-val-unit2-hours-day">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
+                                <div class="flex justify-between items-end mb-2 pt-3 border-t border-slate-200"><p class="data-label text-xs">Unit 1 (Cumulative)</p><p class="data-value text-sm text-slate-600"><span id="dr-val-unit1-counter">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
+                                <div class="flex justify-between items-end"><p class="data-label text-xs">Unit 2 (Cumulative)</p><p class="data-value text-sm text-slate-600"><span id="dr-val-unit2-counter">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
+                            </div>
+                        </div>
+                        
+                        <div class="data-card lg:col-span-3 mt-6">
+                            <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Daily Dispatch Trend (Last 30 Days)</h3>
+                            <div class="relative h-72 w-full"><canvas id="dr-daily-trend-chart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="flex items-center space-x-3 mt-4 hidden" id="report-actions">
-          <div class="flex bg-slate-200 p-1 rounded-md border border-slate-300 mr-4">
-            <button id="toggle-editor" class="px-4 py-1.5 rounded text-sm font-bold bg-white text-indigo-700 shadow-sm transition">📝 Narrative Editor</button>
-            <button id="toggle-preview" class="px-4 py-1.5 rounded text-sm font-bold text-slate-600 hover:text-slate-900 transition">📄 Preview Document</button>
-          </div>
-          <button id="btn-export-pdf" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-1.5 rounded text-sm font-bold shadow transition">Download PDF</button>
-          <button id="btn-export-word" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-bold shadow transition">Download Word</button>
+        
+        <div id="tab-recon" class="rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-white">
+          <details id="toggle-container" class="bg-slate-50 border-b border-slate-300 shrink-0 group no-print">
+            <summary class="p-3 font-bold text-slate-700 hover:bg-slate-100 flex justify-between items-center outline-none text-sm cursor-pointer">
+                <span><span class="mr-2 text-indigo-600">⚙️</span> Show/Hide Columns</span><span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div class="p-4 border-t border-slate-200 bg-white" id="column-toggles"></div>
+          </details>
+          <table id="summary-table" class="w-full border-separate border-spacing-0">
+            <thead>
+              <tr id="header-group-row">
+                <th rowspan="2" class="sticky-col" style="min-width:120px;">Billing Month</th>
+                <th colspan="2" id="th-contract" class="bg-indigo-50 border-b-2 border-indigo-200 text-indigo-900">Contract Parameters</th>
+                <th colspan="6" id="th-energy" class="bg-blue-50 border-b-2 border-blue-200 text-blue-900">Energy Summary (MWh)</th>
+                <th colspan="3" id="th-revenue" class="bg-slate-100 border-b-2 border-slate-300 text-slate-800">Gross Revenue (NRs)</th>
+                <th colspan="3" id="th-penalty" class="bg-orange-50 border-b-2 border-orange-200 text-orange-900">Penalty Breakdown (NRs)</th>
+                <th colspan="3" id="th-deductions" class="bg-red-50 border-b-2 border-red-200 text-red-900">Deductions (NRs)</th>
+                <th colspan="2" id="th-adjustments" class="bg-yellow-50 border-b-2 border-yellow-200 text-yellow-900">Extra Adjustments</th>
+                <th colspan="3" id="th-recon-group" class="bg-emerald-50 border-b-2 border-emerald-200 text-emerald-900">Reconciliation (NRs)</th>
+              </tr>
+              <tr id="header-col-row">
+                <th data-col="actual-days" data-group="contract">Actual<br>Days</th><th data-col="ppa-rate" data-group="contract">PPA<br>Rate</th>
+                <th data-col="contract-adj" data-group="energy">Contract<br>(Adjusted)</th><th data-col="declared-ad" data-group="energy">Declared<br>AD</th>
+                <th data-col="grid-faults" data-group="energy">Grid Faults<br>(MWh)</th><th data-col="line-132kv" data-group="energy">132kV Line<br>(MWh)</th>
+                <th data-col="fm-plant" data-group="energy">Plant FM + Disp.<br>(Deemed MWh)</th><th data-col="exported" data-group="energy">Exported<br>(Balanch)</th>
+                <th data-col="normal-rev" data-group="revenue">Normal<br>Energy Rev.</th><th data-col="excess-rev" data-group="revenue">Excess<br>Energy Rev.</th><th data-col="total-gross" data-group="revenue">Total<br>Gross Rev.</th>
+                <th data-col="total-pen" data-group="penalty">Total<br>Invoice Pen.</th><th data-col="refund-pen" data-group="penalty">Refundable<br>Penalty</th><th data-col="nonref-pen" data-group="penalty">Non-Refund.<br>Penalty</th>
+                <th data-col="import-charge" data-group="deductions">Import<br>Charge</th><th data-col="royalty" data-group="deductions">Royalty<br>(2%)</th><th data-col="bay-control" data-group="deductions">Bay /<br>Control</th>
+                <th data-col="extra-adj" data-group="adjustments">Extra<br>Adj (±)</th><th data-col="adj-notes" data-group="adjustments">Adjustment<br>Notes</th>
+                <th data-col="refunded-claims" data-group="recon">Refunded<br>Claims (+)</th><th data-col="actual-cheque" data-group="recon">Actual<br>Cheque</th><th data-col="nea-variance" data-group="recon">NEA<br>Variance</th>
+              </tr>
+            </thead>
+            <tbody id="recon-body"></tbody>
+          </table>
         </div>
-      </div>
 
-      <div class="flex-grow overflow-y-auto custom-scroll relative bg-slate-100 pb-10" id="report-scroll-container">
-        <div id="report-editor-view" class="max-w-5xl mx-auto p-6 space-y-6">
-          <div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded shadow-sm flex items-start gap-3">
-            <span class="text-2xl">✨</span>
-            <div>
-              <h3 class="font-bold text-emerald-900 text-sm">Automated Analytics Synced!</h3>
-              <p class="text-xs text-emerald-800 mt-1">Generation trends, multi-year comparisons, min/max metrics, financial summaries, and hydrology correlations have been dynamically generated. Fill in specific technical highlights below to finalize.</p>
+        <div id="tab-operations" class="hidden-tab rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-white">
+          <table class="w-full border-separate border-spacing-0" id="loss-table">
+            <thead>
+              <tr>
+                <th rowspan="2" class="sticky-col bg-slate-200" style="min-width:100px;">Nepali Month</th>
+                <th colspan="3" class="bg-indigo-50 border-b-2 border-indigo-200 text-indigo-900">Gross Generation (MWh)</th>
+                <th colspan="7" class="bg-orange-50 border-b-2 border-orange-200 text-orange-900">Energy Loss Breakdown (MWh)</th>
+                <th colspan="2" class="bg-red-50 border-b-2 border-red-200 text-red-900">Internal Losses (MWh)</th>
+                <th colspan="2" class="bg-blue-50 border-b-2 border-blue-200 text-blue-900">Transmission Data (MWh)</th>
+                <th rowspan="2" class="bg-red-50 text-red-900 font-bold border-l-2 border-red-200">Transmission &<br>Substation Loss</th>
+              </tr>
+              <tr>
+                <th class="bg-indigo-50">U1 Gen</th><th class="bg-indigo-50">U2 Gen</th><th class="bg-indigo-50 font-bold">Total Gen</th>
+                <th class="bg-orange-50 font-bold text-orange-900">Low Discharge<br>(Auto-Calc)</th><th class="bg-orange-50">Dispatch<br>Instruction</th><th class="bg-orange-50">Grid Fault</th>
+                <th class="bg-orange-50">132kV Line<br>Issue</th><th class="bg-orange-50">33kV Line<br>Issue</th><th class="bg-orange-50">Penstock<br>Issue</th><th class="bg-orange-50">Plant Equip.<br>Issue</th><th class="bg-orange-50 font-bold border-r border-orange-200">Total Ext.<br>Losses</th>
+                <th class="bg-red-50 font-bold text-red-800">Station Cons.<br>(Internal)</th><th class="bg-red-50 font-bold text-red-800 border-r border-red-200">Transformer<br>Losses</th>
+                <th class="bg-blue-50 font-bold text-blue-800">Total Exp.<br>(Plant Feeder)</th><th class="bg-blue-50">Total Exp.<br>(Balanch)</th>
+              </tr>
+            </thead>
+            <tbody id="ops-body"></tbody>
+          </table>
+        </div>
+
+      <div id="tab-report" class="hidden-tab flex-grow flex flex-col bg-white rounded-xl shadow border border-slate-300 overflow-hidden relative">
+            
+            <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0 z-20 no-print shadow-sm">
+                <div class="flex space-x-4 items-center">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select Year</label>
+                        <select id="rep-year" class="mt-1 table-input w-24 font-bold text-indigo-700"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select Month</label>
+                        <select id="rep-month" class="mt-1 table-input w-32 font-bold text-indigo-700"></select>
+                    </div>
+                    <button id="btn-load-report" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded text-sm font-bold shadow-md transition mt-4">Load Data</button>
+                </div>
+
+                <div class="flex items-center space-x-3 mt-4 hidden" id="report-actions">
+                    <div class="flex bg-slate-200 p-1 rounded-md border border-slate-300 mr-4">
+                        <button id="toggle-editor" class="px-4 py-1.5 rounded text-sm font-bold bg-white text-indigo-700 shadow-sm transition">📝 Narrative Editor</button>
+                        <button id="toggle-preview" class="px-4 py-1.5 rounded text-sm font-bold text-slate-600 hover:text-slate-900 transition">📄 Preview Document</button>
+                    </div>
+                    <button id="btn-export-pdf" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-1.5 rounded text-sm font-bold shadow transition">Download PDF</button>
+                    <button id="btn-export-word" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm font-bold shadow transition">Download Word</button>
+                </div>
+            </div>
+
+            <div class="flex-grow overflow-y-auto custom-scroll relative bg-slate-100 pb-10" id="report-scroll-container">
+                
+                <div id="report-editor-view" class="max-w-5xl mx-auto p-6 space-y-6 hidden">
+                    <div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded shadow-sm flex items-start gap-3">
+                        <span class="text-2xl">✨</span>
+                        <div>
+                            <h3 class="font-bold text-emerald-900 text-sm">Automated Analytics Synced!</h3>
+                            <p class="text-xs text-emerald-800 mt-1">Generation trends, multi-year comparisons, min/max metrics, financial summaries, and hydrology correlations have been dynamically generated. Fill in specific technical highlights below to finalize.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">1. Specific Monthly Highlights</h3>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Key Achievements & Highlights (Optional)</label>
+                        <textarea id="inp-highlights" class="form-textarea mb-4 h-24" placeholder="- Successful synchronization of Unit 1 after routine maintenance..."></textarea>
+                        
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Specific Problems Faced (Optional)</label>
+                        <textarea id="inp-problems" class="form-textarea h-24" placeholder="- Grid instability observed during the second week..."></textarea>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">2. Operations, Maintenance & HSE</h3>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Completed Maintenance Activities</label>
+                        <textarea id="inp-completed-maint" class="form-textarea mb-4 h-24" placeholder="- 33kV transmission line tree-trimming at Lumthi..."></textarea>
+                        
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Health, Safety & Environment</label>
+                        <textarea id="inp-hse" class="form-textarea h-24" placeholder="Zero Lost Time Incidents (LTI) recorded. Toolbox talks conducted daily."></textarea>
+                    </div>
+
+                    <div class="flex justify-end pt-4 pb-10">
+                        <button id="btn-save-draft" class="bg-indigo-600 text-white font-bold py-3 px-10 rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition transform hover:-translate-y-0.5 text-lg">Generate Document Preview →</button>
+                    </div>
+                </div>
+
+                <div id="report-preview-view" class="py-10 hidden no-print">
+                    <div id="printable-report" class="doc-page">
+                        
+                        <div class="cover-page">
+                            <div class="cover-title">Monthly Progress &<br>Operations Report</div>
+                            <div class="cover-subtitle">Makari Gad Hydroelectric Project (10 MW)</div>
+                            <div class="cover-details">
+                                <p><strong>Reporting Period:</strong> <span id="doc-month-year"></span></p>
+                                <p><strong>Prepared By:</strong> Upendra Bahadur Chand, Plant Manager</p>
+                                <p style="margin-top: 40px; font-size: 11pt; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">Generated via Automated Reporting System</p>
+                            </div>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">1. Executive Summary</div>
+                        <p id="doc-overview-text" class="doc-p"></p>
+                        
+                        <table class="doc-table-report" style="width: 90%; margin: 0 auto 30px auto;">
+                            <thead><tr><th>Key Performance Indicator</th><th>Monthly Value</th></tr></thead>
+                            <tbody>
+                                <tr><td style="padding: 12px;"><strong>Total Gross Generation</strong></td><td id="kpi-gross" class="text-right font-bold text-blue-800" style="padding: 12px;">0.00 MWh</td></tr>
+                                <tr><td style="padding: 12px;"><strong>Total Exported Energy (Substation)</strong></td><td id="kpi-export" class="text-right font-bold text-emerald-700" style="padding: 12px;">0.00 MWh</td></tr>
+                                <tr><td style="padding: 12px;"><strong>Total Outage & Fault Losses</strong></td><td id="kpi-loss" class="text-right font-bold text-rose-700" style="padding: 12px;">0.00 MWh</td></tr>
+                                <tr><td style="padding: 12px;"><strong>Average Plant Factor</strong></td><td id="kpi-pf" class="text-right font-bold text-slate-800" style="padding: 12px;">0.00 %</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="doc-h2">1.1 Highlights & Challenges</div>
+                        <ul id="doc-highlights-list" class="doc-ul"></ul>
+                        <ul id="doc-problems-list" class="doc-ul"></ul>
+
+                        <div class="doc-h2">1.2 O&M and HSE</div>
+                        <ul id="doc-maint-done-list" class="doc-ul"></ul>
+                        <p id="doc-hse-text" class="doc-p font-bold text-emerald-800 bg-emerald-50 p-3 rounded border border-emerald-200"></p>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">2. Generation & Dispatch Analytics</div>
+                        <p id="doc-gen-narrative" class="doc-p"></p>
+                        
+                        <div style="margin-bottom: 40px; margin-top: 30px;">
+                            <canvas id="dailyGenerationChart" style="max-height: 280px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="doc-h2">2.1 Energy Target vs Realization</div>
+                        <p id="doc-target-narrative" class="doc-p"></p>
+                        
+                        <div style="margin-bottom: 30px;">
+                            <canvas id="energyFinancialsChart" style="max-height: 280px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">3. Energy Losses & Outages</div>
+                        <p id="doc-loss-narrative" class="doc-p"></p>
+                        
+                        <div style="margin-bottom: 40px; text-align: center; background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <canvas id="ppaDistributionChart" style="max-height: 350px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">4. Hydrological Context</div>
+                        <p id="doc-hydro-narrative" class="doc-p"></p>
+                        
+                        <div style="margin-bottom: 40px; margin-top: 30px;">
+                            <canvas id="rainfallChart" style="max-height: 350px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">5. Commercial & Revenue Summary</div>
+                        <p id="doc-finance-narrative" class="doc-p"></p>
+                        
+                        <table class="doc-table-report" style="width: 100%; margin-bottom: 40px;">
+                            <thead><tr><th>Category</th><th class="text-right">Amount (NRs)</th></tr></thead>
+                            <tbody>
+                                <tr><td style="padding: 12px;"><strong>Gross Revenue (Energy Billed)</strong></td><td id="fin-rev" class="text-right font-bold text-emerald-700" style="padding: 12px;">0.00</td></tr>
+                                <tr><td style="padding: 12px;"><strong>NEA Penalties & Deductions</strong></td><td id="fin-pen" class="text-right font-bold text-rose-700" style="padding: 12px;">0.00</td></tr>
+                                <tr style="background:#f1f5f9;"><td style="padding: 12px;"><strong>Net Cheque / Receivable</strong></td><td id="fin-net" class="text-right font-bold text-indigo-700" style="padding: 12px;">0.00</td></tr>
+                            </tbody>
+                        </table>
+
+                        <div class="doc-h2">5.1 Multi-Year Commercial Trend</div>
+                        <p id="doc-yoy-narrative" class="doc-p"></p>
+                        <div style="margin-bottom: 30px;">
+                            <canvas id="yoyComparisonChart" style="max-height: 280px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">6. Site Operational Expenses</div>
+                        <p id="doc-expense-narrative" class="doc-p"></p>
+                        
+                        <div style="margin-bottom: 40px; margin-top: 20px; text-align: center;">
+                            <canvas id="expenseBreakdownChart" style="max-height: 380px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div style="height: 250mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <div style="width: 100px; height: 5px; background-color: #1e40af; margin-bottom: 20px;"></div>
+                            <h1 style="font-size: 48pt; font-family: 'Inter', sans-serif; font-weight: 900; color: #0f172a; letter-spacing: 10px; margin: 0;">ANNEXES</h1>
+                            <h2 style="font-size: 16pt; font-family: 'Inter', sans-serif; font-weight: 400; color: #475569; margin-top: 20px;">Detailed Logs & Data Tables</h2>
+                            <div style="width: 100px; height: 5px; background-color: #1e40af; margin-top: 30px;"></div>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex A: Daily Generation Log</div>
+                        <p class="doc-p text-sm text-slate-500 mb-4">High-resolution daily logging of unit generation, substation exports, imports, and internal station consumption derived from the SCADA database and Balanch Substation readings.</p>
+                        <table class="doc-table-report">
+                            <thead>
+                                <tr><th>Nepali Date</th><th>Unit 1 (kWh)</th><th>Unit 2 (kWh)</th><th>Total Gross (kWh)</th><th>Export Sub (kWh)</th><th>Cons. (kWh)</th></tr>
+                            </thead>
+                            <tbody id="doc-daily-gen-body"></tbody>
+                        </table>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex B: Loss Breakdown Summary</div>
+                        <table class="doc-table-report" style="width: 80%; margin: 0 auto;">
+                            <thead><tr><th>Loss Category</th><th class="text-right">Energy Impact (kWh)</th></tr></thead>
+                            <tbody id="doc-loss-body"></tbody>
+                        </table>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex C: Detailed Site Expenses</div>
+                        <p class="doc-p text-sm text-slate-500 mb-4">Complete ledger of site expenditures categorized for the reporting period.</p>
+                        <div id="doc-exp-tables-container"></div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex D: Rainfall Records</div>
+                        <table class="doc-table-report" style="width: 80%; margin: 0 auto;">
+                            <thead><tr><th>Day of Month</th><th class="text-center">Powerhouse (mm)</th><th class="text-center">Intake/Headworks (mm)</th></tr></thead>
+                            <tbody id="doc-rain-body"></tbody>
+                        </table>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <div class="flex-grow overflow-y-auto custom-scroll relative bg-slate-100 pb-10" id="report-scroll-container">
+                
+                <div id="report-editor-view" class="max-w-5xl mx-auto p-6 space-y-6 hidden">
+                    <div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded shadow-sm flex items-start gap-3">
+                        <span class="text-2xl">✨</span>
+                        <div>
+                            <h3 class="font-bold text-emerald-900 text-sm">Automated Analytics Synced!</h3>
+                            <p class="text-xs text-emerald-800 mt-1">Generation trends, min/max metrics, financial comparisons, and hydrology correlations have been dynamically generated. Fill in specific technical highlights below to finalize.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">1. Specific Monthly Highlights</h3>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Key Achievements & Highlights (Optional)</label>
+                        <textarea id="inp-highlights" class="form-textarea mb-4 h-24" placeholder="- Successful synchronization of Unit 1 after routine maintenance..."></textarea>
+                        
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Specific Problems Faced (Optional)</label>
+                        <textarea id="inp-problems" class="form-textarea h-24" placeholder="- Grid instability observed during the second week..."></textarea>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">2. Operations, Maintenance & HSE</h3>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Completed Maintenance Activities</label>
+                        <textarea id="inp-completed-maint" class="form-textarea mb-4 h-24" placeholder="- 33kV transmission line tree-trimming at Lumthi..."></textarea>
+                        
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Health, Safety & Environment</label>
+                        <textarea id="inp-hse" class="form-textarea h-24" placeholder="Zero Lost Time Incidents (LTI) recorded. Toolbox talks conducted daily."></textarea>
+                    </div>
+
+                    <div class="flex justify-end pt-4 pb-10">
+                        <button id="btn-save-draft" class="bg-indigo-600 text-white font-bold py-3 px-10 rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition transform hover:-translate-y-0.5 text-lg">Generate Document Preview →</button>
+                    </div>
+                </div>
+
+                <div id="report-preview-view" class="py-10 hidden no-print">
+                    <div id="printable-report" class="doc-page">
+                        
+                        <div class="cover-page">
+                            <div class="cover-title">Monthly Progress &<br>Operations Report</div>
+                            <div class="cover-subtitle">Makari Gad Hydroelectric Project (10 MW)</div>
+                            <div class="cover-details">
+                                <p><strong>Reporting Period:</strong> <span id="doc-month-year"></span></p>
+                                <p><strong>Prepared By:</strong> Plant Operations & Maintenance Team</p>
+                                <p><strong>Approved By:</strong> Upendra Bahadur Chand, Plant Manager</p>
+                                <p style="margin-top: 40px; font-size: 11pt; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">Generated via Automated Reporting System</p>
+                            </div>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">1. Executive Summary</div>
+                        <p id="doc-overview-text" class="doc-p"></p>
+                        
+                        <table class="doc-table-report" style="width: 90%; margin: 0 auto 30px auto;">
+                            <thead><tr><th>Key Performance Indicator</th><th>Monthly Value</th></tr></thead>
+                            <tbody>
+                                <tr><td style="padding: 12px;"><strong>Total Gross Generation</strong></td><td id="kpi-gross" class="text-right font-bold text-blue-800" style="padding: 12px;">0.00 MWh</td></tr>
+                                <tr><td style="padding: 12px;"><strong>Total Exported Energy (Substation)</strong></td><td id="kpi-export" class="text-right font-bold text-emerald-700" style="padding: 12px;">0.00 MWh</td></tr>
+                                <tr><td style="padding: 12px;"><strong>Total Outage & Fault Losses</strong></td><td id="kpi-loss" class="text-right font-bold text-rose-700" style="padding: 12px;">0.00 MWh</td></tr>
+                                <tr><td style="padding: 12px;"><strong>Average Plant Factor</strong></td><td id="kpi-pf" class="text-right font-bold text-slate-800" style="padding: 12px;">0.00 %</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="doc-h2">1.1 Highlights & Challenges</div>
+                        <ul id="doc-highlights-list" class="doc-ul"></ul>
+                        <ul id="doc-problems-list" class="doc-ul"></ul>
+
+                        <div class="doc-h2">1.2 O&M and HSE</div>
+                        <ul id="doc-maint-done-list" class="doc-ul"></ul>
+                        <p id="doc-hse-text" class="doc-p font-bold text-emerald-800 bg-emerald-50 p-3 rounded border border-emerald-200"></p>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">2. Generation & Dispatch Analytics</div>
+                        <p id="doc-gen-narrative" class="doc-p"></p>
+                        
+                        <div style="margin-bottom: 40px; margin-top: 30px;">
+                            <canvas id="dailyGenerationChart" style="max-height: 350px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">3. Energy Losses & Outages</div>
+                        <p id="doc-loss-narrative" class="doc-p"></p>
+                        
+                        <div style="margin-bottom: 40px; text-align: center; background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <canvas id="ppaDistributionChart" style="max-height: 350px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">4. Hydrological Context</div>
+                        <p id="doc-hydro-narrative" class="doc-p"></p>
+                        
+                        <div style="margin-bottom: 40px; margin-top: 30px;">
+                            <canvas id="rainfallChart" style="max-height: 350px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">5. Financial & Commercial Summary</div>
+                        <p id="doc-finance-narrative" class="doc-p"></p>
+                        
+                        <table class="doc-table-report" style="width: 100%;">
+                            <thead><tr><th>Category</th><th class="text-right">Amount (NRs)</th></tr></thead>
+                            <tbody>
+                                <tr><td style="padding: 12px;"><strong>Gross Revenue (Energy Billed)</strong></td><td id="fin-rev" class="text-right font-bold text-emerald-700" style="padding: 12px;">0.00</td></tr>
+                                <tr><td style="padding: 12px;"><strong>NEA Penalties & Deductions</strong></td><td id="fin-pen" class="text-right font-bold text-rose-700" style="padding: 12px;">0.00</td></tr>
+                                <tr><td style="padding: 12px;"><strong>Total Site Operational Expenses</strong></td><td id="fin-exp" class="text-right font-bold text-orange-700" style="padding: 12px;">0.00</td></tr>
+                            </tbody>
+                        </table>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex A: Daily Generation Log</div>
+                        <table class="doc-table-report">
+                            <thead>
+                                <tr><th>Nepali Date</th><th>Unit 1 (kWh)</th><th>Unit 2 (kWh)</th><th>Total Gross (kWh)</th><th>Export Sub (kWh)</th><th>Cons. (kWh)</th></tr>
+                            </thead>
+                            <tbody id="doc-daily-gen-body"></tbody>
+                        </table>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex B: Loss Breakdown Summary</div>
+                        <table class="doc-table-report" style="width: 80%; margin: 0 auto;">
+                            <thead><tr><th>Loss Category</th><th class="text-right">Energy Impact (kWh)</th></tr></thead>
+                            <tbody id="doc-loss-body"></tbody>
+                        </table>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex C: Detailed Site Expenses</div>
+                        <p class="doc-p text-sm text-slate-500 mb-4">Complete ledger of site expenditures categorized for the period.</p>
+                        <div id="doc-exp-tables-container"></div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex D: Rainfall Records</div>
+                        <table class="doc-table-report" style="width: 80%; margin: 0 auto;">
+                            <thead><tr><th>Day of Month</th><th class="text-center">Powerhouse (mm)</th><th class="text-center">Intake/Headworks (mm)</th></tr></thead>
+                            <tbody id="doc-rain-body"></tbody>
+                        </table>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <div class="flex-grow overflow-y-auto custom-scroll relative bg-slate-100 pb-10" id="report-scroll-container">
+                
+                <div id="report-editor-view" class="max-w-5xl mx-auto p-6 space-y-6 hidden">
+                    <div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded shadow-sm flex items-start gap-3">
+                        <span class="text-2xl">✨</span>
+                        <div>
+                            <h3 class="font-bold text-emerald-900 text-sm">Automated Data Synced!</h3>
+                            <p class="text-xs text-emerald-800 mt-1">Generation values, energy losses, PPA billing, plant factors, site expenses, and rainfall data have been automatically fetched from the central database.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">1. Executive Summary & Highlights</h3>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Performance Highlights (Use dashes "-" for bullet points)</label>
+                        <textarea id="inp-highlights" class="form-textarea mb-4 h-32" placeholder="- Transmission line repair at Lumthi...&#10;- Cleaning of desilting basin..."></textarea>
+                        
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Problems Faced & Work Done (Use dashes "-" for bullet points)</label>
+                        <textarea id="inp-problems" class="form-textarea h-32" placeholder="- Issue in 33kV line: Multiple locations found..."></textarea>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">2. Operations & Maintenance (O&M)</h3>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Completed Maintenance Activities</label>
+                        <textarea id="inp-completed-maint" class="form-textarea mb-4 h-24" placeholder="- 33kV transmission line repair works at Lumthi..."></textarea>
+                        
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Health, Safety & Environment</label>
+                        <textarea id="inp-hse" class="form-textarea h-24" placeholder="- Zero Lost Time Incidents (LTI) recorded."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">3. Annex C: Expenses Data</h3>
+                            <p class="text-xs text-slate-600 mb-2">Synced automatically from the Database.</p>
+                            <div class="mt-2 overflow-auto max-h-40 border rounded"><table class="w-full text-xs text-left border-collapse"><tbody id="exp-preview-body"></tbody></table></div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">4. Annex D: Rainfall Data</h3>
+                            <p class="text-xs text-slate-600 mb-2">Synced automatically from the Database.</p>
+                            <div class="mt-2 overflow-auto max-h-40 border rounded"><table class="w-full text-xs text-center border-collapse"><tbody id="rain-preview-body"></tbody></table></div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4 pb-10">
+                        <button id="btn-save-draft" class="bg-indigo-600 text-white font-bold py-3 px-10 rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition transform hover:-translate-y-0.5 text-lg">Generate Document Preview →</button>
+                    </div>
+                </div>
+
+                <div id="report-preview-view" class="py-10 hidden no-print">
+                    
+                    <div id="printable-report" class="doc-page">
+                        
+                        <div class="cover-page">
+                            <div class="cover-title">Monthly Progress &<br>Operations Report</div>
+                            <div class="cover-subtitle">Makari Gad Hydroelectric Project (10 MW)</div>
+                            <div class="cover-details">
+                                <p><strong>Reporting Period:</strong> <span id="doc-month-year"></span></p>
+                                <p><strong>Prepared By:</strong> Plant Operations & Maintenance Team</p>
+                                <p><strong>Approved By:</strong> Upendra Bahadur Chand, Plant Manager</p>
+                                <p style="margin-top: 40px; font-size: 11pt; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">Generated via Automated Reporting System</p>
+                            </div>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">1. Executive Summary</div>
+                        <div class="doc-h2">1.1 Performance Overview</div>
+                        <p id="doc-overview-text" class="doc-p text-justify text-[10.5pt] mb-4"></p>
+                        
+                        <table class="doc-table-report" style="width: 85%; margin: 0 auto 30px auto;">
+                            <thead><tr><th>Key Performance Indicator</th><th>Monthly Value</th></tr></thead>
+                            <tbody>
+                                <tr><td style="padding: 15px;"><strong>Total Gross Generation</strong></td><td id="kpi-gross" class="text-right" style="padding: 15px;">0.00 MWh</td></tr>
+                                <tr><td style="padding: 15px;"><strong>Total Exported Energy</strong></td><td id="kpi-export" class="text-right text-emerald-700 font-bold" style="padding: 15px;">0.00 MWh</td></tr>
+                                <tr><td style="padding: 15px;"><strong>Average Plant Factor</strong></td><td id="kpi-pf" class="text-right font-bold text-blue-700" style="padding: 15px;">0.00 %</td></tr>
+                                <tr><td style="padding: 15px;"><strong>Total Energy Losses</strong></td><td id="kpi-loss" class="text-right text-rose-700" style="padding: 15px;">0.00 MWh</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="doc-h2">1.2 Key Activities & Highlights</div>
+                        <ul id="doc-highlights-list" class="doc-ul"></ul>
+                        
+                        <div class="doc-h2">1.3 Operational Challenges & Faults</div>
+                        <ul id="doc-problems-list" class="doc-ul"></ul>
+
+                        <div class="doc-h2">1.4 Operations & Maintenance (O&M)</div>
+                        <ul id="doc-maint-done-list" class="doc-ul"></ul>
+
+                        <div class="doc-h2">1.5 Health, Safety & Environment (HSE)</div>
+                        <ul id="doc-hse-list" class="doc-ul"></ul>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">2. Generation Analytics & Trends</div>
+                        <p class="doc-p">The charts below illustrate the energy distribution and daily gross generation trend over the reporting period.</p>
+                        
+                        <div style="margin-bottom: 60px; margin-top: 40px; text-align: center;">
+                            <canvas id="dailyGenerationChart" style="max-height: 400px; width: 100%;"></canvas>
+                        </div>
+                        
+                        <div style="margin-bottom: 60px; text-align: center;">
+                            <canvas id="ppaDistributionChart" style="max-height: 400px; width: 100%;"></canvas>
+                        </div>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex A: Daily Generation & Dispatch Log</div>
+                        <p class="doc-p">High-resolution daily logging of unit generation, substation exports, imports, and internal station consumption derived from the SCADA database and Balanch Substation readings.</p>
+                        <table class="doc-table-report">
+                            <thead>
+                                <tr>
+                                    <th>Nepali Date</th><th>Unit 1 (kWh)</th><th>Unit 2 (kWh)</th><th>Total Gross (kWh)</th>
+                                    <th>Export Sub (kWh)</th><th>Import (kWh)</th><th>Cons. (kWh)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="doc-daily-gen-body"><tr><td colspan="7" class="text-center py-6 font-bold text-rose-600">No Data.</td></tr></tbody>
+                        </table>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex B: Monthly Energy Loss Summary</div>
+                        <p class="doc-p">Aggregated breakdown of energy losses categorized by Grid Faults, 33kV Line Issues, Plant Equipment Issues, and Low Discharge parameters over the reporting period.</p>
+                        <table class="doc-table-report" style="width: 80%; margin: 0 auto;">
+                            <thead>
+                                <tr>
+                                    <th>Loss Category</th><th class="text-right">Total Energy Loss (kWh)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="doc-loss-body"><tr><td colspan="2" class="text-center py-6 font-bold text-rose-600">No Data.</td></tr></tbody>
+                        </table>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex C: Financial Site Expenses</div>
+                        <p class="doc-p">Comprehensive ledger of all site expenditures incurred during the reporting period, including petty cash, vehicle hiring, fuel consumption, and general maintenance.</p>
+                        <table class="doc-table-report">
+                            <thead><tr><th>Category</th><th>Detailed Description / Remarks</th><th class="text-right">Amount (NPR)</th></tr></thead>
+                            <tbody id="doc-exp-body"><tr><td colspan="3" class="text-center italic py-6">No data synced.</td></tr></tbody>
+                            <tfoot id="doc-exp-foot"></tfoot>
+                        </table>
+
+                        <div class="page-break"></div>
+
+                        <div class="doc-h1">Annex D: Hydrological & Rainfall Records</div>
+                        <p class="doc-p">Daily hydrological precipitation data recorded manually at the Powerhouse and Intake telemetry stations.</p>
+                        <div style="margin-bottom: 50px; margin-top: 30px; text-align: center;">
+                            <canvas id="rainfallChart" style="max-height: 300px; width: 100%;"></canvas>
+                        </div>
+                        <table class="doc-table-report" style="width: 80%; margin: 0 auto;">
+                            <thead><tr><th>Day of Month</th><th class="text-center">Powerhouse (mm)</th><th class="text-center">Intake (mm)</th></tr></thead>
+                            <tbody id="doc-rain-body"><tr><td colspan="3" class="text-center italic py-6">No data synced.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-compare" class="hidden-tab rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-slate-50 p-6 relative">
+            <h2 class="text-xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2 mb-6 uppercase tracking-wide">Multi-Year Analytics</h2>
+            
+            <div class="flex space-x-6 items-end mb-8 bg-white p-4 rounded shadow-sm border border-slate-200">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select Month</label>
+                    <select id="comp-month" class="table-input w-40 font-bold text-indigo-700"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Select Years to Compare</label>
+                    <div id="comp-years-container" class="flex space-x-4 border border-slate-300 rounded p-2 text-sm font-bold text-slate-700"></div>
+                </div>
+                <button id="btn-compare" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded text-sm font-bold shadow transition">Compare Metrics</button>
+            </div>
+
+            <div id="compare-results" class="hidden space-y-8">
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded shadow-sm">
+                    <h3 class="font-bold text-blue-900 text-sm mb-2 flex items-center">💡 Automated Variance Insights</h3>
+                    <p id="comp-insights-text" class="text-sm text-blue-800 leading-relaxed"></p>
+                    <div id="comp-remarks-container" class="mt-3 pt-3 border-t border-blue-200 text-xs text-slate-600 italic"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="bg-white border border-slate-300 rounded shadow-sm overflow-hidden">
+                        <table class="w-full text-sm border-collapse text-right">
+                            <thead class="bg-slate-100 border-b border-slate-300" id="comp-table-thead"></thead>
+                            <tbody class="divide-y divide-slate-200" id="compare-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="bg-white border border-slate-300 rounded shadow-sm p-4">
+                        <div class="relative w-full h-[300px]"><canvas id="compareLossesChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="bg-white border border-slate-300 rounded shadow-sm p-4">
+                        <div class="relative w-full h-[300px]"><canvas id="compareRevChart"></canvas></div>
+                    </div>
+                    <div class="bg-white border border-slate-300 rounded shadow-sm p-4">
+                        <div class="relative w-full h-[300px]"><canvas id="compareDailyChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-trends" class="hidden-tab rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-white p-6 relative">
+          <div class="data-card shadow-none border-0 p-0">
+            <h3 class="font-bold text-lg mb-3 text-gray-800">SCADA Generation & Dispatch Trend</h3>
+            <div class="flex flex-wrap items-end gap-4 p-4 border rounded-md bg-gray-50 mb-4">
+              <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Start Date</label><input type="date" id="trend-start-date" class="mt-1 table-input"></div>
+              <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">End Date</label><input type="date" id="trend-end-date" class="mt-1 table-input"></div>
+              <div class="border-l border-slate-300 pl-4"><label class="block text-xs font-bold text-indigo-600 uppercase tracking-wider">Nepali Year</label><select id="trend-nepali-year" class="mt-1 table-input font-bold text-indigo-700 bg-indigo-50"></select></div>
+              <div><label class="block text-xs font-bold text-indigo-600 uppercase tracking-wider">Nepali Month</label><select id="trend-nepali-month" class="mt-1 table-input font-bold text-indigo-700 bg-indigo-50"></select></div>
+              <button id="view-trend-btn" class="bg-indigo-600 text-white font-bold py-1.5 px-4 rounded-md hover:bg-indigo-700 text-sm shadow transition">Render Chart</button>
+              <button id="download-trend-btn" class="ml-2 bg-emerald-600 text-white font-bold py-1.5 px-4 rounded-md hover:bg-emerald-700 text-sm shadow transition">Download JPG</button>
+            </div>
+            <div class="p-4 border rounded-md bg-gray-50 mb-4">
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Overlay SCADA Metrics (Daily Energy automatically included)</p>
+              <div id="trend-chart-options" class="flex flex-wrap gap-3"></div>
+            </div>
+            <div class="relative h-[500px] w-full border border-slate-200 rounded-lg p-4 bg-white shadow-inner">
+              <canvas id="ops-trend-chart"></canvas>
             </div>
           </div>
-
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">1. Specific Monthly Highlights</h3>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Key Achievements & Highlights (Optional)</label>
-            <textarea id="inp-highlights" class="form-textarea mb-4 h-24" placeholder="- Successful synchronization of Unit 1 after routine maintenance..."></textarea>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Specific Problems Faced (Optional)</label>
-            <textarea id="inp-problems" class="form-textarea h-24" placeholder="- Grid instability observed during the second week..."></textarea>
-          </div>
-
-          <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="text-lg font-bold text-slate-800 border-b pb-2 mb-4">2. Operations, Maintenance & HSE</h3>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Completed Maintenance Activities</label>
-            <textarea id="inp-completed-maint" class="form-textarea mb-4 h-24" placeholder="- 33kV transmission line tree-trimming at Lumthi..."></textarea>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Health, Safety & Environment</label>
-            <textarea id="inp-hse" class="form-textarea h-24" placeholder="Zero Lost Time Incidents (LTI) recorded. Toolbox talks conducted daily."></textarea>
-          </div>
-
-          <div class="flex justify-end pt-4 pb-10">
-            <button id="btn-save-draft" class="bg-indigo-600 text-white font-bold py-3 px-10 rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition transform hover:-translate-y-0.5 text-lg">Generate Document Preview →</button>
-          </div>
         </div>
-
-        <div id="report-preview-view" class="py-10 hidden no-print">
-          <div id="printable-report" class="doc-page">
-            <!-- Cover page, etc. (unchanged) -->
-            <div class="cover-page">
-              <div class="cover-title">Monthly Progress &<br>Operations Report</div>
-              <div class="cover-subtitle">Makari Gad Hydroelectric Project (10 MW)</div>
-              <div class="cover-details">
-                <p><strong>Reporting Period:</strong> <span id="doc-month-year"></span></p>
-                <p><strong>Prepared By:</strong> Upendra Bahadur Chand, Plant Manager</p>
-                <p style="margin-top: 40px; font-size: 11pt; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">Generated via Automated Reporting System</p>
-              </div>
-            </div>
-            <div class="page-break"></div>
-            <div class="doc-h1">1. Executive Summary</div>
-            <p id="doc-overview-text" class="doc-p"></p>
-            <table class="doc-table-report" style="width: 90%; margin: 0 auto 30px auto;">
-              <thead><tr><th>Key Performance Indicator</th><th>Monthly Value</th></tr></thead>
-              <tbody>
-                <tr><td style="padding: 12px;"><strong>Total Gross Generation</strong></td><td id="kpi-gross" class="text-right font-bold text-blue-800" style="padding: 12px;">0.00 MWh</td></tr>
-                <tr><td style="padding: 12px;"><strong>Total Exported Energy (Substation)</strong></td><td id="kpi-export" class="text-right font-bold text-emerald-700" style="padding: 12px;">0.00 MWh</td></tr>
-                <tr><td style="padding: 12px;"><strong>Total Outage & Fault Losses</strong></td><td id="kpi-loss" class="text-right font-bold text-rose-700" style="padding: 12px;">0.00 MWh</td></tr>
-                <tr><td style="padding: 12px;"><strong>Average Plant Factor</strong></td><td id="kpi-pf" class="text-right font-bold text-slate-800" style="padding: 12px;">0.00 %</td></tr>
-              </tbody>
-            </table>
-            <div class="doc-h2">1.1 Highlights & Challenges</div>
-            <ul id="doc-highlights-list" class="doc-ul"></ul>
-            <ul id="doc-problems-list" class="doc-ul"></ul>
-            <div class="doc-h2">1.2 O&M and HSE</div>
-            <ul id="doc-maint-done-list" class="doc-ul"></ul>
-            <p id="doc-hse-text" class="doc-p font-bold text-emerald-800 bg-emerald-50 p-3 rounded border border-emerald-200"></p>
-            <div class="page-break"></div>
-            <div class="doc-h1">2. Generation & Dispatch Analytics</div>
-            <p id="doc-gen-narrative" class="doc-p"></p>
-            <div style="margin-bottom: 40px; margin-top: 30px;"><canvas id="dailyGenerationChart" style="max-height: 280px; width: 100%;"></canvas></div>
-            <div class="doc-h2">2.1 Energy Target vs Realization</div>
-            <p id="doc-target-narrative" class="doc-p"></p>
-            <div style="margin-bottom: 30px;"><canvas id="energyFinancialsChart" style="max-height: 280px; width: 100%;"></canvas></div>
-            <div class="page-break"></div>
-            <div class="doc-h1">3. Energy Losses & Outages</div>
-            <p id="doc-loss-narrative" class="doc-p"></p>
-            <div style="margin-bottom: 40px; text-align: center; background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;"><canvas id="ppaDistributionChart" style="max-height: 350px; width: 100%;"></canvas></div>
-            <div class="page-break"></div>
-            <div class="doc-h1">4. Hydrological Context</div>
-            <p id="doc-hydro-narrative" class="doc-p"></p>
-            <div style="margin-bottom: 40px; margin-top: 30px;"><canvas id="rainfallChart" style="max-height: 350px; width: 100%;"></canvas></div>
-            <div class="page-break"></div>
-            <div class="doc-h1">5. Commercial & Revenue Summary</div>
-            <p id="doc-finance-narrative" class="doc-p"></p>
-            <table class="doc-table-report" style="width: 100%; margin-bottom: 40px;">
-              <thead><tr><th>Category</th><th class="text-right">Amount (NRs)</th></tr></thead>
-              <tbody>
-                <tr><td style="padding: 12px;"><strong>Gross Revenue (Energy Billed)</strong></td><td id="fin-rev" class="text-right font-bold text-emerald-700" style="padding: 12px;">0.00</td></tr>
-                <tr><td style="padding: 12px;"><strong>NEA Penalties & Deductions</strong></td><td id="fin-pen" class="text-right font-bold text-rose-700" style="padding: 12px;">0.00</td></tr>
-                <tr style="background:#f1f5f9;"><td style="padding: 12px;"><strong>Net Cheque / Receivable</strong></td><td id="fin-net" class="text-right font-bold text-indigo-700" style="padding: 12px;">0.00</td></tr>
-              </tbody>
-            </table>
-            <div class="doc-h2">5.1 Multi-Year Commercial Trend</div>
-            <p id="doc-yoy-narrative" class="doc-p"></p>
-            <div style="margin-bottom: 30px;"><canvas id="yoyComparisonChart" style="max-height: 280px; width: 100%;"></canvas></div>
-            <div class="page-break"></div>
-            <div class="doc-h1">6. Site Operational Expenses</div>
-            <p id="doc-expense-narrative" class="doc-p"></p>
-            <div style="margin-bottom: 40px; margin-top: 20px; text-align: center;"><canvas id="expenseBreakdownChart" style="max-height: 380px; width: 100%;"></canvas></div>
-            <div class="page-break"></div>
-            <div style="height: 250mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-              <div style="width: 100px; height: 5px; background-color: #1e40af; margin-bottom: 20px;"></div>
-              <h1 style="font-size: 48pt; font-family: 'Inter', sans-serif; font-weight: 900; color: #0f172a; letter-spacing: 10px; margin: 0;">ANNEXES</h1>
-              <h2 style="font-size: 16pt; font-family: 'Inter', sans-serif; font-weight: 400; color: #475569; margin-top: 20px;">Detailed Logs & Data Tables</h2>
-              <div style="width: 100px; height: 5px; background-color: #1e40af; margin-top: 30px;"></div>
-            </div>
-            <div class="page-break"></div>
-            <div class="doc-h1">Annex A: Daily Generation Log</div>
-            <p class="doc-p text-sm text-slate-500 mb-4">High-resolution daily logging of unit generation, substation exports, imports, and internal station consumption derived from the SCADA database and Balanch Substation readings.</p>
-            <table class="doc-table-report">
-              <thead><tr><th>Nepali Date</th><th>Unit 1 (kWh)</th><th>Unit 2 (kWh)</th><th>Total Gross (kWh)</th><th>Export Sub (kWh)</th><th>Cons. (kWh)</th></tr></thead>
-              <tbody id="doc-daily-gen-body"></tbody>
-            </table>
-            <div class="page-break"></div>
-            <div class="doc-h1">Annex B: Loss Breakdown Summary</div>
-            <table class="doc-table-report" style="width: 80%; margin: 0 auto;">
-              <thead><tr><th>Loss Category</th><th class="text-right">Energy Impact (kWh)</th></tr></thead>
-              <tbody id="doc-loss-body"></tbody>
-            </table>
-            <div class="page-break"></div>
-            <div class="doc-h1">Annex C: Detailed Site Expenses</div>
-            <p class="doc-p text-sm text-slate-500 mb-4">Complete ledger of site expenditures categorized for the reporting period.</p>
-            <div id="doc-exp-tables-container"></div>
-            <div class="page-break"></div>
-            <div class="doc-h1">Annex D: Rainfall Records</div>
-            <table class="doc-table-report" style="width: 80%; margin: 0 auto;">
-              <thead><tr><th>Day of Month</th><th class="text-center">Powerhouse (mm)</th><th class="text-center">Intake/Headworks (mm)</th></tr></thead>
-              <tbody id="doc-rain-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Multi-Year Analytics tab (unchanged) -->
-    <div id="tab-compare" class="hidden-tab rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-slate-50 p-6 relative">
-      <!-- ... content unchanged ... -->
-    </div>
-
-    <!-- Operations Trend tab (unchanged) -->
-    <div id="tab-trends" class="hidden-tab rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-white p-6 relative">
-      <!-- ... content unchanged ... -->
-    </div>
 
   </main>
 
   <div id="global-footer-container" class="shrink-0 no-print"></div>
 
   <div id="edit-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center backdrop-blur-sm">
-    <!-- ... unchanged ... -->
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl border border-slate-200">
+      <div class="flex justify-between items-center mb-4 border-b pb-3">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800" id="modal-main-title">Monthly Data Entry</h2>
+            <p class="text-xs text-indigo-600 font-bold" id="edit-label"></p>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+      </div>
+      <form id="edit-form" class="space-y-4 custom-scroll max-h-[70vh] overflow-y-auto px-1">
+        <input type="hidden" id="edit-id"><input type="hidden" id="edit-year"><input type="hidden" id="edit-month"><input type="hidden" id="edit-context">
+        
+        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">1. Declared Target</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-[11px] font-bold text-slate-700 mb-1">Declared AD (MWh)</label><input type="number" id="inp-ad" step="any" class="w-full border border-slate-300 p-2 rounded focus:border-indigo-500 outline-none text-sm font-bold"></div>
+            </div>
+        </div>
+
+        <div id="sec-ops" class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+            <h3 class="text-xs font-bold text-orange-800 uppercase tracking-wider mb-3">2. Grid & Plant Faults (Deemed MWh)</h3>
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <div><label class="block text-[11px] font-bold text-orange-900 mb-1">Grid Fault (MWh)</label><input type="number" id="inp-grid-fault" step="any" class="w-full border border-orange-300 p-2 rounded focus:border-orange-500 outline-none text-sm bg-white"></div>
+                <div><label class="block text-[11px] font-bold text-orange-900 mb-1">132kV Line Issue (MWh)</label><input type="number" id="inp-132kv" step="any" class="w-full border border-orange-300 p-2 rounded focus:border-orange-500 outline-none text-sm bg-white"></div>
+                <div><label class="block text-[11px] font-bold text-purple-900 mb-1">Dispatch Red. (Sch 6d)</label><input type="number" id="inp-dispatch" step="any" class="w-full border border-purple-300 bg-purple-50 p-2 rounded focus:border-purple-500 outline-none text-sm"></div>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div><label class="block text-[11px] font-bold text-orange-900 mb-1">33kV Line Issue (MWh)</label><input type="number" id="inp-33kv" step="any" class="w-full border border-orange-300 p-2 rounded focus:border-orange-500 outline-none text-sm bg-white"></div>
+                <div><label class="block text-[11px] font-bold text-orange-900 mb-1">Penstock Issue (MWh)</label><input type="number" id="inp-penstock" step="any" class="w-full border border-orange-300 p-2 rounded focus:border-orange-500 outline-none text-sm bg-white"></div>
+                <div><label class="block text-[11px] font-bold text-orange-900 mb-1">Plant Equip. Issue (MWh)</label><input type="number" id="inp-equip" step="any" class="w-full border border-orange-300 p-2 rounded focus:border-orange-500 outline-none text-sm bg-white"></div>
+            </div>
+        </div>
+
+        <div id="sec-financials" class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">3. Financial Adjustments & Cheque</h3>
+            <div class="mb-4"><label class="block text-[11px] font-bold text-indigo-700 mb-1">Excess LDC Approved?</label><select id="inp-excess-approved" class="w-full border border-indigo-300 bg-indigo-50 p-2 rounded outline-none text-[12px] font-bold"><option value="false">No (Default)</option><option value="true">Yes (Approved)</option></select></div>
+            <div class="grid grid-cols-4 gap-4">
+                <div><label class="block text-[11px] font-bold text-slate-700 mb-1">Bay/Control (NRs)</label><input type="number" id="inp-bay" step="any" class="w-full border border-slate-300 p-2 rounded outline-none text-sm"></div>
+                <div><label class="block text-[11px] font-bold text-slate-700 mb-1">Refunded Claim (+)</label><input type="number" id="inp-refunded" step="any" class="w-full border border-slate-300 p-2 rounded outline-none text-sm"></div>
+                <div><label class="block text-[11px] font-bold text-orange-600 mb-1">Extra Adj (± NRs)</label><input type="number" id="inp-extra-adj" step="any" class="w-full border border-orange-300 bg-orange-50 p-2 rounded outline-none text-sm" placeholder="-5000"></div>
+                <div class="bg-emerald-100 p-2 -mt-2 -mb-2 rounded-r-lg border-l-4 border-emerald-500"><label class="block text-[11px] font-bold text-emerald-800 mb-1">Final Cheque (NRs)</label><input type="number" id="inp-cheque" step="any" class="w-full border border-emerald-300 p-2 rounded font-bold text-emerald-900 bg-white outline-none text-sm"></div>
+            </div>
+            <div class="mt-3"><label class="block text-[10px] font-bold text-slate-500 mb-1">Adjustment Notes</label><input type="text" id="inp-adj-notes" class="w-full border border-slate-300 p-2 rounded outline-none text-sm"></div>
+        </div>
+        
+        <div class="flex justify-end space-x-3 pt-2 border-t border-slate-200">
+          <button type="button" onclick="closeModal()" class="px-6 py-2 rounded font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition">Cancel</button>
+          <button type="submit" id="save-btn" class="px-8 py-2 rounded font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md transition">Save Data</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script type="module">
-    import { supabase, initializeApplication, parseToUTCDate, showNotification } from './core-app.js';
 
-    async function startPage() {
-      const sessionData = await initializeApplication(true);
-      if (sessionData) {
+import { supabase, initializeApplication } from './core-app.js';
+
+async function startPage() {
+    const sessionData = await initializeApplication(true);
+    if (sessionData) {
         setupToggles(); 
+        
+        // Hide actions if they are just regular staff
         if (sessionData.role === 'staff' || sessionData.role === 'operator') {
-          document.querySelectorAll('.col-actions').forEach(el => el.classList.add('role-hidden')); 
+            document.querySelectorAll('.col-actions').forEach(el => el.classList.add('role-hidden')); 
         }
+        
         loadData(); 
-      }
     }
+}
 
-    startPage();
+startPage();
 
+startPage();
     window.combinedData = [];
     let plantData = [], balanchData = [], outagesData = [], contractData = [];
     
+    // Global arrays to store live DB fetched data
     window.dbExpenses = [];
     window.dbRainfall = [];
     
+    // Global Safe Chart Registry
     const chartInstances = {};
     function safeChartRender(canvasId, config) {
         if (chartInstances[canvasId]) { chartInstances[canvasId].destroy(); }
@@ -263,6 +948,7 @@
         return s;
     };
 
+    // Tabs Logic
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if(btn.classList.contains('role-hidden')) return;
@@ -283,10 +969,46 @@
       });
     });
 
-    const columnsConfig = [ /* ... unchanged ... */ ];
+    const columnsConfig = [
+        { id: 'actual-days', name: 'Actual Days', default: true }, { id: 'ppa-rate', name: 'PPA Rate', default: true },
+        { id: 'contract-adj', name: 'Contract (Adj)', default: true }, { id: 'declared-ad', name: 'Declared AD', default: true },
+        { id: 'grid-faults', name: 'Grid Faults', default: true }, { id: 'line-132kv', name: '132kV Line', default: true },
+        { id: 'fm-plant', name: 'Deemed MWh', default: true }, { id: 'exported', name: 'Exported', default: true },
+        { id: 'normal-rev', name: 'Normal Rev', default: true }, { id: 'excess-rev', name: 'Excess Rev', default: true },
+        { id: 'total-gross', name: 'Total Gross', default: true }, { id: 'total-pen', name: 'Total Invoice Pen.', default: true },
+        { id: 'refund-pen', name: 'Refundable Pen.', default: true }, { id: 'nonref-pen', name: 'Non-Ref Pen.', default: true },
+        { id: 'import-charge', name: 'Import Charge', default: true }, { id: 'royalty', name: 'Royalty (2%)', default: true },
+        { id: 'bay-control', name: 'Bay/Control', default: true }, { id: 'extra-adj', name: 'Extra Adj', default: true },
+        { id: 'adj-notes', name: 'Adj Notes', default: false }, { id: 'refunded-claims', name: 'Refunded Claims', default: true },
+        { id: 'actual-cheque', name: 'Actual Cheque', default: true }, { id: 'nea-variance', name: 'NEA Variance', default: true }
+    ];
 
-    function setupToggles() { /* ... unchanged ... */ }
-    function applyColumnVisibility() { /* ... unchanged ... */ }
+    function setupToggles() {
+        const container = document.getElementById('column-toggles');
+        container.innerHTML = '<div class="flex flex-wrap gap-3"></div>';
+        columnsConfig.forEach(col => {
+            const label = document.createElement('label');
+            label.className = "flex items-center space-x-2 text-xs font-bold text-slate-700 cursor-pointer bg-white px-3 py-1.5 rounded border border-slate-200 hover:border-indigo-400 transition";
+            label.innerHTML = `<input type="checkbox" class="col-toggle accent-indigo-600 w-4 h-4" data-col="${col.id}" ${col.default ? 'checked' : ''}> <span>${col.name}</span>`;
+            container.firstChild.appendChild(label);
+        });
+        document.querySelectorAll('.col-toggle').forEach(chk => chk.addEventListener('change', applyColumnVisibility));
+    }
+
+    function applyColumnVisibility() {
+        const groups = { 'contract':0, 'energy':0, 'revenue':0, 'penalty':0, 'deductions':0, 'adjustments':0, 'recon':0 };
+        document.querySelectorAll('.col-toggle').forEach(chk => {
+            const isVis = chk.checked;
+            document.querySelectorAll(`[data-col="${chk.dataset.col}"]`).forEach(el => {
+                el.style.display = isVis ? 'table-cell' : 'none';
+                if (isVis && el.tagName === 'TH' && el.dataset.group) groups[el.dataset.group]++;
+            });
+        });
+        for (const [group, count] of Object.entries(groups)) {
+            const th = document.getElementById(`th-${group}`);
+            if (th) { if (count === 0) th.style.display = 'none'; else { th.style.display = 'table-cell'; th.colSpan = count; } }
+        }
+    }
 
     const PPA_CONSTANTS = { 0:{days:31, energy:5454.574}, 1:{days:31, energy:7070.976}, 2:{days:32, energy:7299.072}, 3:{days:31, energy:7070.976}, 4:{days:31, energy:7070.976}, 5:{days:31, energy:7070.976}, 6:{days:30, energy:6697.698}, 7:{days:29, energy:5450.850}, 8:{days:30, energy:4560.670}, 9:{days:29, energy:3850.343}, 10:{days:30, energy:4005.746}, 11:{days:30, energy:4153.565} };
     const NEPALI_DAYS = { 2079:[31,31,32,31,31,30,30,29,30,29,30,30], 2080:[31,32,31,32,31,30,30,30,29,29,30,30], 2081:[31,32,31,32,31,30,30,30,29,30,29,31], 2082:[31,31,32,31,31,31,30,29,30,29,30,30], 2083:[31,31,32,31,31,30,30,30,29,30,30,30] };
@@ -296,22 +1018,56 @@
     function getPpaRate(y, mIdx) { const escWet = Math.max(0, y - 2080); const escDry = Math.max(0, mIdx === 11 ? y - 2079 : y - 2080); const wR = [8.4, 8.65, 8.9, 9.16, 9.43, 9.71]; const rR = [4.8, 4.94, 5.09, 5.24, 5.39, 5.55]; return mIdx >= 8 ? wR[Math.min(escDry, 5)] : rR[Math.min(escWet, 5)]; }
     function getActiveReading(r, type) { if(!r) return 0; if(type==='export') return r.main_export != null ? r.main_export : (r.check_export||0); return r.main_import != null ? r.main_import : (r.check_import||0); }
 
-    function buildDailySeries(y, mIdx) { /* ... unchanged ... */ }
+    function buildDailySeries(y, mIdx) {
+        const days = getActualDays(y, mIdx);
+        const series = []; let cumGen = 0;
+        
+        for(let d=1; d<=days; d++) {
+            const dateStr = `${y}.${String(mIdx+1).padStart(2,'0')}.${String(d).padStart(2,'0')}`;
+            const pRow = plantData.find(r => r.nepali_date && cleanDate(r.nepali_date) === dateStr);
+            const bRow = balanchData.find(r => r.eng_date && r.eng_date === (pRow ? pRow.id : null));
+            
+            let gen=0, exp=0, imp=0, stCons=0, lLoss=0, u1=0, u2=0;
+            if(pRow) {
+                const pPrev = plantData.filter(r => r.id < pRow.id).pop();
+                if(pPrev) {
+                    u1 = Math.max(0, (pRow.unit1_gen || 0) - (pPrev.unit1_gen || 0)) * 1000;
+                    u2 = Math.max(0, (pRow.unit2_gen || 0) - (pPrev.unit2_gen || 0)) * 1000;
+                    gen = u1 + u2;
+                    stCons = Math.max(0, ((pRow.station_trans || 0) - (pPrev.station_trans || 0)) * 1000); 
+                    let pExp = Math.max(0, (pRow.export_plant || 0) - (pPrev.export_plant || 0)) * 1000;
+                    if(bRow) {
+                        const bPrev = balanchData.filter(r => r.eng_date < bRow.eng_date).pop();
+                        if(bPrev) {
+                            exp = Math.max(0, getActiveReading(bRow, 'export') - getActiveReading(bPrev, 'export')) * 1000;
+                            imp = Math.max(0, getActiveReading(bRow, 'import') - getActiveReading(bPrev, 'import')) * 1000;
+                            lLoss = Math.max(0, pExp - exp);
+                        }
+                    }
+                }
+            }
+            cumGen += gen; series.push({ date: dateStr, day: d, u1, u2, gen, exp, imp, stCons, lineLoss: lLoss, cumGen });
+        }
+        return series;
+    }
 
     async function loadData() {
         try {
             document.getElementById('recon-body').innerHTML = '<tr><td colspan="24" class="text-center py-8 text-slate-500 font-bold">Loading Data Engine...</td></tr>';
+            
+            // Calculate strictly today's date in local time to block future empty calendar rows
             const d = new Date();
             const todayStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
             const { data: mce } = await supabase.from('contract_energy').select('*');
             if (mce) contractData = mce;
             
+            // 1. Fetch Plant Data (Filtered to Today)
             let pData = [], pPage = 0, pMore = true;
             while(pMore) {
                 const { data, error } = await supabase.from('plant_data')
                     .select('*')
-                    .lte('id', todayStr)
+                    .lte('id', todayStr) // <-- STOPS AT TODAY
                     .order('id', { ascending: true })
                     .range(pPage*1000, (pPage+1)*1000 - 1);
                 if(error) { pMore = false; } else if(data && data.length) { pData = pData.concat(data); }
@@ -324,11 +1080,12 @@
                 unit1_counter: Number(doc.u1_hr) || Number(doc.unit1_counter) || 0, unit2_counter: Number(doc.u2_hr) || Number(doc.unit2_counter) || 0,
             }));
 
+            // 2. Fetch Balanch Data (Filtered to Today)
             let bData = [], bPage = 0, bMore = true;
             while(bMore) {
                 const { data, error } = await supabase.from('balanch_readings')
                     .select('*')
-                    .lte('eng_date', todayStr)
+                    .lte('eng_date', todayStr) // <-- STOPS AT TODAY
                     .order('eng_date', { ascending: true })
                     .range(bPage*1000, (bPage+1)*1000 - 1);
                 if(error) { bMore = false; } else if(data && data.length) { bData = bData.concat(data); }
@@ -336,11 +1093,12 @@
             }
             balanchData = bData;
             
+            // 3. Fetch Outages (Filtered to Today)
             let oData = [], oPage = 0, oMore = true;
             while(oMore) {
                 const { data, error } = await supabase.from('outages')
                     .select('*')
-                    .lte('id', todayStr)
+                    .lte('id', todayStr) // <-- STOPS AT TODAY
                     .order('id', { ascending: true })
                     .range(oPage*1000, (oPage+1)*1000-1);
                 if(error) { oMore = false; } else if(data && data.length) { oData = oData.concat(data); }
@@ -353,6 +1111,7 @@
                 reason: d.reason || d.remarks || ''
             }));
             
+           // 1. Find the exact Maximum Year and Month that has actual powerhouse data
             let maxNepYear = 2079;
             let maxNepMonthIdx = 10; 
             
@@ -372,11 +1131,12 @@
                 }
             });
 
+            // 2. Only build rows up to that specific Month
             const allMonthsMap = new Map();
             for(let y = 2079; y <= maxNepYear; y++) {
                 for(let mIdx = 0; mIdx < 12; mIdx++) {
-                    if(y === 2079 && mIdx < 10) continue;
-                    if(y === maxNepYear && mIdx > maxNepMonthIdx) continue;
+                    if(y === 2079 && mIdx < 10) continue; // Project started Falgun 2079
+                    if(y === maxNepYear && mIdx > maxNepMonthIdx) continue; // STOP future months!
                     
                     allMonthsMap.set(`${y}_${mIdx}`, { 
                         id: `${y}_${canonicalMonths[mIdx]}`, 
@@ -388,6 +1148,7 @@
                 }
             }
 
+            // 3. Attach MCE data only to valid generated months
             if (mce) {
                 mce.forEach(row => { 
                     const mIdx = getMIdx(row.month); 
@@ -403,6 +1164,7 @@
             initializeTrendsTab();
             setDefaultTrendToLastNepaliMonth();
             
+            // Auto-populate the Daily Report date picker
             if (plantData.length > 1) {
                 document.getElementById('dr-report-date').max = plantData[plantData.length - 1].id;
                 document.getElementById('dr-report-date').min = plantData[0].id;
@@ -410,18 +1172,172 @@
                 generateDailyReport(plantData[plantData.length - 1].id);
             }
 
-        } catch (error) { 
-            document.getElementById('recon-body').innerHTML = `<tr><td colspan="24" class="text-center py-4 text-red-600 font-bold">Error: ${error.message}</td></tr>`;
-            showNotification("Error loading data: " + error.message, true);
-        }
+        } catch (error) { document.getElementById('recon-body').innerHTML = `<tr><td colspan="24" class="text-center py-4 text-red-600 font-bold">Error: ${error.message}</td></tr>`; }
     }
 
-    function renderDashboards() { /* ... unchanged ... */ }
+    function renderDashboards() {
+        const reconBody = document.getElementById("recon-body");
+        const opsBody = document.getElementById("ops-body");
+        reconBody.innerHTML = ""; opsBody.innerHTML = "";
 
-    // ... other functions (populateReportDropdowns, etc.) remain unchanged, except alerts replaced with showNotification ...
+        const bMap = {}; balanchData.forEach(r => { if (r.eng_date) bMap[r.eng_date] = r; });
+        const pMap = {}; plantData.forEach(r => { if (r.nepali_date) pMap[cleanDate(r.nepali_date)] = r; });
 
-    // Replace alert calls in the following functions:
-    function populateReportDropdowns() { /* ... unchanged ... */ }
+        window.combinedData.sort((a,b) => Number(b.year) - Number(a.year) || getMIdx(b.month) - getMIdx(a.month));
+
+        window.combinedData.forEach(row => {
+            const mIdx = getMIdx(row.month); if (mIdx === -1) return;
+
+            const y = Number(row.year); const ppaDays = PPA_CONSTANTS[mIdx].days; const ppaEnergy = PPA_CONSTANTS[mIdx].energy;
+            const ppaRate = getPpaRate(y, mIdx); const actualDays = getActualDays(y, mIdx);
+
+            const mStr = String(mIdx + 1).padStart(2, '0');
+            let d1Str = `${y}.${mStr}.01`;
+            let ny = y, nIdx = mIdx + 1; if(nIdx > 11) { nIdx = 0; ny++; }
+            let nd1Str = `${ny}.${String(nIdx+1).padStart(2,'0')}.01`;
+            if (y === 2079 && mIdx === 10) d1Str = '2079.11.27';
+
+            let pStart = pMap[d1Str] || plantData.find(r => r.nepali_date && cleanDate(r.nepali_date).startsWith(`${y}.${mStr}.`));
+            let pEnd = pMap[nd1Str] || plantData.filter(r => r.nepali_date && cleanDate(r.nepali_date).startsWith(`${y}.${mStr}.`)).pop();
+            
+            let bStart = pStart ? bMap[pStart.id] : null;
+            let bEnd = pEnd ? bMap[pEnd.id] : null;
+
+            let exported = 0, imported = 0, u1Gen=0, u2Gen=0, totalGen=0, stCons=0, pExp=0, trLoss=0, lineLoss=0;
+            let u1Hrs = 0, u2Hrs = 0;
+            
+            if(bStart && bEnd) {
+                exported = Math.max(0, getActiveReading(bEnd, 'export') - getActiveReading(bStart, 'export'));
+                imported = Math.max(0, getActiveReading(bEnd, 'import') - getActiveReading(bStart, 'import'));
+            }
+            if(pStart && pEnd && pStart !== pEnd) {
+                u1Gen = Math.max(0, (pEnd.unit1_gen || 0) - (pStart.unit1_gen || 0));
+                u2Gen = Math.max(0, (pEnd.unit2_gen || 0) - (pStart.unit2_gen || 0));
+                totalGen = u1Gen + u2Gen;
+                stCons = Math.max(0, ((pEnd.station_trans || 0) - (pStart.station_trans || 0)) / 1000);
+                pExp = Math.max(0, (pEnd.export_plant || 0) - (pStart.export_plant || 0));
+                trLoss = Math.max(0, totalGen - pExp - stCons);
+                lineLoss = Math.max(0, pExp - exported);
+                u1Hrs = Math.max(0, (pEnd.unit1_counter || 0) - (pStart.unit1_counter || 0));
+                u2Hrs = Math.max(0, (pEnd.unit2_counter || 0) - (pStart.unit2_counter || 0));
+            }
+            
+            const newContract = (ppaEnergy / ppaDays) * actualDays;
+            const declaredAd = Number(row.total_ad || 0); 
+            
+            const gridFaultMwh = Number(row.grid_fault_mwh || 0); const line132kvMwh = Number(row.line_132kv_mwh || 0);
+            const fm33kv = Number(row.fm_33kv_mwh || 0); const fmPenstock = Number(row.fm_penstock_mwh || 0); const fmEquip = Number(row.fm_equipment_mwh || 0);
+            const dispatchRedMwh = Number(row.dispatch_mwh || 0);
+            
+            let totalPlantFm = fm33kv + fmPenstock + fmEquip;
+            if (totalPlantFm === 0 && row.forced_outage_mwh) totalPlantFm = Number(row.forced_outage_mwh);
+            
+            const knownExternalLosses = dispatchRedMwh + gridFaultMwh + line132kvMwh + totalPlantFm;
+            const actualGen = totalGen > 0 ? totalGen : exported;
+            const lowDischargeMwh = Math.max(0, newContract - actualGen - knownExternalLosses);
+            const totalExternalLosses = lowDischargeMwh + knownExternalLosses;
+            
+            const initialInvoicePenalty = Math.max(0, (0.9 * declaredAd) - exported) * 0.10 * ppaRate * 1000;
+            const deemedEnergy = exported + knownExternalLosses;
+            const trueShortfall = Math.max(0, (0.9 * declaredAd) - deemedEnergy);
+            const nonRefPenNRs = trueShortfall * 0.10 * ppaRate * 1000;
+            const refPenNRs = Math.max(0, initialInvoicePenalty - nonRefPenNRs);
+            
+            const excessRate = Math.floor((ppaRate / 2) * 100) / 100;
+            const normalMwh = Math.min(exported, declaredAd, newContract);
+            const excessWithinContract = Math.max(0, Math.min(exported, newContract) - normalMwh);
+            const excessAboveContract = row.excess_approved ? Math.max(0, exported - newContract) : 0;
+            const totalExcessMwh = excessWithinContract + excessAboveContract;
+
+            const normalCharge = normalMwh * ppaRate * 1000;
+            const excessCharge = totalExcessMwh * excessRate * 1000;
+            const grossInvAmt = normalCharge + excessCharge;
+            const importNRs = imported * IMPORT_RATE * 1000;
+
+            let royBase = grossInvAmt;
+            if (y < 2081 || (y === 2081 && mIdx === 0)) royBase = grossInvAmt - initialInvoicePenalty - importNRs; 
+            else if (y === 2081 && (mIdx === 1 || mIdx === 2)) royBase = grossInvAmt - importNRs; 
+            const royalty = Math.max(0, royBase * 0.02);
+
+            const bayCharges = Number(row.bay_control_nrs || 0); const extraAdj = Number(row.extra_adjustment_nrs || 0); const refunded = Number(row.refunded_amount_nrs || 0);
+            const netComputed = grossInvAmt - initialInvoicePenalty - importNRs - royalty - bayCharges + extraAdj;
+            
+            let varHtml = `<span class="text-slate-400 font-bold">—</span>`; let chequeAmt = null;
+            if (row.cheque_amount_nrs !== null && row.cheque_amount_nrs !== undefined && row.cheque_amount_nrs !== '') {
+                chequeAmt = Number(row.cheque_amount_nrs); const variance = chequeAmt - (netComputed + refunded);
+                if (Math.abs(variance) < 1) varHtml = `<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded shadow-sm font-bold">MATCH</span>`;
+                else varHtml = `<span class="bg-red-100 text-red-800 px-2 py-1 rounded shadow-sm font-bold">${variance > 0 ? '+' : ''}${n(variance)}</span>`;
+            }
+
+            row.computed = {
+                actualDays, ppaRate, contractMwh: newContract, declaredMwh: declaredAd, exportedMwh: exported, importedMwh: imported, excessMwh: totalExcessMwh,
+                lowDischargeMwh, dispatchMwh: dispatchRedMwh, gridFaultMwh, line132kvMwh, fm33kvMwh: fm33kv, fmPenstockMwh: fmPenstock, fmEquipMwh: fmEquip,
+                stationConsMwh: stCons, lineLossMwh: lineLoss, transformerLossMwh: trLoss, amountAsPerPPA: newContract * ppaRate * 1000, amountBilled: grossInvAmt, 
+                penaltyNRs: initialInvoicePenalty, importedNRs: importNRs, excessNRs: excessCharge, royaltyNRs: royalty, bayControlNRs: bayCharges, receivableNRs: netComputed, totalGenMwh: totalGen,
+                u1Hrs, u2Hrs
+            };
+
+            const reconEditBtn = userRole === 'admin' ? `<button onclick='openEdit("${row.id}", "recon")' class="${row.is_virtual ? 'bg-indigo-600' : 'bg-slate-800'} text-white px-3 py-1 rounded text-[10px] font-bold w-full">${row.is_virtual ? '+ INIT' : 'EDIT'}</button>` : `<span class="text-xs text-slate-400">LOCKED</span>`;
+            const opsEditBtn = userRole === 'admin' ? `<button onclick='openEdit("${row.id}", "ops")' class="${row.is_virtual ? 'bg-indigo-600' : 'bg-slate-800'} text-white px-3 py-1 rounded text-[10px] font-bold w-full">${row.is_virtual ? '+ INIT' : 'EDIT'}</button>` : `<span class="text-xs text-slate-400">LOCKED</span>`;
+
+            const trRecon = document.createElement("tr");
+            trRecon.innerHTML = `<td class="sticky-col font-bold"><div class="${row.is_virtual ? 'text-indigo-600' : 'text-slate-800'}">${canonicalMonths[mIdx]} ${y}</div></td>
+              <td class="text-center font-bold text-slate-600">${actualDays}</td><td class="text-center font-bold text-indigo-600">${ppaRate}</td>
+              <td class="text-slate-600">${n(newContract)}</td><td class="font-bold text-slate-800">${n(declaredAd)}</td>
+              <td class="text-indigo-700 font-bold">${n(gridFaultMwh)}</td><td class="text-indigo-700 font-bold">${n(line132kvMwh)}</td><td class="text-orange-700 font-bold">${n(totalPlantFm + dispatchRedMwh)}</td>
+              <td class="bg-blue-50 font-bold text-blue-900 border-r">${n(exported)}</td><td>${n(normalCharge)}</td><td>${n(excessCharge)}</td>
+              <td class="bg-slate-100 font-bold text-slate-900 border-r">${n(grossInvAmt)}</td><td class="text-red-700 font-bold">${n(initialInvoicePenalty)}</td>
+              <td class="text-emerald-700 font-bold">${n(refPenNRs)}</td><td class="text-orange-800 font-bold border-r">${n(nonRefPenNRs)}</td>
+              <td class="text-red-700">${n(importNRs)}</td><td class="text-orange-700">${n(royalty)}</td><td class="bg-red-50 text-red-900 border-r">${n(bayCharges)}</td>
+              <td class="text-yellow-700 font-bold">${extraAdj !== 0 ? n(extraAdj) : '—'}</td><td class="text-[10px] text-slate-500 max-w-[100px] truncate border-r" title="${row.adjustment_remarks||''}">${row.adjustment_remarks||'—'}</td>
+              <td class="text-emerald-600 font-bold">${n(refunded)}</td><td class="bg-green-light border-r">${chequeAmt != null ? n(chequeAmt) : '—'}</td>
+              <td class="text-center align-middle">${varHtml}</td><td class="col-actions">${reconEditBtn}</td>`;
+            reconBody.appendChild(trRecon);
+
+            const trOps = document.createElement("tr");
+            trOps.innerHTML = `<td class="sticky-col font-bold bg-white"><span class="${row.is_virtual ? 'text-indigo-600' : 'text-slate-800'}">${canonicalMonths[mIdx]} ${y}</span></td>
+              <td>${n(u1Gen)}</td><td>${n(u2Gen)}</td><td class="font-bold text-indigo-900 bg-indigo-50/50">${n(totalGen)}</td>
+              <td class="font-bold text-orange-900 bg-orange-100/50">${n(lowDischargeMwh)}</td><td class="text-orange-800">${n(dispatchRedMwh)}</td>
+              <td class="text-orange-800">${n(gridFaultMwh)}</td><td class="text-orange-800">${n(line132kvMwh)}</td><td class="text-orange-800">${n(fm33kv)}</td>
+              <td class="text-orange-800">${n(fmPenstock)}</td><td class="text-orange-800">${n(fmEquip)}</td><td class="font-bold text-orange-900 bg-orange-100/50 border-r">${n(totalExternalLosses)}</td>
+              <td class="font-bold text-red-800 bg-red-50/50">${n(stCons)}</td><td class="font-bold text-red-800 bg-red-50/50 border-r">${n(trLoss)}</td>
+              <td class="font-bold text-blue-800 bg-blue-50/50">${n(pExp)}</td><td class="font-bold text-blue-900 bg-blue-50/50 border-r">${n(exported)}</td>
+              <td class="bg-red-50 text-red-900 text-center font-bold border-l-2 border-red-200">${n(lineLoss)}</td><td class="col-actions">${opsEditBtn}</td>`;
+            opsBody.appendChild(trOps);
+        });
+        
+        populateReportDropdowns(); populateComparisonDropdowns(); setupToggles();
+    }
+
+    // ==========================================
+    // MODULE 4: MONTHLY ENTERPRISE REPORT BUILDER
+    // ==========================================
+    let currentReportComputed = null;
+    let currentReportDailySeries = [];
+    let previousYearRow = null;
+
+   function populateReportDropdowns() {
+        const ySel = document.getElementById('rep-year'); const mSel = document.getElementById('rep-month');
+        const currY = ySel.value; const currM = mSel.value;
+        
+        // Find max year dynamically instead of hardcoding 2086
+        let maxYear = 2079;
+        if(window.combinedData && window.combinedData.length > 0) {
+            maxYear = Math.max(...window.combinedData.map(d => Number(d.year)));
+        }
+        
+        ySel.innerHTML = ''; for(let y=2079; y<=maxYear; y++) ySel.add(new Option(y, y));
+        mSel.innerHTML = ''; nepaliMonths.forEach(m => mSel.add(new Option(m, m)));
+        
+        if(!currY && !currM && window.combinedData && window.combinedData.length > 0) {
+            const latest = window.combinedData[0];
+            ySel.value = latest.year;
+            mSel.value = nepaliMonths.find(c => c.toLowerCase() === String(latest.month).toLowerCase()) || latest.month;
+        } else {
+            if(currY) ySel.value = currY;
+            if(currM) mSel.value = currM;
+        }
+    }
 
     document.getElementById('btn-load-report').addEventListener('click', async () => {
         const y = Number(document.getElementById('rep-year').value); 
@@ -429,8 +1345,7 @@
         const row = window.combinedData.find(x => Number(x.year) === y && String(x.month).toLowerCase() === m.toLowerCase());
         
         if(!row || !row.computed) {
-            showNotification(`Cannot generate report for ${m} ${y}. Data aggregation failed or no records found.`, true);
-            return;
+            return alert(`Cannot generate report for ${m} ${y}. Data aggregation failed or no records found.`);
         }
         
         previousYearRow = window.combinedData.find(x => Number(x.year) === y - 1 && String(x.month).toLowerCase() === m.toLowerCase());
@@ -445,12 +1360,14 @@
             if(prevMIdx < 0) { prevMIdx = 11; prevY -= 1; }
             const prevM = nepaliMonths[prevMIdx];
 
+            // FETCH LIVE EXPENSES
             const { data: expData } = await supabase.from('site_expense_items').select('*').eq('nepali_year', y).eq('nepali_month', m);
             window.dbExpenses = expData || [];
             
             const { data: prevExpData } = await supabase.from('site_expense_items').select('*').eq('nepali_year', prevY).eq('nepali_month', prevM);
             window.prevDbExpenses = prevExpData || [];
 
+            // FETCH LIVE RAINFALL
             const { data: rainData } = await supabase.from('rainfall_data').select('*').eq('nepali_year', y).eq('nepali_month', m).order('day', { ascending: true });
             window.dbRainfall = rainData || [];
             
@@ -462,7 +1379,7 @@
             document.getElementById('report-preview-view').classList.add('hidden', 'no-print', 'hidden-tab');
             
         } catch (e) {
-            showNotification("Failed to pull live DB data: " + e.message, true);
+            alert("Failed to pull live DB data: " + e.message);
         } finally {
             btn.innerText = originalText;
         }
@@ -498,13 +1415,296 @@
         document.getElementById('report-scroll-container').scrollTo({top: 0, behavior: 'smooth'});
     });
 
-    function formatBulletPoints(text) { /* ... unchanged ... */ }
+    function formatBulletPoints(text) {
+        if(!text) return '';
+        return text.split('\n').filter(line => line.trim() !== '').map(line => `<li class="doc-li">${line.replace(/^-/, '').trim()}</li>`).join('');
+    }
 
-    function populateDocumentPreview() { /* ... unchanged ... */ }
+    function populateDocumentPreview() {
+        const c = currentReportComputed;
+        const ds = currentReportDailySeries;
+        const y = document.getElementById('rep-year').value;
+        const m = document.getElementById('rep-month').value;
+        
+        document.getElementById('doc-month-year').innerText = `${m} ${y}`;
+        
+        // --- 1. KPI POPULATION ---
+        const totalOutages = c.dispatchMwh + c.gridFaultMwh + c.line132kvMwh + c.fm33kvMwh + c.fmPenstockMwh + c.fmEquipMwh;
+        document.getElementById('kpi-gross').innerText = n(c.totalGenMwh, 2) + " MWh";
+        document.getElementById('kpi-export').innerText = n(c.exportedMwh, 2) + " MWh";
+        document.getElementById('kpi-loss').innerText = n(totalOutages, 2) + " MWh";
+        document.getElementById('kpi-pf').innerText = n((c.exportedMwh / (10 * 24 * c.actualDays)) * 100, 2) + " %";
+        
+        document.getElementById('doc-overview-text').innerHTML = `This comprehensive enterprise report details the operational, financial, and environmental metrics for the Makari Gad Hydroelectric Project during the month of <strong>${m} ${y}</strong>. The data presented establishes a baseline of performance utilizing SCADA telemetry, substation meter readings, and operational financial ledgers.`;
+        
+        document.getElementById('doc-highlights-list').innerHTML = formatBulletPoints(document.getElementById('inp-highlights').value) || "<li class='doc-li'>Continuous standard operation maintained throughout the period with optimal alignment to LDC dispatch schedules.</li>";
+        document.getElementById('doc-problems-list').innerHTML = formatBulletPoints(document.getElementById('inp-problems').value) || "<li class='doc-li'>No critical prolonged faults recorded.</li>";
+        document.getElementById('doc-maint-done-list').innerHTML = formatBulletPoints(document.getElementById('inp-completed-maint').value) || "<li class='doc-li'>Routine mechanical and electrical maintenance executed safely.</li>";
+        document.getElementById('doc-hse-text').innerText = document.getElementById('inp-hse').value || "100% compliance with HSE protocols; zero LTI (Lost Time Incidents) recorded.";
 
-    function renderReportCharts(dailySeries, c, expCats) { /* ... unchanged ... */ }
+        // --- 2. NARRATIVE: GENERATION & YOY ---
+        let maxGen = 0, minGen = 999999, avgGen = 0, maxDay = '-', minDay = '-';
+        if(ds.length > 0) {
+            const validDays = ds.filter(d => d.gen > 0);
+            avgGen = c.totalGenMwh * 1000 / (validDays.length || 1);
+            validDays.forEach(d => {
+                if(d.gen > maxGen) { maxGen = d.gen; maxDay = d.date; }
+                if(d.gen < minGen) { minGen = d.gen; minDay = d.date; }
+            });
+            if(minGen === 999999) minGen = 0;
+        }
+        
+        let genNar = `During ${m} ${y}, the plant generated a gross total of <strong>${n(c.totalGenMwh)} MWh</strong>. The daily average generation stood at <strong>${n(avgGen/1000)} MWh</strong>. The plant reached a maximum peak daily generation of <strong>${n(maxGen/1000)} MWh</strong> on ${maxDay}, while the minimum operational day recorded <strong>${n(minGen/1000)} MWh</strong> on ${minDay}. Operations successfully exported <strong>${n(c.exportedMwh)} MWh</strong> to the Balanch substation. Please check <strong>Annex A</strong> for detailed daily generation logs.`;
+        document.getElementById('doc-gen-narrative').innerHTML = genNar;
 
-    // PDF & Word export remain unchanged but now use showNotification for errors
+        let targetNar = `For this billing cycle, the PPA Contract Energy was targeted at <strong>${n(c.contractMwh)} MWh</strong>. The plant's Availability Declaration (AD) was <strong>${n(c.declaredMwh)} MWh</strong>. The chart below illustrates the targeted baselines against the actual gross generation and final exported energy.`;
+        document.getElementById('doc-target-narrative').innerHTML = targetNar;
+
+        // --- 3. NARRATIVE: LOSSES & OUTAGES ---
+        let lossNarrative = `Total external energy losses due to faults and grid interruptions amounted to <strong>${n(totalOutages)} MWh</strong>. `;
+        if (c.lowDischargeMwh > 0) {
+            lossNarrative += `Additionally, due to restricted hydrological flow, the plant experienced a low discharge deficit of <strong>${n(c.lowDischargeMwh)} MWh</strong> against the adjusted contract target. `;
+        }
+        const biggestFault = [
+            {name: 'Grid Faults', val: c.gridFaultMwh}, {name: '132kV Line Issues', val: c.line132kvMwh}, 
+            {name: '33kV Line Issues', val: c.fm33kvMwh}, {name: 'Plant Equipment Faults', val: c.fmEquipMwh}
+        ].sort((a,b) => b.val - a.val)[0];
+        
+        if (biggestFault.val > 0) lossNarrative += `The primary technical contributor to generation loss was <strong>${biggestFault.name}</strong>, accounting for ${n(biggestFault.val)} MWh. `;
+        lossNarrative += `You can check <strong>Annex B</strong> for a complete numerical breakdown of all fault categories.`;
+        document.getElementById('doc-loss-narrative').innerHTML = lossNarrative;
+
+        // --- 4. NARRATIVE: HYDROLOGY ---
+        let totalRain = 0, maxRain = 0, minRain = 9999, rainyDays = 0;
+        window.dbRainfall.forEach(r => {
+            const v = Math.max(parseFloat(r.headworks||0), parseFloat(r.powerhouse||0));
+            if (v > 0) { totalRain += v; rainyDays++; if (v > maxRain) maxRain = v; if (v < minRain) minRain = v; }
+        });
+        
+        let hydroText = "";
+        if (totalRain === 0) {
+            hydroText = `No rainfall occurred this month. The severe lack of precipitation directly impacted river flow, leading to the observed operational discharge conditions and curtailments. Please refer to <strong>Annex D</strong> for the complete log.`;
+        } else {
+            let rainDesc = rainyDays > 14 ? "The month was noticeably rainy, experiencing precipitation for over two weeks." : "The month was more or less dry, with intermittent rainfall observed on only a few specific days.";
+            hydroText = `Hydrological measurements recorded a cumulative rainfall of <strong>${n(totalRain, 1)} mm</strong> across the basin. ${rainDesc} The maximum recorded daily rainfall was <strong>${n(maxRain)} mm</strong>, while the minimum non-zero rainfall was <strong>${n(minRain)} mm</strong>. Daily hydrology records are provided in <strong>Annex D</strong>.`;
+        }
+        document.getElementById('doc-hydro-narrative').innerHTML = hydroText;
+
+        // --- 5. NARRATIVE: ENERGY FINANCIALS ---
+        let finNar = `Based on the exported volume of ${n(c.exportedMwh)} MWh, the plant yielded a Gross Revenue of <strong>NRs ${n(c.amountBilled)}</strong>. Deductions, NEA penalties, and 2% royalties applied to this billing cycle amounted to <strong>NRs ${n(c.penaltyNRs + c.royaltyNRs + c.importedNRs)}</strong>, resulting in a Net Receivable Cheque of <strong>NRs ${n(c.receivableNRs)}</strong>.`;
+        document.getElementById('doc-finance-narrative').innerHTML = finNar;
+
+        document.getElementById('fin-rev').innerText = n(c.amountBilled);
+        document.getElementById('fin-pen').innerText = n(c.penaltyNRs + c.royaltyNRs + c.importedNRs);
+        document.getElementById('fin-net').innerText = n(c.receivableNRs);
+
+        let yoyNar = "";
+        if (previousYearRow && previousYearRow.computed) {
+            const py = previousYearRow.computed;
+            const diff = c.amountBilled - py.amountBilled;
+            const trend = diff >= 0 ? "an increase" : "a decrease";
+            yoyNar = `When comparing Multi-Year Analytics for the month of ${m}, this year's gross revenue represents ${trend} of <strong>NRs ${n(Math.abs(diff))}</strong> against the previous year (${previousYearRow.year}).`;
+        } else {
+            yoyNar = "Sufficient historical data for a precise Year-over-Year comparison is not currently available in the database.";
+        }
+        document.getElementById('doc-yoy-narrative').innerHTML = yoyNar;
+
+        // --- 6. NARRATIVE: SITE EXPENSES ---
+        let expTotal = 0, prevExpTotal = 0;
+        const expCats = { 'Diesel':0, 'Petrol':0, 'Petty Cash':0, 'Salary':0, 'Vehicle':0 };
+        const prevExpCats = { 'Diesel':0, 'Petrol':0, 'Petty Cash':0, 'Salary':0, 'Vehicle':0 };
+        
+        window.dbExpenses.forEach(r => { const v = parseFloat(r.amount)||0; expTotal += v; if(expCats[r.category]!==undefined) expCats[r.category] += v; });
+        window.prevDbExpenses.forEach(r => { const v = parseFloat(r.amount)||0; prevExpTotal += v; if(prevExpCats[r.category]!==undefined) prevExpCats[r.category] += v; });
+
+        let finTrend = "remained stable";
+        if (prevExpTotal > 0) {
+            const diff = expTotal - prevExpTotal;
+            const pct = Math.abs((diff / prevExpTotal) * 100);
+            finTrend = `${diff > 0 ? 'increased' : 'decreased'} by ${n(pct)}% compared to the previous month's total of NRs ${n(prevExpTotal)}`;
+        }
+
+        let catTrends = [];
+        ['Diesel', 'Petty Cash', 'Vehicle', 'Salary'].forEach(cat => {
+            if(expCats[cat] > 0 || prevExpCats[cat] > 0) {
+                const cDiff = expCats[cat] - prevExpCats[cat];
+                const cTrend = cDiff >= 0 ? 'higher' : 'lower';
+                catTrends.push(`${cat} expenses were NRs ${n(expCats[cat])} (${cTrend} than last month)`);
+            }
+        });
+        
+        let expNar = `Site operational expenses are maintained independently from energy revenue financials. Total site expenditures for ${m} amounted to <strong>NRs ${n(expTotal)}</strong>. This expenditure ${finTrend}. `;
+        if(catTrends.length > 0) expNar += `<br><br>Specifically: ${catTrends.join(', ')}. `;
+        expNar += `Please check <strong>Annex C</strong> for a complete categorized ledger.`;
+        document.getElementById('doc-expense-narrative').innerHTML = expNar;
+
+        // --- ANNEX A: Daily Generation ---
+        let tableHtml = '', tU1=0, tU2=0, tGen=0, tExp=0, tCons=0;
+        ds.forEach(r => {
+            tU1+=r.u1; tU2+=r.u2; tGen+=r.gen; tExp+=r.exp; tCons+=r.stCons;
+            tableHtml += `<tr><td style="padding:12px; font-weight:bold;">${r.date}</td><td class="text-right">${n(r.u1)}</td><td class="text-right">${n(r.u2)}</td><td class="text-right font-bold bg-slate-50">${n(r.gen)}</td><td class="text-right text-emerald-700">${n(r.exp)}</td><td class="text-right text-rose-700">${n(r.stCons)}</td></tr>`;
+        });
+        if(ds.length > 0) tableHtml += `<tr style="background:#e2e8f0; border-top:2px solid #94a3b8;"><td style="padding:12px; font-weight:bold;">MONTHLY TOTAL</td><td class="text-right font-bold">${n(tU1)}</td><td class="text-right font-bold">${n(tU2)}</td><td class="text-right font-bold text-indigo-900">${n(tGen)}</td><td class="text-right font-bold text-emerald-900">${n(tExp)}</td><td class="text-right font-bold text-rose-900">${n(tCons)}</td></tr>`;
+        document.getElementById('doc-daily-gen-body').innerHTML = tableHtml || "<tr><td colspan='6' class='text-center py-6'>No database data found.</td></tr>";
+
+        // --- ANNEX B: Losses ---
+        let lossHtml = `<tr><td style="padding:12px;">Grid Faults</td><td class="text-right">${n(c.gridFaultMwh*1000)}</td></tr>
+                        <tr><td style="padding:12px;">132kV Line Faults</td><td class="text-right">${n(c.line132kvMwh*1000)}</td></tr>
+                        <tr><td style="padding:12px;">33kV Line Faults</td><td class="text-right">${n(c.fm33kvMwh*1000)}</td></tr>
+                        <tr><td style="padding:12px;">Plant Equipment Faults</td><td class="text-right">${n(c.fmEquipMwh*1000)}</td></tr>
+                        <tr><td style="padding:12px;">Penstock Pipe Issues</td><td class="text-right">${n(c.fmPenstockMwh*1000)}</td></tr>
+                        <tr><td style="padding:12px;">LDC Dispatch Instructions</td><td class="text-right">${n(c.dispatchMwh*1000)}</td></tr>
+                        <tr><td style="padding:12px; font-weight:bold; color:#b45309;">Low Discharge (Auto-Calc)</td><td class="text-right font-bold text-orange-700">${n(c.lowDischargeMwh*1000)}</td></tr>
+                        <tr style="background:#e2e8f0; border-top:2px solid #94a3b8;"><td style="padding:12px; font-weight:900;">TOTAL LOSSES</td><td class="text-right font-bold text-rose-900">${n((totalOutages + c.lowDischargeMwh)*1000)}</td></tr>`;
+        document.getElementById('doc-loss-body').innerHTML = lossHtml;
+
+        // --- ANNEX C: Expenses ---
+        let expTablesHtml = '';
+        Object.keys(expCats).forEach(cat => {
+            const catItems = window.dbExpenses.filter(r => r.category === cat);
+            if(catItems.length === 0) return;
+            
+            expTablesHtml += `<div class="doc-h2" style="font-size:12pt; border:none; border-bottom: 2px solid #94a3b8; margin-top:20px;">Category: ${cat}</div>
+            <table class="doc-table-report" style="margin-bottom: 20px;"><thead><tr><th>Description / Purpose</th><th class="text-right">Amount (NRs)</th></tr></thead><tbody>`;
+            
+            let cTotal = 0;
+            catItems.forEach(r => {
+                const val = parseFloat(r.amount)||0; cTotal += val;
+                let desc = r.description || '-';
+                if(r.quantity) desc += ` (${r.quantity} ${r.unit||''} @ ${r.rate||''})`;
+                if(r.remarks) desc += ` [Note: ${r.remarks}]`;
+                expTablesHtml += `<tr><td style="padding:10px;">${desc}</td><td class="text-right font-bold" style="width:25%;">${n(val)}</td></tr>`;
+            });
+            expTablesHtml += `<tr style="background:#f1f5f9;"><td class="text-right font-bold" style="padding:10px;">Total ${cat}</td><td class="text-right font-black text-indigo-900">${n(cTotal)}</td></tr></tbody></table>`;
+        });
+        document.getElementById('doc-exp-tables-container').innerHTML = expTablesHtml || '<p class="doc-p italic">No site expenses recorded for this month.</p>';
+
+        // --- ANNEX D: Rainfall ---
+        let rainHtml = '';
+        if (window.dbRainfall && window.dbRainfall.length > 0) {
+            window.dbRainfall.forEach(r => {
+                rainHtml += `<tr><td class="text-center font-bold" style="padding:10px;">${r.day}</td><td class="text-center">${r.powerhouse !== null ? r.powerhouse : '-'}</td><td class="text-center">${r.headworks !== null ? r.headworks : '-'}</td></tr>`;
+            });
+        }
+        document.getElementById('doc-rain-body').innerHTML = rainHtml !== '' ? rainHtml : "<tr><td colspan='3' class='text-center py-6'>No rainfall data recorded.</td></tr>";
+
+        renderReportCharts(ds, c, expCats);
+    }
+
+    function renderReportCharts(dailySeries, c, expCats) {
+        if (chartInstances.repPpa) chartInstances.repPpa.destroy();
+        if (chartInstances.repGen) chartInstances.repGen.destroy();
+        if (chartInstances.repRain) chartInstances.repRain.destroy();
+        if (chartInstances.repYoy) chartInstances.repYoy.destroy();
+        if (chartInstances.repFin) chartInstances.repFin.destroy();
+        if (chartInstances.repExp) chartInstances.repExp.destroy();
+
+        const titleFont = {size: 16, family: 'Merriweather'};
+        const legendConfig = { 
+            position: 'bottom', 
+            labels: { 
+                font: { family: 'Inter', size: 12 },
+                generateLabels: function(chart) {
+                    const original = Chart.overrides.pie.plugins.legend.labels.generateLabels;
+                    const labels = original.call(this, chart);
+                    labels.forEach(label => {
+                        const val = chart.data.datasets[0].data[label.index];
+                        label.text = `${label.text}: ${n(val)}`;
+                    });
+                    return labels;
+                }
+            } 
+        };
+
+        // 1. DAILY GENERATION LINE CHART
+        if (dailySeries.length > 0) {
+            chartInstances.repGen = new Chart(document.getElementById('dailyGenerationChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: dailySeries.map(r => r.day),
+                    datasets: [{ 
+                        label: 'Gross Generation (kWh)', data: dailySeries.map(r => r.gen), 
+                        borderColor: '#2563eb', fill: true, backgroundColor: 'rgba(37, 99, 235, 0.1)', borderWidth: 3, pointRadius: 4, pointBackgroundColor: '#1e40af' 
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Daily Gross Generation Trend (kWh)', font: titleFont }, legend: { display: true, position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+        
+        // 2. ENERGY FINANCIALS (TARGET VS REALIZATION) BAR CHART
+        chartInstances.repFin = new Chart(document.getElementById('energyFinancialsChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Contract Energy', 'Declared AD', 'Gross Generation', 'Exported Energy'],
+                datasets: [{ 
+                    label: 'Energy (MWh)', 
+                    data: [c.contractMwh, c.declaredMwh, c.totalGenMwh, c.exportedMwh], 
+                    backgroundColor: ['#64748b', '#f59e0b', '#8b5cf6', '#10b981'] 
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Energy Target vs Realization (MWh)', font: titleFont }, legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        // 3. PIE CHART: OUTAGES
+        chartInstances.repPpa = new Chart(document.getElementById('ppaDistributionChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: ['Exported Energy', 'Grid Faults', 'Line Faults', 'Equipment', 'Low Discharge'],
+                datasets: [{ data: [c.exportedMwh, c.gridFaultMwh, (c.line132kvMwh + c.fm33kvMwh), (c.fmEquipMwh + c.fmPenstockMwh), c.lowDischargeMwh], backgroundColor: ['#1e40af', '#e11d48', '#f59e0b', '#8b5cf6', '#10b981'], borderWidth: 2 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Energy Fate & Distribution Profile (MWh)', font: titleFont }, legend: { position: 'right', labels: legendConfig.labels } } }
+        });
+
+        // 4. BAR CHART: RAINFALL
+        if (window.dbRainfall && window.dbRainfall.length > 0) {
+            chartInstances.repRain = new Chart(document.getElementById('rainfallChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: window.dbRainfall.map(r => r.day),
+                    datasets: [
+                        { label: 'Powerhouse (mm)', data: window.dbRainfall.map(r => r.powerhouse), backgroundColor: '#0ea5e9' },
+                        { label: 'Intake/Headworks (mm)', data: window.dbRainfall.map(r => r.headworks), backgroundColor: '#3b82f6' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Daily Rainfall Profile (mm)', font: titleFont }, legend: { display: true, position: 'bottom' } }, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
+            });
+        }
+
+        // 5. YOY COMPARISON BAR CHART
+        if (previousYearRow && previousYearRow.computed) {
+            const py = previousYearRow.computed;
+            chartInstances.repYoy = new Chart(document.getElementById('yoyComparisonChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: [previousYearRow.year, document.getElementById('rep-year').value],
+                    datasets: [
+                        { label: 'Gross Revenue (NRs Millions)', data: [py.amountBilled/1000000, c.amountBilled/1000000], backgroundColor: '#6366f1' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: `Multi-Year Trend: Gross Revenue`, font: titleFont }, legend: { display: true, position: 'bottom' } } }
+            });
+        }
+
+        // 6. DOUGHNUT CHART: SITE EXPENSES
+        const expLabels = Object.keys(expCats).filter(k => expCats[k] > 0);
+        const expData = expLabels.map(k => expCats[k]);
+        
+        if (expData.length > 0) {
+            chartInstances.repExp = new Chart(document.getElementById('expenseBreakdownChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: expLabels,
+                    datasets: [{ data: expData, backgroundColor: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4'], borderWidth: 2 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { title: { display: true, text: 'Operational Expense Breakdown (NRs)', font: titleFont }, legend: { position: 'right', labels: legendConfig.labels } } }
+            });
+        }
+    }
+
+    // ==========================================
+    // MODULE 4 EXPORTS: PDF & WORD GENERATION
+    // ==========================================
+
     document.getElementById('btn-export-pdf').addEventListener('click', () => {
         document.getElementById('toggle-preview').click();
         const btn = document.getElementById('btn-export-pdf');
@@ -526,9 +1726,6 @@
             
             html2pdf().set(opt).from(element).save().then(() => {
                 btn.innerText = originalText;
-            }).catch(err => {
-                showNotification("PDF generation failed: " + err.message, true);
-                btn.innerText = originalText;
             });
         }, 800);
     });
@@ -542,6 +1739,7 @@
         setTimeout(() => {
             try {
                 var clone = document.getElementById('printable-report').cloneNode(true);
+                
                 var originalCanvases = document.getElementById('printable-report').querySelectorAll('canvas');
                 var clonedCanvases = clone.querySelectorAll('canvas');
                 
@@ -597,37 +1795,515 @@
                 btn.innerText = originalText;
                 
             } catch (e) { 
-                showNotification("Word Export Error: " + e.message, true);
+                alert("Word Export Error: " + e.message); 
                 btn.innerText = originalText;
             }
         }, 800); 
     });
+    
+   // ==========================================
+    // MODULE 4 EXPORTS: PDF & WORD GENERATION
+    // ==========================================
 
-    // ... rest of the file (Multi-Year, Trends, Daily Report, etc.) with alerts replaced by showNotification ...
+    // Export to PDF
+    document.getElementById('btn-export-pdf').addEventListener('click', () => {
+        // 1. Force switch to Preview mode to populate data and unhide the DOM
+        document.getElementById('toggle-preview').click();
+        
+        const btn = document.getElementById('btn-export-pdf');
+        const originalText = btn.innerText;
+        btn.innerText = "Generating PDF...";
+        
+        // 2. Wait 800ms for Chart.js animations to finish drawing
+        setTimeout(() => {
+            const y = document.getElementById('rep-year').value;
+            const m = document.getElementById('rep-month').value;
+            const element = document.getElementById('printable-report');
+            
+            const opt = { 
+                margin: 0, 
+                filename: `MakariGad_Enterprise_Report_${y}_${m}.pdf`, 
+                image: { type: 'jpeg', quality: 0.98 }, 
+                html2canvas: { scale: 2, useCORS: true, logging: false }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+            };
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerText = originalText; // Reset button text
+            });
+        }, 800);
+    });
 
-    // Example: replace alert in generateDailyReport error handling
+    // Export to Microsoft Word (SAFE CLONE METHOD)
+    document.getElementById('btn-export-word').addEventListener('click', () => {
+        // 1. Force switch to Preview mode to populate data and unhide the DOM
+        document.getElementById('toggle-preview').click();
+        
+        const btn = document.getElementById('btn-export-word');
+        const originalText = btn.innerText;
+        btn.innerText = "Generating Word...";
+
+        // 2. Wait 800ms for Chart.js animations to finish before cloning
+        setTimeout(() => {
+            try {
+                var clone = document.getElementById('printable-report').cloneNode(true);
+                
+                // Convert all charts (canvases) into static images for Word
+                var originalCanvases = document.getElementById('printable-report').querySelectorAll('canvas');
+                var clonedCanvases = clone.querySelectorAll('canvas');
+                
+                for (var i = 0; i < originalCanvases.length; i++) {
+                    var img = document.createElement("img");
+                    // Data URL will only contain the chart if it's currently visible and drawn on screen
+                    img.src = originalCanvases[i].toDataURL("image/png", 1.0);
+                    img.style.width = "100%"; 
+                    img.style.maxWidth = "600px"; // Safe width for MS Word
+                    img.style.display = "block";
+                    img.style.margin = "0 auto";
+                    clonedCanvases[i].parentNode.replaceChild(img, clonedCanvases[i]);
+                }
+
+                // Convert HTML page-breaks into MS Word page-breaks
+                var pageBreaks = clone.querySelectorAll('.page-break');
+                for (var j = 0; j < pageBreaks.length; j++) {
+                    pageBreaks[j].outerHTML = "<br clear=all style='mso-special-character:line-break;page-break-before:always'>";
+                }
+
+                // Construct MS Word compatible HTML wrapper
+                var docArray = [
+                    "<ht", "ml xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>",
+                    "<he", "ad><meta charset='utf-8'><title>Report</title>",
+                    "<st", "yle>",
+                    "body { font-family: 'Times New Roman', serif; font-size: 11pt; color: #000; }",
+                    "h1 { font-size: 20pt; color: #1e40af; border-bottom: 2pt solid #1e40af; padding-bottom: 8px; margin-top: 40px; font-weight: bold; }",
+                    "h2 { font-size: 15pt; font-weight: bold; margin-top: 25px; color: #333; }",
+                    "p, li { line-height: 1.6; text-align: justify; margin-bottom: 12px; }",
+                    "table { border-collapse: collapse; width: 100%; margin-bottom: 30px; border: 1pt solid windowtext; }",
+                    "th, td { border: 1pt solid windowtext; padding: 12px; text-align: left; vertical-align: top; }",
+                    "th { background-color: #f1f5f9; font-weight: bold; text-align: center; }",
+                    ".text-right { text-align: right !important; }",
+                    ".text-center { text-align: center !important; }",
+                    ".cover-page { text-align: center; margin-top: 150px; margin-bottom: 150px; }",
+                    ".cover-title { font-size: 38pt; font-weight: bold; text-transform: uppercase; color: #1e3a8a; }",
+                    ".cover-subtitle { font-size: 20pt; color: #334155; margin-bottom: 50px; }",
+                    ".cover-details { font-size: 14pt; margin-top: 50px; border-top: 2pt solid #ccc; padding-top: 30px; }",
+                    "</st", "yle></he", "ad><bo", "dy>",
+                    clone.innerHTML,
+                    "</bo", "dy></ht", "ml>"
+                ];
+                
+                var blob = new Blob(['\ufeff', docArray.join("")], { type: 'application/msword' });
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                
+                const y = document.getElementById('rep-year').value;
+                const m = document.getElementById('rep-month').value;
+                link.download = `MakariGad_Enterprise_Report_${y}_${m}.doc`;
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                btn.innerText = originalText; // Reset button text
+                
+            } catch (e) { 
+                alert("Word Export Error: " + e.message); 
+                btn.innerText = originalText;
+            }
+        }, 800); // 800ms delay allows charts to draw
+    });
+
+    // ==========================================
+    // MODULE 5: MULTI-YEAR ANALYTICS
+    // ==========================================
+    function populateComparisonDropdowns() {
+        const cM = document.getElementById('comp-month'); const cYContainer = document.getElementById('comp-years-container');
+        if(!cM || !cYContainer) return;
+        if (cM.options.length === 0) canonicalMonths.forEach(m => cM.add(new Option(m, m)));
+        const years = [...new Set(window.combinedData.map(d => d.year))].sort((a,b) => b-a);
+        cYContainer.innerHTML = ''; years.forEach((y, idx) => { cYContainer.innerHTML += `<label class="inline-flex items-center"><input type="checkbox" class="comp-year-chk w-4 h-4 text-indigo-600 border-gray-300 rounded" value="${y}" ${idx < 2 ? 'checked':''}> <span class="ml-2">${y}</span></label>`; });
+    }
+
+    document.getElementById('btn-compare').addEventListener('click', () => {
+        const m = document.getElementById('comp-month').value;
+        const selectedYears = Array.from(document.querySelectorAll('.comp-year-chk:checked')).map(cb => parseInt(cb.value)).sort((a,b) => a-b);
+        if(selectedYears.length < 1) return alert("Select at least one year.");
+        
+        const rows = selectedYears.map(y => window.combinedData.find(x => x.year === y && x.month === m)).filter(r => r && r.computed);
+        if(rows.length === 0) return alert(`No valid data found for ${m}.`);
+
+        document.getElementById('compare-results').classList.remove('hidden');
+        
+        let thHtml = `<tr><th class="p-3 text-left text-slate-700 w-1/3">Metric</th>`;
+        rows.forEach(r => thHtml += `<th class="p-3 text-indigo-700 text-center border-l">${r.year}</th>`);
+        thHtml += `</tr>`; document.getElementById('comp-table-thead').innerHTML = thHtml;
+
+        const metrics = [
+            { label: "Declared AD (MWh)", key: 'declaredMwh' }, { label: "Gross Generation (MWh)", key: 'totalGenMwh' }, { label: "Total Exported (MWh)", key: 'exportedMwh' },
+            { label: "Low Discharge Loss (MWh)", key: 'lowDischargeMwh' }, { label: "Total Faults & Issues (MWh)", fn: (c) => (c.gridFaultMwh + c.line132kvMwh + c.fm33kvMwh + c.fmPenstockMwh + c.fmEquipMwh) },
+            { label: "Gross Revenue (NRs)", key: 'amountBilled' }, { label: "Total Penalties (NRs)", key: 'penaltyNRs' }, { label: "Net Receivable (NRs)", key: 'receivableNRs' }
+        ];
+
+        let tbodyHtml = '';
+        metrics.forEach(mDef => {
+            tbodyHtml += `<tr><td class="p-3 text-left font-medium text-slate-700">${mDef.label}</td>`;
+            rows.forEach(r => { const val = mDef.key ? r.computed[mDef.key] : mDef.fn(r.computed); tbodyHtml += `<td class="p-3 font-bold text-slate-800 text-center border-l bg-white">${n(val)}</td>`; });
+            tbodyHtml += `</tr>`;
+        });
+        document.getElementById('compare-tbody').innerHTML = tbodyHtml;
+
+        let insightTxt = ""; let remarksHtml = "";
+        if(rows.length >= 2) {
+            const first = rows[0].computed; const last = rows[rows.length-1].computed; const diffExp = last.exportedMwh - first.exportedMwh;
+            insightTxt = `Comparing ${rows[rows.length-1].year} against ${rows[0].year} for the month of ${m}: Total exported energy ${diffExp >= 0 ? 'increased' : 'decreased'} by <strong>${n(Math.abs(diffExp))} MWh</strong>. `;
+            const lossCats = [ {n: 'Grid Faults', d: last.gridFaultMwh - first.gridFaultMwh}, {n: 'Low Discharge', d: last.lowDischargeMwh - first.lowDischargeMwh}, {n: '132kV Line', d: last.line132kvMwh - first.line132kvMwh}, {n: 'Plant/Equip', d: last.fmEquipMwh - first.fmEquipMwh}, {n: '33kV/Penstock', d: (last.fm33kvMwh+last.fmPenstockMwh) - (first.fm33kvMwh+first.fmPenstockMwh)} ];
+            lossCats.sort((a,b) => Math.abs(b.d) - Math.abs(a.d));
+            insightTxt += `Primary drivers for this variance were shifts in <strong>${lossCats[0].n} (${lossCats[0].d > 0 ? '+':''}${n(lossCats[0].d)} MWh)</strong> and <strong>${lossCats[1].n} (${lossCats[1].d > 0 ? '+':''}${n(lossCats[1].d)} MWh)</strong>.`;
+            rows.forEach(r => { if(r.adjustment_remarks) remarksHtml += `<div class="mb-1"><strong>[${r.year}] Operator Note:</strong> ${r.adjustment_remarks}</div>`; });
+        } else { insightTxt = "Select at least two years to view comparative insights."; }
+        
+        document.getElementById('comp-insights-text').innerHTML = insightTxt; document.getElementById('comp-remarks-container').innerHTML = remarksHtml;
+
+        safeChartRender('compareLossesChart', { type: 'bar', data: { labels: rows.map(r => r.year), datasets: [ { label: 'Exported', data: rows.map(r => r.computed.exportedMwh), backgroundColor: '#10b981' }, { label: 'Low Discharge', data: rows.map(r => r.computed.lowDischargeMwh), backgroundColor: '#fcd34d' }, { label: 'Faults/Issues', data: rows.map(r => r.computed.gridFaultMwh + r.computed.line132kvMwh + r.computed.fm33kvMwh + r.computed.fmPenstockMwh + r.computed.fmEquipMwh), backgroundColor: '#ef4444' } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Energy Profile' } }, scales: { x: { stacked: true }, y: { stacked: true } } } });
+        safeChartRender('compareRevChart', { type: 'bar', data: { labels: rows.map(r => r.year), datasets: [ { label: 'Net Receivable (NRs)', data: rows.map(r => r.computed.receivableNRs), backgroundColor: '#6366f1' }, { label: 'Total Penalties (NRs)', data: rows.map(r => r.computed.penaltyNRs), backgroundColor: '#f43f5e' } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Financial Variance' } } } });
+        
+        const dailyLabels = Array.from({length: 31}, (_, i) => `D${i+1}`);
+        const dailyDatasets = rows.map((r, i) => { const colors = ['#94a3b8', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899']; return { label: `${r.year} Gen (kWh)`, data: buildDailySeries(r.year, getMIdx(m)).map(s => s.gen), borderColor: colors[i%colors.length], backgroundColor: colors[i%colors.length], borderWidth: 2, tension: 0.2, pointRadius: 2 }; });
+        safeChartRender('compareDailyChart', { type: 'line', data: { labels: dailyLabels, datasets: dailyDatasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: `Daily Generation YoY` } } } });
+    });
+
+    // ==========================================
+    // MODULE 6: OPERATIONS TREND (SCADA)
+    // ==========================================
+    const trendSeries = [
+      { key: 'waterlevel_cm', name: 'Water Level (cm)' }, { key: 'pressure_mwc', name: 'Pressure (mWC)' },
+      { key: 'active_power_kw', name: 'Active Power (kW)' }, { key: 'voltage_kv', name: 'Voltage (kV)' },
+      { key: 'reactive_power_kvar', name: 'Reactive Power (kVar)' }, { key: 'u1_spear_pct', name: 'U1 Spear (%)' },
+      { key: 'u1_active_power_kw', name: 'U1 Power (kW)' }, { key: 'u2_spear_pct', name: 'U2 Spear (%)' }, { key: 'u2_active_power_kw', name: 'U2 Power (kW)' },
+    ];
+
+    function initializeTrendsTab() {
+      const ty = document.getElementById('trend-nepali-year'); 
+      const tm = document.getElementById('trend-nepali-month'); 
+      if(!ty || !tm) return;
+      ty.innerHTML = ''; tm.innerHTML = '';
+      const currentNepaliYear = new Date().getFullYear() + 57;
+      for (let i = 0; i < 10; i++) { const year = currentNepaliYear - i; ty.add(new Option(year, year)); }
+      nepaliMonths.forEach(month => tm.add(new Option(month, month)));
+
+      const optCont = document.getElementById('trend-chart-options'); optCont.innerHTML = '';
+      trendSeries.forEach((field, idx) => {
+        const div = document.createElement('div'); div.className = 'flex items-center';
+        div.innerHTML = `<input type="checkbox" id="trend-check-${field.key}" value="${field.key}" class="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 trend-checkbox" ${idx < 2 ? 'checked' : ''}><label for="trend-check-${field.key}" class="ml-2 block text-xs text-slate-700 font-bold">${field.name}</label>`;
+        optCont.appendChild(div);
+      });
+      optCont.addEventListener('change', (e) => { if (e.target.classList.contains('trend-checkbox')) document.getElementById('view-trend-btn').click(); });
+    }
+
+    function updateEnglishDatesFromNepaliSelection() {
+      const year = document.getElementById('trend-nepali-year').value; const month = document.getElementById('trend-nepali-month').value;
+      if (!year || !month || plantData.length === 0) return;
+      const mIdx = nepaliMonths.indexOf(month) + 1;
+      const prefix = `${year}.${String(mIdx).padStart(2,'0')}`;
+      const matches = plantData.filter(d => d.nepali_date && cleanDate(d.nepali_date).startsWith(prefix)).map(r => r.id).sort();
+      if (matches.length > 0) {
+        document.getElementById('trend-start-date').value = matches[0]; document.getElementById('trend-end-date').value = matches[matches.length - 1];
+      }
+    }
+    document.getElementById('trend-nepali-year').addEventListener('change', updateEnglishDatesFromNepaliSelection);
+    document.getElementById('trend-nepali-month').addEventListener('change', updateEnglishDatesFromNepaliSelection);
+
+    document.getElementById('view-trend-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('view-trend-btn'); btn.disabled = true; btn.textContent = 'Loading...';
+      const s = document.getElementById('trend-start-date').value; const e = document.getElementById('trend-end-date').value;
+      if (!s || !e) { alert("Please select a date range."); btn.disabled = false; btn.textContent = 'Render Chart'; return; }
+      
+      const filteredBalanchData = balanchData.filter(d => d.eng_date >= s && d.eng_date <= e);
+      let historicalData = [];
+      if (filteredBalanchData.length > 0) {
+          const endObj = new Date(e); endObj.setHours(23, 59, 59, 999);
+          const startIso = new Date(s).toISOString(); const endIso = endObj.toISOString();
+          let page = 0, more = true;
+          while(more) {
+              const { data, error } = await supabase.from('historical_data').select('*').gte('timestamp', startIso).lte('timestamp', endIso).order('timestamp').range(page*1000, (page+1)*1000 - 1);
+              if (error) break; if (data && data.length > 0) historicalData = historicalData.concat(data);
+              if (!data || data.length < 1000) more = false; else page++;
+          }
+      }
+      
+      const dailyDispatchData = [];
+      for (let i = 1; i < filteredBalanchData.length; i++) {
+          const tExp = getActiveReading(filteredBalanchData[i], 'export'); const yExp = getActiveReading(filteredBalanchData[i - 1], 'export');
+          if (tExp != null && yExp != null && (tExp - yExp) >= 0) {
+              const dParts = filteredBalanchData[i].eng_date.split('-');
+              dailyDispatchData.push({ x: new Date(dParts[0], dParts[1] - 1, dParts[2], 12, 0, 0), y: tExp - yExp });
+          }
+      }
+
+      const datasets = [{ label: 'Daily Energy Dispatched (MWh)', data: dailyDispatchData, backgroundColor: 'rgba(79, 70, 229, 0.5)', borderColor: '#4f46e5', borderWidth: 1, type: 'bar', yAxisID: 'y-energy', order: 2 }];
+      const selectedKeys = Array.from(document.querySelectorAll('.trend-checkbox:checked')).map(el => el.value);
+      const colors = ['#ef4444', '#f59e0b', '#10b981', '#0ea5e9', '#8b5cf6', '#ec4899', '#f97316'];
+      
+      const scales = { x: { type: 'time', time: { unit: 'day' }, grid: { display: false } }, 'y-energy': { type: 'linear', position: 'left', title: { display: true, text: 'Energy (MWh)', color: '#4f46e5' } } };
+
+      selectedKeys.forEach((key, index) => {
+          const fieldInfo = trendSeries.find(s => s.key === key); if (!fieldInfo || historicalData.length === 0) return;
+          const color = colors[index % colors.length];
+          datasets.push({ label: fieldInfo.name, data: historicalData.map(d => ({ x: d.timestamp, y: d[key] ?? null })).filter(pt => pt.y !== null), borderColor: color, backgroundColor: color, borderWidth: 2, tension: 0.1, pointRadius: 0, yAxisID: `y-${key}`, type: 'line', order: 1 });
+          scales[`y-${key}`] = { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: fieldInfo.name, color: color } };
+      });
+
+      safeChartRender('ops-trend-chart', { data: { datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: scales } });
+      btn.disabled = false; btn.textContent = 'Render Chart';
+    });
+
+    if (document.getElementById('download-trend-btn')) {
+        document.getElementById('download-trend-btn').addEventListener('click', () => {
+            const canvas = document.getElementById('ops-trend-chart'); if (!canvas) return;
+            const newCanvas = document.createElement('canvas'); newCanvas.width = canvas.width; newCanvas.height = canvas.height;
+            const ctx = newCanvas.getContext('2d'); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, newCanvas.width, newCanvas.height); ctx.drawImage(canvas, 0, 0);
+            const link = document.createElement('a'); link.download = `Trend_Chart_${new Date().toISOString().slice(0, 10)}.jpg`; link.href = newCanvas.toDataURL('image/jpeg', 1.0); link.click();
+        });
+    }
+
+    function setDefaultTrendToLastNepaliMonth() {
+      for (let i = plantData.length - 1; i >= 0; i--) {
+        if (!plantData[i].nepali_date) continue;
+        const parts = String(plantData[i].nepali_date).split('.');
+        if (parts.length === 3) {
+          document.getElementById('trend-nepali-year').value = parts[0];
+          document.getElementById('trend-nepali-month').value = nepaliMonths[parseInt(parts[1], 10) - 1];
+          updateEnglishDatesFromNepaliSelection();
+          document.getElementById('view-trend-btn').click();
+          break;
+        }
+      }
+    }
+
+    // ==========================================
+    // SHARED EDIT MODAL LOGIC
+    // ==========================================
+    window.openEdit = (rowId, context) => {
+      const r = window.combinedData.find(x => x.id === rowId); if (!r) return;
+      document.getElementById('edit-id').value = r.id; document.getElementById('edit-year').value = r.year; document.getElementById('edit-month').value = r.month; document.getElementById('edit-context').value = context;
+      document.getElementById('modal-main-title').innerText = context === 'recon' ? 'Energy Summary Entry' : 'Operations Entry';
+      document.getElementById('edit-label').innerText = `Editing: ${r.month} ${r.year} ${r.is_virtual ? '(Creating New Month)' : ''}`;
+      if (context === 'recon') { document.getElementById('sec-financials').classList.remove('hidden'); document.getElementById('sec-ops').classList.add('hidden'); } else { document.getElementById('sec-financials').classList.add('hidden'); document.getElementById('sec-ops').classList.remove('hidden'); }
+      document.getElementById('inp-ad').value = r.total_ad || 0; document.getElementById('inp-excess-approved').value = r.excess_approved === true ? "true" : "false";
+      document.getElementById('inp-grid-fault').value = r.grid_fault_mwh || 0; document.getElementById('inp-132kv').value = r.line_132kv_mwh || 0; document.getElementById('inp-33kv').value = r.fm_33kv_mwh || 0; document.getElementById('inp-penstock').value = r.fm_penstock_mwh || 0; document.getElementById('inp-equip').value = r.fm_equipment_mwh || 0;
+      if(!r.fm_33kv_mwh && !r.fm_penstock_mwh && !r.fm_equipment_mwh && r.forced_outage_mwh) document.getElementById('inp-equip').value = r.forced_outage_mwh;
+      document.getElementById('inp-dispatch').value = r.dispatch_mwh || 0; document.getElementById('inp-bay').value = r.bay_control_nrs || 0; document.getElementById('inp-refunded').value = r.refunded_amount_nrs || 0; document.getElementById('inp-extra-adj').value = r.extra_adjustment_nrs || 0; document.getElementById('inp-adj-notes').value = r.adjustment_remarks || ''; document.getElementById('inp-cheque').value = r.cheque_amount_nrs !== null && r.cheque_amount_nrs !== undefined ? r.cheque_amount_nrs : '';
+      document.getElementById('edit-modal').classList.remove('hidden');
+    };
+    window.closeModal = () => document.getElementById('edit-modal').classList.add('hidden');
+
+    document.getElementById('edit-form').onsubmit = async (e) => {
+      e.preventDefault(); const btn = document.getElementById('save-btn'); btn.innerText = "Saving...";
+      const fm33 = parseFloat(document.getElementById('inp-33kv').value) || 0; const fmPen = parseFloat(document.getElementById('inp-penstock').value) || 0; const fmEq = parseFloat(document.getElementById('inp-equip').value) || 0;
+      const existingRow = window.combinedData.find(x => x.id === document.getElementById('edit-id').value);
+      let preservedAd = parseFloat(document.getElementById('inp-ad').value) || 0;
+      if (document.getElementById('edit-context').value === 'ops' && existingRow && existingRow.total_ad) preservedAd = existingRow.total_ad;
+
+      const data = {
+        id: document.getElementById('edit-id').value, year: parseInt(document.getElementById('edit-year').value, 10), month: document.getElementById('edit-month').value, total_ad: preservedAd, excess_approved: document.getElementById('inp-excess-approved').value === "true",
+        grid_fault_mwh: parseFloat(document.getElementById('inp-grid-fault').value) || 0, line_132kv_mwh: parseFloat(document.getElementById('inp-132kv').value) || 0, fm_33kv_mwh: fm33, fm_penstock_mwh: fmPen, fm_equipment_mwh: fmEq, forced_outage_mwh: fm33 + fmPen + fmEq,
+        dispatch_mwh: parseFloat(document.getElementById('inp-dispatch').value) || 0, bay_control_nrs: parseFloat(document.getElementById('inp-bay').value) || 0, refunded_amount_nrs: parseFloat(document.getElementById('inp-refunded').value) || 0, extra_adjustment_nrs: parseFloat(document.getElementById('inp-extra-adj').value) || 0, adjustment_remarks: document.getElementById('inp-adj-notes').value || null, cheque_amount_nrs: document.getElementById('inp-cheque').value !== '' ? parseFloat(document.getElementById('inp-cheque').value) : null,
+      };
+      const { error } = await supabase.from('contract_energy').upsert(data);
+      if (error) alert("Save Error: " + error.message);
+      closeModal(); btn.innerText = "Save Data"; loadData();
+    };
+
+
+    // ==========================================
+    // MODULE 7: DAILY REPORT GENERATOR
+    // ==========================================
+    let drPieChartInstance = null;
+    let drTrendChartInstance = null;
+    
+    document.getElementById('dr-report-date').addEventListener('change', (e) => generateDailyReport(e.target.value));
+
     function generateDailyReport(englishDateStr) {
         if(!englishDateStr || plantData.length === 0) return;
+        
         try {
             const pIdx = plantData.findIndex(d => d.id === englishDateStr);
-            if (pIdx === -1) {
-                showNotification(`No powerhouse data found for ${englishDateStr}.`, true);
-                return;
+            if (pIdx === -1) return alert(`No powerhouse data found for ${englishDateStr}.`);
+            if (pIdx === 0) return alert(`Need previous day's reading to calculate generation differentials.`);
+            
+            const pToday = plantData[pIdx];
+            const pYesterday = plantData[pIdx - 1]; 
+            
+            const bToday = balanchData.find(d => d.eng_date === englishDateStr);
+            const bYesterday = balanchData.find(d => d.eng_date === pYesterday.id);
+
+            const bTodayExp = bToday ? getActiveReading(bToday, 'export') : 0;
+            const bYesterdayExp = bYesterday ? getActiveReading(bYesterday, 'export') : 0;
+
+            const displayNepaliDate = pToday.nepali_date || 'N/A';
+            let [yYear, yMonth, yDay] = pYesterday.nepali_date.replace(/[\/\-]/g, '.').split('.').map(p => parseInt(p));
+            const nepaliMonthName = canonicalMonths[yMonth - 1];
+
+            // 1. Calculate Daily
+            const daily = {};
+            daily.generation = ((pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen)) * 1000; 
+            daily.exportSubstation = (bTodayExp - bYesterdayExp) * 1000; 
+            daily.exportPlant = (pToday.export_plant - pYesterday.export_plant) * 1000; 
+            daily.stationConsumption = pToday.station_trans - pYesterday.station_trans; 
+            daily.transmissionLoss = daily.exportPlant - daily.exportSubstation;
+            daily.transformerLoss = daily.generation - daily.exportPlant - daily.stationConsumption;
+            
+            const rDayOutage = outagesData.find(o => o.id === pYesterday.id) || { lossTimeMin: 0, lossU1Min: 0, lossU2Min: 0 };
+            let activeMins = 1440.01 - rDayOutage.lossTimeMin - ((rDayOutage.lossU1Min + rDayOutage.lossU2Min) / 2);
+            if (activeMins <= 0) activeMins = 1440.01;
+            
+            daily.avgLoadPowerhouse = (daily.generation * 60) / activeMins;
+            daily.avgLoadSubstation = (daily.exportSubstation * 60) / activeMins;
+            daily.plantFactor = (daily.exportSubstation / (10 * 1000 * 24)) * 100; 
+            daily.unit1Hours = pToday.unit1_counter - pYesterday.unit1_counter;
+            daily.unit2Hours = pToday.unit2_counter - pYesterday.unit2_counter;
+
+            // 2. Calculate Monthly
+            const monthly = { cumulativeGeneration: 0, cumulativeExport: 0, cumulativePlantExport: 0, cumulativeStationConsumption: 0 };
+            const baseDayPrefix = `${yYear}.${String(yMonth).padStart(2, '0')}.01`;
+            let pMonthStart = plantData.find(d => d.nepali_date === baseDayPrefix) || plantData[0];
+            const baseIdx = plantData.findIndex(d => d.id === pMonthStart.id);
+            const bMonthStart = balanchData.find(d => d.eng_date === pMonthStart.id);
+            const bMonthStartExp = bMonthStart ? getActiveReading(bMonthStart, 'export') : 0;
+
+            monthly.cumulativeGeneration = ((pToday.unit1_gen + pToday.unit2_gen) - (pMonthStart.unit1_gen + pMonthStart.unit2_gen)) * 1000;
+            monthly.cumulativeExport = (bTodayExp - bMonthStartExp) * 1000;
+            monthly.cumulativePlantExport = (pToday.export_plant - pMonthStart.export_plant) * 1000;
+            monthly.cumulativeStationConsumption = pToday.station_trans - pMonthStart.station_trans;
+
+            const cMonthRecords = plantData.slice(baseIdx + 1, pIdx + 1);
+            const cMonthEngDates = cMonthRecords.map(d => d.id);
+            const mOutages = outagesData.filter(o => cMonthEngDates.includes(o.id));
+
+            let majorEvents = 'No major events reported.';
+            const validOutages = mOutages.filter(o => o.reason && o.reason.trim() !== '');
+            if (validOutages.length > 0) {
+                majorEvents = validOutages.map(o => {
+                    const rec = plantData.find(p => p.id === o.id);
+                    return `• [${rec ? rec.nepali_date : o.id}] ${o.reason}`;
+                }).join('\n');
             }
-            if (pIdx === 0) {
-                showNotification(`Need previous day's reading to calculate generation differentials.`, true);
-                return;
-            }
-            // ... rest of function ...
+
+            monthly.cumulativeNeaCurtailed = mOutages.reduce((s, r) => r.reason.toLowerCase().includes('curtail') ? s + r.totalEnergyLoss : s, 0);
+            monthly.cumulativeOtherLosses = mOutages.reduce((s, r) => !r.reason.toLowerCase().includes('curtail') ? s + r.totalEnergyLoss : s, 0);
+            monthly.cumulativeTransmissionLoss = monthly.cumulativePlantExport - monthly.cumulativeExport;
+            monthly.cumulativeTransformerLoss = monthly.cumulativeGeneration - monthly.cumulativePlantExport - monthly.cumulativeStationConsumption;
+            
+            const cInfo = contractData.find(c => Number(c.year) === yYear && c.month === nepaliMonthName);
+            const ppaDays = getActualDays(yYear, yMonth - 1);
+            
+            monthly.guaranteedEnergy = cInfo ? (cInfo.contract_energy * 1000) : 0;
+            monthly.availabilityDeclaration = cInfo ? (cInfo.total_ad * 1000) : 0;
+            monthly.energyDifference = monthly.cumulativeExport - monthly.availabilityDeclaration;
+            
+            monthly.monthlyPlantFactor = ppaDays > 0 ? (monthly.cumulativeExport / (10 * 1000 * 24 * ppaDays)) * 100 : 0;
+            monthly.plantFactorTillDate = yDay > 0 ? (monthly.cumulativeExport / (10 * 1000 * 24 * yDay)) * 100 : 0;
+            monthly.remainingDays = ppaDays - yDay;
+
+            // 3. Render
+            document.getElementById('dr-report-content').classList.remove('hidden');
+            document.getElementById('dr-display-nepali-month').textContent = nepaliMonthName;
+            document.getElementById('dr-display-nepali-date').textContent = displayNepaliDate;
+            document.getElementById('dr-val-major-events').textContent = majorEvents;
+
+            document.getElementById('dr-val-avg-load-powerhouse').textContent = n(daily.avgLoadPowerhouse);
+            document.getElementById('dr-val-avg-load-substation').textContent = n(daily.avgLoadSubstation);
+            document.getElementById('dr-val-plant-factor').textContent = n(daily.plantFactor);
+            
+            document.getElementById('dr-val-generation').textContent = n(daily.generation / 1000, 3);
+            document.getElementById('dr-val-export-plant').textContent = n(daily.exportPlant / 1000, 3);
+            document.getElementById('dr-val-export-substation').textContent = n(daily.exportSubstation / 1000, 3);
+            document.getElementById('dr-val-cumulative-export-month').textContent = n(monthly.cumulativeExport / 1000, 3);
+            document.getElementById('dr-val-guaranteed-energy').textContent = n(monthly.guaranteedEnergy / 1000, 3);
+            document.getElementById('dr-val-availability-declaration').textContent = n(monthly.availabilityDeclaration / 1000, 3);
+            document.getElementById('dr-val-energy-difference').textContent = n(monthly.energyDifference / 1000, 3);
+            
+            document.getElementById('dr-val-monthly-plant-factor').textContent = n(monthly.monthlyPlantFactor);
+            document.getElementById('dr-val-plant-factor-till-date').textContent = n(monthly.plantFactorTillDate);
+            document.getElementById('dr-val-remaining-days').textContent = n(monthly.remainingDays, 0);
+            
+            document.getElementById('dr-val-transformer-loss-month').textContent = n(monthly.cumulativeTransformerLoss / 1000, 3);
+            document.getElementById('dr-val-station-consumption-month').textContent = n(monthly.cumulativeStationConsumption / 1000, 3);
+            document.getElementById('dr-val-transmission-loss-month').textContent = n(monthly.cumulativeTransmissionLoss / 1000, 3);
+            document.getElementById('dr-val-nea-curtailed-month').textContent = n(monthly.cumulativeNeaCurtailed, 3); 
+            document.getElementById('dr-val-other-losses-month').textContent = n(monthly.cumulativeOtherLosses, 3); 
+            
+            document.getElementById('dr-val-unit1-hours-day').textContent = n(daily.unit1Hours, 1);
+            document.getElementById('dr-val-unit2-hours-day').textContent = n(daily.unit2Hours, 1);
+            document.getElementById('dr-val-unit1-counter').textContent = n(pToday.unit1_counter, 1);
+            document.getElementById('dr-val-unit2-counter').textContent = n(pToday.unit2_counter, 1);
+
+            drUpdatePieChart(monthly);
+            drUpdateTrendChart(pIdx);
+            
         } catch (error) {
             console.error('Report Error:', error);
-            showNotification('Failed to generate report: ' + error.message, true);
+            alert('Failed to generate report: ' + error.message);
         }
     }
 
-    // Similarly, replace any other alert calls in the file with showNotification.
+    function drUpdatePieChart(monthly) {
+        const ctx = document.getElementById('dr-energy-pie-chart').getContext('2d');
+        const chartData = {
+            labels: [ 'Dispatched', 'Transformer losses', 'Station Consumption', 'Transmission Loss', 'NEA Curtailed', 'Other Losses' ],
+            datasets: [{
+                data: [ Math.max(0, monthly.cumulativeExport / 1000), Math.max(0, monthly.cumulativeTransformerLoss / 1000), Math.max(0, monthly.cumulativeStationConsumption / 1000), Math.max(0, monthly.cumulativeTransmissionLoss / 1000), Math.max(0, monthly.cumulativeNeaCurtailed), Math.max(0, monthly.cumulativeOtherLosses) ],
+                backgroundColor: [ '#1e3a8a', '#d97706', '#ca8a04', '#facc15', '#0ea5e9', '#10b981' ],
+                borderWidth: 2
+            }]
+        };
+        if (drPieChartInstance) {
+            drPieChartInstance.data = chartData;
+            drPieChartInstance.update();
+        } else {
+            drPieChartInstance = new Chart(ctx, { type: 'pie', data: chartData, options: { responsive: true, maintainAspectRatio: false } });
+        }
+    }
 
-    // The rest of the file remains identical, except for the import of showNotification and parseToUTCDate.
+    function drUpdateTrendChart(pIdx) {
+        const recentData = plantData.slice(Math.max(0, pIdx - 30), pIdx + 1);
+        const labels = [], dailyValues = [];
+
+        for (let i = 1; i < recentData.length; i++) {
+            const todayP = recentData[i]; const yestP = recentData[i - 1];
+            const bT = balanchData.find(d => d.eng_date === todayP.id);
+            const bY = balanchData.find(d => d.eng_date === yestP.id);
+            if(bT && bY) {
+                labels.push(todayP.id.slice(5)); 
+                dailyValues.push(getActiveReading(bT, 'export') - getActiveReading(bY, 'export'));
+            }
+        }
+
+        const ctx = document.getElementById('dr-daily-trend-chart').getContext('2d');
+        const chartData = { labels: labels, datasets: [{ label: 'Dispatched (MWh)', data: dailyValues, backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1 }] };
+
+        if (drTrendChartInstance) { drTrendChartInstance.data = chartData; drTrendChartInstance.update(); } 
+        else { drTrendChartInstance = new Chart(ctx, { type: 'bar', data: chartData, options: { responsive: true, maintainAspectRatio: false } }); }
+    }
+
+    document.getElementById('dr-download-jpg').addEventListener('click', async () => {
+        const btn = document.getElementById('dr-download-jpg');
+        document.getElementById('dr-download-spinner').classList.remove('hidden');
+        btn.disabled = true;
+        try {
+            const canvas = await html2canvas(document.getElementById('dr-report-content'), { scale: 2, useCORS: true });
+            const link = document.createElement('a');
+            link.download = `Makari_Gad_Daily_${document.getElementById('dr-display-nepali-date').textContent.replace(/ /g, '_')}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.click();
+        } catch (error) { alert('Could not generate the image.'); } 
+        finally {
+            document.getElementById('dr-download-spinner').classList.add('hidden');
+            btn.disabled = false;
+        }
+    });
+
+   
   </script>
 </body>
 </html>

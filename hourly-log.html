@@ -15,28 +15,36 @@
     <script src="hourly-log-tools.js"></script>
     <link rel="stylesheet" href="hourly-log.css">
 </head>
-<body class="flex flex-col min-h-screen text-slate-800">
+<body class="flex flex-col min-h-screen text-slate-800 bg-slate-100">
 
     <div id="global-header-container" class="shrink-0 no-print"></div>
 
     <main class="flex-grow p-4 md:p-6 w-full flex flex-col gap-6 max-w-[1600px] mx-auto">
         
-        <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900">Hourly Log Master Input</h1>
-                <div class="text-sm mt-1">
-                    <span class="mr-2 text-slate-500">👤 User: <span id="hourly-user-name" class="font-bold text-indigo-600">Authenticating...</span></span>
-                    <span id="hourly-user-role" class="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded text-xs font-bold uppercase tracking-wider">...</span>
+        <div class="flex flex-wrap justify-between items-center bg-white px-5 py-3.5 rounded-xl shadow-sm border border-slate-200 gap-3">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-base font-black text-slate-900 uppercase tracking-wide">Hourly Log — Master Input</h1>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="text-xs text-slate-500">Operator: <span id="hourly-user-name" class="font-bold text-indigo-600">Authenticating...</span></span>
+                        <span id="hourly-user-role" class="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded text-[10px] font-black uppercase tracking-wider">...</span>
+                    </div>
                 </div>
             </div>
-            <button type="button" onclick="deleteAllLogsForDay()" class="admin-only role-hidden bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 font-bold py-1.5 px-3 rounded text-sm shadow-sm transition">
-                ⚠️ Delete All Data For Day
-            </button>
+            <div class="flex items-center gap-2">
+                <div id="log-count-badge" class="hidden text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg uppercase tracking-wider"></div>
+                <button type="button" onclick="deleteAllLogsForDay()" class="admin-only role-hidden bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold py-1.5 px-3 rounded-lg text-xs shadow-sm transition">
+                    ⚠️ Delete Day Data
+                </button>
+            </div>
         </div>
 
         <div id="validation-banner" class="hidden fixed bottom-6 right-6 z-[100] w-[400px] max-h-[50vh] overflow-y-auto p-5 rounded-xl bg-white border-l-4 border-rose-500 text-rose-800 text-sm shadow-2xl custom-scroll"></div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style="min-height:0;">
             
             <div class="flex overflow-x-auto bg-slate-50 border-b border-slate-200 custom-scroll no-print" id="form-tabs">
                 <div class="section-tab active px-5 py-3.5 text-sm font-bold text-indigo-700 transition-colors whitespace-nowrap cursor-pointer" data-target="hourly-form">📝 Master Inputs</div>
@@ -53,7 +61,7 @@
                 
                 <form id="hourly-form" class="section-content active">
                     
-                    <div class="flex flex-wrap items-end justify-between bg-indigo-50 p-4 rounded-lg border border-indigo-200 mb-6 gap-4 sticky top-0 z-40 shadow-sm">
+                    <div class="flex flex-wrap items-end justify-between bg-white p-4 rounded-xl border border-slate-200 mb-6 gap-4 sticky top-0 z-40 shadow-md">
                         <div class="flex flex-wrap items-end gap-4 w-full md:w-auto">
                             <div>
                                 <label class="form-label text-indigo-900 mb-1">English Date</label>
@@ -82,7 +90,10 @@
                         </div>
                     </div>
 
-                    <h3 class="font-bold text-slate-800 mb-2 pl-1 uppercase tracking-wider text-sm text-indigo-700">1. Generation Summary</h3>
+                    <div class="section-heading mb-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        1. Generation Summary
+                    </div>
                     <div class="excel-table-wrapper w-full overflow-x-auto mb-8">
                         <table class="excel-table">
                             <thead>
@@ -125,7 +136,10 @@
                         </table>
                     </div>
 
-                    <h3 class="font-bold text-slate-800 mb-1 pl-1 uppercase tracking-wider text-sm text-indigo-700">2. Schedule 3 (Electrical Log)</h3>
+                    <div class="section-heading mb-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
+                        2. Schedule 3 — Electrical Log
+                    </div>
                     
                     <div class="flex items-center gap-2 mb-1 pl-1"><span class="font-bold text-xs text-slate-600">Generating Unit 1</span></div>
                     <div class="excel-table-wrapper mb-4 w-full overflow-x-auto">
@@ -202,7 +216,10 @@
                         </table>
                     </div>
 
-                    <h3 class="font-bold text-slate-800 mb-2 pl-1 uppercase tracking-wider text-sm text-indigo-700">3. Generator Temp & Oil Log</h3>
+                    <div class="section-heading mb-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10"/></svg>
+                        3. Generator Temp &amp; Oil Log
+                    </div>
                     <div class="excel-table-wrapper w-full overflow-x-auto mb-8">
                         <table class="excel-table" style="table-layout: auto !important; min-width: 1200px;">
                             <thead>
@@ -265,7 +282,10 @@
                         </table>
                     </div>
 
-                    <h3 class="font-bold text-slate-800 mb-2 pl-1 uppercase tracking-wider text-sm text-indigo-700">4. Transformers & Diesel Gen</h3>
+                    <div class="section-heading mb-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                        4. Transformers &amp; Diesel Generator
+                    </div>
                     <div class="excel-table-wrapper mb-8 w-full overflow-x-auto">
                         <table class="excel-table">
                             <thead>

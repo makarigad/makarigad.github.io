@@ -14,11 +14,11 @@
       
     
 </head>
-<body class="flex flex-col h-screen text-slate-800 relative">
+<body class="flex flex-col h-screen text-slate-800 relative bg-slate-100">
 
         <div id="global-header-container" class="shrink-0 no-print z-50 relative"></div>
 
-    <div class="bg-slate-100 px-4 border-b border-slate-300 flex space-x-2 shrink-0 pt-2 overflow-x-auto custom-scroll">
+    <div class="bg-white px-4 border-b-2 border-slate-200 flex space-x-1 shrink-0 pt-2 overflow-x-auto custom-scroll shadow-sm">
         <div class="tab-btn active rounded-t-lg" data-target="daily-tab">📊 Daily Metering</div>
         <div class="tab-btn rounded-t-lg" data-target="balanch-tab">⚡ Substation Metering</div>
         <div class="tab-btn rounded-t-lg" data-target="outages-tab">⚠️ Outages & Losses</div>
@@ -34,8 +34,8 @@
         <section id="daily-tab" class="h-full flex flex-col">
             <div class="flex justify-between items-center mb-3 shrink-0">
                 <div>
-                    <h2 class="text-xl font-bold text-slate-800">Powerhouse Daily Meter Readings</h2>
-                    <p class="text-xs text-slate-500 font-medium">Log internal generator readings, unit running hours, and transformer data.</p>
+                    <h2 class="text-base font-black text-slate-900 uppercase tracking-wide">Powerhouse Daily Meter Readings</h2>
+                    <p class="text-[11px] text-slate-500 font-medium mt-0.5">Log internal generator readings, unit running hours, and transformer data.</p>
                 </div>
                 <div class="flex items-center space-x-2">
                     <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>

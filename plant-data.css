@@ -1,122 +1,97 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-body { 
-    font-family: 'Inter', sans-serif; 
-    background: #f8fafc; 
-    overflow: hidden; 
+body {
+  font-family: 'Inter', sans-serif;
+  background: #f1f5f9;
+  overflow: hidden;
 }
 
-th, td { 
-    padding: 6px 8px !important; 
-    font-size: 0.75rem; 
-    border: 1px solid #cbd5e1; 
-}
+/* ── Scrollbars ── */
+::-webkit-scrollbar { height: 5px; width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
 
-th { 
-    background-color: #f1f5f9; 
-    font-weight: 700; 
-    text-align: left; 
-    color: #334155; 
-    position: sticky; 
-    top: 0; 
-    z-index: 10; 
-    white-space: nowrap; 
-}
-
-.table-container { 
-    overflow: auto; 
-    background: #fff; 
-    max-height: calc(100vh - 190px); 
-}
-
-.input-cell { 
-    width: 100%; 
-    padding: 4px 6px; 
-    border: 1px solid #cbd5e1; 
-    border-radius: 4px; 
-    outline: none; 
-    font-size: 0.75rem; 
-    background: #fff; 
-}
-
-.input-cell:focus { 
-    border-color: #4f46e5; 
-    box-shadow: 0 0 0 1px #4f46e5; 
-}
-
-.tab-btn { 
-    padding: 10px 20px; 
-    font-weight: 600; 
-    color: #64748b; 
-    cursor: pointer; 
-    border-bottom: 2px solid transparent; 
-    transition: all 0.2s; 
-    white-space: nowrap; 
-}
-
-.tab-btn.active { 
-    color: #4f46e5; 
-    border-bottom-color: #4f46e5; 
-    background-color: #fff; 
-}
-
-.hidden-tab { display: none !important; }
+/* ── Role / tab gating ── */
 .role-hidden { display: none !important; }
-.reason-col { min-width: 300px; }
+.hidden-tab  { display: none !important; }
 
-.truncate-text { 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    white-space: nowrap; 
-    max-width: 150px; 
+/* ── Notification modal ── */
+#notification-modal { transition: opacity 0.25s ease, transform 0.25s ease; }
+
+/* ── Table base ── */
+th, td {
+  padding: 6px 8px !important;
+  font-size: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+th {
+  background-color: #f1f5f9;
+  font-weight: 700; text-align: left;
+  color: #334155; position: sticky; top: 0; z-index: 10;
+  white-space: nowrap;
+}
+tbody tr { transition: background-color 0.1s ease; }
+tbody tr:hover td { background-color: #f8fafc; }
+
+/* ── Table container ── */
+.table-container {
+  overflow: auto; background: #fff;
+  max-height: calc(100vh - 190px);
+  border-radius: 0.5rem;
 }
 
-.custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
-.custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
-
-#notification-modal { transition: all 0.25s ease; }
-
-/* ── Rainfall Tab: allow panels to scroll on short screens ─────────── */
-#rainfall-tab {
-    overflow-y: auto;
+/* ── Input cells ── */
+.input-cell {
+  width: 100%; padding: 4px 6px;
+  border: 1px solid #e2e8f0; border-radius: 4px;
+  outline: none; font-size: 0.75rem; background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-
-/* ── Chart containers: ensure minimum visible height ───────────────── */
-#rainfall-tab .relative.h-\[250px\] {
-    min-height: 220px;
-}
-
-/* ── Sticky summary card numbers: better visual hierarchy ───────────── */
-#sum-headworks, #sum-dam, #avg-headworks, #rainy-days {
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.5px;
-}
-
-/* ── Table row hover: smoother transition ───────────────────────────── */
-tbody tr {
-    transition: background-color 0.12s ease;
-}
-
-/* ── Year checkbox group: wrap neatly on small screens ─────────────── */
-#rf-year-checkboxes {
-    min-height: 28px;
-    align-items: center;
-}
-
-/* ── Active tab: sharper indicator ─────────────────────────────────── */
-.tab-btn.active {
-    background-color: #fff;
-    border-radius: 6px 6px 0 0;
-}
-
-/* ── Input focus ring: consistent across all browsers ──────────────── */
 .input-cell:focus {
-    outline: none;
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79,70,229,0.18);
 }
 
-/* ── Notification modal: smoother entrance ──────────────────────────── */
-#notification-modal {
-    transition: opacity 0.25s ease, transform 0.25s ease;
+/* ── TAB BAR ── */
+.tab-btn {
+  padding: 0.7rem 1.2rem;
+  font-weight: 700;
+  font-size: 0.73rem;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: #4f46e5; background: #f5f3ff; }
+.tab-btn.active {
+  color: #4f46e5;
+  border-bottom-color: #4f46e5;
+  background-color: #fff;
+  border-radius: 6px 6px 0 0;
+}
+
+/* ── Reason column ── */
+.reason-col { min-width: 280px; }
+
+/* ── Truncate ── */
+.truncate-text {
+  overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 150px;
+}
+
+/* ── Rainfall tab ── */
+#rainfall-tab { overflow-y: auto; }
+#rainfall-tab .relative.h-\[250px\] { min-height: 220px; }
+
+/* ── Year checkbox group ── */
+#rf-year-checkboxes { min-height: 28px; align-items: center; }
+
+/* ── Input focus ring ── */
+.input-cell:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79,70,229,0.18);
 }

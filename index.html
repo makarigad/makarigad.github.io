@@ -8,124 +8,273 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <link rel="manifest" href="./manifest.json">
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #f4f6f8; }
-    ::-webkit-scrollbar { display: none; }
-    
+    body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    /* ── Clickable username (unchanged from original) ── */
     .clickable-username {
-        cursor: pointer !important;
-        color: #4f46e5 !important;
-        text-decoration: underline !important;
-        text-decoration-style: dashed !important;
-        text-underline-offset: 4px !important;
-        padding: 4px 8px !important;
-        border-radius: 6px !important;
-        transition: all 0.2s ease-in-out !important;
-        display: inline-block !important;
-        pointer-events: auto !important;
-        position: relative !important;
-        z-index: 100 !important;
+        cursor: pointer !important; color: #4f46e5 !important;
+        text-decoration: underline !important; text-decoration-style: dashed !important;
+        text-underline-offset: 4px !important; padding: 4px 8px !important;
+        border-radius: 6px !important; transition: all 0.2s ease-in-out !important;
+        display: inline-block !important; pointer-events: auto !important;
+        position: relative !important; z-index: 100 !important;
     }
     .clickable-username:hover { color: #312e81 !important; background-color: #e0e7ff !important; }
-    
     .offline-disabled { opacity: 0.5 !important; cursor: not-allowed !important; text-decoration: none !important; pointer-events: none !important; }
 
-    .live-dot { height: 12px; width: 12px; background-color: #10b981; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse-green 2s infinite; }
-    @keyframes pulse-green { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+    /* ── Live dot ── */
+    .live-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .live-dot.online { background: #10b981; box-shadow: 0 0 0 0 rgba(16,185,129,0.7); animation: pulse-g 2s infinite; }
+    .live-dot.offline { background: #f59e0b; box-shadow: 0 0 0 0 rgba(245,158,11,0.7); animation: pulse-a 2s infinite; }
+    .live-dot.error  { background: #ef4444; box-shadow: 0 0 0 0 rgba(239,68,68,0.7); animation: pulse-r 2s infinite; }
+    @keyframes pulse-g { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.7)} 70%{box-shadow:0 0 0 7px rgba(16,185,129,0)} }
+    @keyframes pulse-a { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.7)} 70%{box-shadow:0 0 0 7px rgba(245,158,11,0)} }
+    @keyframes pulse-r { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.7)} 70%{box-shadow:0 0 0 7px rgba(239,68,68,0)} }
+
+    /* ── Role gating ── */
+    .role-hidden { display: none !important; }
+
+    /* ── SCADA big number ── */
+    .scada-glow { text-shadow: 0 0 30px rgba(52,211,153,0.35), 0 0 60px rgba(52,211,153,0.15); }
+
+    /* ── Nav card ── */
+    .nav-card { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+    .nav-card:hover { transform: translateY(-2px); }
+
+    /* ── Metric number ── */
+    .num { font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+
+    /* ── Card entrance ── */
+    .card-fade { animation: fade-up 0.4s ease both; }
+    @keyframes fade-up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    /* ── SCADA panel grid lines ── */
+    .scada-cell { border-top: 1px solid rgba(255,255,255,0.06); }
   </style>
 </head>
-<body class="text-slate-800 h-screen w-screen overflow-hidden flex flex-col bg-slate-50">
+<body class="text-slate-800 flex flex-col" style="min-height:100vh;">
 
-  <div id="global-header-container" class="shrink-0 no-print z-50 relative"></div>
+  <!-- ─── Global header ─────────────────────────────────────────── -->
+  <div id="global-header-container" class="shrink-0 z-50 relative no-print"></div>
 
-  <main id="dashboard-main" class="flex-grow p-4 md:p-6 lg:p-8 max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 min-h-0 overflow-y-auto relative">
+  <!-- ─── Main ─────────────────────────────────────────────────── -->
+  <main class="flex-grow p-4 md:p-5 lg:p-6 max-w-[1700px] mx-auto w-full flex flex-col gap-5">
 
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 flex flex-col h-full">
-        <div class="flex justify-between items-center mb-10 border-b border-slate-100 pb-4">
-            <h2 class="text-xl font-black text-slate-800">Database Snapshot (Today)</h2>
-            <span id="card-update" class="text-xs font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">Date: Loading...</span>
-        </div>
-        
-        <div class="grid grid-cols-2 gap-y-10 gap-x-8 flex-grow content-start">
-            <div class="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-50">
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Gross Gen</div>
-                <div id="card-gen" class="text-4xl font-black text-indigo-600 tracking-tight">—</div>
-            </div>
-            <div class="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-50">
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Net Export</div>
-                <div id="card-export" class="text-4xl font-black text-emerald-500 tracking-tight">—</div>
-            </div>
-            <div class="bg-blue-50/50 p-6 rounded-2xl border border-blue-50">
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Plant Factor</div>
-                <div id="card-pf" class="text-4xl font-black text-blue-500 tracking-tight">—</div>
-            </div>
-            <div class="bg-rose-50/50 p-6 rounded-2xl border border-rose-50">
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Total Outages</div>
-                <div id="card-outages" class="text-4xl font-black text-rose-500 tracking-tight">—</div>
-            </div>
-            
-            <div class="col-span-2 grid grid-cols-2 gap-6 border-t border-slate-100 pt-8 mt-2">
-                <div class="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Unit 1 Hrs</div>
-                    <div id="card-u1-hrs" class="text-lg font-black text-slate-700">—</div>
-                </div>
-                <div class="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Unit 2 Hrs</div>
-                    <div id="card-u2-hrs" class="text-lg font-black text-slate-700">—</div>
-                </div>
-                <div class="flex justify-between items-center bg-amber-50 p-4 rounded-xl border border-amber-100">
-                    <div class="text-xs font-bold text-amber-600 uppercase tracking-widest">Contract (MCE)</div>
-                    <div id="card-mce" class="text-lg font-black text-amber-800">—</div>
-                </div>
-                <div class="flex justify-between items-center bg-amber-50 p-4 rounded-xl border border-amber-100">
-                    <div class="text-xs font-bold text-amber-600 uppercase tracking-widest">Declared (AD)</div>
-                    <div id="card-ad" class="text-lg font-black text-amber-800">—</div>
-                </div>
-            </div>
-        </div>
+    <!-- Status bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <!-- card-update: classes must stay as-is — JS replaces them on offline -->
+        <span id="card-update" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Date: Loading...
+        </span>
+      </div>
+      <div id="page-conn-bar" class="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+        <span id="page-conn-dot" class="live-dot online"></span>
+        <span id="page-conn-text">Online</span>
+      </div>
     </div>
 
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 flex flex-col h-full">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-black text-slate-800 flex items-center gap-3">
-                <span class="live-dot"></span> Live Telemetry
-            </h2>
-            <div id="scada-status" class="text-xs font-bold text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200">Connecting...</div>
-        </div>
-        
-        <div class="bg-slate-900 rounded-3xl p-8 flex flex-col items-center justify-center text-center flex-grow mb-6 shadow-inner relative overflow-hidden border-4 border-slate-800">
-            <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-            <div class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 relative z-10">Active Generation</div>
-            <div class="text-7xl md:text-8xl lg:text-9xl font-black text-emerald-400 tracking-tight relative z-10 drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
-                <span id="scada-power">--</span> <span class="text-4xl md:text-6xl font-bold ml-2 text-emerald-500/80">KW</span>
-            </div>
-        </div>
-        
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col justify-center items-center text-center">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Mode</div>
-                <div class="text-lg font-black text-slate-700" id="scada-control">--</div>
-            </div>
-            <div class="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 flex flex-col justify-center items-center text-center">
-                <div class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Water Lvl</div>
-                <div class="text-lg font-black text-blue-600"><span id="scada-level">--</span> <span class="text-xs text-blue-400 font-bold ml-0.5">cm</span></div>
-            </div>
-            <div class="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100 flex flex-col justify-center items-center text-center">
-                <div class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Day Energy</div>
-                <div class="text-lg font-black text-emerald-600"><span id="scada-day">--</span> <span class="text-xs text-emerald-400 font-bold ml-0.5">MWh</span></div>
-            </div>
-            <div class="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100 flex flex-col justify-center items-center text-center">
-                <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Month Energy</div>
-                <div class="text-lg font-black text-indigo-600"><span id="scada-month">--</span> <span class="text-xs text-indigo-400 font-bold ml-0.5">MWh</span></div>
-            </div>
-            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col justify-center items-center text-center">
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Energy</div>
-                <div class="text-lg font-black text-slate-800"><span id="scada-total">--</span> <span class="text-xs text-slate-400 font-bold ml-0.5">MWh</span></div>
-            </div>
-        </div>
-    </div>
+    <!-- ─── Main two-column grid ─────────────────────────────────── -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 flex-grow min-h-0">
 
-  </main>
+      <!-- ─── Left: Database snapshot (3/5) ───────────────────── -->
+      <div class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm card-fade flex flex-col overflow-hidden" style="animation-delay:0.05s">
 
+        <!-- Card header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+          <div>
+            <h2 class="text-sm font-black text-slate-800 uppercase tracking-wide">Today's Generation</h2>
+            <p class="text-[10px] text-slate-400 font-medium mt-0.5">Database snapshot · auto-refreshes</p>
+          </div>
+          <div class="w-2 h-2 rounded-full bg-indigo-300"></div>
+        </div>
+
+        <!-- Hero row: Gross Gen + Net Export -->
+        <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+          <div class="p-6 flex flex-col justify-between">
+            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Generation</div>
+            <div id="card-gen" class="text-3xl font-black text-indigo-600 num">—</div>
+            <div class="text-[10px] text-indigo-300 font-bold mt-1 uppercase tracking-wider">Both units combined</div>
+          </div>
+          <div class="p-6 flex flex-col justify-between">
+            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Net Export</div>
+            <div id="card-export" class="text-3xl font-black text-emerald-500 num">—</div>
+            <div class="text-[10px] text-emerald-300 font-bold mt-1 uppercase tracking-wider">To substation</div>
+          </div>
+        </div>
+
+        <!-- Secondary row: Plant Factor + Outages -->
+        <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+          <div class="p-5 flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Plant Factor</div>
+              <div id="card-pf" class="text-2xl font-black text-blue-600 num">—</div>
+            </div>
+          </div>
+          <div class="p-5 flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Outages</div>
+              <div id="card-outages" class="text-2xl font-black text-rose-500 num">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detail row: Unit hours + Contract energy -->
+        <div class="p-5 grid grid-cols-2 gap-3 flex-grow content-start">
+          <div class="bg-slate-50 border border-slate-100 rounded-xl p-4">
+            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Unit 1 Runtime</div>
+            <div id="card-u1-hrs" class="text-xl font-black text-slate-700 num">—</div>
+          </div>
+          <div class="bg-slate-50 border border-slate-100 rounded-xl p-4">
+            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Unit 2 Runtime</div>
+            <div id="card-u2-hrs" class="text-xl font-black text-slate-700 num">—</div>
+          </div>
+          <div class="bg-amber-50 border border-amber-100 rounded-xl p-4">
+            <div class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5">Contract (MCE)</div>
+            <div id="card-mce" class="text-xl font-black text-amber-800 num">—</div>
+          </div>
+          <div class="bg-amber-50 border border-amber-100 rounded-xl p-4">
+            <div class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5">Declared (AD)</div>
+            <div id="card-ad" class="text-xl font-black text-amber-800 num">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Right: Live telemetry (2/5) ─────────────────────── -->
+      <div class="lg:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 shadow-sm card-fade flex flex-col overflow-hidden" style="animation-delay:0.1s">
+
+        <!-- Card header -->
+        <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2.5">
+            <span class="live-dot online"></span>
+            <h2 class="text-sm font-black text-slate-100 uppercase tracking-wide">Live Telemetry</h2>
+          </div>
+          <!-- scada-status: className fully replaced by JS, initial class is just a placeholder -->
+          <div id="scada-status" class="text-[10px] font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-lg border border-slate-700">Connecting...</div>
+        </div>
+
+        <!-- Big power display -->
+        <div class="flex-grow flex flex-col items-center justify-center py-8 px-5 text-center relative overflow-hidden">
+          <!-- subtle glow effect -->
+          <div class="absolute inset-0 pointer-events-none" style="background:radial-gradient(ellipse 80% 60% at 50% 60%, rgba(16,185,129,0.07) 0%, transparent 70%);"></div>
+
+          <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Active Generation</div>
+
+          <div class="flex items-end justify-center gap-2 relative z-10">
+            <span id="scada-power" class="text-8xl font-black text-emerald-400 scada-glow" style="font-variant-numeric:tabular-nums; letter-spacing:-3px; line-height:1;">--</span>
+            <span class="text-3xl font-bold text-emerald-600 mb-1">KW</span>
+          </div>
+
+          <div class="mt-5 flex items-center gap-2 bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-2">
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Mode</span>
+            <span class="text-slate-200 font-black text-sm" id="scada-control">--</span>
+          </div>
+        </div>
+
+        <!-- SCADA data grid -->
+        <div class="grid grid-cols-2 border-t border-slate-800">
+          <div class="scada-cell border-r border-slate-800 p-4 text-center">
+            <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Water Level</div>
+            <div class="font-black text-blue-400 num">
+              <span id="scada-level" class="text-lg">--</span><span class="text-xs text-blue-700 ml-1">cm</span>
+            </div>
+          </div>
+          <div class="scada-cell p-4 text-center">
+            <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Day Energy</div>
+            <div class="font-black text-emerald-400 num">
+              <span id="scada-day" class="text-lg">--</span><span class="text-xs text-emerald-700 ml-1">MWh</span>
+            </div>
+          </div>
+          <div class="scada-cell border-r border-slate-800 p-4 text-center">
+            <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Month Energy</div>
+            <div class="font-black text-indigo-400 num">
+              <span id="scada-month" class="text-lg">--</span><span class="text-xs text-indigo-700 ml-1">MWh</span>
+            </div>
+          </div>
+          <div class="scada-cell p-4 text-center">
+            <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Total Energy</div>
+            <div class="font-black text-slate-300 num">
+              <span id="scada-total" class="text-lg">--</span><span class="text-xs text-slate-600 ml-1">MWh</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /main grid -->
+
+    <!-- ─── Quick Navigation (hidden until logged in) ──────────── -->
+    <div id="quick-nav-section" class="hidden card-fade" style="animation-delay:0.15s">
+      <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Quick Access</div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+        <a href="plant-data.html" class="nav-card bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-indigo-300 hover:shadow-md group no-underline">
+          <div class="w-10 h-10 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <div>
+            <div class="text-xs font-black text-slate-800">Data Entry</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Plant daily data</div>
+          </div>
+        </a>
+
+        <a href="hourly-log.html" class="nav-card bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-emerald-300 hover:shadow-md group no-underline">
+          <div class="w-10 h-10 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition">
+            <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div>
+            <div class="text-xs font-black text-slate-800">Hourly Log</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Shift log sheet</div>
+          </div>
+        </a>
+
+        <a href="energy-summary.html" class="nav-card staff-only role-hidden bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-teal-300 hover:shadow-md group no-underline">
+          <div class="w-10 h-10 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-teal-100 transition">
+            <svg class="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <div>
+            <div class="text-xs font-black text-slate-800">Reports</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Energy summary</div>
+          </div>
+        </a>
+
+        <a href="nepali-calendar.html" class="nav-card admin-only role-hidden bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-amber-300 hover:shadow-md group no-underline">
+          <div class="w-10 h-10 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-amber-100 transition">
+            <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <div>
+            <div class="text-xs font-black text-slate-800">Calendar</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Nepali calendar</div>
+          </div>
+        </a>
+
+        <a href="user-management.html" class="nav-card admin-only role-hidden bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-red-300 hover:shadow-md group no-underline">
+          <div class="w-10 h-10 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-red-100 transition">
+            <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          </div>
+          <div>
+            <div class="text-xs font-black text-slate-800">Users</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Team management</div>
+          </div>
+        </a>
+
+      </div>
+    </div><!-- /quick-nav -->
+
+  </main><!-- /main -->
+
+  <!-- ─── Login modal (structure & IDs unchanged) ───────────────── -->
   <div id="login-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] hidden flex items-center justify-center">
     <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-sm relative transform transition-all">
         <button onclick="document.getElementById('login-modal').classList.add('hidden')" class="absolute top-4 right-5 text-3xl text-slate-400 hover:text-slate-600">&times;</button>
@@ -138,7 +287,12 @@
             </div>
             <div>
                 <label class="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Password</label>
-                <input type="password" id="login-password" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+                <div class="relative">
+                  <input type="password" id="login-password" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition pr-14" />
+                  <button type="button" id="lm-toggle-pw" tabindex="-1"
+                    onclick="const i=document.getElementById('login-password');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'Show':'Hide';"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 hover:text-indigo-600 transition uppercase tracking-wider">Show</button>
+                </div>
             </div>
             <div id="login-error" class="text-rose-500 text-xs font-bold hidden text-center bg-rose-50 p-3 rounded-lg border border-rose-100"></div>
             <button type="submit" class="w-full py-3.5 mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5 text-sm uppercase tracking-wide">Authenticate</button>
@@ -146,16 +300,15 @@
     </div>
   </div>
 
+  <!-- ─── Profile modal (structure & IDs unchanged) ─────────────── -->
   <div id="profile-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
     <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-slate-200 relative max-h-[90vh] overflow-y-auto custom-scroll">
         <button onclick="document.getElementById('profile-modal').classList.add('hidden'); document.getElementById('profile-modal').classList.remove('flex');" class="absolute top-4 right-5 text-3xl text-slate-400 hover:text-slate-600">&times;</button>
         <h2 class="text-2xl font-black text-indigo-900 mb-6 flex items-center gap-2">👤 My Profile</h2>
-        
         <form id="profile-form" class="space-y-4">
             <div id="offline-profile-warning" class="hidden bg-amber-50 border-l-4 border-amber-500 p-3 text-xs text-amber-800 font-bold mb-4">
                 ⚠️ You are offline. Profile edits and password changes require an internet connection.
             </div>
-
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Email Address <span class="text-rose-500 lowercase font-normal">(Cannot be changed)</span></label>
                 <input type="email" id="prof-email" class="w-full border border-slate-200 bg-slate-100 text-slate-500 font-bold rounded p-2.5 text-sm cursor-not-allowed" readonly>
@@ -184,17 +337,21 @@
                     <input type="text" id="prof-company" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
                 </div>
             </div>
-            
             <div class="my-4 border-t border-slate-200 pt-4">
-                <label class="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Change Password <span class="text-slate-400 lowercase font-normal">(Leave blank to keep current password)</span></label>
+                <label class="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Change Password <span class="text-slate-400 lowercase font-normal">(Leave blank to keep current)</span></label>
                 <input type="password" id="prof-password" class="w-full border border-slate-300 rounded p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" placeholder="Type new password (min 6 chars)">
             </div>
-            
             <button type="submit" id="save-prof-btn" class="w-full bg-indigo-600 text-white font-bold py-3 mt-2 rounded-lg shadow hover:bg-indigo-700 transition uppercase tracking-widest text-sm">Save Profile Changes</button>
         </form>
     </div>
   </div>
 
+  <!-- ─── Notification toast (used by showNotification) ─────────── -->
+  <div id="notification-modal" class="fixed top-5 right-5 z-[200] opacity-0 -translate-y-4 transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-xl border-l-4 px-5 py-4" style="border-left-color:#10b981;">
+    <p id="notification-message" class="text-sm font-bold text-slate-700"></p>
+  </div>
+
+  <!-- ─── Service Worker ─────────────────────────────────────────── -->
   <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -205,11 +362,32 @@
     }
   </script>
 
-<script type="module">
-    import { supabase, initializeApplication } from './core-app.js';
+  <!-- ─── App Logic (all original code preserved + minimal additions) -->
+  <script type="module">
+    import { supabase, initializeApplication, showNotification } from './core-app.js';
 
     window.currentUserEmail = null;
     window.userRole = 'normal';
+
+    // ── Connection status bar (new) ───────────────────────────────
+    function updateConnBar(online) {
+        const bar  = document.getElementById('page-conn-bar');
+        const dot  = document.getElementById('page-conn-dot');
+        const text = document.getElementById('page-conn-text');
+        if (!bar) return;
+        if (online) {
+            bar.className  = 'flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl';
+            dot.className  = 'live-dot online';
+            text.textContent = 'Online';
+        } else {
+            bar.className  = 'flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl';
+            dot.className  = 'live-dot offline';
+            text.textContent = 'Offline Mode';
+        }
+    }
+    window.addEventListener('online',  () => updateConnBar(true));
+    window.addEventListener('offline', () => updateConnBar(false));
+    updateConnBar(navigator.onLine);
 
     // Helper to enforce 3-second timeout on hanging network requests
     const fetchWithTimeout = async (promise, ms = 3000) => {
@@ -228,7 +406,6 @@
             userNameEl.classList.add('clickable-username');
             userNameEl.title = "Click to Edit Profile";
             
-            // Visually disable the button if offline
             if (!navigator.onLine) {
                 userNameEl.classList.add('offline-disabled');
                 userNameEl.title = "Offline: Cannot edit profile";
@@ -238,7 +415,8 @@
                 e.preventDefault();
                 e.stopPropagation(); 
                 if (!navigator.onLine) {
-                    return alert("⚠️ You are currently offline.\n\nYou must have an internet connection to modify your profile or change your password.");
+                    showNotification("⚠️ You must be online to edit your profile.", true);
+                    return;
                 }
                 const modal = document.getElementById('profile-modal');
                 modal.classList.remove('hidden');
@@ -249,20 +427,13 @@
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Update UI dynamically if internet drops or returns while using the app
     window.addEventListener('offline', () => {
         const userNameEl = document.getElementById('display-user-name');
-        if (userNameEl) {
-            userNameEl.classList.add('offline-disabled');
-            userNameEl.title = "Offline: Cannot edit profile";
-        }
+        if (userNameEl) { userNameEl.classList.add('offline-disabled'); userNameEl.title = "Offline: Cannot edit profile"; }
     });
     window.addEventListener('online', () => {
         const userNameEl = document.getElementById('display-user-name');
-        if (userNameEl) {
-            userNameEl.classList.remove('offline-disabled');
-            userNameEl.title = "Click to Edit Profile";
-        }
+        if (userNameEl) { userNameEl.classList.remove('offline-disabled'); userNameEl.title = "Click to Edit Profile"; }
     });
 
     async function startPage() {
@@ -272,6 +443,10 @@
             window.currentUserEmail = sessionData.user.email;
             window.userRole = sessionData.role;
             if (navigator.onLine) fetchUserProfile(sessionData.user.email);
+
+            // Show quick-nav section for logged-in users
+            const qnav = document.getElementById('quick-nav-section');
+            if (qnav) qnav.classList.remove('hidden');
         }
 
         loadDatabasePreview();
@@ -284,7 +459,10 @@
     // -- Login Logic --
     document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if(!navigator.onLine) return alert("⚠️ No Internet Connection.\n\nYou cannot authenticate offline.");
+        if (!navigator.onLine) {
+            showNotification("⚠️ No internet connection — cannot authenticate offline.", true);
+            return;
+        }
 
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
@@ -312,11 +490,11 @@
             const query = supabase.from('user_roles').select('*').eq('email', email).maybeSingle();
             const { data, error } = await fetchWithTimeout(query, 3000);
             if (data) {
-                if(data.full_name) document.getElementById('prof-name').value = data.full_name;
-                if(data.position) document.getElementById('prof-position').value = data.position;
-                if(data.phone) document.getElementById('prof-phone').value = data.phone;
-                if(data.dob) document.getElementById('prof-dob').value = data.dob;
-                if(data.company) document.getElementById('prof-company').value = data.company;
+                if (data.full_name) document.getElementById('prof-name').value = data.full_name;
+                if (data.position) document.getElementById('prof-position').value = data.position;
+                if (data.phone)    document.getElementById('prof-phone').value = data.phone;
+                if (data.dob)      document.getElementById('prof-dob').value = data.dob;
+                if (data.company)  document.getElementById('prof-company').value = data.company;
             } else {
                 document.getElementById('prof-company').value = 'Makari Gad Hydroelectric Project';
             }
@@ -328,7 +506,10 @@
     // Save profile logic
     document.getElementById('profile-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!navigator.onLine) return alert("⚠️ You are offline. Cannot save profile changes.");
+        if (!navigator.onLine) {
+            showNotification("⚠️ You are offline. Cannot save profile changes.", true);
+            return;
+        }
 
         const btn = document.getElementById('save-prof-btn');
         const newPassword = document.getElementById('prof-password').value;
@@ -357,17 +538,17 @@
             const { error: dbErr } = await supabase.from('user_roles').upsert(payload, { onConflict: 'email' });
             if (dbErr) throw dbErr;
             
-            alert("✅ Profile updated successfully!");
+            showNotification("✅ Profile updated successfully!");
             document.getElementById('profile-modal').classList.add('hidden');
             document.getElementById('profile-modal').classList.remove('flex');
             
             if (payload.full_name) {
                 const nameHeader = document.getElementById('display-user-name');
-                if(nameHeader) nameHeader.innerText = payload.full_name;
+                if (nameHeader) nameHeader.innerText = payload.full_name;
             }
             
         } catch (err) {
-            alert("❌ Error saving profile: " + err.message);
+            showNotification("❌ Error saving profile: " + err.message, true);
         } finally {
             btn.innerText = "Save Profile Changes"; btn.disabled = false;
         }
@@ -388,12 +569,8 @@
             const y_dd = String(yDate.getDate()).padStart(2, '0');
             const yesterdayEngDate = `${y_yyyy}-${y_mm}-${y_dd}`;
 
-            // Check if offline before trying to fetch
-            if (!navigator.onLine) {
-                throw new Error("Offline Mode");
-            }
+            if (!navigator.onLine) throw new Error("Offline Mode");
 
-            // Use the 3-Second Timeout rule
             const calQuery = supabase.from('calendar_mappings').select('nep_date_str, nep_year, nep_month').eq('eng_date', todayEngDate).maybeSingle();
             const { data: calData, error: calErr } = await fetchWithTimeout(calQuery, 3000);
             
@@ -403,10 +580,10 @@
             document.getElementById('card-update').textContent = 'Today: ' + displayNepDate;
 
             const todayQuery = supabase.from('plant_data').select('*').eq('id', todayEngDate).maybeSingle();
-            const prevQuery = supabase.from('plant_data').select('*').eq('id', yesterdayEngDate).maybeSingle();
+            const prevQuery  = supabase.from('plant_data').select('*').eq('id', yesterdayEngDate).maybeSingle();
             
             const { data: todayData } = await fetchWithTimeout(todayQuery, 3000);
-            const { data: prevData } = await fetchWithTimeout(prevQuery, 3000);
+            const { data: prevData }  = await fetchWithTimeout(prevQuery, 3000);
 
             let dailyGrossGen = 0;
             let dailyExport = 0;
@@ -419,24 +596,25 @@
                 const expToday = (Number(todayData.export_substation) || 0) - (Number(prevData.export_substation) || 0);
                 dailyExport = Math.max(0, expToday);
 
-                if (todayData.unit1_counter != null && prevData.unit1_counter != null) document.getElementById('card-u1-hrs').textContent = Math.max(0, todayData.unit1_counter - prevData.unit1_counter).toFixed(1) + ' h';
-                if (todayData.unit2_counter != null && prevData.unit2_counter != null) document.getElementById('card-u2-hrs').textContent = Math.max(0, todayData.unit2_counter - prevData.unit2_counter).toFixed(1) + ' h';
+                if (todayData.unit1_counter != null && prevData.unit1_counter != null)
+                    document.getElementById('card-u1-hrs').textContent = Math.max(0, todayData.unit1_counter - prevData.unit1_counter).toFixed(1) + ' h';
+                if (todayData.unit2_counter != null && prevData.unit2_counter != null)
+                    document.getElementById('card-u2-hrs').textContent = Math.max(0, todayData.unit2_counter - prevData.unit2_counter).toFixed(1) + ' h';
             } else {
                 document.getElementById('card-u1-hrs').textContent = '0.0 h';
                 document.getElementById('card-u2-hrs').textContent = '0.0 h';
             }
 
-            const isKwh = dailyGrossGen > 1000;
+            const isKwh    = dailyGrossGen > 1000;
             const grossMWh = isKwh ? dailyGrossGen / 1000 : dailyGrossGen;
             const exportMWh = (isKwh || dailyExport > 1000) ? dailyExport / 1000 : dailyExport;
 
-            document.getElementById('card-gen').textContent = (todayData && grossMWh > 0) ? grossMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh';
+            document.getElementById('card-gen').textContent    = (todayData && grossMWh > 0) ? grossMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh';
             document.getElementById('card-export').textContent = (todayData && exportMWh > 0) ? exportMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh';
-            document.getElementById('card-pf').textContent = (todayData && grossMWh > 0) ? ((grossMWh / 240) * 100).toFixed(1) + '%' : '0.0%';
+            document.getElementById('card-pf').textContent     = (todayData && grossMWh > 0) ? ((grossMWh / 240) * 100).toFixed(1) + '%' : '0.0%';
 
             const oQuery = supabase.from('outages').select('loss_time_min').eq('id', todayEngDate).maybeSingle();
             const { data: oData } = await fetchWithTimeout(oQuery, 3000);
-            
             document.getElementById('card-outages').textContent = (oData && oData.loss_time_min) ? (oData.loss_time_min / 60).toFixed(1) + ' h' : '0.0 h';
 
             if (calData && calData.nep_year && calData.nep_month) {
@@ -444,26 +622,20 @@
                 const { data: mceData } = await fetchWithTimeout(mceQuery, 3000);
                 if (mceData) {
                     document.getElementById('card-mce').textContent = mceData.contract_energy ? mceData.contract_energy.toLocaleString('en-US') + ' MWh' : '—';
-                    document.getElementById('card-ad').textContent = mceData.total_ad ? mceData.total_ad.toLocaleString('en-US') + ' MWh' : '—';
+                    document.getElementById('card-ad').textContent  = mceData.total_ad ? mceData.total_ad.toLocaleString('en-US') + ' MWh' : '—';
                 }
             }
 
         } catch (e) { 
-            // If network times out, gracefully handle offline state!
             console.warn('Dashboard is offline:', e.message); 
             document.getElementById('card-update').textContent = 'Status: Offline Mode';
             document.getElementById('card-update').classList.replace('text-indigo-600', 'text-amber-600');
             document.getElementById('card-update').classList.replace('bg-indigo-50', 'bg-amber-50');
             document.getElementById('card-update').classList.replace('border-indigo-100', 'border-amber-200');
             
-            document.getElementById('card-gen').textContent = '—';
-            document.getElementById('card-export').textContent = '—';
-            document.getElementById('card-pf').textContent = '—';
-            document.getElementById('card-outages').textContent = '—';
-            document.getElementById('card-u1-hrs').textContent = '—';
-            document.getElementById('card-u2-hrs').textContent = '—';
-            document.getElementById('card-mce').textContent = '—';
-            document.getElementById('card-ad').textContent = '—';
+            ['card-gen','card-export','card-pf','card-outages','card-u1-hrs','card-u2-hrs','card-mce','card-ad'].forEach(id => {
+                document.getElementById(id).textContent = '—';
+            });
         }
     }
 
@@ -474,27 +646,25 @@
             if (!response.ok) throw new Error('Proxy error');
             const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
 
-            document.getElementById('scada-power').textContent = (doc.querySelector('#txtGaugeMeterValue1')?.innerText || '--').replace(/[^0-9.]/g, ''); 
-            document.getElementById('scada-control').textContent = doc.querySelector('#txtDisplayValue1')?.innerText || '--';
-            document.getElementById('scada-level').textContent = doc.querySelector('#txtDisplayValue2')?.innerText || '--';
-            document.getElementById('scada-total').textContent = doc.querySelector('#txtDisplayValue3')?.innerText || '--';
-            document.getElementById('scada-month').textContent = doc.querySelector('#txtDisplayValue4')?.innerText || '--';
-            document.getElementById('scada-day').textContent = doc.querySelector('#txtDisplayValue6')?.innerText || '--';
+            document.getElementById('scada-power').textContent   = (doc.querySelector('#txtGaugeMeterValue1')?.innerText || '--').replace(/[^0-9.]/g, ''); 
+            document.getElementById('scada-control').textContent  = doc.querySelector('#txtDisplayValue1')?.innerText || '--';
+            document.getElementById('scada-level').textContent    = doc.querySelector('#txtDisplayValue2')?.innerText || '--';
+            document.getElementById('scada-total').textContent    = doc.querySelector('#txtDisplayValue3')?.innerText || '--';
+            document.getElementById('scada-month').textContent    = doc.querySelector('#txtDisplayValue4')?.innerText || '--';
+            document.getElementById('scada-day').textContent      = doc.querySelector('#txtDisplayValue6')?.innerText || '--';
             
             statusEl.textContent = 'Live Connection Active';
-            statusEl.className = 'text-[11px] font-bold text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200';
+            statusEl.className   = 'text-[11px] font-bold text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200';
         } catch (error) {
             statusEl.textContent = 'Connection Lost';
-            statusEl.className = 'text-[11px] font-bold text-rose-700 bg-rose-50 px-4 py-2 rounded-xl border border-rose-200';
+            statusEl.className   = 'text-[11px] font-bold text-rose-700 bg-rose-50 px-4 py-2 rounded-xl border border-rose-200';
             
-            document.getElementById('scada-power').textContent = '--';
-            document.getElementById('scada-control').textContent = '--';
-            document.getElementById('scada-level').textContent = '--';
-            document.getElementById('scada-total').textContent = '--';
-            document.getElementById('scada-month').textContent = '--';
-            document.getElementById('scada-day').textContent = '--';
+            ['scada-power','scada-control','scada-level','scada-total','scada-month','scada-day'].forEach(id => {
+                document.getElementById(id).textContent = '--';
+            });
         }
     }
-</script>
+  </script>
+
 </body>
 </html>

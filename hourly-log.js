@@ -122,6 +122,18 @@ window.fetchLogs = async function() {
 
         window.currentDayLogs = data || [];
         window.latestLog = data && data.length > 0 ? data[data.length - 1] : null;
+        // Update "X / 24 hours logged" badge in the page header
+        const badge = document.getElementById('log-count-badge');
+        if (badge) {
+            const count = (data || []).length;
+            badge.textContent = count + ' / 24 hours logged';
+            badge.classList.toggle('hidden', count === 0);
+            if (count === 24) {
+                badge.className = 'text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg uppercase tracking-wider';
+            } else {
+                badge.className = 'text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg uppercase tracking-wider';
+            }
+        }
 
         const nepD = nepaliDisplay ? nepaliDisplay.innerText.replace('Nepali Date: ', '').trim() : '';
         const monthSelect = document.getElementById('export-month');
@@ -320,11 +332,15 @@ window.validateForm = function() {
 
     const checkCalcMw = (mwId, vIds, iIds, name) => {
         const mw = val(mwId);
-        if (mw > 0) {
-            const avgV = (val(vIds[0]) + val(vIds[1]) + val(vIds[2])) / 3;
-            const avgI = (val(iIds[0]) + val(iIds[1]) + val(iIds[2])) / 3;
+        if (mw !== null && mw > 0) {
+            // Guard: only check if all voltage and current values are present
+            const v0 = val(vIds[0]), v1 = val(vIds[1]), v2 = val(vIds[2]);
+            const i0 = val(iIds[0]), i1 = val(iIds[1]), i2 = val(iIds[2]);
+            if (v0 === null || v1 === null || v2 === null || i0 === null || i1 === null || i2 === null) return;
+            const avgV = (v0 + v1 + v2) / 3;
+            const avgI = (i0 + i1 + i2) / 3;
             const calcMw = (avgI * avgV * 1.732) / 1000;
-            if (Math.abs(mw - calcMw) > 0.15) { errors.push(`${name} input MW varies by > 0.15 from actual computed MW (${calcMw.toFixed(3)}).`); markErr(mwId); }
+            if (Math.abs(mw - calcMw) > 0.15) { errors.push(`${name} MW (${mw}) differs from computed V×I×√3 result (${calcMw.toFixed(3)} MW). Check voltage/current readings.`); markErr(mwId); }
         }
     };
     checkCalcMw('e_u1_mw', ['e_u1_v_ry', 'e_u1_v_yb', 'e_u1_v_br'], ['e_u1_a_i1', 'e_u1_a_i2', 'e_u1_a_i3'], 'Unit 1');
@@ -334,7 +350,13 @@ window.validateForm = function() {
     const u1Gwh = val('e_u1_gwh'), u2Gwh = val('e_u2_gwh'), outMwh = val('e_out_mwh');
     const pmu1 = val('u1-pmu'), feed1 = val('u1-feeder'), pmu2 = val('u2-pmu'), feed2 = val('u2-feeder');
     
-    if (u1Gwh!==null && u2Gwh!==null && outMwh!==null && (u1Gwh*1000 + u2Gwh*1000) < outMwh) { errors.push(`Sum of U1+U2 Energy must be > Outgoing Energy.`); markErr('e_out_mwh'); }
+    if (u1Gwh!==null && u2Gwh!==null && outMwh!==null && (u1Gwh*1000 + u2Gwh*1000) < outMwh) { errors.push(`Sum of U1+U2 Energy must be ≥ Outgoing Energy (U1+U2=${(u1Gwh*1000+u2Gwh*1000).toFixed(3)}, Out=${outMwh}).`); markErr('e_out_mwh'); }
+
+    // Outgoing MW cannot exceed U1+U2 total MW (losses are always positive)
+    if (u1Mw !== null && u2Mw !== null && outMw !== null && outMw > 0) {
+        const totalGenMw = u1Mw + u2Mw;
+        if (outMw > totalGenMw + 0.25) { errors.push(`Outgoing MW (${outMw}) cannot exceed U1+U2 total (${totalGenMw.toFixed(3)} MW). Check transformer losses.`); markErr('e_out_mw'); }
+    }
     if (feed1!==null && feed2!==null && outMwh!==null && (feed1 + feed2) < outMwh) { errors.push(`Sum of Feeders must be > Outgoing.`); markErr('u1-feeder'); markErr('u2-feeder'); }
     if (pmu1!==null && feed1!==null && pmu1*1000 < feed1) { errors.push(`U1 PMU (GWh) must be > U1 Feeder (MWh).`); markErr('u1-pmu'); markErr('u1-feeder'); }
     if (pmu2!==null && feed2!==null && pmu2*1000 < feed2) { errors.push(`U2 PMU (GWh) must be > U2 Feeder (MWh).`); markErr('u2-pmu'); markErr('u2-feeder'); }
@@ -358,6 +380,10 @@ window.validateForm = function() {
             if (outMwh > prevLog.outgoing + 10.65) { errors.push(`Outgoing Energy increased by more than max allowed (10.65 MWh).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
         }
     }
+
+    // Water level range (0–1200 cm typical; flag if clearly impossible)
+    const waterLvl = val('water-level');
+    if (waterLvl !== null && (waterLvl < 0 || waterLvl > 1500)) { errors.push(`Water Level (${waterLvl} cm) is out of expected range (0–1500 cm).`); markErr('water-level'); }
 
     const chk = (id, min, max, name) => { const v=val(id); if(v!==null && (v<min || v>max)) { errors.push(`${name} must be between ${min} and ${max}.`); markErr(id); } };
     ['t_u1_u', 't_u1_v', 't_u1_w', 't_u1_de', 't_u1_nde', 't_u2_u', 't_u2_v', 't_u2_w', 't_u2_de', 't_u2_nde'].forEach(id => chk(id, 15, 95, id.toUpperCase() + ' Temp'));
@@ -407,9 +433,13 @@ window.validateForm = function() {
 document.getElementById('hourly-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    // 1. RESTORE VALIDATION CHECK (Critical to prevent saving incorrect data)
+    // 1. VALIDATION CHECK — block save if errors exist
     if (window.currentValidationErrors && window.currentValidationErrors.length > 0) {
-        const msg = "⚠️ ATTENTION: DATA OUT OF BOUNDS ⚠️\n\nYou have inputs outside the standard operating ranges. Save anyway?";
+        const errCount = window.currentValidationErrors.length;
+        const msg = `⚠️ VALIDATION: ${errCount} issue${errCount>1?'s':''} found\n\n` +
+            window.currentValidationErrors.slice(0,5).join('\n') +
+            (errCount > 5 ? `\n... and ${errCount-5} more.` : '') +
+            '\n\nSave with these errors anyway?';
         if (!confirm(msg)) return; 
     }
 

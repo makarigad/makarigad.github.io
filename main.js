@@ -7,8 +7,10 @@ function createWindow () {
     height: 800,
     autoHideMenuBar: true, // This hides the top menu so operators can't click around
     webPreferences: {
-      nodeIntegration: true
-    }
+  nodeIntegration: false,
+  contextIsolation: true,
+  sandbox: true
+}
   })
 
   // This tells the app to open your main dashboard file

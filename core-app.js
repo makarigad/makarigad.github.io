@@ -31,10 +31,16 @@ export function parseToUTCDate(dateInput) {
     if (!dateInput) return null;
     let date;
     if (typeof dateInput === 'number') {
-        // Excel serial number (date1904 = false)
+    // Excel serial number (date1904 = false)
+    if (typeof XLSX !== 'undefined' && XLSX.SSF) {
         const ex = XLSX.SSF.parse_date_code(dateInput, { date1904: false });
         if (ex) date = new Date(Date.UTC(ex.y, ex.m - 1, ex.d));
-    } else if (dateInput instanceof Date) {
+    } else {
+        // Fallback: Excel serial to JS date (works for most dates after 1900)
+        const jsDate = new Date(Math.round((dateInput - 25569) * 86400 * 1000));
+        date = new Date(Date.UTC(jsDate.getUTCFullYear(), jsDate.getUTCMonth(), jsDate.getUTCDate()));
+    }
+} else if (dateInput instanceof Date) {
         date = new Date(Date.UTC(dateInput.getUTCFullYear(), dateInput.getUTCMonth(), dateInput.getUTCDate()));
     } else {
         // Try to parse string

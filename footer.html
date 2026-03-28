@@ -5,5 +5,9 @@
       <span class="text-lg font-semibold text-slate-200">Makari Gad Hydroelectric Project</span>
     </div>
     <p class="text-sm">&copy; <span id="copyright-year">2025</span>. All rights reserved.</p>
+<script>
+  const cy = document.getElementById('copyright-year');
+  if (cy) cy.textContent = new Date().getFullYear();
+</script>
   </div>
 </footer>

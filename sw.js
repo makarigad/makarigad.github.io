@@ -41,23 +41,39 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // 1. OFFLINE DATABASE MAGIC: Cache Supabase Data for offline reading!
-    if (event.request.url.includes('supabase.co/rest/v1/')) {
-        if (event.request.method === 'GET') {
-            event.respondWith(
-                fetch(event.request).then(response => {
-                    const clone = response.clone();
-                    caches.open(API_CACHE_NAME).then(cache => cache.put(event.request, clone));
-                    return response;
-                }).catch(() => {
-                    return caches.match(event.request); // Returns offline data!
-                })
-            );
-            return;
-        }
+    // ==========================================
+    // ⚠️ THE FIX: CRITICAL GUARDS
+    // ==========================================
+    
+    // 1. Never try to cache POST, PUT, or DELETE requests (like database saves)
+    if (event.request.method !== 'GET') {
+        return; // Exits the service worker and lets the browser handle the save normally
     }
 
-    // 2. STOP FREEZING: Fast-fail the SCADA proxy when offline
+    // 2. Ignore non-HTTP requests (like chrome extensions) which cause crashes
+    if (!event.request.url.startsWith('http')) {
+        return;
+    }
+
+    // ==========================================
+    // 1. OFFLINE DATABASE MAGIC
+    // ==========================================
+    if (event.request.url.includes('supabase.co/rest/v1/')) {
+        event.respondWith(
+            fetch(event.request).then(response => {
+                const clone = response.clone();
+                caches.open(API_CACHE_NAME).then(cache => cache.put(event.request, clone));
+                return response;
+            }).catch(() => {
+                return caches.match(event.request); // Returns offline data!
+            })
+        );
+        return;
+    }
+
+    // ==========================================
+    // 2. STOP FREEZING (SCADA PROXY)
+    // ==========================================
     if (event.request.url.includes('makari-scada-proxy')) {
         event.respondWith(
             fetch(event.request).catch(() => new Response("Offline", { status: 503 }))
@@ -65,10 +81,13 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 3. Normal App Files Cache
+    // ==========================================
+    // 3. NORMAL APP FILES CACHE
+    // ==========================================
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {
+                // Return cached version immediately, but fetch newer version in background
                 fetch(event.request).then((networkResponse) => {
                     if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
                         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
@@ -76,13 +95,17 @@ self.addEventListener('fetch', (event) => {
                 }).catch(() => {});
                 return cachedResponse;
             }
+            
+            // If not in cache, fetch from network
             return fetch(event.request).then((networkResponse) => {
                 if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
                     const responseToCache = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
                 }
                 return networkResponse;
-            }).catch(() => {});
+            }).catch(() => {
+                // Optional: Return an offline fallback page here if you have one
+            });
         })
     );
 });

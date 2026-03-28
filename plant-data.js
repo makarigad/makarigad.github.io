@@ -365,13 +365,18 @@ async function loadRainfallData() {
 }
 
 async function handleAddOrUpdateRainfall(docId, isUpd = false) {
+    if (!currentUser) return showNotification("You must be logged in.", true);
+
     const pre = isUpd ? 'edit-rf-' : 'new-rf-';
 
     let y = isUpd ? docId.split('_')[0] : document.getElementById('new-rf-year')?.value;
     let m = isUpd ? docId.split('_')[1] : document.getElementById('new-rf-month')?.value;
     let d = isUpd ? docId.split('_')[2] : document.getElementById('new-rf-day')?.value;
 
-    if (!d) return showNotification("Day is required", true);
+    if (!d || d.trim() === '') {
+        alert("⚠️ Please enter a Day!");
+        return showNotification("Day is required", true);
+    }
 
     const payload = {
         id: `${y}_${m}_${d}`,
@@ -386,14 +391,57 @@ async function handleAddOrUpdateRainfall(docId, isUpd = false) {
     };
 
     try {
-        await supabase.from('rainfall_data').upsert(payload);
-        showNotification("Rainfall data saved!");
+        console.log("Attempting to save rainfall payload:", payload);
+        
+        // CRITICAL FIX: Extract the 'error' object and throw it if it exists!
+        const { error } = await supabase.from('rainfall_data').upsert(payload);
+        if (error) throw error; 
+
+        showNotification("✅ Rainfall data saved!");
         editingRainfallId = null;
         loadRainfallData();
+        
+        // Clear the input fields after a successful save
+        if (!isUpd) {
+            if (document.getElementById('new-rf-day')) document.getElementById('new-rf-day').value = '';
+            if (document.getElementById('new-rf-headworks')) document.getElementById('new-rf-headworks').value = '';
+            if (document.getElementById('new-rf-powerhouse')) document.getElementById('new-rf-powerhouse').value = '';
+        }
     } catch (e) {
-        showNotification("Error saving data", true);
+        // THIS WILL POP UP ON YOUR SCREEN IF IT FAILS
+        alert("CRITICAL DATABASE ERROR:\n\n" + e.message); 
+        showNotification("Error saving data: " + e.message, true);
     }
 }
+
+// Upgraded Click Listener to ensure the Save button always responds
+rainfallBody?.addEventListener('click', (e) => {
+    if (e.target.id === 'add-rf-btn' || e.target.closest('#add-rf-btn')) {
+        handleAddOrUpdateRainfall(null, false);
+    } 
+    else if (e.target.classList.contains('edit-rf-btn')) {
+        editingRainfallId = JSON.parse(e.target.dataset.doc).id;
+        renderRainfallTable();
+    } 
+    else if (e.target.classList.contains('update-rf-btn')) {
+        handleAddOrUpdateRainfall(e.target.dataset.id, true);
+    } 
+    else if (e.target.classList.contains('cancel-rf-btn')) {
+        editingRainfallId = null;
+        renderRainfallTable();
+    } 
+    else if (e.target.classList.contains('delete-rf-btn')) {
+        showConfirmation('Confirm', `Delete this record?`, async () => {
+            const { error } = await supabase.from('rainfall_data').delete().eq('id', e.target.dataset.id);
+            if (error) {
+                alert("Delete Error: " + error.message);
+            } else {
+                showNotification("Deleted");
+                loadRainfallData();
+            }
+        });
+    }
+});
 
 rainfallBody?.addEventListener('click', (e) => {
     if (e.target.id === 'add-rf-btn') handleAddOrUpdateRainfall(null);
@@ -1010,66 +1058,72 @@ function createInputRow() {
     const dateString = localToday.toISOString().split('T')[0];
 
     return `<tr id="add-new-row" class="bg-indigo-50/60 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
-        <td><input type="date" id="new-date" class="input-cell" value="${dateString}" required /><\/td>
-        <td><input type="text" id="new-nepali_date" class="input-cell" placeholder="YYYY.MM.DD" /><\/td>
-        <td><input type="number" id="new-unit1_gen" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-unit2_gen" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-unit1_trans" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-unit2_trans" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-station_trans" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-export_plant" step="any" class="input-cell font-bold text-indigo-700 bg-indigo-50" /><\/td>
-        <td><input type="number" id="new-export_substation" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-import_outgoing" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-import_substation" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-unit1_counter" step="any" class="input-cell" /><\/td>
-        <td><input type="number" id="new-unit2_counter" step="any" class="input-cell" /><\/td>
-        <td class="truncate-text text-slate-500 text-xs" title="${currentUser?.email || ''}">${getUserName()}<\/td>
-        <td class="col-actions"><button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save Row<\/button><\/td>
-    <\/tr>`;
+        <td><input type="date" id="new-date" class="input-cell" value="${dateString}" required /></td>
+        <td><input type="text" id="new-nepali_date" class="input-cell" placeholder="YYYY.MM.DD" /></td>
+        <td><input type="number" id="new-unit1_gen" step="any" class="input-cell" /></td>
+        <td><input type="number" id="new-unit2_gen" step="any" class="input-cell" /></td>
+        <td><input type="number" id="new-unit1_trans" step="any" class="input-cell" /></td>
+        <td><input type="number" id="new-unit2_trans" step="any" class="input-cell" /></td>
+        <td><input type="number" id="new-station_trans" step="any" class="input-cell" /></td>
+        
+        <td><input type="number" id="new-import_outgoing" step="any" class="input-cell text-emerald-700" /></td>
+        <td><input type="number" id="new-import_substation" step="any" class="input-cell text-emerald-700" /></td>
+        <td><input type="number" id="new-export_plant" step="any" class="input-cell font-bold text-indigo-700 bg-indigo-50" /></td>
+        <td><input type="number" id="new-export_substation" step="any" class="input-cell text-indigo-700" /></td>
+        
+        <td><input type="number" id="new-unit1_counter" step="any" class="input-cell" /></td>
+        <td><input type="number" id="new-unit2_counter" step="any" class="input-cell" /></td>
+        <td class="truncate-text text-slate-500 text-xs" title="${currentUser?.email || ''}">${getUserName()}</td>
+        <td class="col-actions"><button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save Row</button></td>
+    </tr>`;
 }
 
 function createDisplayRowHtml(d) {
     const canEdit = ['admin'].includes(userRole);
     const docStr = JSON.stringify(d).replace(/'/g, "&apos;");
-    return `<td class="font-bold text-slate-900">${d.id}<\/td>
-        <td class="font-medium text-slate-700">${d.nepali_date || '—'}<\/td>
-        <td class="text-slate-600">${formatNumber(d.unit1_gen)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.unit2_gen)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.unit1_trans)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.unit2_trans)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.station_trans)}<\/td>
-        <td class="font-bold text-indigo-700 bg-indigo-50/50">${formatNumber(d.export_plant)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.export_substation)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.import_outgoing)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.import_substation)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.unit1_counter)}<\/td>
-        <td class="text-slate-600">${formatNumber(d.unit2_counter)}<\/td>
-        <td class="truncate-text text-xs text-slate-500" title="${d.operator_email}">${d.operator_email}<\/td>
+    return `<td class="font-bold text-slate-900">${d.id}</td>
+        <td class="font-medium text-slate-700">${d.nepali_date || '—'}</td>
+        <td class="text-slate-600">${formatNumber(d.unit1_gen)}</td>
+        <td class="text-slate-600">${formatNumber(d.unit2_gen)}</td>
+        <td class="text-slate-600">${formatNumber(d.unit1_trans)}</td>
+        <td class="text-slate-600">${formatNumber(d.unit2_trans)}</td>
+        <td class="text-slate-600">${formatNumber(d.station_trans)}</td>
+        
+        <td class="text-emerald-700">${formatNumber(d.import_outgoing)}</td>
+        <td class="text-emerald-700">${formatNumber(d.import_substation)}</td>
+        <td class="font-bold text-indigo-700 bg-indigo-50/50">${formatNumber(d.export_plant)}</td>
+        <td class="text-indigo-700">${formatNumber(d.export_substation)}</td>
+        
+        <td class="text-slate-600">${formatNumber(d.unit1_counter)}</td>
+        <td class="text-slate-600">${formatNumber(d.unit2_counter)}</td>
+        <td class="truncate-text text-xs text-slate-500" title="${d.operator_email}">${d.operator_email}</td>
         <td class="col-actions space-x-2 whitespace-nowrap ${canEdit ? '' : 'hidden'}">
-            <button class="edit-btn text-indigo-600 font-bold hover:underline" data-doc='${docStr}'>Edit<\/button>
-            ${userRole === 'admin' ? `<button class="delete-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del<\/button>` : ''}
-        <\/td>`;
+            <button class="edit-btn text-indigo-600 font-bold hover:underline" data-doc='${docStr}'>Edit</button>
+            ${userRole === 'admin' ? `<button class="delete-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del</button>` : ''}
+        </td>`;
 }
 
 function createEditRowHtml(docData) {
-    return `<td><input type="date" class="input-cell bg-slate-100" value="${docData.id}" disabled /><\/td>
-        <td><input type="text" id="edit-nepali_date" class="input-cell" value="${docData.nepali_date || ''}" /><\/td>
-        <td><input type="number" id="edit-unit1_gen" step="any" class="input-cell" value="${docData.unit1_gen ?? ''}" /><\/td>
-        <td><input type="number" id="edit-unit2_gen" step="any" class="input-cell" value="${docData.unit2_gen ?? ''}" /><\/td>
-        <td><input type="number" id="edit-unit1_trans" step="any" class="input-cell" value="${docData.unit1_trans ?? ''}" /><\/td>
-        <td><input type="number" id="edit-unit2_trans" step="any" class="input-cell" value="${docData.unit2_trans ?? ''}" /><\/td>
-        <td><input type="number" id="edit-station_trans" step="any" class="input-cell" value="${docData.station_trans ?? ''}" /><\/td>
-        <td><input type="number" id="edit-export_plant" step="any" class="input-cell font-bold text-indigo-700" value="${docData.export_plant ?? ''}" /><\/td>
-        <td><input type="number" id="edit-export_substation" step="any" class="input-cell" value="${docData.export_substation ?? ''}" /><\/td>
-        <td><input type="number" id="edit-import_outgoing" step="any" class="input-cell" value="${docData.import_outgoing ?? ''}" /><\/td>
-        <td><input type="number" id="edit-import_substation" step="any" class="input-cell" value="${docData.import_substation ?? ''}" /><\/td>
-        <td><input type="number" id="edit-unit1_counter" step="any" class="input-cell" value="${docData.unit1_counter ?? ''}" /><\/td>
-        <td><input type="number" id="edit-unit2_counter" step="any" class="input-cell" value="${docData.unit2_counter ?? ''}" /><\/td>
-        <td class="truncate-text text-xs text-slate-500" title="${currentUser?.email}">${getUserName()}<\/td>
+    return `<td><input type="date" class="input-cell bg-slate-100" value="${docData.id}" disabled /></td>
+        <td><input type="text" id="edit-nepali_date" class="input-cell" value="${docData.nepali_date || ''}" /></td>
+        <td><input type="number" id="edit-unit1_gen" step="any" class="input-cell" value="${docData.unit1_gen ?? ''}" /></td>
+        <td><input type="number" id="edit-unit2_gen" step="any" class="input-cell" value="${docData.unit2_gen ?? ''}" /></td>
+        <td><input type="number" id="edit-unit1_trans" step="any" class="input-cell" value="${docData.unit1_trans ?? ''}" /></td>
+        <td><input type="number" id="edit-unit2_trans" step="any" class="input-cell" value="${docData.unit2_trans ?? ''}" /></td>
+        <td><input type="number" id="edit-station_trans" step="any" class="input-cell" value="${docData.station_trans ?? ''}" /></td>
+        
+        <td><input type="number" id="edit-import_outgoing" step="any" class="input-cell text-emerald-700" value="${docData.import_outgoing ?? ''}" /></td>
+        <td><input type="number" id="edit-import_substation" step="any" class="input-cell text-emerald-700" value="${docData.import_substation ?? ''}" /></td>
+        <td><input type="number" id="edit-export_plant" step="any" class="input-cell font-bold text-indigo-700" value="${docData.export_plant ?? ''}" /></td>
+        <td><input type="number" id="edit-export_substation" step="any" class="input-cell text-indigo-700" value="${docData.export_substation ?? ''}" /></td>
+        
+        <td><input type="number" id="edit-unit1_counter" step="any" class="input-cell" value="${docData.unit1_counter ?? ''}" /></td>
+        <td><input type="number" id="edit-unit2_counter" step="any" class="input-cell" value="${docData.unit2_counter ?? ''}" /></td>
+        <td class="truncate-text text-xs text-slate-500" title="${currentUser?.email}">${getUserName()}</td>
         <td class="flex space-x-2 whitespace-nowrap">
-            <button class="update-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${docData.id}">Save<\/button>
-            <button class="cancel-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X<\/button>
-        <\/td>`;
+            <button class="update-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${docData.id}">Save</button>
+            <button class="cancel-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X</button>
+        </td>`;
 }
 
 function renderTable(data) {
@@ -1091,14 +1145,11 @@ function renderTable(data) {
 async function handleAddOrUpdateEntry(docId, isUpdate = false) {
     const prefix = isUpdate ? 'edit-' : 'new-';
     const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`)?.value;
-    if (!dateVal) {
-        return showNotification("Please select an English date.", true);
-    }
+    if (!dateVal) return showNotification("Please select an English date.", true);
 
     const data = {
         id: dateVal,
         operator_email: currentUser?.email || '',
-        operator_uid: currentUser?.id || '',
         updated_at: new Date().toISOString(),
         nepali_date: document.getElementById(`${prefix}nepali_date`)?.value || null,
         unit1_gen: parseFloat(document.getElementById(`${prefix}unit1_gen`)?.value) || null,
@@ -1115,13 +1166,34 @@ async function handleAddOrUpdateEntry(docId, isUpdate = false) {
     };
 
     try {
-        const { error } = await supabase.from('plant_data').upsert(data);
-        if (error) throw error;
-        showNotification(`Data ${isUpdate ? 'updated' : 'saved'}!`);
+        const { error: pErr } = await supabase.from('plant_data').upsert(data);
+        if (pErr) throw pErr;
+
+        const { data: currentBalanch } = await supabase.from('balanch_readings').select('*').eq('eng_date', dateVal).maybeSingle();
+        const balanchSync = { eng_date: dateVal, updated_at: new Date().toISOString() };
+        let needsSync = false;
+
+        if (!currentBalanch || currentBalanch.main_export == null) { 
+            balanchSync.main_export = data.export_plant; needsSync = true; 
+        }
+        if (!currentBalanch || currentBalanch.main_import == null) { 
+            balanchSync.main_import = data.import_substation; needsSync = true; 
+        }
+        // 👉 SYNC NEPALI DATE TO SUBSTATION
+        if (data.nepali_date && (!currentBalanch || !currentBalanch.nep_date)) {
+            balanchSync.nep_date = data.nepali_date; needsSync = true;
+        }
+
+        if (needsSync) {
+            await supabase.from('balanch_readings').upsert({ ...(currentBalanch || {}), ...balanchSync });
+        }
+
+        showNotification(`✅ Daily Data saved & Substation smart-synced!`);
         editingRowId = null;
         loadAndListenData();
+        loadBalanchData();
     } catch (error) {
-        showNotification("Error saving data: " + error.message, true);
+        showNotification("Error: " + error.message, true);
     }
 }
 
@@ -1329,7 +1401,7 @@ async function processAndUploadData(workbook) {
 // 2. SUBSTATION METERING (BALANCH) – unchanged, added loading flag
 // ==========================================
 const balanchBody = document.getElementById("balanch-body");
-const balanchCols = ['main_export', 'main_import', 'check_export', 'check_import'];
+const balanchCols = ['main_import', 'main_export', 'check_import', 'check_export'];
 
 function createBalanchInputRow() {
     return `<tr class="bg-indigo-50/60 sticky top-0 shadow-sm border-b-2 border-indigo-200 z-10">
@@ -1426,36 +1498,35 @@ async function handleAddOrUpdateBalanch(docId, isUpdate = false) {
         remarks: document.getElementById(prefix + 'rem')?.value || null,
         updated_at: new Date().toISOString()
     };
-
     balanchCols.forEach(c => payload[c] = parseFloat(document.getElementById(prefix + c)?.value) || null);
 
     try {
-        // 1. SAVE TO SUBSTATION (BALANCH) TABLE
-        const { error: balanchErr } = await supabase.from('balanch_readings').upsert(payload);
-        if (balanchErr) throw balanchErr;
+        const { error: bErr } = await supabase.from('balanch_readings').upsert(payload);
+        if (bErr) throw bErr;
 
-        // 2. AUTOMATIC "SAFE SYNC" TO DAILY METERING
-        // First, fetch any existing daily data for this date so we don't accidentally erase Unit 1/Unit 2
-        const { data: existingPlantData } = await supabase.from('plant_data').select('*').eq('id', targetDate).maybeSingle();
-        
-        const plantPayload = {
-            ...(existingPlantData || {}), // This keeps all existing generator data safe!
-            id: targetDate,
-            export_plant: payload.main_export,
-            import_substation: payload.main_import,
-            operator_email: currentUser?.email || '',
-            updated_at: new Date().toISOString()
-        };
+        const { data: currentPlant } = await supabase.from('plant_data').select('*').eq('id', targetDate).maybeSingle();
+        const plantSync = { id: targetDate, updated_at: new Date().toISOString() };
+        let needsSync = false;
 
-        const { error: plantErr } = await supabase.from('plant_data').upsert(plantPayload);
-        if (plantErr) console.error("Sync to Daily Metering failed:", plantErr.message);
+        if (!currentPlant || currentPlant.export_plant == null) { 
+            plantSync.export_plant = payload.main_export; needsSync = true; 
+        }
+        if (!currentPlant || currentPlant.import_substation == null) { 
+            plantSync.import_substation = payload.main_import; needsSync = true; 
+        }
+        // 👉 SYNC NEPALI DATE TO DAILY METERING
+        if (payload.nep_date && (!currentPlant || !currentPlant.nepali_date)) {
+            plantSync.nepali_date = payload.nep_date; needsSync = true;
+        }
 
-        showNotification(`✅ Substation data saved & synced to Daily Metering!`);
+        if (needsSync) {
+            await supabase.from('plant_data').upsert({ ...(currentPlant || {}), ...plantSync });
+        }
+
+        showNotification(`✅ Substation saved & Daily Metering smart-synced!`);
         editingBalanchId = null;
-        
-        // Refresh both tables on the screen
         loadBalanchData();
-        loadAndListenData(); 
+        loadAndListenData();
     } catch (error) {
         showNotification("Error: " + error.message, true);
     }

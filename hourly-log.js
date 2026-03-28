@@ -406,6 +406,13 @@ window.validateForm = function() {
 
 document.getElementById('hourly-form').addEventListener('submit', async function(e) {
     e.preventDefault();
+
+    // 1. RESTORE VALIDATION CHECK (Critical to prevent saving incorrect data)
+    if (window.currentValidationErrors && window.currentValidationErrors.length > 0) {
+        const msg = "⚠️ ATTENTION: DATA OUT OF BOUNDS ⚠️\n\nYou have inputs outside the standard operating ranges. Save anyway?";
+        if (!confirm(msg)) return; 
+    }
+
     if (saveBtn) { saveBtn.innerHTML = "⏳ Syncing..."; saveBtn.disabled = true; }
 
     try {
@@ -423,94 +430,169 @@ document.getElementById('hourly-form').addEventListener('submit', async function
         const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
         const monthName = bsMonthNames[parseInt(nm) - 1];
 
-        // Ensure we have a valid Nepali Date string for mapping
+        // Ensure we have a valid Nepali Date string for mapping across all tables
         let nepDateStr = (ny && nm && nd) ? `${ny}.${String(nm).padStart(2, '0')}.${String(nd).padStart(2, '0')}` : null;
 
-        // 1. FULL LOG DATA (Restored all Voltage, Temp, and Transformer fields)
+        // 2. FULL LOG DATA MAPPING
         const logData = {
             log_date: engDate,
             log_time: logTime,
             nepali_date: nepDateStr,
-            
             u1_status: s('u1-status'), u1_hour_counter: p('u1-hour'), u1_load: p('u1-load'), u1_pf: p('u1-pf'), u1_pmu_reading: p('u1-pmu'), u1_feeder: p('u1-feeder'),
             u2_status: s('u2-status'), u2_hour_counter: p('u2-hour'), u2_load: p('u2-load'), u2_pf: p('u2-pf'), u2_pmu_reading: p('u2-pmu'), u2_feeder: p('u2-feeder'),
             sst: p('sst-kwh'), outgoing: p('outgoing-kwh'), import_mwh: p('import-mwh'), water_level: p('water-level'), remarks: s('log-operator'), 
-            
             e_u1_v_ry: p('e_u1_v_ry'), e_u1_v_yb: p('e_u1_v_yb'), e_u1_v_br: p('e_u1_v_br'), e_u1_a_i1: p('e_u1_a_i1'), e_u1_a_i2: p('e_u1_a_i2'), e_u1_a_i3: p('e_u1_a_i3'), e_u1_mw: p('e_u1_mw'), e_u1_kvar: p('e_u1_kvar'), e_u1_cos: p('e_u1_cos'), e_u1_hz: p('e_u1_hz'), e_u1_gwh: p('e_u1_gwh'),
             e_u2_v_ry: p('e_u2_v_ry'), e_u2_v_yb: p('e_u2_v_yb'), e_u2_v_br: p('e_u2_v_br'), e_u2_a_i1: p('e_u2_a_i1'), e_u2_a_i2: p('e_u2_a_i2'), e_u2_a_i3: p('e_u2_a_i3'), e_u2_mw: p('e_u2_mw'), e_u2_kvar: p('e_u2_kvar'), e_u2_cos: p('e_u2_cos'), e_u2_hz: p('e_u2_hz'), e_u2_gwh: p('e_u2_gwh'),
             e_out_v_ry: p('e_out_v_ry'), e_out_v_yb: p('e_out_v_yb'), e_out_v_br: p('e_out_v_br'), e_out_a_i1: p('e_out_a_i1'), e_out_a_i2: p('e_out_a_i2'), e_out_a_i3: p('e_out_a_i3'), e_out_mw: p('e_out_mw'), e_out_kvar: p('e_out_kvar'), e_out_cos: p('e_out_cos'), e_out_hz: p('e_out_hz'), e_out_mwh: p('e_out_mwh'),
-
-            t_u1_u: p('t_u1_u'), t_u1_v: p('t_u1_v'), t_u1_w: p('t_u1_w'), t_u1_de: p('t_u1_de'), t_u1_nde: p('t_u1_nde'), t_u1_gov_temp: p('t_u1_gov'), t_u1_hyd_temp: p('t_u1_hyd'), t_u1_oil_flow: p('t_u1_flow'), t_u1_oil_level: s('t_u1_lvl'),
-            t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_de'), t_u2_nde: p('t_u2_nde'), t_u2_gov_temp: p('t_u2_gov'), t_u2_hyd_temp: p('t_u2_hyd'), t_u2_oil_flow: p('t_u2_flow'), t_u2_oil_level: s('t_u2_lvl'),
+            t_u1_u: p('t_u1_u'), t_u1_v: p('t_u1_v'), t_u1_w: p('t_u1_w'), t_u1_de: p('t_u1_de'), t_u1_nde: p('t_u1_nde'), t_u1_gov: p('t_u1_gov'), t_u1_hyd: p('t_u1_hyd'), t_u1_flow: p('t_u1_flow'), t_u1_lvl: s('t_u1_lvl'),
+            t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_de'), t_u2_nde: p('t_u2_nde'), t_u2_gov: p('t_u2_gov'), t_u2_hyd: p('t_u2_hyd'), t_u2_flow: p('t_u2_flow'), t_u2_lvl: s('t_u2_lvl'),
             t_temp_out: p('t_temp_out'), t_temp_in: p('t_temp_in'), t_temp_intake: p('t_temp_intake'), t_pressure: p('t_pressure'),
-            
             tr_1_temp: p('tr_1_temp'), tr_1_lvl: p('tr_1_lvl'), tr_2_temp: p('tr_2_temp'), tr_2_lvl: p('tr_2_lvl'), tr_aux_temp: p('tr_aux_temp'), tr_aux_lvl: p('tr_aux_lvl'),
             dg_batt: p('dg_batt'), dg_fuel: p('dg_fuel'), dg_runtime: s('dg_runtime'),
-
             created_by: window.currentUser ? window.currentUser.id : null
         };
 
-        // Check for existing ID to prevent duplicates
         const timePrefix = logTime.substring(0, 5);
         const existingLog = window.currentDayLogs.find(l => l.log_time && l.log_time.substring(0,5) === timePrefix);
         if (existingLog && existingLog.id) { logData.id = existingLog.id; }
 
-        // SAVE TO HOURLY LOGS
+        // 3. MAIN SAVE: HOURLY LOGS
         const { error: hErr } = await supabase.from('hourly_logs').upsert([logData]);
         if (hErr) throw new Error("Hourly Save Failed: " + hErr.message);
 
-// 2. TRIGGER 12:00 PM SYNC TO DAILY METERING (PLANT_DATA)
+        // 4. TRIGGER 12:00 PM 3-WAY SMART SYNC
         if (logTime.startsWith('12:00')) {
-            console.log("Attempting 12:00 PM Sync for date:", engDate);
-            const { error: pErr } = await supabase.from('plant_data').upsert({
-                id: engDate, 
+            console.log("Attempting 12:00 PM 3-Way Sync...");
+            
+            // Map c & d variables from the 12:00 PM input
+            const c_export = p('u1-feeder'); // Your Hourly Log variable for Export Plant
+            const d_import = p('import-mwh'); // Your Hourly Log variable for Import Substation
+
+            // FETCH EXISTING DATA to preserve other fields
+            const [{ data: curPlant }, { data: curBalanch }] = await Promise.all([
+                supabase.from('plant_data').select('*').eq('id', engDate).maybeSingle(),
+                supabase.from('balanch_readings').select('*').eq('eng_date', engDate).maybeSingle()
+            ]);
+
+            // SYNC TO DAILY METERING (x, y)
+            const plantPayload = {
+                ...(curPlant || {}),
+                id: engDate,
                 nepali_date: nepDateStr,
                 unit1_gen: p('u1-pmu'),
                 unit2_gen: p('u2-pmu'),
                 unit1_counter: p('u1-hour'),
                 unit2_counter: p('u2-hour'),
                 export_substation: p('outgoing-kwh'),
-                
-                // --- THESE ARE THE NEWLY MAPPED FIELDS ---
-                unit1_trans: p('u1-feeder'),    // Pulls from u1-feeder input
-                unit2_trans: p('u2-feeder'),    // Pulls from u2-feeder input
-                station_trans: p('sst-kwh'),    // Pulls from sst-kwh input
-                import_outgoing: p('import-mwh'),// Pulls from import-mwh input
-                
-                operator_email: window.currentUser?.email || '',
-                operator_uid: window.currentUser?.id || '',
                 updated_at: new Date().toISOString()
-            });
-            if (pErr) alert("Daily Metering Sync Failed: " + pErr.message);
-            else console.log("✅ Daily Metering Synced!");
+            };
+            
+            // Smart logic: Fill if empty (x=c)
+            if (c_export !== null && (!curPlant || curPlant.export_plant == null)) plantPayload.export_plant = c_export;
+            if (d_import !== null && (!curPlant || curPlant.import_substation == null)) plantPayload.import_substation = d_import;
+            
+            await supabase.from('plant_data').upsert(plantPayload);
+
+            // SYNC TO SUBSTATION METERING (a, b)
+            const balanchPayload = { 
+                ...(curBalanch || {}), 
+                eng_date: engDate,
+                nep_date: nepDateStr, // Ensures Substation Nepali Date is updated
+                updated_at: new Date().toISOString()
+            };
+            
+            let needsBalanchSync = false;
+            // Smart logic: Fill if empty (a=c)
+            if (c_export !== null && (!curBalanch || curBalanch.main_export == null)) {
+                balanchPayload.main_export = c_export;
+                needsBalanchSync = true;
+            }
+            if (d_import !== null && (!curBalanch || curBalanch.main_import == null)) {
+                balanchPayload.main_import = d_import;
+                needsBalanchSync = true;
+            }
+            
+            if (needsBalanchSync || (nepDateStr && (!curBalanch || !curBalanch.nep_date))) {
+                await supabase.from('balanch_readings').upsert(balanchPayload);
+            }
+            console.log("✅ 12:00 PM Smart Sync Complete!");
         }
 
-        // 3. TRIGGER 08:00 AM SYNC TO RAINFALL
+        // 5. TRIGGER 08:00 AM SYNC TO RAINFALL
         if (logTime.startsWith('08:00')) {
             console.log("Attempting 08:00 AM Rainfall Sync...");
-            const { error: rErr } = await supabase.from('rainfall_data').upsert({
-                id: `${ny}_${monthName}_${nd}`,
-                nepali_year: parseInt(ny),
-                nepali_month: monthName,
-                day: parseInt(nd),
-                headworks: p('water-level'),
-                operator_email: window.currentUser?.email || '',
-                operator_uid: window.currentUser?.id || '',
-                updated_at: new Date().toISOString()
-            });
-            if (rErr) console.error("Rainfall Sync Error: " + rErr.message);
-            else console.log("✅ Rainfall Synced!");
+            
+            const monthDropdown = document.getElementById('export-month');
+            const safeMonthName = monthDropdown && monthDropdown.options.length > 0 
+                ? monthDropdown.options[monthDropdown.selectedIndex].text 
+                : null;
+
+            const rYear = parseInt(ny);
+            const rDay = parseInt(nd);
+            
+            if (isNaN(rYear) || isNaN(rDay) || !safeMonthName) {
+                alert("⚠️ Cannot sync Rainfall: Nepali Date is missing or invalid.");
+            } else {
+                // THE FIX: Force the day to have a leading zero (e.g., '5' becomes '05')
+                const safeDayStr = String(rDay).padStart(2, '0');
+                const rainId = `${rYear}_${safeMonthName}_${safeDayStr}`; 
+                console.log("Syncing Rainfall ID:", rainId);
+                
+                const { data: curRain } = await supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle();
+                
+                const rainPayload = {
+                    ...(curRain || {}), 
+                    id: rainId,
+                    nepali_year: rYear,
+                    nepali_month: safeMonthName,
+                    day: rDay,
+                    headworks: p('water-level') || 0,
+                    operator_email: window.currentUser?.email || null,
+                    operator_uid: window.currentUser?.id || null,
+                    updated_at: new Date().toISOString()
+                };
+                
+                if (!curRain || curRain.powerhouse == null) rainPayload.powerhouse = 0; 
+
+                const { error: rErr } = await supabase.from('rainfall_data').upsert(rainPayload);
+                
+                if (rErr) {
+                    alert("Database Error syncing Rainfall:\n" + rErr.message);
+                    console.error("Rainfall Sync Error: ", rErr);
+                } else {
+                    console.log("✅ 08:00 AM Rainfall Synced to Database!");
+                }
+            }
         }
 
-        showNotification("✅ All Data Saved & Synced!");
-        updateDates();
-        if (typeof window.fetchLogs === 'function') window.fetchLogs();
+        
+
+        // ... (End of the 08:00 AM Rainfall Block) ...
+
+            // THE FIX: Generate a specific, unmissable success message
+            let successMsg = "✅ Hourly Log Saved Successfully!";
+            if (logTime.startsWith('12:00')) successMsg = "✅ 12:00 PM Data Synced to Daily Master & Substation!";
+            if (logTime.startsWith('08:00')) successMsg = "✅ 08:00 AM Rainfall Synced to Daily Master!";
+            
+            // 1. Try to show the sliding notification
+            showNotification(successMsg);
+            
+            // 2. FORCE a browser popup so the operator knows 100% it worked
+            alert(successMsg);
+
+            updateDates();
+            if (typeof window.fetchLogs === 'function') window.fetchLogs();
 
     } catch (err) {
+        // Force a popup if it fails, too
+        alert("❌ ERROR SAVING:\n" + err.message);
         showNotification("❌ Error: " + err.message, true);
         console.error(err);
     } finally {
-        if (saveBtn) { saveBtn.innerHTML = "💾 Update Existing Data"; saveBtn.disabled = false; }
+        if (saveBtn) { 
+            saveBtn.innerHTML = "💾 Update Existing Data"; 
+            saveBtn.disabled = false; 
+        }
     }
 });
 
@@ -689,16 +771,89 @@ async function startPage() {
 
 const faultCategories = ['Dispatch instruction', 'Non-Dispatch', 'Grid Faults', '132 kV line faults', '33 kV line fault', 'penstock pipe fault', 'plant equipment issue'];
 
-document.getElementById('dd-entry-time')?.addEventListener('change', (e) => {
+document.getElementById('dd-entry-time')?.addEventListener('change', async (e) => {
     document.getElementById('section-rainfall').classList.add('hidden');
     document.getElementById('section-noon').classList.add('hidden');
     document.getElementById('section-waiting').classList.add('hidden');
 
+    const targetDate = document.getElementById('dd-entry-date').value;
+
     if (e.target.value === '08:00') {
         document.getElementById('section-rainfall').classList.remove('hidden');
+        
+        // AUTOMATICALLY FETCH EXISTING RAINFALL DATA
+        try {
+            const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || '';
+            const nums = nepaliDateStr.match(/\d+/g);
+            
+            if (nums && nums.length >= 3) {
+                const nYear = parseInt(nums[0]);
+                const nMonth = parseInt(nums[1]);
+                const nDay = parseInt(nums[2]);
+                const safeDayStr = String(nDay).padStart(2, '0');
+                
+                const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+                const monthName = bsMonthNames[nMonth - 1] || '';
+                
+                const rainId = `${nYear}_${monthName}_${safeDayStr}`;
+                const { data: curRain } = await supabase.from('rainfall_data').select('headworks, powerhouse').eq('id', rainId).maybeSingle();
+                
+                if (curRain) {
+                    if (document.getElementById('inp-rain-dam')) document.getElementById('inp-rain-dam').value = curRain.headworks !== null ? curRain.headworks : '';
+                    if (document.getElementById('inp-rain-ph')) document.getElementById('inp-rain-ph').value = curRain.powerhouse !== null ? curRain.powerhouse : '';
+                } else {
+                    if (document.getElementById('inp-rain-dam')) document.getElementById('inp-rain-dam').value = '';
+                    if (document.getElementById('inp-rain-ph')) document.getElementById('inp-rain-ph').value = '';
+                }
+            }
+        } catch (err) { console.error("Error fetching existing rainfall:", err); }
+
     } else if (e.target.value === '12:00') {
         document.getElementById('section-noon').classList.remove('hidden');
-        if(document.getElementById('faults-container').children.length === 0) addFaultRow();
+        
+        // --- NEW: AUTOMATICALLY FETCH EXISTING 12:00 PM DATA ---
+        try {
+            if (targetDate) {
+                // 1. Load Existing Substation (Balanch) Data
+                const { data: curBal } = await supabase.from('balanch_readings').select('*').eq('eng_date', targetDate).maybeSingle();
+                const m = (id, val) => { const el = document.getElementById(id); if (el) el.value = val !== null && val !== undefined ? val : ''; };
+                
+                if (curBal) {
+                    m('inp-bal-main-exp', curBal.main_export);
+                    m('inp-bal-main-imp', curBal.main_import);
+                    m('inp-bal-chk-exp', curBal.check_export);
+                    m('inp-bal-chk-imp', curBal.check_import);
+                } else {
+                    ['inp-bal-main-exp', 'inp-bal-main-imp', 'inp-bal-chk-exp', 'inp-bal-chk-imp'].forEach(id => m(id, ''));
+                }
+
+                // 2. Check Existing Outages/Faults
+                const { data: curOut } = await supabase.from('outages').select('fault_details').eq('id', targetDate).maybeSingle();
+                const faultContainer = document.getElementById('faults-container');
+                faultContainer.innerHTML = ''; 
+                
+                // Create a status banner for existing faults
+                let faultInfoDiv = document.getElementById('existing-faults-info');
+                if (!faultInfoDiv) {
+                    faultInfoDiv = document.createElement('div');
+                    faultInfoDiv.id = 'existing-faults-info';
+                    faultContainer.parentNode.insertBefore(faultInfoDiv, faultContainer);
+                }
+
+                if (curOut && curOut.fault_details && curOut.fault_details.length > 0) {
+                    faultInfoDiv.innerHTML = `<div class="mb-3 p-3 bg-blue-50 text-blue-800 text-xs font-bold rounded border border-blue-200">ℹ️ ${curOut.fault_details.length} fault(s) already saved for today. Adding new ones below will append to the day's record.</div>`;
+                } else {
+                    faultInfoDiv.innerHTML = '';
+                }
+                
+                // Add one blank fault row to start
+                addFaultRow();
+            }
+        } catch (err) {
+            console.error("Error fetching 12:00 PM data:", err);
+        }
+        // -------------------------------------------------------
+
     } else {
         document.getElementById('section-waiting').classList.remove('hidden');
     }
@@ -757,27 +912,60 @@ const btnRain = document.getElementById('btn-save-rainfall');
 if(btnRain) {
     btnRain.replaceWith(btnRain.cloneNode(true));
     document.getElementById('btn-save-rainfall').addEventListener('click', async () => {
-        const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
-        const nums = nepaliDateStr.match(/\d+/g) || [2081, 1, 1];
-        const nYear = parseInt(nums[0]);
-        const nMonth = parseInt(nums[1]);
-        const nDay = parseInt(nums[2]);
-        const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-        const monthName = bsMonthNames[nMonth - 1] || '';
+        const btn = document.getElementById('btn-save-rainfall');
+        const originalText = btn.innerText;
+        btn.innerText = "Saving..."; 
+        btn.disabled = true;
 
-        const payload = {
-            id: `${nYear}_${monthName}_${nDay}`,
-            nepali_year: nYear,
-            nepali_month: monthName,
-            day: nDay,
-            headworks: parseFloat(document.getElementById('inp-rain-dam').value) || 0,
-            powerhouse: parseFloat(document.getElementById('inp-rain-ph').value) || 0,
-            updated_at: new Date().toISOString()
-        };
-        
-        const { error } = await supabase.from('rainfall_data').upsert(payload);
-        if(error) showNotification("❌ Error saving rainfall: " + error.message, true);
-        else showNotification("✅ Rainfall data saved successfully!");
+        try {
+            const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
+            const nums = nepaliDateStr.match(/\d+/g) || [2081, 1, 1];
+            const nYear = parseInt(nums[0]);
+            const nMonth = parseInt(nums[1]);
+            const nDay = parseInt(nums[2]);
+            
+            // THE FIX: Secure the leading zero so Daily Master can see it
+            const safeDayStr = String(nDay).padStart(2, '0');
+            
+            const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+            const monthName = bsMonthNames[nMonth - 1] || '';
+
+            const rainId = `${nYear}_${monthName}_${safeDayStr}`;
+
+            // Fetch existing so we don't accidentally overwrite anything
+            const { data: curRain } = await supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle();
+
+            const payload = {
+                ...(curRain || {}),
+                id: rainId,
+                nepali_year: nYear,
+                nepali_month: monthName,
+                day: nDay,
+                headworks: parseFloat(document.getElementById('inp-rain-dam').value) || 0,
+                powerhouse: parseFloat(document.getElementById('inp-rain-ph').value) || 0,
+                operator_email: window.currentUser?.email || null,
+                operator_uid: window.currentUser?.id || null,
+                updated_at: new Date().toISOString()
+            };
+            
+            const { error } = await supabase.from('rainfall_data').upsert(payload);
+            
+            if(error) {
+                alert("❌ Database Error saving rainfall:\n" + error.message);
+                showNotification("❌ Error: " + error.message, true);
+            } else {
+                // THE FIX: Unmissable success alert
+                const successMsg = "✅ 08:00 AM Rainfall Synced to Daily Master!";
+                alert(successMsg);
+                showNotification(successMsg);
+            }
+        } catch (err) {
+            alert("❌ Critical Error:\n" + err.message);
+            console.error(err);
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
     });
 }
 
@@ -790,16 +978,22 @@ if(btnNoon) {
 
         try {
             const targetDate = document.getElementById('dd-entry-date').value;
+            if (!targetDate) throw new Error("Please select an English Date first.");
             
+            // 1. Save Substation Readings
             const balPayload = {
                 eng_date: targetDate,
                 main_export: parseFloat(document.getElementById('inp-bal-main-exp').value) || 0,
                 main_import: parseFloat(document.getElementById('inp-bal-main-imp').value) || 0,
                 check_export: parseFloat(document.getElementById('inp-bal-chk-exp').value) || 0,
-                check_import: parseFloat(document.getElementById('inp-bal-chk-imp').value) || 0
+                check_import: parseFloat(document.getElementById('inp-bal-chk-imp').value) || 0,
+                operator_email: window.currentUser?.email || null,
+                operator_uid: window.currentUser?.id || null,
             };
-            await supabase.from('balanch_readings').upsert(balPayload);
+            const { error: balErr } = await supabase.from('balanch_readings').upsert(balPayload);
+            if (balErr) throw new Error("Substation Save Error: " + balErr.message);
 
+            // 2. Gather Outages
             const { data: existingOutage } = await supabase.from('outages').select('*').eq('id', targetDate).maybeSingle();
             let faultDetailsArray = existingOutage && existingOutage.fault_details ? [...existingOutage.fault_details] : [];
 
@@ -852,6 +1046,7 @@ if(btnNoon) {
                 }
             });
 
+            // Fallback for older existing legacy summaries
             if (existingOutage && (!existingOutage.fault_details || existingOutage.fault_details.length === 0)) {
                  agg.disp += Number(existingOutage.nea_curtailed_energy || 0);
                  agg.grid += Number(existingOutage.energy_loss_line_trip || 0);
@@ -875,8 +1070,9 @@ if(btnNoon) {
             };
 
             const { error: outErr } = await supabase.from('outages').upsert(outagePayload);
-            if(outErr) console.error("Outages Sync Error: ", outErr);
+            if(outErr) throw new Error("Outages Save Error: " + outErr.message);
 
+            // 3. Update Contract Energy (Monthly Summary)
             if (newDetailsArray.length > 0) {
                 let newAgg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0 };
                 newDetailsArray.forEach(f => {
@@ -911,17 +1107,30 @@ if(btnNoon) {
                             fm_equipment_mwh: (parseFloat(ext.fm_equipment_mwh)||0) + newAgg.eq
                         }).eq('year', nYear).eq('month', monthName);
                         if(ceErr) console.error("Contract Energy Sync Error: ", ceErr);
-                    } else {
-                        showNotification(`⚠️ Warning: Monthly row for ${nYear} ${monthName} not found in Energy Summary. Daily data saved, but monthly totals skipped.`, true);
                     }
                 }
             }
 
+            // Clean up the UI
             document.getElementById('faults-container').innerHTML = '';
-            showNotification("✅ 12:00 PM Sync Complete!");
+            addFaultRow(); // Add a fresh blank row for next time
+            
+            const faultInfoDiv = document.getElementById('existing-faults-info');
+            if (faultInfoDiv) faultInfoDiv.innerHTML = `<div class="mb-3 p-3 bg-emerald-50 text-emerald-800 text-xs font-bold rounded border border-emerald-200">✅ Data saved. Any new faults added below will be appended.</div>`;
 
-        } catch (err) { showNotification("❌ Error: " + err.message, true); } 
-        finally { btn.innerText = "Sync 12:00 PM Data to Database"; btn.disabled = false; }
+            // --- THE FIX: Unmissable Popup Alerts ---
+            const successMsg = "✅ 12:00 PM Data (Substation & Outages) Synced Successfully!";
+            alert(successMsg);
+            showNotification(successMsg);
+
+        } catch (err) { 
+            alert("❌ Critical Error:\n" + err.message);
+            showNotification("❌ Error: " + err.message, true); 
+            console.error(err);
+        } finally { 
+            btn.innerText = "Sync 12:00 PM Data to Database"; 
+            btn.disabled = false; 
+        }
     });
 }
 

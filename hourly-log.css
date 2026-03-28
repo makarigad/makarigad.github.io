@@ -149,3 +149,17 @@ body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
 
 /* ── No-print ── */
 @media print { .no-print { display: none !important; } }
+
+/* Remove up/down arrows from number inputs for a clean Excel look */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none; /* <-- Adds standard compatibility */
+    margin: 0;
+}
+
+/* Fix for Firefox browsers */
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield; /* <-- Adds standard compatibility */
+}

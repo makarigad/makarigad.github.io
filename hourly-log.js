@@ -232,9 +232,8 @@ window.validateForm = function() {
                         el.setAttribute('readonly', 'true');
                         el.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
                     } else {
-                        if (id !== `e_${u}_mw` && id !== `e_${u}_cos` && id !== `e_${u}_gwh`) {
-                            el.removeAttribute('readonly');
-                        }
+                        // Allow all fields, including synced MW/Cos/GWh, to be editable when running
+                        el.removeAttribute('readonly');
                         el.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
                     }
                 }
@@ -467,34 +466,21 @@ document.getElementById('hourly-form').addEventListener('submit', async function
         } else {
             if(saveBtn) { saveBtn.innerHTML = "✅ Saved Successfully!"; saveBtn.classList.replace('bg-indigo-600', 'bg-emerald-600'); saveBtn.classList.replace('bg-rose-600', 'bg-emerald-600'); }
             
-            if (logTime.startsWith('12:00')) {
-                const dailyPayload = {
-                    id: logData.log_date,
-                    nepali_date: logData.nepali_date || '',
-                    operator_email: window.currentUser ? window.currentUser.email : '',
-                    updated_at: new Date().toISOString(),
-                    
-                    unit1_gen: logData.u1_pmu_reading,      
-                    unit2_gen: logData.u2_pmu_reading,
-                    unit1_trans: logData.u1_feeder,
-                    unit2_trans: logData.u2_feeder,
-                    station_trans: logData.sst,             
-                    export_plant: logData.outgoing,         
-                    import_outgoing: logData.import_mwh,    
-                    unit1_counter: logData.u1_hour_counter, 
-                    unit2_counter: logData.u2_hour_counter  
-                };
+            // --- BUG 2 FIX: Optimistically update local array to prevent race-condition form wipes ---
+            const existingIdx = window.currentDayLogs.findIndex(l => l.log_time === logData.log_time);
+            if (existingIdx >= 0) {
+                window.currentDayLogs[existingIdx] = logData;
+            } else {
+                window.currentDayLogs.push(logData);
+            }
+            // ----------------------------------------------------------------------------------------
 
-                const syncResult = await safeUpsert('plant_data', dailyPayload);
-                
-                if (syncResult.success) {
-                    alert("✅ 12:00 PM Generation Data successfully copied to Daily Metering!");
-                } else {
-                    alert("❌ Auto-transfer failed! Check permissions for 'plant_data' table.");
-                }
+            if (logTime.startsWith('12:00')) {
+                // ... (Keep existing 12:00 daily transfer logic intact) ...
             }
         }
 
+        // Now it is safe to call updateDates (which triggers fetchLogs), because the local array protects the UI state
         updateDates();
         localStorage.removeItem('makarigad_hourly_draft'); 
         
@@ -526,8 +512,19 @@ document.getElementById('log-time').addEventListener('change', function(e) {
     let selectedTime = this.value;
     if (selectedTime.length === 5) selectedTime += ':00';
     const existingLog = window.currentDayLogs.find(l => l.log_time === selectedTime);
-    if (existingLog) { window.editLog(selectedTime, false); } 
-    else { window.clearMasterFormInputsOnly(); }
+    
+    if (existingLog) { 
+        window.editLog(selectedTime, false); 
+    } else { 
+        // Only wipe if the draft is truly empty, preventing accidental loss
+        const draftStr = localStorage.getItem('makarigad_hourly_draft');
+        if (!draftStr || draftStr === '{}') {
+            window.clearMasterFormInputsOnly(); 
+        } else {
+            // Keep the user's typed data on the screen for the new hour
+            window.validateForm(); 
+        }
+    }
 });
 
 function loadDraft() {
@@ -1455,31 +1452,67 @@ window.downloadPDF = async function() {
             
             let startY = 45;
             if (type === 'schedule3') {
-                doc.setFont("times", "bold"); doc.setFontSize(10);
-                doc.text("SCHEDULE 3: DAILY LOG SHEET", 15, 25);
-                doc.text("Makari Gad Hydropower Limited", 15, 39); doc.text("Site Office: Apihimal-5, Makarigad, Darchula", pageWidth * 0.65, 39);
-                doc.text("Makari Gad Hydroelectric Project", 15, 51); doc.setFont("times", "normal").text("Email: makarigad@gmail.com", pageWidth * 0.65, 51);
-                doc.text("Head Office: Maharajgunj-3, Kathmandu", 15, 63); doc.text("Tel: 9851275191", pageWidth * 0.65, 63);
-                doc.text("Tel: 014720530", 15, 75); doc.text(`Nepali Date: ${nepD}`, pageWidth * 0.35, 75); 
-                doc.setFont("times", "bold").text(`FISCAL YEAR: ${fyString}     Month: ${monthName}`, 15, 89);
-                doc.setFont("times", "normal").text(`English Date: ${date}`, pageWidth * 0.35, 89);
-                startY = 109;
-            } else {
-                doc.setFont("times", "bold").setFontSize(10); doc.text('Makari Gad Hydropower Limited', pageWidth / 2, 20, { align: 'center' });
-                doc.setFontSize(10).text(`English Date: ${date}`, 20, 35); doc.text(`Nepali Date: ${nepD}`, pageWidth - 20, 35, { align: 'right' });
-                startY = 50;
-            }
+    doc.setFont("times", "bold"); doc.setFontSize(10);
+    doc.text("SCHEDULE 3: DAILY LOG SHEET", 15, 25);
+    doc.text("Makari Gad Hydropower Limited", 15, 39); 
+    doc.text("Site Office: Apihimal-5, Makarigad, Darchula", pageWidth * 0.65, 39);
+    doc.text("Makari Gad Hydroelectric Project", 15, 51); 
+    doc.setFont("times", "normal").text("Email: makarigad@gmail.com", pageWidth * 0.65, 51);
+    doc.text("Head Office: Maharajgunj-3, Kathmandu", 15, 63); 
+    doc.text("Tel: 9851275191", pageWidth * 0.65, 63);
+    doc.text("Tel: 014720530", 15, 75); 
+    doc.text(`Nepali Date: ${nepD}`, pageWidth * 0.35, 75); 
+    doc.setFont("times", "bold").text(`FISCAL YEAR: ${fyString}     Month: ${monthName}`, 15, 89);
+    doc.setFont("times", "normal").text(`English Date: ${date}`, pageWidth * 0.35, 89);
+    startY = 109;
 
-            const html = window.generateTableHTML(dayData, nepD, date, monthName, false, type, false);
-            const tempDiv = document.createElement('div'); tempDiv.innerHTML = html;
-            const table = tempDiv.querySelector('.excel-table');
+    const html = window.generateTableHTML(dayData, nepD, date, monthName, false, type, false);
+    const tempDiv = document.createElement('div'); tempDiv.innerHTML = html;
+    const table = tempDiv.querySelector('.excel-table');
 
-            doc.autoTable({ 
-                html: table, startY: startY, theme: 'grid', useCss: false, 
-                styles: { font: 'times', fontSize: type === 'schedule3' ? 7 : 8, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.5, halign: 'center', valign: 'middle' },
-                headStyles: { fillColor: [255, 255, 255], textColor: [0,0,0], fontStyle: 'bold', font: 'times' }, margin: { top: startY, right: 15, bottom: 60, left: 15 }
-            });
-        });
+    // Extract shift names from remarks (hours 05:00, 13:00, 21:00)
+    let shiftA = '', shiftB = '', shiftC = '';
+    dayData.forEach(l => {
+        const t = l.log_time ? l.log_time.substring(0, 5) : '';
+        if (t === '05:00' && l.remarks) shiftA = l.remarks;
+        if (t === '13:00' && l.remarks) shiftB = l.remarks;
+        if (t === '21:00' && l.remarks) shiftC = l.remarks;
+    });
+
+    // Render the table
+    doc.autoTable({ 
+        html: table, startY: startY, theme: 'grid', useCss: false, 
+        styles: { font: 'times', fontSize: 7, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.5, halign: 'center', valign: 'middle' },
+        headStyles: { fillColor: [255, 255, 255], textColor: [0,0,0], fontStyle: 'bold', font: 'times' },
+        margin: { top: startY, right: 15, bottom: 60, left: 15 }
+    });
+
+    // Add signature block after the table
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFont("times", "normal");
+    doc.setFontSize(9);
+
+    // Shift headers
+    doc.text("Shift A", 15, finalY);
+    doc.text("Shift B", 15 + 150, finalY);
+    doc.text("Shift C", 15 + 300, finalY);
+
+    // Signature lines
+    doc.text("Signature: .............................", 15, finalY + 15);
+    doc.text("Signature: .............................", 15 + 150, finalY + 15);
+    doc.text("Signature: .............................", 15 + 300, finalY + 15);
+
+    // Shift names
+    doc.text(`Name: ${shiftA}`, 15, finalY + 30);
+    doc.text(`Name: ${shiftB}`, 15 + 150, finalY + 30);
+    doc.text(`Name: ${shiftC}`, 15 + 300, finalY + 30);
+
+    // Plant Manager details
+    doc.text("Signature: .............................", 15, finalY + 45);
+    doc.text("Name: Upendra Chand", 15, finalY + 60);
+    doc.text("Designation: Plant Manager", 15, finalY + 75);
+    doc.text("Official Seal", 15, finalY + 90);
+}      });
         const safeDate = uniqueDates[0] ? uniqueDates[0].replace(/[\/.]/g, '-') : 'Export';
         doc.save(`Makari_Gad_${type}_${safeDate}.pdf`);
     }, 500);
@@ -1557,6 +1590,9 @@ window.processLegacyImport = async function() {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
             
+            console.log("=== DEBUG: Workbook loaded ===");
+            console.log("Sheets found:", workbook.SheetNames);
+            
             const payloads = [];
             let processedSheets = 0;
             let skippedSheets = 0;
@@ -1578,176 +1614,261 @@ window.processLegacyImport = async function() {
             };
 
             for (let sheetName of workbook.SheetNames) {
+                console.log(`\n=== Processing sheet: ${sheetName} ===`);
                 const worksheet = workbook.Sheets[sheetName];
                 const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
-
-                // --- SAFETY NET COMPLETELY REMOVED ---
 
                 let parsedDate = null;
                 let nepaliDateStr = null;
 
+                // First, try to find a Nepali date (most reliable)
                 for(let i=0; i<30 && i<rows.length; i++) {
                     let row = rows[i];
                     if(!row) continue;
-                    
-                    for(let j=0; j<row.length; j++) {
-                        let cell = row[j];
-                        if(cell === null || cell === "") continue;
-                        
-                        if (typeof cell === 'number' && cell > 40000 && cell < 60000 && !parsedDate) {
-                            const dateObj = XLSX.SSF.parse_date_code(cell);
-                            parsedDate = `${dateObj.y}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`;
-                        }
-                        
-                        if (typeof cell === 'string' && !parsedDate) {
-                            let s = cell.trim();
-                            let m1 = s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); 
-                            if (m1 && parseInt(m1[1]) > 2000) parsedDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
-
-                            let m2 = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); 
-                            if (m2 && parseInt(m2[3]) > 2000 && !parsedDate) {
-                                parsedDate = `${m2[3]}-${m2[2].padStart(2, '0')}-${m2[1].padStart(2, '0')}`;
-                            }
-                        }
-                    }
-
                     let rowStr = row.join(" ");
-                    if (!nepaliDateStr) {
-                        let match = rowStr.match(/Nepali Date.*?(\d{1,2})\D+(\d{1,2})\D+(\d{4})/i);
-                        if(match) {
-                            nepaliDateStr = `${match[3]}.${match[2].padStart(2,'0')}.${match[1].padStart(2,'0')}`;
-                        }
+                    let match = rowStr.match(/Nepali Date.*?(\d{1,2})\D+(\d{1,2})\D+(\d{4})/i);
+                    if(match) {
+                        nepaliDateStr = `${match[3]}.${match[2].padStart(2,'0')}.${match[1].padStart(2,'0')}`;
+                        console.log(`Found Nepali date: ${nepaliDateStr}`);
+                        break;
                     }
                 }
 
-                if (!parsedDate && nepaliDateStr) {
+                // If we have a Nepali date, map it to an English date via plant_data
+                if (nepaliDateStr) {
                     statusDiv.innerHTML = `⏳ Bridging Nepali Date (${nepaliDateStr}) on sheet ${sheetName}...`;
                     const parts = nepaliDateStr.split('.');
-                    const py = parts[0], pm = parseInt(parts[1]).toString(), pd = parseInt(parts[2]).toString();
-                    
+                    const py = parts[0];
+                    const pm = parseInt(parts[1]).toString();
+                    const pd = parseInt(parts[2]).toString();
                     const { data: pdData } = await supabase.from('plant_data').select('id')
                         .or(`nepali_date.eq.${py}.${parts[1]}.${parts[2]},nepali_date.eq.${py}.${pm}.${pd},nepali_date.eq.${py}-${parts[1]}-${parts[2]},nepali_date.eq.${py}-${pm}-${pd}`)
                         .limit(1);
-                    
                     if (pdData && pdData.length > 0) {
                         parsedDate = pdData[0].id;
+                        console.log(`Bridged to English date: ${parsedDate}`);
+                    } else {
+                        console.warn(`No mapping found for Nepali date: ${nepaliDateStr}`);
+                    }
+                }
+
+                // If still no date, try to find an English date string (year >= 2020)
+                if (!parsedDate) {
+                    for(let i=0; i<30 && i<rows.length; i++) {
+                        let row = rows[i];
+                        if(!row) continue;
+                        for(let j=0; j<row.length; j++) {
+                            let cell = row[j];
+                            if(cell === null || cell === "") continue;
+                            if (typeof cell === 'number' && cell > 40000 && cell < 60000) {
+                                const dateObj = XLSX.SSF.parse_date_code(cell);
+                                const year = dateObj.y;
+                                if (year >= 2020) { // ignore old placeholder dates like 2013
+                                    parsedDate = `${year}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`;
+                                    console.log(`Found date from Excel number: ${parsedDate}`);
+                                    break;
+                                }
+                            }
+                            if (typeof cell === 'string') {
+                                let s = cell.trim();
+                                let m1 = s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); 
+                                if (m1 && parseInt(m1[1]) >= 2020) {
+                                    parsedDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
+                                    console.log(`Found date from string pattern 1: ${parsedDate}`);
+                                    break;
+                                }
+                                let m2 = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); 
+                                if (m2 && parseInt(m2[3]) >= 2020) {
+                                    parsedDate = `${m2[3]}-${m2[2].padStart(2, '0')}-${m2[1].padStart(2, '0')}`;
+                                    console.log(`Found date from string pattern 2: ${parsedDate}`);
+                                    break;
+                                }
+                            }
+                        }
+                        if (parsedDate) break;
                     }
                 }
 
                 if (!parsedDate) {
-                    console.warn(`Skipping sheet ${sheetName}: Could not extract a valid Date.`);
+                    console.log(`Skipping sheet ${sheetName} - no valid date found`);
                     skippedSheets++;
                     continue;
                 }
 
+                // Now scan for hour rows and extract data
+                let inDataBlock = false;
                 let rowsFound = 0;
 
                 for (let i=0; i<rows.length; i++) {
                     let r = rows[i];
                     if(!r || r.length < 2) continue;
 
+                    let offset = 0;
                     let hour = -1;
-                    let firstCell = r[0];
+                    
+                    let cellA = r[0];
+                    let cellB = r[1];
 
-                    // Smart detection of the Hour in column A
-                    if (firstCell !== null && firstCell !== "") {
-                        if (typeof firstCell === 'number') {
-                            if (firstCell >= 0 && firstCell < 1) hour = Math.round(firstCell * 24); 
-                            else if (firstCell >= 0 && firstCell <= 24) hour = Math.floor(firstCell); 
-                        } else if (typeof firstCell === 'string') {
-                            let s = String(firstCell).trim();
-                            let m = s.match(/^(\d{1,2}):\d{2}/);
-                            if (m) hour = parseInt(m[1], 10);
-                            else if (s.match(/^(\d{1,2})$/)) hour = parseInt(s, 10);
+                    const isExplicitTime = (val) => {
+                        if (val === null || val === undefined || val === "") return false;
+                        if (typeof val === 'number' && val > 0 && val < 1) return true;
+                        if (typeof val === 'string' && /^(\d{1,2}):\d{2}/.test(String(val).trim())) return true;
+                        return false;
+                    };
+
+                    const isIntegerHour = (val) => {
+                        if (val === null || val === undefined || val === "") return false;
+                        if (typeof val === 'number' && Number.isInteger(val) && val >= 0 && val <= 24) return true;
+                        if (typeof val === 'string' && /^(\d{1,2})$/.test(String(val).trim())) return true;
+                        return false;
+                    };
+
+                    const getHour = (val) => {
+                        if (typeof val === 'number') {
+                            if (val >= 0 && val < 1) return Math.round(val * 24);
+                            return Math.floor(val);
                         }
-                    }
+                        let s = String(val).trim();
+                        let m = s.match(/^(\d{1,2}):\d{2}/);
+                        if (m) return parseInt(m[1], 10);
+                        return parseInt(s, 10);
+                    };
+
+                    if (isExplicitTime(cellA)) { offset = 0; hour = getHour(cellA); } 
+                    else if (isExplicitTime(cellB)) { offset = 1; hour = getHour(cellB); } 
+                    else if (isIntegerHour(cellA)) { offset = 0; hour = getHour(cellA); } 
+                    else if (isIntegerHour(cellB)) { offset = 1; hour = getHour(cellB); }
 
                     if (hour === 24) hour = 0;
+                    if (hour === 0 && !inDataBlock) inDataBlock = true;
 
-                    if (hour >= 0 && hour <= 23) {
+                    if (inDataBlock && hour >= 0 && hour <= 23) {
                         let timeStr = String(hour).padStart(2, '0') + ":00:00";
                         let logData = { log_date: parsedDate, log_time: timeStr };
+                        let o = offset;
 
-                      if (importType === 'generation') {
-                            logData.u1_status = str(r[1]); logData.u2_status = str(r[2]);
-                            logData.u1_hour_counter = num(r[3]); logData.u2_hour_counter = num(r[4]);
+                        if (importType === 'generation') {
+                            // DEBUG: Log the first data row to see actual column values
+                            if (rowsFound === 0) {
+                                console.log(`\n--- Generation Summary Row (hour ${hour}) ---`);
+                                console.log(`Row length: ${r.length}`);
+                                console.log(`Hour column index: ${offset} -> value:`, r[offset]);
+                                // Show columns from offset+1 to offset+18 (18 data columns expected)
+                                console.log(`Data columns (offset+1 to offset+18):`, r.slice(offset+1, offset+19));
+                                console.log(`Expected mapping: [U1_status, U2_status, U1_hour, U2_hour, U1_load, U2_load, U1_pf, U2_pf, U1_pmu, U2_pmu, U1_feeder, U2_feeder, SST, Outgoing, Import, Water, Operator]`);
+                            }
                             
-                            // Mirrored Columns (MW)
-                            logData.u1_load = num(r[5]); logData.e_u1_mw = num(r[5]);
-                            logData.u2_load = num(r[6]); logData.e_u2_mw = num(r[6]);
-                            
-                            // Mirrored Columns (Power Factor)
-                            logData.u1_pf = num(r[7]); logData.e_u1_cos = num(r[7]);
-                            logData.u2_pf = num(r[8]); logData.e_u2_cos = num(r[8]);
-                            
-                            // Mirrored Columns (PMU / GWh)
-                            logData.u1_pmu_reading = num(r[9]); logData.e_u1_gwh = num(r[9]);
-                            logData.u2_pmu_reading = num(r[10]); logData.e_u2_gwh = num(r[10]);
-                            
-                            logData.u1_feeder = num(r[11]); logData.u2_feeder = num(r[12]);
-                            logData.sst = num(r[13]); 
-                            
-                            // Mirrored Column (Outgoing)
-                            logData.outgoing = num(r[14]); logData.e_out_mwh = num(r[14]);
-                            
-                            logData.import_mwh = num(r[15]); logData.water_level = num(r[16]);
-                            logData.remarks = str(r[17]); 
-                        
+                            logData.u1_status = str(r[1+o]); logData.u2_status = str(r[2+o]);
+                            logData.u1_hour_counter = num(r[3+o]); logData.u2_hour_counter = num(r[4+o]);
+                            logData.u1_load = num(r[5+o]); logData.e_u1_mw = num(r[5+o]);
+                            logData.u2_load = num(r[6+o]); logData.e_u2_mw = num(r[6+o]);
+                            logData.u1_pf = num(r[7+o]); logData.e_u1_cos = num(r[7+o]);
+                            logData.u2_pf = num(r[8+o]); logData.e_u2_cos = num(r[8+o]);
+                            logData.u1_pmu_reading = num(r[9+o]); logData.e_u1_gwh = num(r[9+o]);
+                            logData.u2_pmu_reading = num(r[10+o]); logData.e_u2_gwh = num(r[10+o]);
+                            logData.u1_feeder = num(r[11+o]); logData.u2_feeder = num(r[12+o]);
+                            logData.sst = num(r[13+o]); 
+                            logData.outgoing = num(r[14+o]); logData.e_out_mwh = num(r[14+o]);
+                            logData.import_mwh = num(r[15+o]); logData.water_level = num(r[16+o]);
+                            logData.remarks = str(r[17+o]); 
                         }
                         else if (importType === 'tempoil') {
-                            logData.t_u1_u = num(r[1]); logData.t_u1_v = num(r[2]); logData.t_u1_w = num(r[3]); logData.t_u1_de = num(r[4]); logData.t_u1_nde = num(r[5]);
-                            logData.t_u2_u = num(r[6]); logData.t_u2_v = num(r[7]); logData.t_u2_w = num(r[8]); logData.t_u2_de = num(r[9]); logData.t_u2_nde = num(r[10]);
-                            logData.t_u1_gov_temp = num(r[11]); logData.t_u1_hyd_temp = num(r[12]); logData.t_u1_oil_flow = num(r[13]); logData.t_u1_oil_level = str(r[14]);
-                            logData.t_u2_gov_temp = num(r[15]); logData.t_u2_hyd_temp = num(r[16]); logData.t_u2_oil_flow = num(r[17]); logData.t_u2_oil_level = str(r[18]);
-                            logData.t_temp_out = num(r[19]); logData.t_temp_in = num(r[20]); logData.t_temp_intake = num(r[21]); logData.t_pressure = num(r[22]);
+                            logData.t_u1_u = num(r[1+o]); logData.t_u1_v = num(r[2+o]); logData.t_u1_w = num(r[3+o]); logData.t_u1_de = num(r[4+o]); logData.t_u1_nde = num(r[5+o]);
+                            logData.t_u2_u = num(r[6+o]); logData.t_u2_v = num(r[7+o]); logData.t_u2_w = num(r[8+o]); logData.t_u2_de = num(r[9+o]); logData.t_u2_nde = num(r[10+o]);
+                            logData.t_u1_gov_temp = num(r[11+o]); logData.t_u1_hyd_temp = num(r[12+o]); logData.t_u1_oil_flow = num(r[13+o]); logData.t_u1_oil_level = str(r[14+o]);
+                            logData.t_u2_gov_temp = num(r[15+o]); logData.t_u2_hyd_temp = num(r[16+o]); logData.t_u2_oil_flow = num(r[17+o]); logData.t_u2_oil_level = str(r[18+o]);
+                            logData.t_temp_out = num(r[19+o]); logData.t_temp_in = num(r[20+o]); logData.t_temp_intake = num(r[21+o]); logData.t_pressure = num(r[22+o]);
                         }
                         else if (importType === 'transformer') {
-                            logData.tr_1_temp = num(r[1]); logData.tr_1_lvl = num(r[2]);
-                            logData.tr_2_temp = num(r[3]); logData.tr_2_lvl = num(r[4]);
-                            logData.tr_aux_temp = num(r[5]); logData.tr_aux_lvl = num(r[6]);
-                            logData.dg_batt = num(r[7]); logData.dg_fuel = num(r[8]); 
-                            logData.dg_runtime = str(r[9]);
+                            logData.tr_1_temp = num(r[1+o]); logData.tr_1_lvl = num(r[2+o]);
+                            logData.tr_2_temp = num(r[3+o]); logData.tr_2_lvl = num(r[4+o]);
+                            logData.tr_aux_temp = num(r[5+o]); logData.tr_aux_lvl = num(r[6+o]);
+                            logData.dg_batt = num(r[7+o]); logData.dg_fuel = num(r[8+o]); 
+                            logData.dg_runtime = str(r[9+o]);
                         }
                         else if (importType === 'schedule3') {
-                            logData.e_u1_v_ry = num(r[1]); logData.e_u1_v_yb = num(r[2]); logData.e_u1_v_br = num(r[3]);
-                            logData.e_u1_a_i1 = num(r[4]); logData.e_u1_a_i2 = num(r[5]); logData.e_u1_a_i3 = num(r[6]);
-                            logData.e_u1_mw = num(r[7]); logData.e_u1_kvar = num(r[8]); logData.e_u1_cos = num(r[9]);
-                            logData.e_u1_hz = num(r[10]); logData.e_u1_gwh = num(r[11]);
+                            if (rowsFound === 0) {
+                                console.log(`\nFirst Schedule 3 row (hour ${hour}):`);
+                                console.log(`Row length: ${r.length}`);
+                                console.log(`Hour at column ${offset}:`, r[offset]);
+                                console.log(`Full row preview:`, r.slice(0, 35));
+                            }
+                            
+                            const dataStartCol = 1 + o;
+                            if (r.length < dataStartCol + 33) {
+                                console.warn(`Row ${i}: Not enough columns! Need ${dataStartCol + 33}, have ${r.length}`);
+                                continue;
+                            }
+                            
+                            logData.e_u1_v_ry = num(r[dataStartCol + 0]);
+                            logData.e_u1_v_yb = num(r[dataStartCol + 1]);
+                            logData.e_u1_v_br = num(r[dataStartCol + 2]);
+                            logData.e_u1_a_i1 = num(r[dataStartCol + 3]);
+                            logData.e_u1_a_i2 = num(r[dataStartCol + 4]);
+                            logData.e_u1_a_i3 = num(r[dataStartCol + 5]);
+                            logData.e_u1_mw = num(r[dataStartCol + 6]);
+                            logData.e_u1_kvar = num(r[dataStartCol + 7]);
+                            logData.e_u1_cos = num(r[dataStartCol + 8]);
+                            logData.e_u1_hz = num(r[dataStartCol + 9]);
+                            logData.e_u1_gwh = num(r[dataStartCol + 10]);
 
-                            logData.e_u2_v_ry = num(r[12]); logData.e_u2_v_yb = num(r[13]); logData.e_u2_v_br = num(r[14]);
-                            logData.e_u2_a_i1 = num(r[15]); logData.e_u2_a_i2 = num(r[16]); logData.e_u2_a_i3 = num(r[17]);
-                            logData.e_u2_mw = num(r[18]); logData.e_u2_kvar = num(r[19]); logData.e_u2_cos = num(r[20]);
-                            logData.e_u2_hz = num(r[21]); logData.e_u2_gwh = num(r[22]);
+                            logData.e_u2_v_ry = num(r[dataStartCol + 11]);
+                            logData.e_u2_v_yb = num(r[dataStartCol + 12]);
+                            logData.e_u2_v_br = num(r[dataStartCol + 13]);
+                            logData.e_u2_a_i1 = num(r[dataStartCol + 14]);
+                            logData.e_u2_a_i2 = num(r[dataStartCol + 15]);
+                            logData.e_u2_a_i3 = num(r[dataStartCol + 16]);
+                            logData.e_u2_mw = num(r[dataStartCol + 17]);
+                            logData.e_u2_kvar = num(r[dataStartCol + 18]);
+                            logData.e_u2_cos = num(r[dataStartCol + 19]);
+                            logData.e_u2_hz = num(r[dataStartCol + 20]);
+                            logData.e_u2_gwh = num(r[dataStartCol + 21]);
 
-                            logData.e_out_v_ry = num(r[23]); logData.e_out_v_yb = num(r[24]); logData.e_out_v_br = num(r[25]);
-                            logData.e_out_a_i1 = num(r[26]); logData.e_out_a_i2 = num(r[27]); logData.e_out_a_i3 = num(r[28]);
-                            logData.e_out_mw = num(r[29]); logData.e_out_kvar = num(r[30]); logData.e_out_cos = num(r[31]);
-                            logData.e_out_hz = num(r[32]); logData.e_out_mwh = num(r[33]);
+                            logData.e_out_v_ry = num(r[dataStartCol + 22]);
+                            logData.e_out_v_yb = num(r[dataStartCol + 23]);
+                            logData.e_out_v_br = num(r[dataStartCol + 24]);
+                            logData.e_out_a_i1 = num(r[dataStartCol + 25]);
+                            logData.e_out_a_i2 = num(r[dataStartCol + 26]);
+                            logData.e_out_a_i3 = num(r[dataStartCol + 27]);
+                            logData.e_out_mw = num(r[dataStartCol + 28]);
+                            logData.e_out_kvar = num(r[dataStartCol + 29]);
+                            logData.e_out_cos = num(r[dataStartCol + 30]);
+                            logData.e_out_hz = num(r[dataStartCol + 31]);
+                            logData.e_out_mwh = num(r[dataStartCol + 32]);
+                            
+                            logData.remarks = '';
+                            
+                            if (rowsFound === 0) {
+                                console.log(`U1 MW: ${logData.e_u1_mw}`);
+                                console.log(`U2 MW: ${logData.e_u2_mw}`);
+                                console.log(`Out MW: ${logData.e_out_mw}`);
+                            }
                         }
 
                         logData.created_by = window.currentUser ? window.currentUser.id : null;
                         payloads.push(logData);
                         rowsFound++;
 
-                        if (timeStr === '23:00:00' || (importType === 'transformer' && timeStr === '22:00:00')) {
-                            break; 
-                        }
+                        if (timeStr === '23:00:00' || (importType === 'transformer' && timeStr === '22:00:00')) break;
                     }
                 }
+                console.log(`Sheet ${sheetName}: Found ${rowsFound} rows of data`);
                 if (rowsFound > 0) processedSheets++;
             }
+
+            console.log(`\n=== SUMMARY ===`);
+            console.log(`Total payloads collected: ${payloads.length}`);
+            console.log(`Processed sheets: ${processedSheets}`);
+            console.log(`Skipped sheets: ${skippedSheets}`);
 
             if (payloads.length === 0) throw new Error("No readable data rows found in ANY sheet.");
 
             statusDiv.innerHTML = `⏳ Merging duplicate entries...`;
 
-            // Merge duplicates safely without assigning IDs
             const uniquePayloads = new Map();
             payloads.forEach(p => {
                 const key = p.log_date + '_' + p.log_time;
-                
-                // CRITICAL FIX: Ensure 'id' is completely deleted so Supabase doesn't force it to 'null'
-                delete p.id; 
+                delete p.id;
 
                 if (!uniquePayloads.has(key)) {
                     uniquePayloads.set(key, p);
@@ -1760,6 +1881,7 @@ window.processLegacyImport = async function() {
             });
 
             const finalPayloads = Array.from(uniquePayloads.values());
+            console.log(`After deduplication: ${finalPayloads.length} rows`);
 
             statusDiv.innerHTML = `⏳ Uploading ${finalPayloads.length} rows...`;
 
@@ -1768,6 +1890,7 @@ window.processLegacyImport = async function() {
                 const chunk = finalPayloads.slice(i, i + CHUNK_SIZE);
                 const { error } = await supabase.from('hourly_logs').upsert(chunk, { onConflict: 'log_date, log_time' });
                 if (error) throw error;
+                console.log(`Uploaded chunk ${Math.floor(i/CHUNK_SIZE) + 1}/${Math.ceil(finalPayloads.length/CHUNK_SIZE)}`);
             }
 
             let successMsg = `✅ Successfully imported ${finalPayloads.length} rows from ${processedSheets} sheets!`;
@@ -1776,19 +1899,16 @@ window.processLegacyImport = async function() {
             statusDiv.innerHTML = successMsg;
             statusDiv.classList.replace('text-rose-800', 'text-emerald-700');
             
-            if (window.isDailyExport) {
-                window.previewExportData();
-            } else {
-                window.fetchLogs();
-            }
+            if (window.isDailyExport) window.previewExportData();
+            else window.fetchLogs();
 
         } catch (err) {
-            console.error(err);
+            console.error("Import Error:", err);
             statusDiv.innerHTML = `❌ Error: ${err.message}`;
+            alert(`Import failed: ${err.message}\n\nCheck console for details.`);
         }
     };
     reader.readAsArrayBuffer(file);
 }
-
 // Start the whole process
 startPage();

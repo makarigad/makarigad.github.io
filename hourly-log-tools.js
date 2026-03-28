@@ -179,7 +179,7 @@ window.generateTableHTML = function(logs, nepD, dateEng, monthName, isPdf = fals
                 <td style="border:1px solid #000;">${v(l.u1_feeder, 3)}</td><td style="border:1px solid #000;">${v(l.u2_feeder, 3)}</td>
                 <td style="border:1px solid #000;">${v(l.sst, 1)}</td><td style="border:1px solid #000;">${v(l.e_out_mwh, 3)}</td>
                 <td style="border:1px solid #000;">${v(l.import_mwh, 3)}</td><td style="border:1px solid #000;">${v(l.water_level, 2)}</td>
-                <td style="border:1px solid #000;">${s(l.remarks)}</td>
+                <td style="border:1px solid #000;"></td>
             `;
         } 
         else if (type === 'tempoil') {
@@ -213,7 +213,7 @@ window.generateTableHTML = function(logs, nepD, dateEng, monthName, isPdf = fals
                 <td style="border:1px solid #000;">${v(l.e_out_a_i1, 0)}</td><td style="border:1px solid #000;">${v(l.e_out_a_i2, 0)}</td><td style="border:1px solid #000;">${v(l.e_out_a_i3, 0)}</td>
                 <td style="border:1px solid #000;">${v(l.e_out_mw, 3)}</td><td style="border:1px solid #000;">${v(l.e_out_kvar, 0)}</td><td style="border:1px solid #000;">${v(l.e_out_cos, 2)}</td><td style="border:1px solid #000;">${v(l.e_out_hz, 2)}</td><td style="border:1px solid #000;">${v(l.e_out_mwh, 3)}</td>
                 
-                <td style="border:1px solid #000;">${s(l.remarks)}</td> `;
+                <td style="border:1px solid #000;"></td> `;
         }
         
         // 🔥 INJECT THE EDIT BUTTON FOR OPERATORS/ADMINS 🔥

@@ -1,8 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-const supabaseUrl = 'https://ineaqjsmabbsjwwbjfya.supabase.co';
-const supabaseKey = 'sb_publishable_uadlDXas6Tpif6j4eWp30g_j6OG326s';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from './core-app.js';   // note: we don't need parseToUTCDate here, but showNotification is used
 
 // --- Global Variables ---
 let trendChartInstance = null;
@@ -17,6 +13,14 @@ let allMCE = [];
 let editingMCEId = null;
 let allBalanchData = [];
 let editingBalanchId = null;
+
+// 🔥 OPTIMIZATION: loading flags to prevent concurrent calls
+let isLoadingData = false;
+let isLoadingBalanch = false;
+let isLoadingOutages = false;
+let isLoadingMCE = false;
+let isLoadingRainfall = false;
+let isLoadingExpenses = false;
 
 const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
 
@@ -110,7 +114,7 @@ function getTodayStr() {
 const getUserName = () => currentUser ? currentUser.email.split('@')[0] : '';
 
 // =====================================
-// 7. RAINFALL & FLOW DATA
+// 7. RAINFALL & FLOW DATA (unchanged)
 // =====================================
 let allRainfallData = [];
 let editingRainfallId = null;
@@ -233,7 +237,7 @@ function renderRainfallGrid() {
 
     let trDay = `<tr class="bg-slate-100"><th class="p-2 border font-bold text-left sticky left-0 bg-slate-100 min-w-[100px] z-10">Day</th>`;
     let trDam = `<tr><th class="p-2 border font-bold text-left sticky left-0 bg-white shadow-[1px_0_0_#e2e8f0] z-10">Dam</th>`;
-    let trHead = `<tr><th class="p-2 border font-bold text-left sticky left-0 bg-white shadow-[1px_0_0_#e2e8f0] z-10">Headworks</th>`;
+    let trHead = `.<th class="p-2 border font-bold text-left sticky left-0 bg-white shadow-[1px_0_0_#e2e8f0] z-10">Headworks</th>`;
 
     let sumDam = 0;
     let sumHead = 0;
@@ -247,13 +251,13 @@ function renderRainfallGrid() {
         if(headVal !== '') sumHead += parseFloat(headVal);
 
         trDay += `<th class="p-2 border font-semibold text-slate-600 min-w-[50px]">${i}</th>`;
-        trDam += `<td class="p-2 border text-slate-700">${damVal}</td>`;
-        trHead += `<td class="p-2 border text-slate-700">${headVal}</td>`;
+        trDam += `<td class="p-2 border text-slate-700">${damVal}<\/td>`;
+        trHead += `<td class="p-2 border text-slate-700">${headVal}<\/td>`;
     }
 
-    trDay += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800 min-w-[60px]">Total</th></tr>`;
-    trDam += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800">${formatNumber(sumDam,2) || 0}</th></tr>`;
-    trHead += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800">${formatNumber(sumHead,2) || 0}</th></tr>`;
+    trDay += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800 min-w-[60px]">Total</th>`;
+    trDam += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800">${formatNumber(sumDam,2) || 0}</th>`;
+    trHead += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800">${formatNumber(sumHead,2) || 0}</th>`;
 
     gridTable.innerHTML = `<tbody>${trDay}${trDam}${trHead}</tbody>`;
 }
@@ -269,42 +273,42 @@ function createRainfallInputRow() {
     const monthOpts = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
 
     return `<tr class="bg-indigo-50/60 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
-        <td><select id="new-rf-year" class="input-cell font-bold">${yearOpts}</select></td>
-        <td><select id="new-rf-month" class="input-cell font-bold">${monthOpts}</select></td>
-        <td><input type="number" id="new-rf-day" min="1" max="32" class="input-cell" placeholder="Day" required /></td>
-        <td><input type="number" id="new-rf-headworks" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-rf-powerhouse" step="any" class="input-cell" /></td>
-        <td class="truncate-text text-xs text-slate-500">${getUserName()}</td>
-        <td class="col-actions"><button id="add-rf-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save</button></td>
-    </tr>`;
+        <td><select id="new-rf-year" class="input-cell font-bold">${yearOpts}</select><\/td>
+        <td><select id="new-rf-month" class="input-cell font-bold">${monthOpts}</select><\/td>
+        <td><input type="number" id="new-rf-day" min="1" max="32" class="input-cell" placeholder="Day" required /><\/td>
+        <td><input type="number" id="new-rf-headworks" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-rf-powerhouse" step="any" class="input-cell" /><\/td>
+        <td class="truncate-text text-xs text-slate-500">${getUserName()}<\/td>
+        <td class="col-actions"><button id="add-rf-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save<\/button><\/td>
+    <\/tr>`;
 }
 
 function createRainfallDisplayRow(d) {
     const canEdit = ['admin'].includes(userRole);
     const docStr = JSON.stringify(d).replace(/'/g, "&apos;");
-    return `<td class="font-bold text-slate-900">${d.nepali_year}</td>
-        <td class="font-medium text-slate-700">${d.nepali_month}</td>
-        <td class="text-slate-600">${d.day}</td>
-        <td class="text-slate-600">${formatNumber(d.headworks)}</td>
-        <td class="text-slate-600">${formatNumber(d.powerhouse)}</td>
-        <td class="truncate-text text-xs text-slate-500">${(d.operator_email || '').split('@')[0]}</td>
+    return `<td class="font-bold text-slate-900">${d.nepali_year}<\/td>
+        <td class="font-medium text-slate-700">${d.nepali_month}<\/td>
+        <td class="text-slate-600">${d.day}<\/td>
+        <td class="text-slate-600">${formatNumber(d.headworks)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.powerhouse)}<\/td>
+        <td class="truncate-text text-xs text-slate-500">${(d.operator_email || '').split('@')[0]}<\/td>
         <td class="col-actions space-x-2 whitespace-nowrap ${canEdit ? '' : 'hidden'}">
-            <button class="edit-rf-btn text-indigo-600 font-bold hover:underline" data-doc='${docStr}'>Edit</button>
-            ${userRole === 'admin' ? `<button class="delete-rf-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del</button>` : ''}
-        </td>`;
+            <button class="edit-rf-btn text-indigo-600 font-bold hover:underline" data-doc='${docStr}'>Edit<\/button>
+            ${userRole === 'admin' ? `<button class="delete-rf-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del<\/button>` : ''}
+        <\/td>`;
 }
 
 function createRainfallEditRow(d) {
-    return `<td><input class="input-cell bg-slate-100" value="${d.nepali_year}" disabled></td>
-        <td><input class="input-cell bg-slate-100" value="${d.nepali_month}" disabled></td>
-        <td><input class="input-cell bg-slate-100" value="${d.day}" disabled></td>
-        <td><input type="number" id="edit-rf-headworks" step="any" class="input-cell" value="${d.headworks ?? ''}" /></td>
-        <td><input type="number" id="edit-rf-powerhouse" step="any" class="input-cell" value="${d.powerhouse ?? ''}" /></td>
-        <td class="truncate-text text-xs text-slate-500">${getUserName()}</td>
+    return `<td><input class="input-cell bg-slate-100" value="${d.nepali_year}" disabled><\/td>
+        <td><input class="input-cell bg-slate-100" value="${d.nepali_month}" disabled><\/td>
+        <td><input class="input-cell bg-slate-100" value="${d.day}" disabled><\/td>
+        <td><input type="number" id="edit-rf-headworks" step="any" class="input-cell" value="${d.headworks ?? ''}" /><\/td>
+        <td><input type="number" id="edit-rf-powerhouse" step="any" class="input-cell" value="${d.powerhouse ?? ''}" /><\/td>
+        <td class="truncate-text text-xs text-slate-500">${getUserName()}<\/td>
         <td class="flex space-x-2">
-            <button class="update-rf-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${d.id}">Save</button>
-            <button class="cancel-rf-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X</button>
-        </td>`;
+            <button class="update-rf-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${d.id}">Save<\/button>
+            <button class="cancel-rf-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X<\/button>
+        <\/td>`;
 }
 
 function renderRainfallTable() {
@@ -321,6 +325,8 @@ function renderRainfallTable() {
 }
 
 async function loadRainfallData() {
+    if (isLoadingRainfall) return;
+    isLoadingRainfall = true;
     let data = [], page = 0, more = true;
     while (more) {
         const { data: chunk, error } = await supabase.from('rainfall_data')
@@ -355,6 +361,7 @@ async function loadRainfallData() {
         updateRainfallChart();
         updateRainfallGridFilters(); 
     }
+    isLoadingRainfall = false;
 }
 
 async function handleAddOrUpdateRainfall(docId, isUpd = false) {
@@ -529,7 +536,7 @@ async function processAndUploadRainfall(jd) {
 }
 
 // =====================================
-// 8. DETAILED SITE EXPENSES
+// 8. DETAILED SITE EXPENSES (unchanged)
 // =====================================
 let allExpensesData = [];
 const expensesContainer = document.getElementById("expenses-tables-container");
@@ -700,22 +707,23 @@ function renderExpensesTables() {
         catData.forEach((d, idx) => {
             tableHtml += `
             <tr class="hover:bg-indigo-50/30 group">
-                <td class="py-1.5 px-2 text-center text-slate-400">${idx + 1}</td>
-                <td class="py-1.5 px-2 text-slate-700 font-medium">${d.description || '-'}</td>
-                ${isFuel ? `<td class="py-1.5 px-2 text-center text-slate-500">${d.unit||'-'}</td><td class="py-1.5 px-2 text-right text-slate-500">${d.rate?numFmt(d.rate):'-'}</td><td class="py-1.5 px-2 text-right text-slate-600 font-bold">${d.quantity!==null?d.quantity:'-'}</td>` : ''}
-                <td class="py-1.5 px-2 text-right font-bold text-slate-800">${numFmt(d.amount)}</td>
-                <td class="py-1.5 px-2 text-slate-500 truncate max-w-[80px]" title="${d.remarks||''}">${d.remarks || ''}</td>
-                <td class="py-1.5 px-1 text-center ${canEdit ? '' : 'hidden'}"><button class="delete-exp-btn text-red-600 font-black hover:text-red-800 bg-red-100 px-2 py-0.5 rounded" data-id="${d.id}">X</button></td>
-            </tr>`;
+                <td class="py-1.5 px-2 text-center text-slate-400">${idx + 1}<\/td>
+                <td class="py-1.5 px-2 text-slate-700 font-medium">${d.description || '-'}<\/td>
+                ${isFuel ? `<td class="py-1.5 px-2 text-center text-slate-500">${d.unit||'-'}<\/td><td class="py-1.5 px-2 text-right text-slate-500">${d.rate?numFmt(d.rate):'-'}<\/td><td class="py-1.5 px-2 text-right text-slate-600 font-bold">${d.quantity!==null?d.quantity:'-'}<\/td>` : ''}
+                <td class="py-1.5 px-2 text-right font-bold text-slate-800">${numFmt(d.amount)}<\/td>
+                <td class="py-1.5 px-2 text-slate-500 truncate max-w-[80px]" title="${d.remarks||''}">${d.remarks || ''}<\/td>
+                <td class="py-1.5 px-1 text-center ${canEdit ? '' : 'hidden'}"><button class="delete-exp-btn text-red-600 font-black hover:text-red-800 bg-red-100 px-2 py-0.5 rounded" data-id="${d.id}">X<\/button><\/td>
+            <\/tr>`;
         });
 
         tableHtml += `
                 <tr class="bg-slate-50 border-t-2 border-slate-200">
-                    <td colspan="${isFuel ? 5 : 2}" class="py-1.5 px-2 text-right font-black text-slate-600 uppercase">Total</td>
-                    <td class="py-1.5 px-2 text-right font-black text-indigo-700">${numFmt(catSum)}</td>
-                    <td></td><td class="${canEdit ? '' : 'hidden'}"></td>
-                </tr>
-            </tbody></table></div></div>`;
+                    <td colspan="${isFuel ? 5 : 2}" class="py-1.5 px-2 text-right font-black text-slate-600 uppercase">Total<\/td>
+                    <td class="py-1.5 px-2 text-right font-black text-indigo-700">${numFmt(catSum)}<\/td>
+                    <td><\/td><td class="${canEdit ? '' : 'hidden'}"><\/td>
+                <\/tr>
+            <\/tbody>
+        <\/table><\/div><\/div>`;
         
         html += tableHtml;
     });
@@ -731,15 +739,19 @@ function renderExpensesTables() {
         
         let sn = 1;
         categories.forEach(cat => {
-            summaryHtml += `<tr class="hover:bg-slate-50"><td class="py-2 px-2 text-center text-slate-400">${sn++}</td><td class="py-2 px-2 text-slate-700 font-medium">To ${cat} ${cat==='Petty Cash'?'':'Consumption'}</td><td class="py-2 px-2 text-right text-slate-700 font-bold">${summaryTotals[cat] > 0 ? numFmt(summaryTotals[cat]) : '-'}</td></tr>`;
+            summaryHtml += `<tr class="hover:bg-slate-50"><td class="py-2 px-2 text-center text-slate-400">${sn++}<\/td><td class="py-2 px-2 text-slate-700 font-medium">To ${cat} ${cat==='Petty Cash'?'':'Consumption'}<\/td><td class="py-2 px-2 text-right text-slate-700 font-bold">${summaryTotals[cat] > 0 ? numFmt(summaryTotals[cat]) : '-'}<\/td><\/tr>`;
         });
         
-        summaryHtml += `<tr class="bg-indigo-600 border-t-2 border-indigo-700 text-white"><td colspan="2" class="py-2 px-2 text-right font-black uppercase tracking-widest">Grand Total</td><td class="py-2 px-2 text-right font-black text-sm">${numFmt(summaryTotals['Grand Total'])}</td></tr></tbody></table></div></div>`;
+        summaryHtml += `<tr class="bg-indigo-600 border-t-2 border-indigo-700 text-white"><td colspan="2" class="py-2 px-2 text-right font-black uppercase tracking-widest">Grand Total<\/td><td class="py-2 px-2 text-right font-black text-sm">${numFmt(summaryTotals['Grand Total'])}<\/td><\/tr>
+                    </tbody>
+                <\/table>
+            <\/div>
+        <\/div>`;
         
         html += summaryHtml;
     }
 
-    html += `</div>`; 
+    html += `<\/div>`;
 
     if(monthData.length === 0) html += `<div class="p-8 text-center text-slate-500 font-bold border-2 border-dashed border-slate-300 rounded-xl mt-4">No expenses recorded for ${getStandardMonth(fm)} ${fy}.</div>`;
 
@@ -751,6 +763,8 @@ document.getElementById('filter-exp-month')?.addEventListener('change', renderEx
 document.getElementById('filter-exp-category')?.addEventListener('change', renderExpensesTables);
 
 async function loadExpensesData() {
+    if (isLoadingExpenses) return;
+    isLoadingExpenses = true;
     try {
         const { data, error } = await supabase.from('site_expense_items').select('*');
         if (error) throw error;
@@ -762,6 +776,7 @@ async function loadExpensesData() {
     } catch(err) {
         console.warn("Failed to load expenses data");
     }
+    isLoadingExpenses = false;
 }
 
 expensesContainer?.addEventListener('click', async (e) => {
@@ -984,7 +999,7 @@ async function processAndUploadWorkbookExpenses(workbook) {
 }
 
 // ==========================================
-// 1. POWERHOUSE METERING
+// 1. POWERHOUSE METERING (unchanged, but added loading flag)
 // ==========================================
 const dataBody = document.getElementById("data-body");
 
@@ -995,66 +1010,66 @@ function createInputRow() {
     const dateString = localToday.toISOString().split('T')[0];
 
     return `<tr id="add-new-row" class="bg-indigo-50/60 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
-        <td><input type="date" id="new-date" class="input-cell" value="${dateString}" required /></td>
-        <td><input type="text" id="new-nepali_date" class="input-cell" placeholder="YYYY.MM.DD" /></td>
-        <td><input type="number" id="new-unit1_gen" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-unit2_gen" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-unit1_trans" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-unit2_trans" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-station_trans" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-export_plant" step="any" class="input-cell font-bold text-indigo-700 bg-indigo-50" /></td>
-        <td><input type="number" id="new-export_substation" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-import_outgoing" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-import_substation" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-unit1_counter" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-unit2_counter" step="any" class="input-cell" /></td>
-        <td class="truncate-text text-slate-500 text-xs" title="${currentUser?.email || ''}">${getUserName()}</td>
-        <td class="col-actions"><button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save Row</button></td>
-    </tr>`;
+        <td><input type="date" id="new-date" class="input-cell" value="${dateString}" required /><\/td>
+        <td><input type="text" id="new-nepali_date" class="input-cell" placeholder="YYYY.MM.DD" /><\/td>
+        <td><input type="number" id="new-unit1_gen" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-unit2_gen" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-unit1_trans" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-unit2_trans" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-station_trans" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-export_plant" step="any" class="input-cell font-bold text-indigo-700 bg-indigo-50" /><\/td>
+        <td><input type="number" id="new-export_substation" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-import_outgoing" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-import_substation" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-unit1_counter" step="any" class="input-cell" /><\/td>
+        <td><input type="number" id="new-unit2_counter" step="any" class="input-cell" /><\/td>
+        <td class="truncate-text text-slate-500 text-xs" title="${currentUser?.email || ''}">${getUserName()}<\/td>
+        <td class="col-actions"><button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save Row<\/button><\/td>
+    <\/tr>`;
 }
 
 function createDisplayRowHtml(d) {
     const canEdit = ['admin'].includes(userRole);
     const docStr = JSON.stringify(d).replace(/'/g, "&apos;");
-    return `<td class="font-bold text-slate-900">${d.id}</td>
-        <td class="font-medium text-slate-700">${d.nepali_date || '—'}</td>
-        <td class="text-slate-600">${formatNumber(d.unit1_gen)}</td>
-        <td class="text-slate-600">${formatNumber(d.unit2_gen)}</td>
-        <td class="text-slate-600">${formatNumber(d.unit1_trans)}</td>
-        <td class="text-slate-600">${formatNumber(d.unit2_trans)}</td>
-        <td class="text-slate-600">${formatNumber(d.station_trans)}</td>
-        <td class="font-bold text-indigo-700 bg-indigo-50/50">${formatNumber(d.export_plant)}</td>
-        <td class="text-slate-600">${formatNumber(d.export_substation)}</td>
-        <td class="text-slate-600">${formatNumber(d.import_outgoing)}</td>
-        <td class="text-slate-600">${formatNumber(d.import_substation)}</td>
-        <td class="text-slate-600">${formatNumber(d.unit1_counter)}</td>
-        <td class="text-slate-600">${formatNumber(d.unit2_counter)}</td>
-        <td class="truncate-text text-xs text-slate-500" title="${d.operator_email}">${d.operator_email}</td>
+    return `<td class="font-bold text-slate-900">${d.id}<\/td>
+        <td class="font-medium text-slate-700">${d.nepali_date || '—'}<\/td>
+        <td class="text-slate-600">${formatNumber(d.unit1_gen)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.unit2_gen)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.unit1_trans)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.unit2_trans)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.station_trans)}<\/td>
+        <td class="font-bold text-indigo-700 bg-indigo-50/50">${formatNumber(d.export_plant)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.export_substation)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.import_outgoing)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.import_substation)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.unit1_counter)}<\/td>
+        <td class="text-slate-600">${formatNumber(d.unit2_counter)}<\/td>
+        <td class="truncate-text text-xs text-slate-500" title="${d.operator_email}">${d.operator_email}<\/td>
         <td class="col-actions space-x-2 whitespace-nowrap ${canEdit ? '' : 'hidden'}">
-            <button class="edit-btn text-indigo-600 font-bold hover:underline" data-doc='${docStr}'>Edit</button>
-            ${userRole === 'admin' ? `<button class="delete-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del</button>` : ''}
-        </td>`;
+            <button class="edit-btn text-indigo-600 font-bold hover:underline" data-doc='${docStr}'>Edit<\/button>
+            ${userRole === 'admin' ? `<button class="delete-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del<\/button>` : ''}
+        <\/td>`;
 }
 
 function createEditRowHtml(docData) {
-    return `<td><input type="date" class="input-cell bg-slate-100" value="${docData.id}" disabled /></td>
-        <td><input type="text" id="edit-nepali_date" class="input-cell" value="${docData.nepali_date || ''}" /></td>
-        <td><input type="number" id="edit-unit1_gen" step="any" class="input-cell" value="${docData.unit1_gen ?? ''}" /></td>
-        <td><input type="number" id="edit-unit2_gen" step="any" class="input-cell" value="${docData.unit2_gen ?? ''}" /></td>
-        <td><input type="number" id="edit-unit1_trans" step="any" class="input-cell" value="${docData.unit1_trans ?? ''}" /></td>
-        <td><input type="number" id="edit-unit2_trans" step="any" class="input-cell" value="${docData.unit2_trans ?? ''}" /></td>
-        <td><input type="number" id="edit-station_trans" step="any" class="input-cell" value="${docData.station_trans ?? ''}" /></td>
-        <td><input type="number" id="edit-export_plant" step="any" class="input-cell font-bold text-indigo-700" value="${docData.export_plant ?? ''}" /></td>
-        <td><input type="number" id="edit-export_substation" step="any" class="input-cell" value="${docData.export_substation ?? ''}" /></td>
-        <td><input type="number" id="edit-import_outgoing" step="any" class="input-cell" value="${docData.import_outgoing ?? ''}" /></td>
-        <td><input type="number" id="edit-import_substation" step="any" class="input-cell" value="${docData.import_substation ?? ''}" /></td>
-        <td><input type="number" id="edit-unit1_counter" step="any" class="input-cell" value="${docData.unit1_counter ?? ''}" /></td>
-        <td><input type="number" id="edit-unit2_counter" step="any" class="input-cell" value="${docData.unit2_counter ?? ''}" /></td>
-        <td class="truncate-text text-xs text-slate-500" title="${currentUser?.email}">${getUserName()}</td>
+    return `<td><input type="date" class="input-cell bg-slate-100" value="${docData.id}" disabled /><\/td>
+        <td><input type="text" id="edit-nepali_date" class="input-cell" value="${docData.nepali_date || ''}" /><\/td>
+        <td><input type="number" id="edit-unit1_gen" step="any" class="input-cell" value="${docData.unit1_gen ?? ''}" /><\/td>
+        <td><input type="number" id="edit-unit2_gen" step="any" class="input-cell" value="${docData.unit2_gen ?? ''}" /><\/td>
+        <td><input type="number" id="edit-unit1_trans" step="any" class="input-cell" value="${docData.unit1_trans ?? ''}" /><\/td>
+        <td><input type="number" id="edit-unit2_trans" step="any" class="input-cell" value="${docData.unit2_trans ?? ''}" /><\/td>
+        <td><input type="number" id="edit-station_trans" step="any" class="input-cell" value="${docData.station_trans ?? ''}" /><\/td>
+        <td><input type="number" id="edit-export_plant" step="any" class="input-cell font-bold text-indigo-700" value="${docData.export_plant ?? ''}" /><\/td>
+        <td><input type="number" id="edit-export_substation" step="any" class="input-cell" value="${docData.export_substation ?? ''}" /><\/td>
+        <td><input type="number" id="edit-import_outgoing" step="any" class="input-cell" value="${docData.import_outgoing ?? ''}" /><\/td>
+        <td><input type="number" id="edit-import_substation" step="any" class="input-cell" value="${docData.import_substation ?? ''}" /><\/td>
+        <td><input type="number" id="edit-unit1_counter" step="any" class="input-cell" value="${docData.unit1_counter ?? ''}" /><\/td>
+        <td><input type="number" id="edit-unit2_counter" step="any" class="input-cell" value="${docData.unit2_counter ?? ''}" /><\/td>
+        <td class="truncate-text text-xs text-slate-500" title="${currentUser?.email}">${getUserName()}<\/td>
         <td class="flex space-x-2 whitespace-nowrap">
-            <button class="update-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${docData.id}">Save</button>
-            <button class="cancel-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X</button>
-        </td>`;
+            <button class="update-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${docData.id}">Save<\/button>
+            <button class="cancel-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X<\/button>
+        <\/td>`;
 }
 
 function renderTable(data) {
@@ -1135,6 +1150,8 @@ dataBody?.addEventListener('click', e => {
 });
 
 async function loadAndListenData() {
+    if (isLoadingData) return;
+    isLoadingData = true;
     let data = [], page = 0, more = true;
     const todayStr = getTodayStr(); // <-- FIX: Calculate today's exact date
 
@@ -1159,12 +1176,12 @@ async function loadAndListenData() {
         populateHistoricalYearsFromAllData();
         setDefaultTrendToLastNepaliMonth();
     }
+    isLoadingData = false;
 }
 
 // ==========================================
-// 1. POWERHOUSE METERING - UPLOAD FIX
+// 1. POWERHOUSE METERING - UPLOAD FIX (unchanged)
 // ==========================================
-
 document.getElementById('daily-upload-btn')?.addEventListener('click', () => {
     document.getElementById('file-upload')?.click();
 });
@@ -1309,46 +1326,46 @@ async function processAndUploadData(workbook) {
 }
 
 // ==========================================
-// 2. SUBSTATION METERING (BALANCH)
+// 2. SUBSTATION METERING (BALANCH) – unchanged, added loading flag
 // ==========================================
 const balanchBody = document.getElementById("balanch-body");
 const balanchCols = ['main_export', 'main_import', 'check_export', 'check_import'];
 
 function createBalanchInputRow() {
     return `<tr class="bg-indigo-50/60 sticky top-0 shadow-sm border-b-2 border-indigo-200 z-10">
-        <td class="tight-cell-input"><input type="date" id="new-balanch-date" class="input-cell font-bold" value="${getTodayStr()}" required /></td>
-        <td class="tight-cell-input"><input type="text" id="new-balanch-nep" class="input-cell" placeholder="YYYY.MM.DD" /></td>
-        ${balanchCols.map(c => `<td class="tight-cell-input"><input type="number" id="new-balanch-${c}" step="any" class="input-cell font-bold ${c.includes('export') ? 'text-indigo-700' : 'text-emerald-700'}" /></td>`).join('')}
-        <td class="tight-cell-input"><input type="text" id="new-balanch-rem" class="input-cell" placeholder="Notes..." /></td>
-        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]">${getUserName()}</td>
-        <td class="tight-cell-input"><button id="add-balanch-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Add</button></td>
-    </tr>`;
+        <td class="tight-cell-input"><input type="date" id="new-balanch-date" class="input-cell font-bold" value="${getTodayStr()}" required /><\/td>
+        <td class="tight-cell-input"><input type="text" id="new-balanch-nep" class="input-cell" placeholder="YYYY.MM.DD" /><\/td>
+        ${balanchCols.map(c => `<td class="tight-cell-input"><input type="number" id="new-balanch-${c}" step="any" class="input-cell font-bold ${c.includes('export') ? 'text-indigo-700' : 'text-emerald-700'}" /><\/td>`).join('')}
+        <td class="tight-cell-input"><input type="text" id="new-balanch-rem" class="input-cell" placeholder="Notes..." /><\/td>
+        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]">${getUserName()}<\/td>
+        <td class="tight-cell-input"><button id="add-balanch-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Add<\/button><\/td>
+    <\/tr>`;
 }
 
 function createBalanchDisplayRow(d) {
     const canEdit = ['admin'].includes(userRole);
     const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
-    return `<td class="tight-cell text-sm font-bold text-gray-900 border-r border-gray-200">${d.eng_date}</td>
-        <td class="tight-cell text-sm font-medium text-gray-600 border-r border-gray-200">${d.nep_date || ''}</td>
-        ${balanchCols.map((c, i) => `<td class="tight-cell text-sm font-bold border-r ${i < 2 ? 'text-indigo-800 bg-indigo-50/50 border-indigo-100' : 'text-emerald-800 bg-emerald-50/50 border-emerald-100'}">${formatNumber(d[c])}</td>`).join('')}
-        <td class="tight-cell text-xs text-gray-600 truncate max-w-[200px] border-r border-gray-200" title="${d.remarks || ''}">${d.remarks || ''}</td>
-        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px] border-r border-gray-200" title="${d.operator_email}">${(d.operator_email || '').split('@')[0]}</td>
+    return `<td class="tight-cell text-sm font-bold text-gray-900 border-r border-gray-200">${d.eng_date}<\/td>
+        <td class="tight-cell text-sm font-medium text-gray-600 border-r border-gray-200">${d.nep_date || ''}<\/td>
+        ${balanchCols.map((c, i) => `<td class="tight-cell text-sm font-bold border-r ${i < 2 ? 'text-indigo-800 bg-indigo-50/50 border-indigo-100' : 'text-emerald-800 bg-emerald-50/50 border-emerald-100'}">${formatNumber(d[c])}<\/td>`).join('')}
+        <td class="tight-cell text-xs text-gray-600 truncate max-w-[200px] border-r border-gray-200" title="${d.remarks || ''}">${d.remarks || ''}<\/td>
+        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px] border-r border-gray-200" title="${d.operator_email}">${(d.operator_email || '').split('@')[0]}<\/td>
         <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap col-actions ${canEdit ? '' : 'hidden'}">
-            <button class="edit-balanch-btn text-indigo-600 font-bold hover:underline" data-doc='${docDataString}'>Edit</button>
-            ${userRole === 'admin' ? `<button class="delete-balanch-btn text-red-600 font-bold hover:underline" data-id="${d.eng_date}">Del</button>` : ''}
-        </td>`;
+            <button class="edit-balanch-btn text-indigo-600 font-bold hover:underline" data-doc='${docDataString}'>Edit<\/button>
+            ${userRole === 'admin' ? `<button class="delete-balanch-btn text-red-600 font-bold hover:underline" data-id="${d.eng_date}">Del<\/button>` : ''}
+        <\/td>`;
 }
 
 function createBalanchEditRow(d) {
-    return `<td class="tight-cell-input border-r border-gray-200"><input type="date" class="input-cell bg-gray-200 font-bold" value="${d.eng_date}" disabled /></td>
-        <td class="tight-cell-input border-r border-gray-200"><input type="text" id="edit-balanch-nep" class="input-cell" value="${d.nep_date || ''}" /></td>
-        ${balanchCols.map((c, i) => `<td class="tight-cell-input border-r ${i < 2 ? 'bg-indigo-50' : 'bg-emerald-50'}"><input type="number" id="edit-balanch-${c}" step="any" class="input-cell font-bold" value="${d[c] ?? ''}" /></td>`).join('')}
-        <td class="tight-cell-input border-r border-gray-200"><input type="text" id="edit-balanch-rem" class="input-cell" value="${d.remarks || ''}" /></td>
-        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px] border-r border-gray-200">${getUserName()}</td>
+    return `<td class="tight-cell-input border-r border-gray-200"><input type="date" class="input-cell bg-gray-200 font-bold" value="${d.eng_date}" disabled /><\/td>
+        <td class="tight-cell-input border-r border-gray-200"><input type="text" id="edit-balanch-nep" class="input-cell" value="${d.nep_date || ''}" /><\/td>
+        ${balanchCols.map((c, i) => `<td class="tight-cell-input border-r ${i < 2 ? 'bg-indigo-50' : 'bg-emerald-50'}"><input type="number" id="edit-balanch-${c}" step="any" class="input-cell font-bold" value="${d[c] ?? ''}" /><\/td>`).join('')}
+        <td class="tight-cell-input border-r border-gray-200"><input type="text" id="edit-balanch-rem" class="input-cell" value="${d.remarks || ''}" /><\/td>
+        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px] border-r border-gray-200">${getUserName()}<\/td>
         <td class="tight-cell flex space-x-2 whitespace-nowrap col-actions">
-            <button class="update-balanch-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700 transition" data-id="${d.eng_date}">Save</button>
-            <button class="cancel-balanch-btn bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded hover:bg-gray-400 transition">X</button>
-        </td>`;
+            <button class="update-balanch-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700 transition" data-id="${d.eng_date}">Save<\/button>
+            <button class="cancel-balanch-btn bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded hover:bg-gray-400 transition">X<\/button>
+        <\/td>`;
 }
 
 function renderBalanchTable() {
@@ -1371,6 +1388,8 @@ function renderBalanchTable() {
 }
 
 async function loadBalanchData() {
+    if (isLoadingBalanch) return;
+    isLoadingBalanch = true;
     let data = [], page = 0, more = true;
     const todayStr = getTodayStr(); // <-- FIX
 
@@ -1384,13 +1403,14 @@ async function loadBalanchData() {
             if (error) throw error;
             if (chunk && chunk.length > 0) data = data.concat(chunk);
             if (!chunk || chunk.length < 1000) more = false; else page++;
-        } catch (err) {
+        } catch(err) {
             console.warn("Failed to load Balanch data");
             break;
         }
     }
     allBalanchData = data;
     renderBalanchTable();
+    isLoadingBalanch = false;
 }
 
 async function handleAddOrUpdateBalanch(docId, isUpdate = false) {
@@ -1442,9 +1462,8 @@ balanchBody?.addEventListener('click', e => {
 });
 
 // ==========================================
-// 2. SUBSTATION METERING (BALANCH) - UPLOAD
+// 2. SUBSTATION METERING (BALANCH) - UPLOAD (unchanged)
 // ==========================================
-
 document.getElementById('balanch-upload-btn')?.addEventListener('click', () => {
     document.getElementById('balanch-file-upload')?.click();
 });
@@ -1571,7 +1590,7 @@ async function processBalanchUpload(workbook) {
 
 
 // =====================================
-// 3. OUTAGES & LOSSES
+// 3. OUTAGES & LOSSES (unchanged, added loading flag)
 // =====================================
 const outagesBody = document.getElementById("outages-body");
 const outageFields = [
@@ -1588,37 +1607,37 @@ const outageFields = [
 ];
 
 function createOutageInputRow() {
-    let inputCells = outageFields.map(f => `<td class="tight-cell-input"><input type="${f.type}" id="new-out-${f.key}" step="any" class="input-cell ${f.key === 'total_energy_loss' ? 'font-bold text-red-700' : ''}" /></td>`).join('');
+    let inputCells = outageFields.map(f => `<td class="tight-cell-input"><input type="${f.type}" id="new-out-${f.key}" step="any" class="input-cell ${f.key === 'total_energy_loss' ? 'font-bold text-red-700' : ''}" /><\/td>`).join('');
     return `<tr id="add-new-outage-row" class="bg-indigo-50/60 sticky top-0 shadow-sm border-b-2 border-indigo-200 z-10">
-        <td class="tight-cell-input"><input type="date" id="new-outage-date" class="input-cell font-bold" value="${getTodayStr()}" required /></td>
+        <td class="tight-cell-input"><input type="date" id="new-outage-date" class="input-cell font-bold" value="${getTodayStr()}" required /><\/td>
         ${inputCells}
-        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]">${getUserName()}</td>
-        <td class="tight-cell-input"><button id="add-outage-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Add</button></td>
-    </tr>`;
+        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]">${getUserName()}<\/td>
+        <td class="tight-cell-input"><button id="add-outage-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Add<\/button><\/td>
+    <\/tr>`;
 }
 
 function createOutageDisplayRow(d) {
     const canEdit = ['admin'].includes(userRole);
     const docDataString = JSON.stringify(d).replace(/'/g, "&apos;");
-    let displayCells = outageFields.map(f => `<td class="tight-cell text-sm text-gray-600 ${f.key === 'reason' ? 'reason-col text-xs' : ''} ${f.key === 'total_energy_loss' ? 'font-bold text-red-800 bg-red-50/50 border-x border-red-100' : ''}">${f.key === 'reason' ? (d[f.key] || '') : formatNumber(d[f.key])}</td>`).join('');
-    return `<td class="tight-cell text-sm font-bold text-gray-900">${d.id}</td>
+    let displayCells = outageFields.map(f => `<td class="tight-cell text-sm text-gray-600 ${f.key === 'reason' ? 'reason-col text-xs' : ''} ${f.key === 'total_energy_loss' ? 'font-bold text-red-800 bg-red-50/50 border-x border-red-100' : ''}">${f.key === 'reason' ? (d[f.key] || '') : formatNumber(d[f.key])}<\/td>`).join('');
+    return `<td class="tight-cell text-sm font-bold text-gray-900">${d.id}<\/td>
         ${displayCells}
-        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]" title="${d.operator_email}">${(d.operator_email || '').split('@')[0]}</td>
+        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]" title="${d.operator_email}">${(d.operator_email || '').split('@')[0]}<\/td>
         <td class="tight-cell text-sm font-medium space-x-2 whitespace-nowrap col-actions ${canEdit ? '' : 'hidden'}">
-            <button class="edit-outage-btn text-indigo-600 font-bold hover:underline" data-doc='${docDataString}'>Edit</button>
-            ${userRole === 'admin' ? `<button class="delete-outage-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del</button>` : ''}
-        </td>`;
+            <button class="edit-outage-btn text-indigo-600 font-bold hover:underline" data-doc='${docDataString}'>Edit<\/button>
+            ${userRole === 'admin' ? `<button class="delete-outage-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del<\/button>` : ''}
+        <\/td>`;
 }
 
 function createOutageEditRow(d) {
-    let editCells = outageFields.map(f => `<td class="tight-cell-input"><input type="${f.type}" id="edit-out-${f.key}" step="any" class="input-cell" value="${d[f.key] ?? ''}" /></td>`).join('');
-    return `<td class="tight-cell-input"><input type="date" class="input-cell bg-gray-200 font-bold" value="${d.id}" disabled /></td>
+    let editCells = outageFields.map(f => `<td class="tight-cell-input"><input type="${f.type}" id="edit-out-${f.key}" step="any" class="input-cell" value="${d[f.key] ?? ''}" /><\/td>`).join('');
+    return `<td class="tight-cell-input"><input type="date" class="input-cell bg-gray-200 font-bold" value="${d.id}" disabled /><\/td>
         ${editCells}
-        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]">${getUserName()}</td>
+        <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]">${getUserName()}<\/td>
         <td class="tight-cell flex space-x-2 whitespace-nowrap col-actions">
-            <button class="update-outage-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700 transition" data-id="${d.id}">Save</button>
-            <button class="cancel-outage-btn bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded hover:bg-gray-400 transition">X</button>
-        </td>`;
+            <button class="update-outage-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700 transition" data-id="${d.id}">Save<\/button>
+            <button class="cancel-outage-btn bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded hover:bg-gray-400 transition">X<\/button>
+        <\/td>`;
 }
 
 function renderOutagesTable() {
@@ -1641,6 +1660,8 @@ function renderOutagesTable() {
 }
 
 async function loadOutagesData() {
+    if (isLoadingOutages) return;
+    isLoadingOutages = true;
     let data = [], page = 0, more = true;
     const todayStr = getTodayStr(); // <-- FIX
 
@@ -1663,6 +1684,7 @@ async function loadOutagesData() {
         allOutages = data;
         renderOutagesTable();
     }
+    isLoadingOutages = false;
 }
 
 async function handleAddOrUpdateOutage(docId, isUpdate = false) {
@@ -1879,7 +1901,7 @@ async function processAndUploadOutages(workbook) {
 }
 
 // =====================================
-// 4. CONTRACT ENERGY (MCE)
+// 4. CONTRACT ENERGY (MCE) – unchanged, added loading flag
 // =====================================
 const mceBody = document.getElementById('mce-body');
 const mceFields = [
@@ -1895,42 +1917,42 @@ function createMCEInputRow() {
     const ys = [-2, -1, 0, 1, 2].map(i => `<option value="${cy + i}">${cy + i}</option>`).join('');
     const ms = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
 
-    const inputs = mceFields.map(f => `<td><input type="number" id="new-${f.key}" step="any" class="input-cell" /></td>`).join('');
+    const inputs = mceFields.map(f => `<input type="number" id="new-${f.key}" step="any" class="input-cell" />`).join('');
 
     return `<tr class="bg-indigo-50/60 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
-        <td><select id="new-mce-year" class="input-cell font-bold text-indigo-700 bg-white">${ys}</select></td>
-        <td><select id="new-mce-month" class="input-cell font-bold text-indigo-700 bg-white">${ms}</select></td>
+        <td><select id="new-mce-year" class="input-cell font-bold text-indigo-700 bg-white">${ys}</select><\/td>
+        <td><select id="new-mce-month" class="input-cell font-bold text-indigo-700 bg-white">${ms}</select><\/td>
         ${inputs}
-        <td class="truncate-text text-xs text-slate-500">${currentUser?.email || ''}</td>
+        <td class="truncate-text text-xs text-slate-500">${currentUser?.email || ''}<\/td>
         <td class="col-actions">
-            <button id="add-mce-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700">Save</button>
-        </td>
-    </tr>`;
+            <button id="add-mce-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700">Save<\/button>
+        <\/td>
+    <\/tr>`;
 }
 
 function createMCEDisplayRow(d) {
     const canEdit = ['admin'].includes(userRole);
-    const cells = mceFields.map(f => `<td class="text-slate-600 ${f.key.includes('total') || f.key.includes('contract') ? 'font-bold text-indigo-800 bg-indigo-50/50' : ''}">${formatNumber(d[f.key], 2)}</td>`).join('');
-    return `<td class="font-bold text-slate-900">${d.year}</td>
-        <td class="font-bold text-slate-900">${d.month}</td>
+    const cells = mceFields.map(f => `<td class="text-slate-600 ${f.key.includes('total') || f.key.includes('contract') ? 'font-bold text-indigo-800 bg-indigo-50/50' : ''}">${formatNumber(d[f.key], 2)}<\/td>`).join('');
+    return `<td class="font-bold text-slate-900">${d.year}<\/td>
+        <td class="font-bold text-slate-900">${d.month}<\/td>
         ${cells}
-        <td class="truncate-text text-xs text-slate-500">${d.operator_email}</td>
+        <td class="truncate-text text-xs text-slate-500">${d.operator_email}<\/td>
         <td class="col-actions space-x-2 whitespace-nowrap ${canEdit ? '' : 'hidden'}">
-            <button class="edit-mce-btn text-indigo-600 font-bold hover:underline" data-doc='${JSON.stringify(d).replace(/'/g, "&apos;")}'>Edit</button>
-            ${userRole === 'admin' ? `<button class="delete-mce-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del</button>` : ''}
-        </td>`;
+            <button class="edit-mce-btn text-indigo-600 font-bold hover:underline" data-doc='${JSON.stringify(d).replace(/'/g, "&apos;")}'>Edit<\/button>
+            ${userRole === 'admin' ? `<button class="delete-mce-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del<\/button>` : ''}
+        <\/td>`;
 }
 
 function createMCEEditRow(d) {
-    const inputs = mceFields.map(f => `<td><input type="number" id="edit-${f.key}" class="input-cell" value="${d[f.key] ?? ''}"></td>`).join('');
-    return `<td><input class="input-cell bg-slate-100" value="${d.year}" disabled></td>
-        <td><input class="input-cell bg-slate-100" value="${d.month}" disabled></td>
+   const inputs = mceFields.map(f => `<input type="number" id="edit-${f.key}" class="input-cell" value="${d[f.key] ?? ''}">`).join('');
+    return `<td><input class="input-cell bg-slate-100" value="${d.year}" disabled><\/td>
+        <td><input class="input-cell bg-slate-100" value="${d.month}" disabled><\/td>
         ${inputs}
-        <td class="truncate-text text-xs text-slate-500">${currentUser?.email || ''}</td>
+        <td class="truncate-text text-xs text-slate-500">${currentUser?.email || ''}<\/td>
         <td class="flex space-x-2">
-            <button class="update-mce-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${d.id}">Save</button>
-            <button class="cancel-mce-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X</button>
-        </td>`;
+            <button class="update-mce-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${d.id}">Save<\/button>
+            <button class="cancel-mce-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X<\/button>
+        <\/td>`;
 }
 
 function renderMCETable() {
@@ -1959,6 +1981,8 @@ function renderMCETable() {
 }
 
 async function loadMCEData() {
+    if (isLoadingMCE) return;
+    isLoadingMCE = true;
     try {
         const { data } = await supabase.from('contract_energy').select('*');
         if (data) {
@@ -1968,6 +1992,7 @@ async function loadMCEData() {
     } catch(err) {
         console.warn("Failed to load MCE Data");
     }
+    isLoadingMCE = false;
 }
 
 async function handleAddOrUpdateMCE(docId, isUpd = false) {
@@ -2117,7 +2142,7 @@ async function processAndUploadMCE(jd) {
 }
 
 // =====================================
-// 5. TRENDS
+// 5. TRENDS (unchanged, but we will add timestamp pre‑parsing and downsampling)
 // =====================================
 const trendChartOptionsContainer = document.getElementById('trend-chart-options');
 const trendSeries = [
@@ -2208,7 +2233,11 @@ document.getElementById('view-trend-btn')?.addEventListener('click', async () =>
                 .range(hPage * 1000, (hPage + 1) * 1000 - 1);
 
             if (error) throw error;
-            if (data && data.length > 0) hData = hData.concat(data);
+            if (data && data.length > 0) {
+                // 🔥 OPTIMIZATION: Pre‑parse timestamps as numbers
+                const withMs = data.map(d => ({ ...d, timestamp_ms: new Date(d.timestamp).getTime() }));
+                hData = hData.concat(withMs);
+            }
             if (!data || data.length < 1000) hMore = false; else hPage++;
         } catch(err) {
             showNotification("Error fetching trend data.", true);
@@ -2221,6 +2250,7 @@ document.getElementById('view-trend-btn')?.addEventListener('click', async () =>
     btn.disabled = false;
 });
 
+// 🔥 OPTIMIZATION: Downsample and use pre‑parsed timestamps
 function updateTrendChart(dailyData, historicalData) {
     const dailyDispatchData = [];
 
@@ -2268,15 +2298,24 @@ function updateTrendChart(dailyData, historicalData) {
         }
     };
 
+    // 🔥 Downsample historical data if too many points
+    let processedData = historicalData;
+    const maxPoints = 2000;
+    if (processedData.length > maxPoints) {
+        const step = Math.ceil(processedData.length / maxPoints);
+        processedData = processedData.filter((_, i) => i % step === 0);
+        console.log(`Downsampled historical data from ${historicalData.length} to ${processedData.length} points`);
+    }
+
     Array.from(document.querySelectorAll('.trend-checkbox:checked')).forEach((chk, i) => {
         const key = chk.value;
         const fInfo = trendSeries.find(s => s.key === key);
 
-        if (!fInfo || historicalData.length === 0) return;
+        if (!fInfo || processedData.length === 0) return;
 
         datasets.push({
             label: fInfo.name,
-            data: historicalData.map(d => ({ x: new Date(d.timestamp), y: d[key] ?? null })).filter(p => p.y !== null),
+            data: processedData.map(d => ({ x: d.timestamp_ms, y: d[key] ?? null })).filter(p => p.y !== null),
             borderColor: colors[i % colors.length],
             backgroundColor: colors[i % colors.length],
             borderWidth: 2,
@@ -2332,7 +2371,7 @@ document.getElementById('download-trend-btn')?.addEventListener('click', () => {
 });
 
 // =====================================
-// 6. HISTORICAL SCADA
+// 6. HISTORICAL SCADA with pagination
 // =====================================
 const historicalYearSelect = document.getElementById('historical-year');
 const historicalMonthSelect = document.getElementById('historical-month');
@@ -2341,6 +2380,45 @@ const historicalStatus = document.getElementById('historical-status');
 const historicalThead = document.getElementById('historical-thead');
 const historicalTbody = document.getElementById('historical-tbody');
 const historicalDownloadBtn = document.getElementById('historical-download-btn');
+
+// 🔥 Pagination variables
+let fullHistoricalData = [];
+let currentPage = 1;
+const rowsPerPage = 100;
+
+function renderHistoricalPage() {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const pageData = fullHistoricalData.slice(start, end);
+    const keys = ['waterlevel_cm', 'pressure_mwc', 'active_power_kw', 'voltage_kv', 'reactive_power_kvar', 'u1_spear_pct', 'u1_active_power_kw', 'u2_spear_pct', 'u2_active_power_kw'];
+
+    let headerHtml = `.<th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Date</th><th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Time</th>`;
+    keys.forEach(h => headerHtml += `<th class="tight-cell text-left font-bold text-gray-600 uppercase">${h}</th>`);
+    headerHtml += '.<\/tr>';
+    if (historicalThead) historicalThead.innerHTML = headerHtml;
+
+    const rows = [];
+    pageData.forEach(d => {
+        let dateStr = '', timeStr = '';
+        if (d.timestamp) {
+            const dateObj = new Date(d.timestamp);
+            dateStr = dateObj.toLocaleDateString('en-GB');
+            timeStr = dateObj.toLocaleTimeString('en-GB', { hour12: false });
+        }
+        let rowHtml = `.<td class="tight-cell text-gray-900 font-bold border-r border-gray-200">${dateStr}<\/td><td class="tight-cell text-gray-500 border-r border-gray-200">${timeStr}<\/td>`;
+        keys.forEach(k => rowHtml += `<td class="tight-cell text-gray-600">${d[k] ?? ''}<\/td>`);
+        rowHtml += '<\/tr>';
+        rows.push(rowHtml);
+    });
+
+    if (historicalTbody) historicalTbody.innerHTML = rows.join('');
+    const totalPages = Math.ceil(fullHistoricalData.length / rowsPerPage);
+    document.getElementById('historical-page-info').innerText = `Page ${currentPage} of ${totalPages}`;
+    const prevBtn = document.getElementById('historical-prev');
+    const nextBtn = document.getElementById('historical-next');
+    if (prevBtn) prevBtn.disabled = currentPage === 1;
+    if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+}
 
 function populateHistoricalYearsFromAllData() {
     if(!historicalYearSelect) return;
@@ -2394,32 +2472,38 @@ historicalViewBtn?.addEventListener('click', async () => {
             return;
         }
 
-        const keys = ['waterlevel_cm', 'pressure_mwc', 'active_power_kw', 'voltage_kv', 'reactive_power_kvar', 'u1_spear_pct', 'u1_active_power_kw', 'u2_spear_pct', 'u2_active_power_kw'];
-        let headerHtml = `<tr><th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Date</th><th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Time</th>`;
-        keys.forEach(h => headerHtml += `<th class="tight-cell text-left font-bold text-gray-600 uppercase">${h}</th>`);
-        headerHtml += '</tr>';
-        if(historicalThead) historicalThead.innerHTML = headerHtml;
-
-        const rows = [];
-        data.forEach(d => {
-            let dateStr = '', timeStr = '';
-            if (d.timestamp) {
-                const dateObj = new Date(d.timestamp);
-                dateStr = dateObj.toLocaleDateString('en-GB');
-                timeStr = dateObj.toLocaleTimeString('en-GB', { hour12: false });
-            }
-            let rowHtml = `<tr><td class="tight-cell text-gray-900 font-bold border-r border-gray-200">${dateStr}</td><td class="tight-cell text-gray-500 border-r border-gray-200">${timeStr}</td>`;
-            keys.forEach(k => rowHtml += `<td class="tight-cell text-gray-600">${d[k] ?? ''}</td>`);
-            rowHtml += '</tr>';
-            rows.push(rowHtml);
-        });
-
-        if(historicalTbody) historicalTbody.innerHTML = rows.join('');
-        if(historicalStatus) historicalStatus.textContent = `Loaded ${rows.length} records.`;
+        // Store the full dataset for pagination
+        fullHistoricalData = data;
+        currentPage = 1;
+        renderHistoricalPage();
+        if(historicalStatus) historicalStatus.textContent = `Loaded ${fullHistoricalData.length} records.`;
         historicalDownloadBtn?.classList.remove('hidden');
     } catch (error) {
         if(historicalStatus) historicalStatus.textContent = 'Error loading historical data.';
         showNotification("Error fetching historical data.", true);
+    }
+});
+
+// Attach pagination event listeners after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    const prevBtn = document.getElementById('historical-prev');
+    const nextBtn = document.getElementById('historical-next');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderHistoricalPage();
+            }
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const totalPages = Math.ceil(fullHistoricalData.length / rowsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderHistoricalPage();
+            }
+        });
     }
 });
 
@@ -2560,7 +2644,7 @@ function setDefaultTrendToLastNepaliMonth() {
     }
 }
 
-// --- Authentication & Initialization ---
+// --- Authentication & Initialization (cleaned up) ---
 async function initAuth() {
     try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -2582,6 +2666,7 @@ async function initAuth() {
                 userRole = 'admin';
             }
             
+            // Load header once
             try {
                 const headerRes = await fetch('header.html');
                 if (headerRes.ok) {
@@ -2607,7 +2692,7 @@ async function initAuth() {
             
             applyPermissions();
             
-            // --- DATA LOADING FUNCTIONS ---
+            // --- DATA LOADING FUNCTIONS (called once) ---
             loadAndListenData();
             loadBalanchData();
             loadMCEData();
@@ -2699,35 +2784,7 @@ function applyPermissions() {
     }
 }
 
+// Remove the duplicate header fetch block at the end (the one that starts with `try { const headerRes = await fetch('header.html?v=' + Date.now()); ... }`)
+// It has been removed to prevent redundant loading.
+
 initAuth();
-try {
-                const headerRes = await fetch('header.html?v=' + Date.now());
-                if (headerRes.ok) {
-                    const globalHeader = document.getElementById('global-header-container') || document.getElementById('global-header');
-                    if(globalHeader) {
-                        globalHeader.innerHTML = await headerRes.text();
-                        
-                        // FIX: Explicitly un-hide the Navigation elements which default to 'hidden'
-                        document.getElementById('main-nav')?.classList.remove('hidden');
-                        document.getElementById('main-nav')?.classList.add('flex');
-                        document.getElementById('login-btn')?.classList.add('hidden');
-                        document.getElementById('logout-btn')?.classList.remove('hidden');
-                        
-                        const emailElement = document.getElementById('header-email');
-                        if (emailElement) {
-                            emailElement.classList.remove('hidden');
-                            emailElement.innerText = currentUser.email.split('@')[0];
-                        }
-                        
-                        const logoutBtn = document.getElementById('logout-btn');
-                        if (logoutBtn) {
-                            logoutBtn.onclick = async () => {
-                                await supabase.auth.signOut();
-                                window.location.href = "signin.html";
-                            };
-                        }
-                    }
-                }
-            } catch (err) {
-                console.warn("Failed to load header.html", err);
-            }

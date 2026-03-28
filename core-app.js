@@ -3,50 +3,118 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const supabaseUrl = 'https://ineaqjsmabbsjwwbjfya.supabase.co';
 const supabaseKey = 'sb_publishable_uadlDXas6Tpif6j4eWp30g_j6OG326s';
 export const supabase = createClient(supabaseUrl, supabaseKey);
-window.supabaseClient = supabase;
 
 export let currentUser = null;
 export let userRole = 'operator';
 
-// Helper function to force a timeout if the network is a "lie" (connected to router, but no internet)
-const fetchWithTimeout = async (promise, ms = 3000) => {
-    let timeoutId;
-    const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error('Network Timeout')), ms);
-    });
-    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+// ============================================================
+// Helper: show a notification using the modal (if present)
+// ============================================================
+export function showNotification(msg, isError = false) {
+    const modal = document.getElementById('notification-modal');
+    const messageEl = document.getElementById('notification-message');
+    if (!modal || !messageEl) return;
+    messageEl.textContent = msg;
+    modal.classList.remove('opacity-0', '-translate-y-4');
+    modal.style.borderLeftColor = isError ? '#dc2626' : '#10b981';
+    modal.classList.add('opacity-100');
+    setTimeout(() => {
+        modal.classList.remove('opacity-100');
+        modal.classList.add('opacity-0', '-translate-y-4');
+    }, 4500);
+}
+
+// ============================================================
+// Universal UTC date parser (YYYY-MM-DD)
+// ============================================================
+export function parseToUTCDate(dateInput) {
+    if (!dateInput) return null;
+    let date;
+    if (typeof dateInput === 'number') {
+        // Excel serial number (date1904 = false)
+        const ex = XLSX.SSF.parse_date_code(dateInput, { date1904: false });
+        if (ex) date = new Date(Date.UTC(ex.y, ex.m - 1, ex.d));
+    } else if (dateInput instanceof Date) {
+        date = new Date(Date.UTC(dateInput.getUTCFullYear(), dateInput.getUTCMonth(), dateInput.getUTCDate()));
+    } else {
+        // Try to parse string
+        let s = String(dateInput).trim();
+        let match = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+        if (match) {
+            date = new Date(Date.UTC(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3])));
+        } else {
+            match = s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+            if (match) {
+                date = new Date(Date.UTC(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1])));
+            }
+        }
+    }
+    if (date && !isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+    }
+    return null;
+}
+
+// ============================================================
+// Enhanced timeout with optional retries (exponential backoff)
+// ============================================================
+const fetchWithTimeout = async (promise, ms = 8000, retries = 1) => {
+    let lastError;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            let timeoutId;
+            const timeoutPromise = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error('Network Timeout')), ms);
+            });
+            const result = await Promise.race([promise, timeoutPromise]);
+            clearTimeout(timeoutId);
+            return result;
+        } catch (err) {
+            lastError = err;
+            if (attempt === retries) break;
+            await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+        }
+    }
+    throw lastError;
 };
 
+// ============================================================
+// Main initialization function
+// ============================================================
 export async function initializeApplication(requireAuth = true) {
     await loadGlobalUI();
 
     try {
-        // Fast local check for session (Works offline)
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session && session.user) {
             currentUser = session.user;
-            window.currentUser = currentUser;
-
             let isAdmin = currentUser.email.toLowerCase() === 'upenjyo@gmail.com';
+
             if (!isAdmin) {
                 if (navigator.onLine) {
                     try {
-                        // Use the 3-Second Rule to prevent freezing!
-                        const query = supabase.from('user_roles').select('role').eq('email', currentUser.email).maybeSingle();
-                        const { data, error: dbErr } = await fetchWithTimeout(query, 3000);
+                        const query = supabase.from('user_roles')
+                            .select('role')
+                            .eq('email', currentUser.email)
+                            .maybeSingle();
+                        const { data, error: dbErr } = await fetchWithTimeout(query, 8000, 1);
                         
                         if (data && !dbErr) {
                             if (data.role === 'admin') isAdmin = true;
-                            else if (data.role === 'staff') userRole = 'staff'; 
+                            else if (data.role === 'staff') userRole = 'staff';
                             else userRole = 'operator';
                             localStorage.setItem('makarigad_offline_role', userRole);
                         } else {
                             throw new Error("DB Error");
                         }
                     } catch (e) {
-                        userRole = localStorage.getItem('makarigad_offline_role') || 'operator';
-                        if (userRole === 'admin') isAdmin = true;
+                        if (!navigator.onLine || e.message === 'Network Timeout') {
+                            userRole = localStorage.getItem('makarigad_offline_role') || 'operator';
+                            if (userRole === 'admin') isAdmin = true;
+                        } else {
+                            userRole = 'operator';
+                        }
                     }
                 } else {
                     userRole = localStorage.getItem('makarigad_offline_role') || 'operator';
@@ -57,7 +125,7 @@ export async function initializeApplication(requireAuth = true) {
                 localStorage.setItem('makarigad_offline_role', 'admin');
             }
             
-            window.userRole = userRole; 
+            window.userRole = userRole;
 
             activateUserUI();
             applyRoleBasedUI();
@@ -86,6 +154,9 @@ export async function initializeApplication(requireAuth = true) {
     }
 }
 
+// ============================================================
+// Load global header/footer
+// ============================================================
 async function loadGlobalUI() {
     try {
         let headerContainer = document.getElementById('global-header-container') || document.getElementById('global-header');
@@ -98,6 +169,9 @@ async function loadGlobalUI() {
     }
 }
 
+// ============================================================
+// UI activation when logged in
+// ============================================================
 function activateUserUI() {
     const mainNav = document.getElementById('main-nav');
     const loginBtn = document.getElementById('login-btn');
@@ -109,8 +183,13 @@ function activateUserUI() {
     if (logoutBtn) {
         logoutBtn.classList.remove('hidden');
         logoutBtn.onclick = async () => { 
-            if(!navigator.onLine) return alert("You must be online to sign out safely.");
-            await supabase.auth.signOut(); window.location.href = "index.html"; 
+            if (!navigator.onLine) {
+                showNotification("You must be online to sign out safely.", true);
+                return;
+            }
+            await supabase.auth.signOut();
+            localStorage.removeItem('makarigad_offline_role');
+            window.location.href = "index.html"; 
         };
     }
     if (headerEmail && currentUser) {
@@ -120,6 +199,9 @@ function activateUserUI() {
     }
 }
 
+// ============================================================
+// Handle unauthenticated state
+// ============================================================
 function handleUnauthenticated(requireAuth) {
     currentUser = null;
     window.currentUser = null;
@@ -135,7 +217,10 @@ function handleUnauthenticated(requireAuth) {
     if (loginBtn) {
         loginBtn.classList.remove('hidden');
         loginBtn.onclick = () => {
-            if(!navigator.onLine) return alert("⚠️ No Internet Connection.\n\nYou must have an internet connection to sign in.");
+            if (!navigator.onLine) {
+                showNotification("⚠️ No Internet Connection.\n\nYou must have an internet connection to sign in.", true);
+                return;
+            }
             const modal = document.getElementById('login-modal');
             if (modal) modal.classList.remove('hidden');
             else window.location.href = "index.html";
@@ -145,6 +230,9 @@ function handleUnauthenticated(requireAuth) {
     if (requireAuth) window.location.href = "index.html";
 }
 
+// ============================================================
+// Role‑based UI (hide admin/staff elements)
+// ============================================================
 function applyRoleBasedUI() {
     document.querySelectorAll('.admin-only, .staff-only').forEach(el => el.classList.add('role-hidden'));
 
@@ -160,11 +248,17 @@ function applyRoleBasedUI() {
     if (roleDisplay) roleDisplay.innerText = userRole.toUpperCase();
 }
 
+// ============================================================
+// Online event handler
+// ============================================================
 window.addEventListener('online', async () => { 
     console.log("Internet restored! Processing sync queue...");
     await processSyncQueue(); 
 });
 
+// ============================================================
+// Safe upsert – queues data offline if needed
+// ============================================================
 export async function safeUpsert(tableName, payload) {
     if (navigator.onLine) {
         try {
@@ -185,26 +279,52 @@ export async function safeUpsert(tableName, payload) {
     }
 }
 
+// ============================================================
+// Queue data for offline sync (with timestamp)
+// ============================================================
 function queueForSync(tableName, payload) {
     let queue = JSON.parse(localStorage.getItem('makarigad_sync_queue')) || [];
-    queue.push({ table: tableName, data: Array.isArray(payload) ? payload : [payload], timestamp: new Date().toISOString() });
+    queue.push({
+        table: tableName,
+        data: Array.isArray(payload) ? payload : [payload],
+        timestamp: new Date().toISOString()
+    });
     localStorage.setItem('makarigad_sync_queue', JSON.stringify(queue));
     console.log(`Data safely queued offline for table: ${tableName}`);
 }
 
+// ============================================================
+// Process sync queue – group by table+id, keep latest
+// ============================================================
 export async function processSyncQueue() {
     let queue = JSON.parse(localStorage.getItem('makarigad_sync_queue')) || [];
     if (queue.length === 0) return;
     
-    let remainingQueue = [];
+    const latestMap = new Map();
+    for (const task of queue) {
+        for (const item of task.data) {
+            const key = `${task.table}|${item.id}`;
+            const existing = latestMap.get(key);
+            if (!existing || new Date(task.timestamp) > new Date(existing.timestamp)) {
+                latestMap.set(key, { table: task.table, data: item, timestamp: task.timestamp });
+            }
+        }
+    }
     
-    for (let task of queue) {
-        try { 
-            const { error } = await supabase.from(task.table).upsert(task.data); 
-            if (error) throw error; 
-        } catch (e) { 
-            console.error(`Sync failed for ${task.table}, keeping in queue.`, e);
-            remainingQueue.push(task); 
+    const groupedTasks = {};
+    for (const { table, data } of latestMap.values()) {
+        if (!groupedTasks[table]) groupedTasks[table] = [];
+        groupedTasks[table].push(data);
+    }
+    
+    let remainingQueue = [];
+    for (const [table, items] of Object.entries(groupedTasks)) {
+        try {
+            const { error } = await supabase.from(table).upsert(items);
+            if (error) throw error;
+        } catch (e) {
+            console.error(`Sync failed for ${table}, keeping in queue.`, e);
+            remainingQueue.push(...queue.filter(t => t.table === table));
         }
     }
     
@@ -214,6 +334,9 @@ export async function processSyncQueue() {
     }
 }
 
+// ============================================================
+// Periodic sync every 10 seconds when online
+// ============================================================
 setInterval(() => {
     if (navigator.onLine) processSyncQueue();
-}, 5000);
+}, 10000);

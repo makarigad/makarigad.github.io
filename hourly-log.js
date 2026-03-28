@@ -1,5 +1,5 @@
 import './hourly-log-tools.js';
-import { supabase, initializeApplication, safeUpsert } from './core-app.js';
+import { supabase, initializeApplication, safeUpsert, parseToUTCDate, showNotification } from './core-app.js';
 
 const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
 
@@ -115,7 +115,7 @@ window.fetchLogs = async function() {
             if (error.message === 'Failed to fetch' || !navigator.onLine) {
                 console.warn('Offline mode: Showing cached data if available.');
             } else {
-                alert(`❌ DATABASE READ ERROR!\n\nError: ${error.message}`); 
+                showNotification(`❌ DATABASE READ ERROR!\n\nError: ${error.message}`, true);
             }
             throw error; 
         }
@@ -232,7 +232,6 @@ window.validateForm = function() {
                         el.setAttribute('readonly', 'true');
                         el.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
                     } else {
-                        // Allow all fields, including synced MW/Cos/GWh, to be editable when running
                         el.removeAttribute('readonly');
                         el.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
                     }
@@ -369,7 +368,6 @@ window.validateForm = function() {
     ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, 3, 9.5, 'Trans Oil Level')); chk('tr_aux_lvl', 70, 90, 'Aux Oil Level');
     chk('dg_batt', 11, 14.3, 'DG Battery'); chk('dg_fuel', 10, 100, 'DG Fuel %');
 
-    // Smart Oil Flow Validation
     ['t_u1_flow', 't_u2_flow'].forEach(id => {
         const v = val(id);
         const unitNum = id.includes('u1') ? '1' : '2';
@@ -461,26 +459,23 @@ document.getElementById('hourly-form').addEventListener('submit', async function
         const { error } = await supabase.from('hourly_logs').upsert([logData], { onConflict: 'log_date, log_time' });
         
         if (error) {
-            alert(`⚠️ DATABASE REJECTED THE SAVE:\n\n${error.message}\n\nCheck if you are missing a column in your Supabase table.`);
+            showNotification(`⚠️ DATABASE REJECTED THE SAVE:\n\n${error.message}\n\nCheck if you are missing a column in your Supabase table.`, true);
             if(saveBtn) { saveBtn.innerHTML = "⚠️ Saved Offline!"; saveBtn.classList.replace('bg-indigo-600', 'bg-amber-500'); saveBtn.classList.replace('bg-rose-600', 'bg-amber-500'); }
         } else {
             if(saveBtn) { saveBtn.innerHTML = "✅ Saved Successfully!"; saveBtn.classList.replace('bg-indigo-600', 'bg-emerald-600'); saveBtn.classList.replace('bg-rose-600', 'bg-emerald-600'); }
             
-            // --- BUG 2 FIX: Optimistically update local array to prevent race-condition form wipes ---
             const existingIdx = window.currentDayLogs.findIndex(l => l.log_time === logData.log_time);
             if (existingIdx >= 0) {
                 window.currentDayLogs[existingIdx] = logData;
             } else {
                 window.currentDayLogs.push(logData);
             }
-            // ----------------------------------------------------------------------------------------
 
             if (logTime.startsWith('12:00')) {
-                // ... (Keep existing 12:00 daily transfer logic intact) ...
+                // ... (existing 12:00 daily transfer logic intact)
             }
         }
 
-        // Now it is safe to call updateDates (which triggers fetchLogs), because the local array protects the UI state
         updateDates();
         localStorage.removeItem('makarigad_hourly_draft'); 
         
@@ -494,7 +489,7 @@ document.getElementById('hourly-form').addEventListener('submit', async function
         }, 2500);
 
     } catch (error) {
-        alert("❌ Critical JS Error: " + error.message);
+        showNotification("❌ Critical JS Error: " + error.message, true);
         if(saveBtn) { saveBtn.innerHTML = "💾 Save Hour Data"; saveBtn.disabled = false; }
     }
 });
@@ -516,12 +511,10 @@ document.getElementById('log-time').addEventListener('change', function(e) {
     if (existingLog) { 
         window.editLog(selectedTime, false); 
     } else { 
-        // Only wipe if the draft is truly empty, preventing accidental loss
         const draftStr = localStorage.getItem('makarigad_hourly_draft');
         if (!draftStr || draftStr === '{}') {
             window.clearMasterFormInputsOnly(); 
         } else {
-            // Keep the user's typed data on the screen for the new hour
             window.validateForm(); 
         }
     }
@@ -763,8 +756,8 @@ if(btnRain) {
         };
         
         const { error } = await supabase.from('rainfall_data').upsert(payload);
-        if(error) alert("❌ Error saving rainfall: " + error.message);
-        else alert("✅ Rainfall data saved successfully!");
+        if(error) showNotification("❌ Error saving rainfall: " + error.message, true);
+        else showNotification("✅ Rainfall data saved successfully!");
     });
 }
 
@@ -899,15 +892,15 @@ if(btnNoon) {
                         }).eq('year', nYear).eq('month', monthName);
                         if(ceErr) console.error("Contract Energy Sync Error: ", ceErr);
                     } else {
-                        alert(`⚠️ Warning: Monthly row for ${nYear} ${monthName} not found in Energy Summary. Daily data saved, but monthly totals skipped.`);
+                        showNotification(`⚠️ Warning: Monthly row for ${nYear} ${monthName} not found in Energy Summary. Daily data saved, but monthly totals skipped.`, true);
                     }
                 }
             }
 
             document.getElementById('faults-container').innerHTML = '';
-            alert("✅ 12:00 PM Sync Complete!");
+            showNotification("✅ 12:00 PM Sync Complete!");
 
-        } catch (err) { alert("❌ Error: " + err.message); } 
+        } catch (err) { showNotification("❌ Error: " + err.message, true); } 
         finally { btn.innerText = "Sync 12:00 PM Data to Database"; btn.disabled = false; }
     });
 }
@@ -962,14 +955,14 @@ if(btnLoadSum) {
 
         } catch (e) {
             console.error(e);
-            alert("Error loading summary: " + e.message);
+            showNotification("Error loading summary: " + e.message, true);
         } finally { btn.innerText = "Load"; }
     });
 }
 
 window.editFaultModal = async function(rowId, faultIndex = null) {
     const row = window.outagesDataCache.find(r => r.id === rowId);
-    if (!row || !row.fault_details) return alert("No detailed data to edit for this date.");
+    if (!row || !row.fault_details) return showNotification("No detailed data to edit for this date.", true);
     
     let details = row.fault_details;
     let idx = faultIndex;
@@ -980,7 +973,7 @@ window.editFaultModal = async function(rowId, faultIndex = null) {
         idx = parseInt(promptStr) - 1;
     }
     
-    if (idx < 0 || idx >= details.length) return alert("Invalid selection.");
+    if (idx < 0 || idx >= details.length) return showNotification("Invalid selection.", true);
     
     const d = details[idx];
     const newReason = prompt(`Edit Reason for ${d.type}:`, d.reason);
@@ -990,7 +983,7 @@ window.editFaultModal = async function(rowId, faultIndex = null) {
     if (newMwh === null) return;
     
     const parsedMwh = parseFloat(newMwh);
-    if (isNaN(parsedMwh)) return alert("Invalid MWh value.");
+    if (isNaN(parsedMwh)) return showNotification("Invalid MWh value.", true);
 
     details[idx].reason = newReason;
     details[idx].mwh = Number(parsedMwh.toFixed(3));
@@ -1021,12 +1014,12 @@ window.editFaultModal = async function(rowId, faultIndex = null) {
     try {
         const { error } = await supabase.from('outages').update(updatePayload).eq('id', rowId);
         if (error) throw error;
-        alert(`✅ Fault updated!`);
+        showNotification(`✅ Fault updated!`);
         if (document.getElementById('export-type') && document.getElementById('export-type').value === 'outages') {
             window.previewExportData();
         }
     } catch (err) {
-        alert("❌ Failed to update: " + err.message);
+        showNotification("❌ Failed to update: " + err.message, true);
     }
 };
 
@@ -1113,7 +1106,7 @@ window.previewExportData = async function() {
                         <th class="p-2 border-r border-slate-300 bg-emerald-50" colspan="2">Plant Equip.</th>
                         <th class="p-2 border-r border-slate-300 bg-rose-100 text-rose-900 align-middle" rowspan="2">Total Loss<br>(MWh)</th>
                         <th class="p-2 border-slate-300 align-middle" rowspan="2">Admin</th>
-                    </tr>
+                     </tr>
                     <tr class="bg-slate-50 text-[10px] text-slate-600">
                         <th class="p-1 border-r border-t border-slate-300 w-16">Time</th><th class="p-1 border-r border-t border-slate-300 w-16">MWh</th>
                         <th class="p-1 border-r border-t border-slate-300 w-16">Time</th><th class="p-1 border-r border-t border-slate-300 w-16">MWh</th>
@@ -1405,7 +1398,7 @@ window.downloadExcel = async function() {
     if (!window.previewDataCache || window.previewDataCache.length === 0) { await window.previewExportData(); }
     setTimeout(async () => {
         const data = window.previewDataCache;
-        if (!data || data.length === 0) return alert('No data to export.');
+        if (!data || data.length === 0) return showNotification('No data to export.', true);
         const type = document.getElementById('export-type').value;
         const monthSelect = document.getElementById('export-month');
         const monthName = monthSelect ? monthSelect.options[monthSelect.selectedIndex].text : '';
@@ -1430,7 +1423,7 @@ window.downloadPDF = async function() {
     if (!window.previewDataCache || window.previewDataCache.length === 0) { await window.previewExportData(); }
     setTimeout(async () => {
         const data = window.previewDataCache;
-        if (!data || data.length === 0) return alert('No data to export.');
+        if (!data || data.length === 0) return showNotification('No data to export.', true);
 
         const type = document.getElementById('export-type').value;
         const monthSelect = document.getElementById('export-month');
@@ -1452,67 +1445,61 @@ window.downloadPDF = async function() {
             
             let startY = 45;
             if (type === 'schedule3') {
-    doc.setFont("times", "bold"); doc.setFontSize(10);
-    doc.text("SCHEDULE 3: DAILY LOG SHEET", 15, 25);
-    doc.text("Makari Gad Hydropower Limited", 15, 39); 
-    doc.text("Site Office: Apihimal-5, Makarigad, Darchula", pageWidth * 0.65, 39);
-    doc.text("Makari Gad Hydroelectric Project", 15, 51); 
-    doc.setFont("times", "normal").text("Email: makarigad@gmail.com", pageWidth * 0.65, 51);
-    doc.text("Head Office: Maharajgunj-3, Kathmandu", 15, 63); 
-    doc.text("Tel: 9851275191", pageWidth * 0.65, 63);
-    doc.text("Tel: 014720530", 15, 75); 
-    doc.text(`Nepali Date: ${nepD}`, pageWidth * 0.35, 75); 
-    doc.setFont("times", "bold").text(`FISCAL YEAR: ${fyString}     Month: ${monthName}`, 15, 89);
-    doc.setFont("times", "normal").text(`English Date: ${date}`, pageWidth * 0.35, 89);
-    startY = 109;
+                doc.setFont("times", "bold"); doc.setFontSize(10);
+                doc.text("SCHEDULE 3: DAILY LOG SHEET", 15, 25);
+                doc.text("Makari Gad Hydropower Limited", 15, 39); 
+                doc.text("Site Office: Apihimal-5, Makarigad, Darchula", pageWidth * 0.65, 39);
+                doc.text("Makari Gad Hydroelectric Project", 15, 51); 
+                doc.setFont("times", "normal").text("Email: makarigad@gmail.com", pageWidth * 0.65, 51);
+                doc.text("Head Office: Maharajgunj-3, Kathmandu", 15, 63); 
+                doc.text("Tel: 9851275191", pageWidth * 0.65, 63);
+                doc.text("Tel: 014720530", 15, 75); 
+                doc.text(`Nepali Date: ${nepD}`, pageWidth * 0.35, 75); 
+                doc.setFont("times", "bold").text(`FISCAL YEAR: ${fyString}     Month: ${monthName}`, 15, 89);
+                doc.setFont("times", "normal").text(`English Date: ${date}`, pageWidth * 0.35, 89);
+                startY = 109;
 
-    const html = window.generateTableHTML(dayData, nepD, date, monthName, false, type, false);
-    const tempDiv = document.createElement('div'); tempDiv.innerHTML = html;
-    const table = tempDiv.querySelector('.excel-table');
+                const html = window.generateTableHTML(dayData, nepD, date, monthName, false, type, false);
+                const tempDiv = document.createElement('div'); tempDiv.innerHTML = html;
+                const table = tempDiv.querySelector('.excel-table');
 
-    // Extract shift names from remarks (hours 05:00, 13:00, 21:00)
-    let shiftA = '', shiftB = '', shiftC = '';
-    dayData.forEach(l => {
-        const t = l.log_time ? l.log_time.substring(0, 5) : '';
-        if (t === '05:00' && l.remarks) shiftA = l.remarks;
-        if (t === '13:00' && l.remarks) shiftB = l.remarks;
-        if (t === '21:00' && l.remarks) shiftC = l.remarks;
-    });
+                let shiftA = '', shiftB = '', shiftC = '';
+                dayData.forEach(l => {
+                    const t = l.log_time ? l.log_time.substring(0, 5) : '';
+                    if (t === '05:00' && l.remarks) shiftA = l.remarks;
+                    if (t === '13:00' && l.remarks) shiftB = l.remarks;
+                    if (t === '21:00' && l.remarks) shiftC = l.remarks;
+                });
 
-    // Render the table
-    doc.autoTable({ 
-        html: table, startY: startY, theme: 'grid', useCss: false, 
-        styles: { font: 'times', fontSize: 7, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.5, halign: 'center', valign: 'middle' },
-        headStyles: { fillColor: [255, 255, 255], textColor: [0,0,0], fontStyle: 'bold', font: 'times' },
-        margin: { top: startY, right: 15, bottom: 60, left: 15 }
-    });
+                doc.autoTable({ 
+                    html: table, startY: startY, theme: 'grid', useCss: false, 
+                    styles: { font: 'times', fontSize: 7, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.5, halign: 'center', valign: 'middle' },
+                    headStyles: { fillColor: [255, 255, 255], textColor: [0,0,0], fontStyle: 'bold', font: 'times' },
+                    margin: { top: startY, right: 15, bottom: 60, left: 15 }
+                });
 
-    // Add signature block after the table
-    const finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFont("times", "normal");
-    doc.setFontSize(9);
+                const finalY = doc.lastAutoTable.finalY + 10;
+                doc.setFont("times", "normal");
+                doc.setFontSize(9);
 
-    // Shift headers
-    doc.text("Shift A", 15, finalY);
-    doc.text("Shift B", 15 + 150, finalY);
-    doc.text("Shift C", 15 + 300, finalY);
+                doc.text("Shift A", 15, finalY);
+                doc.text("Shift B", 15 + 150, finalY);
+                doc.text("Shift C", 15 + 300, finalY);
 
-    // Signature lines
-    doc.text("Signature: .............................", 15, finalY + 15);
-    doc.text("Signature: .............................", 15 + 150, finalY + 15);
-    doc.text("Signature: .............................", 15 + 300, finalY + 15);
+                doc.text("Signature: .............................", 15, finalY + 15);
+                doc.text("Signature: .............................", 15 + 150, finalY + 15);
+                doc.text("Signature: .............................", 15 + 300, finalY + 15);
 
-    // Shift names
-    doc.text(`Name: ${shiftA}`, 15, finalY + 30);
-    doc.text(`Name: ${shiftB}`, 15 + 150, finalY + 30);
-    doc.text(`Name: ${shiftC}`, 15 + 300, finalY + 30);
+                doc.text(`Name: ${shiftA}`, 15, finalY + 30);
+                doc.text(`Name: ${shiftB}`, 15 + 150, finalY + 30);
+                doc.text(`Name: ${shiftC}`, 15 + 300, finalY + 30);
 
-    // Plant Manager details
-    doc.text("Signature: .............................", 15, finalY + 45);
-    doc.text("Name: Upendra Chand", 15, finalY + 60);
-    doc.text("Designation: Plant Manager", 15, finalY + 75);
-    doc.text("Official Seal", 15, finalY + 90);
-}      });
+                doc.text("Signature: .............................", 15, finalY + 45);
+                doc.text("Name: Upendra Chand", 15, finalY + 60);
+                doc.text("Designation: Plant Manager", 15, finalY + 75);
+                doc.text("Official Seal", 15, finalY + 90);
+            } 
+        });
         const safeDate = uniqueDates[0] ? uniqueDates[0].replace(/[\/.]/g, '-') : 'Export';
         doc.save(`Makari_Gad_${type}_${safeDate}.pdf`);
     }, 500);
@@ -1522,11 +1509,9 @@ window.prevPreviewPage = function() { const dayInput = document.getElementById('
 window.nextPreviewPage = function() { const dayInput = document.getElementById('export-day'); let d = parseInt(dayInput.value) || 1; if(d < 32) { dayInput.value = d + 1; window.previewExportData(); } };
 window.toggleExportRange = function() { window.isDailyExport = document.querySelector('input[name="export-range"]:checked').value === 'daily'; document.getElementById('export-day-container').style.display = window.isDailyExport ? 'block' : 'none'; }
 
-
 // ==========================================
 // ADMIN EXPORTS: PURGE DATA ENGINE
 // ==========================================
-
 window.purgeMonthData = async function() {
     if(window.userRole !== 'admin') return;
     const year = document.getElementById('export-year').value;
@@ -1549,7 +1534,7 @@ window.purgeMonthData = async function() {
 
         if (plantError) throw plantError;
         if (!plantData || plantData.length === 0) {
-            alert(`No mapped dates found for ${monthName} ${year}.`);
+            showNotification(`No mapped dates found for ${monthName} ${year}.`, true);
             return;
         }
 
@@ -1558,24 +1543,23 @@ window.purgeMonthData = async function() {
         const { error } = await supabase.from('hourly_logs').delete().in('log_date', engDates);
         if (error) throw error;
 
-        alert(`✅ Successfully deleted all records for ${monthName} ${year}.`);
+        showNotification(`✅ Successfully deleted all records for ${monthName} ${year}.`);
         window.previewExportData(); 
     } catch (e) {
-        alert("Delete Error: " + e.message);
+        showNotification("Delete Error: " + e.message, true);
     }
 };
 
 // ==========================================
 // ADMIN EXPORTS: RESTORED SMART LEGACY IMPORT
 // ==========================================
-
 window.processLegacyImport = async function() {
     const fileInput = document.getElementById('legacy-upload');
     const statusDiv = document.getElementById('import-status');
     const importType = document.getElementById('import-type').value;
 
     if (!fileInput.files || fileInput.files.length === 0) {
-        alert("Please select an Excel or CSV file first.");
+        showNotification("Please select an Excel or CSV file first.", true);
         return;
     }
 
@@ -1652,7 +1636,7 @@ window.processLegacyImport = async function() {
                     }
                 }
 
-                // If still no date, try to find an English date string (year >= 2020)
+                // If still no date, try to find an English date string (year >= 2020) using parseToUTCDate
                 if (!parsedDate) {
                     for(let i=0; i<30 && i<rows.length; i++) {
                         let row = rows[i];
@@ -1660,27 +1644,13 @@ window.processLegacyImport = async function() {
                         for(let j=0; j<row.length; j++) {
                             let cell = row[j];
                             if(cell === null || cell === "") continue;
-                            if (typeof cell === 'number' && cell > 40000 && cell < 60000) {
-                                const dateObj = XLSX.SSF.parse_date_code(cell);
-                                const year = dateObj.y;
-                                if (year >= 2020) { // ignore old placeholder dates like 2013
-                                    parsedDate = `${year}-${String(dateObj.m).padStart(2, '0')}-${String(dateObj.d).padStart(2, '0')}`;
-                                    console.log(`Found date from Excel number: ${parsedDate}`);
-                                    break;
-                                }
-                            }
-                            if (typeof cell === 'string') {
-                                let s = cell.trim();
-                                let m1 = s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); 
-                                if (m1 && parseInt(m1[1]) >= 2020) {
-                                    parsedDate = `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
-                                    console.log(`Found date from string pattern 1: ${parsedDate}`);
-                                    break;
-                                }
-                                let m2 = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); 
-                                if (m2 && parseInt(m2[3]) >= 2020) {
-                                    parsedDate = `${m2[3]}-${m2[2].padStart(2, '0')}-${m2[1].padStart(2, '0')}`;
-                                    console.log(`Found date from string pattern 2: ${parsedDate}`);
+                            // Try to parse using our utility
+                            const d = parseToUTCDate(cell);
+                            if (d) {
+                                const y = parseInt(d.split('-')[0]);
+                                if (y >= 2020) {
+                                    parsedDate = d;
+                                    console.log(`Found date via parseToUTCDate: ${parsedDate}`);
                                     break;
                                 }
                             }
@@ -1748,12 +1718,10 @@ window.processLegacyImport = async function() {
                         let o = offset;
 
                         if (importType === 'generation') {
-                            // DEBUG: Log the first data row to see actual column values
                             if (rowsFound === 0) {
                                 console.log(`\n--- Generation Summary Row (hour ${hour}) ---`);
                                 console.log(`Row length: ${r.length}`);
                                 console.log(`Hour column index: ${offset} -> value:`, r[offset]);
-                                // Show columns from offset+1 to offset+18 (18 data columns expected)
                                 console.log(`Data columns (offset+1 to offset+18):`, r.slice(offset+1, offset+19));
                                 console.log(`Expected mapping: [U1_status, U2_status, U1_hour, U2_hour, U1_load, U2_load, U1_pf, U2_pf, U1_pmu, U2_pmu, U1_feeder, U2_feeder, SST, Outgoing, Import, Water, Operator]`);
                             }
@@ -1905,10 +1873,11 @@ window.processLegacyImport = async function() {
         } catch (err) {
             console.error("Import Error:", err);
             statusDiv.innerHTML = `❌ Error: ${err.message}`;
-            alert(`Import failed: ${err.message}\n\nCheck console for details.`);
+            showNotification(`Import failed: ${err.message}\n\nCheck console for details.`, true);
         }
     };
     reader.readAsArrayBuffer(file);
 }
+
 // Start the whole process
 startPage();

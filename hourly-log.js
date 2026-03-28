@@ -988,7 +988,7 @@ if(btnNoon) {
                 check_export: parseFloat(document.getElementById('inp-bal-chk-exp').value) || 0,
                 check_import: parseFloat(document.getElementById('inp-bal-chk-imp').value) || 0,
                 operator_email: window.currentUser?.email || null,
-                operator_uid: window.currentUser?.id || null,
+                //operator_uid: window.currentUser?.id || null,
             };
             const { error: balErr } = await supabase.from('balanch_readings').upsert(balPayload);
             if (balErr) throw new Error("Substation Save Error: " + balErr.message);

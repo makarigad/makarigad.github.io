@@ -75,3 +75,48 @@ th {
 .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
 
 #notification-modal { transition: all 0.25s ease; }
+
+/* ── Rainfall Tab: allow panels to scroll on short screens ─────────── */
+#rainfall-tab {
+    overflow-y: auto;
+}
+
+/* ── Chart containers: ensure minimum visible height ───────────────── */
+#rainfall-tab .relative.h-\[250px\] {
+    min-height: 220px;
+}
+
+/* ── Sticky summary card numbers: better visual hierarchy ───────────── */
+#sum-headworks, #sum-dam, #avg-headworks, #rainy-days {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+}
+
+/* ── Table row hover: smoother transition ───────────────────────────── */
+tbody tr {
+    transition: background-color 0.12s ease;
+}
+
+/* ── Year checkbox group: wrap neatly on small screens ─────────────── */
+#rf-year-checkboxes {
+    min-height: 28px;
+    align-items: center;
+}
+
+/* ── Active tab: sharper indicator ─────────────────────────────────── */
+.tab-btn.active {
+    background-color: #fff;
+    border-radius: 6px 6px 0 0;
+}
+
+/* ── Input focus ring: consistent across all browsers ──────────────── */
+.input-cell:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+/* ── Notification modal: smoother entrance ──────────────────────────── */
+#notification-modal {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}

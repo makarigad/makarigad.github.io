@@ -125,25 +125,39 @@ let cumulativeChartInstance = null;
 document.getElementById('quick-fill-zero')?.addEventListener('click', fillMissingDaysZero);
 document.getElementById('show-both-metrics')?.addEventListener('change', updateRainfallChart);
 
-const rfChartMonthSelect = document.getElementById('rf-chart-month');
-if (rfChartMonthSelect) {
-    rfChartMonthSelect.innerHTML = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
-    rfChartMonthSelect.addEventListener('change', updateRainfallChart);
-}
-document.getElementById('rf-chart-metric')?.addEventListener('change', updateRainfallChart);
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Initialize the Chart Month Dropdown
+    const rfChartMonthSelect = document.getElementById('rf-chart-month');
+    if (rfChartMonthSelect) {
+        rfChartMonthSelect.innerHTML = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
+        rfChartMonthSelect.addEventListener('change', updateRainfallChart);
+    }
+    
+    // 2. Sync Grid Month changes to the Chart Month
+    document.getElementById('grid-rf-month')?.addEventListener('change', (e) => {
+        renderRainfallGrid(); // Keep the existing grid update
+        if (rfChartMonthSelect) {
+            rfChartMonthSelect.value = e.target.value;
+            updateRainfallChart();
+        }
+    });
+
+  
+});
+
 
 function updateRainfallChart() {
-    try {
-        const canvas = document.getElementById('rainfall-chart');
-        if (!canvas) return;
+    const canvas = document.getElementById('rainfall-chart');
+    if (!canvas) return;
+    // Wait until canvas has dimensions
+    if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+        setTimeout(updateRainfallChart, 200);
+        return;
+    }
 
-        // THE FIX: Prevent drawing if the tab is currently hidden (0px height)
-        if (canvas.clientHeight === 0) {
-            console.log("Chart is hidden. Waiting for tab to open...");
-            return; 
-        }
-
+        try {
         const ctx = canvas.getContext('2d');
+
         const monthDropdown = document.getElementById('rf-chart-month');
         
         const selectedMonth = monthDropdown && monthDropdown.value ? monthDropdown.value : 'Baisakh';
@@ -217,7 +231,7 @@ function updateRainfallChart() {
     } catch (err) { console.error("Chart Error: ", err); }
 }
 
-function updateMonthlySummary() {
+    function updateMonthlySummary() {
     const y = parseInt(document.getElementById('grid-rf-year')?.value);
     const m = document.getElementById('grid-rf-month')?.value;
     if (!y || !m) return;
@@ -240,10 +254,7 @@ function updateMonthlySummary() {
     if(document.getElementById('rainy-days')) document.getElementById('rainy-days').textContent = rainy;
 
     const canvas = document.getElementById('cumulative-rainfall-chart');
-    if (!canvas) return;
-
-    // THE FIX: Prevent drawing cumulative chart if tab is hidden
-    if (canvas.clientHeight === 0) return;
+    if (!canvas || canvas.parentElement.clientWidth === 0) return;
 
     const ctx = canvas.getContext('2d');
     const sorted = [...monthData].sort((a, b) => a.day - b.day);
@@ -278,23 +289,26 @@ function updateMonthlySummary() {
     });
 }
 
-// THE FIX: Bulletproof Tab Click Listener
-// This forces the charts to wait 150 milliseconds for the tab animation to open, 
-// and THEN draws them at full, correct size.
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        if (this.dataset.target === 'rainfall-tab') {
-            setTimeout(() => {
-                if (typeof updateRainfallChart === 'function') updateRainfallChart();
-                if (typeof updateMonthlySummary === 'function') updateMonthlySummary();
-            }, 150);
+// ==========================================
+// THE FIX: Intersection Observer
+// This perfectly tracks when the tab becomes visible on the screen, 
+// bypassing all timeout and click errors.
+// ==========================================
+const rainfallTabObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            console.log("Rainfall tab is now visible! Drawing charts...");
+            if (typeof updateRainfallChart === 'function') updateRainfallChart();
+            if (typeof updateMonthlySummary === 'function') updateMonthlySummary();
         }
+        updateRainfallChart();
     });
 });
 
-// Helper to calculate the current Nepali Date for defaults
-// Helper to calculate the current Nepali Date for defaults
-
+const rainTabEl = document.getElementById('rainfall-tab');
+if (rainTabEl) {
+    rainfallTabObserver.observe(rainTabEl);
+}
 
 // Helper to calculate the current Nepali Date for defaults
 function getNepDateObj() {
@@ -338,27 +352,25 @@ function updateRainfallGridFilters() {
 }
 
 function updateRainfallYearsCheckboxes() {
+    
     const container = document.getElementById('rf-year-checkboxes');
     if (!container) return;
-
+    
     const years = [...new Set(allRainfallData.map(d => d.nepali_year))].sort((a, b) => b - a);
     let checkedBoxes = Array.from(container.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
-
-    // Default to latest year if nothing is checked
-    if (checkedBoxes.length === 0) {
-        let defaultYear = getNepDateObj().year;
-        if (allRainfallData.length > 0) defaultYear = allRainfallData[0].nepali_year;
-        checkedBoxes = [defaultYear];
+    
+    // Fix: If no years are checked, default to the most recent year
+    if (checkedBoxes.length === 0 && years.length > 0) {
+        checkedBoxes.push(years[0]);
     }
-
-    container.innerHTML = years.map((y) => `
+    
+    container.innerHTML = years.map(y => `
         <label class="flex items-center space-x-1 text-sm font-semibold text-slate-700 cursor-pointer hover:text-indigo-600 transition">
-            <input type="checkbox" value="${y}" class="rf-year-cb w-4 h-4 accent-indigo-600" 
-            ${checkedBoxes.includes(y) ? 'checked' : ''}>
+            <input type="checkbox" value="${y}" class="rf-year-cb w-4 h-4 accent-indigo-600" ${checkedBoxes.includes(y) ? 'checked' : ''}>
             <span>${y}</span>
         </label>
     `).join('');
-
+    
     container.querySelectorAll('.rf-year-cb').forEach(cb => cb.addEventListener('change', updateRainfallChart));
     updateRainfallChart();
 }
@@ -467,10 +479,11 @@ function renderRainfallGrid() {
     }
 }
 
-document.getElementById('grid-rf-year')?.addEventListener('change', renderRainfallGrid);
-document.getElementById('grid-rf-month')?.addEventListener('change', renderRainfallGrid);
-
-
+document.getElementById('grid-rf-year')?.addEventListener('change', () => {
+    renderRainfallGrid();
+    updateRainfallChart();  // Sync comparison chart when year changes
+});
+// NOTE: grid-rf-month is already handled inside DOMContentLoaded — do not re-add it here
 
 async function fillMissingDaysZero() {
     if (!currentUser) return showNotification("You must be logged in.", true);

@@ -1723,24 +1723,25 @@ async function handleAddOrUpdateBalanch(docId, isUpdate = false) {
     balanchCols.forEach(c => payload[c] = parseFloat(document.getElementById(prefix + c)?.value) || null);
 
    try {
-    const { error: bErr } = await supabase.from('balanch_readings').upsert(payload);
-    if (bErr) throw bErr;
+        const { error: bErr } = await supabase.from('balanch_readings').upsert(payload);
+        if (bErr) throw bErr;
 
-    // We no longer need to select 'currentPlant' to check for nulls
-    // We simply prepare the update for the Daily Metering tab (plant_data table)
-    const plantSync = { 
-        id: targetDate, 
-        updated_at: new Date().toISOString(),
-        export_plant: payload.main_export,      // Always sync Export
-        import_substation: payload.main_import, // Always sync Import
-        nepali_date: payload.nep_date           // Always sync Nepali Date
-    };
+        // Prepare the update for the Daily Metering tab (plant_data table)
+        const plantSync = { 
+            id: targetDate, 
+            updated_at: new Date().toISOString(),
+            export_substation: payload.main_export, // Changed from export_plant to export_substation
+            import_substation: payload.main_import, 
+            nepali_date: payload.nep_date           
+        };
 
-    await supabase.from('plant_data').upsert(plantSync, { onConflict: 'id' });
-        showNotification(`✅ Substation saved & Daily Metering smart-synced!`);
+        // EXECUTE SYNC: This sends the data to the Daily Metering master table
+        await supabase.from('plant_data').upsert(plantSync, { onConflict: 'id' });
+
+        showNotification(`✅ Substation saved & Daily Metering updated!`);
         editingBalanchId = null;
-        loadBalanchData();
-        loadAndListenData();
+        loadBalanchData(); // Refreshes Substation Tab
+        loadAndListenData(); // Refreshes Daily Metering Tab
     } catch (error) {
         showNotification("Error: " + error.message, true);
     }
@@ -2249,17 +2250,23 @@ function createMCEInputRow() {
     const ys = [-2, -1, 0, 1, 2].map(i => `<option value="${cy + i}">${cy + i}</option>`).join('');
     const ms = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
 
-    const inputs = mceFields.map(f => `<input type="number" id="new-${f.key}" step="any" class="input-cell" />`).join('');
+    // FIX 1: Wrap each input in a <td> tag and add highlights for totals
+    const inputs = mceFields.map(f => {
+        const isHighlight = f.key.includes('total') || f.key.includes('contract');
+        const extraClass = isHighlight ? 'bg-indigo-50 font-bold text-indigo-700' : '';
+        return `<td><input type="number" id="new-${f.key}" step="any" class="input-cell ${extraClass}" /></td>`;
+    }).join('');
 
-    return `<tr class="bg-indigo-50/60 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
-        <td><select id="new-mce-year" class="input-cell font-bold text-indigo-700 bg-white">${ys}</select><\/td>
-        <td><select id="new-mce-month" class="input-cell font-bold text-indigo-700 bg-white">${ms}</select><\/td>
+    // FIX 2: Change bg-indigo-50/60 to a solid bg-indigo-50 to stop scroll-bleed
+    return `<tr class="bg-indigo-50 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
+        <td><select id="new-mce-year" class="input-cell font-bold text-indigo-700 bg-white">${ys}</select></td>
+        <td><select id="new-mce-month" class="input-cell font-bold text-indigo-700 bg-white">${ms}</select></td>
         ${inputs}
-        <td class="truncate-text text-xs text-slate-500">${currentUser?.email || ''}<\/td>
+        <td class="truncate-text text-xs text-slate-500 text-center">${getUserName()}</td>
         <td class="col-actions">
-            <button id="add-mce-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700">Save<\/button>
-        <\/td>
-    <\/tr>`;
+            <button id="add-mce-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save</button>
+        </td>
+    </tr>`;
 }
 
 function createMCEDisplayRow(d) {
@@ -2276,15 +2283,23 @@ function createMCEDisplayRow(d) {
 }
 
 function createMCEEditRow(d) {
-   const inputs = mceFields.map(f => `<input type="number" id="edit-${f.key}" class="input-cell" value="${d[f.key] ?? ''}">`).join('');
-    return `<td><input class="input-cell bg-slate-100" value="${d.year}" disabled><\/td>
-        <td><input class="input-cell bg-slate-100" value="${d.month}" disabled><\/td>
+    // FIX: Wrap edit inputs in <td> tags as well
+    const inputs = mceFields.map(f => {
+        const isHighlight = f.key.includes('total') || f.key.includes('contract');
+        const extraClass = isHighlight ? 'bg-indigo-50 font-bold text-indigo-700' : '';
+        return `<td><input type="number" id="edit-${f.key}" class="input-cell ${extraClass}" value="${d[f.key] ?? ''}"></td>`;
+    }).join('');
+   
+    return `<tr class="bg-indigo-50">
+        <td><input class="input-cell bg-slate-200 font-bold text-slate-500" value="${d.year}" disabled></td>
+        <td><input class="input-cell bg-slate-200 font-bold text-slate-500" value="${d.month}" disabled></td>
         ${inputs}
-        <td class="truncate-text text-xs text-slate-500">${currentUser?.email || ''}<\/td>
-        <td class="flex space-x-2">
-            <button class="update-mce-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${d.id}">Save<\/button>
-            <button class="cancel-mce-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X<\/button>
-        <\/td>`;
+        <td class="truncate-text text-xs text-slate-500 text-center">${getUserName()}</td>
+        <td class="flex space-x-2 whitespace-nowrap">
+            <button class="update-mce-btn bg-emerald-600 text-white font-bold py-1 px-2 rounded hover:bg-emerald-700 shadow-sm" data-id="${d.id}">Save</button>
+            <button class="cancel-mce-btn bg-slate-300 text-slate-700 font-bold py-1 px-2 rounded hover:bg-slate-400 shadow-sm">X</button>
+        </td>
+    </tr>`;
 }
 
 function renderMCETable() {

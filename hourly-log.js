@@ -495,8 +495,8 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
             console.log("Attempting 12:00 PM 3-Way Sync...");
             
             // Map c & d variables from the 12:00 PM input
-            const c_export = p('u1-feeder'); // Your Hourly Log variable for Export Plant
-            const d_import = p('import-mwh'); // Your Hourly Log variable for Import Substation
+            const c_export = p('outgoing-kwh'); // FIX: Grab Outgoing (Plant Export), not U1 Feeder
+            const d_import = p('import-mwh'); // Plant Import
 
             // FETCH EXISTING DATA to preserve other fields
             const [{ data: curPlant }, { data: curBalanch }] = await Promise.all([
@@ -525,7 +525,8 @@ const plantPayload = {
             
             // Smart logic: Fill if empty (x=c)
             if (c_export !== null && (!curPlant || curPlant.export_plant == null)) plantPayload.export_plant = c_export;
-            if (d_import !== null && (!curPlant || curPlant.import_substation == null)) plantPayload.import_substation = d_import;
+            // FIX: Map to import_outgoing (Plant side), NOT import_substation (Balanch side)
+            if (d_import !== null && (!curPlant || curPlant.import_outgoing == null)) plantPayload.import_outgoing = d_import;
             
             await supabase.from('plant_data').upsert(plantPayload);
 
@@ -1028,6 +1029,21 @@ if(btnNoon) {
             };
             const { error: balErr } = await supabase.from('balanch_readings').upsert(balPayload);
             if (balErr) throw new Error("Substation Save Error: " + balErr.message);
+
+            // FIX: Safely Sync these Balanch readings to the Daily Metering (plant_data) table
+            // Must fetch existing plant_data to avoid overwriting the morning generation data
+            const { data: curPlant } = await supabase.from('plant_data').select('*').eq('id', targetDate).maybeSingle();
+            const plantSyncPayload = {
+                ...(curPlant || {}),
+                id: targetDate,
+                updated_at: new Date().toISOString(),
+                export_substation: balPayload.main_export,
+                import_substation: balPayload.main_import
+            };
+            const { error: plantSyncErr } = await supabase.from('plant_data').upsert(plantSyncPayload);
+            if (plantSyncErr) throw new Error("Daily Metering Sync Error: " + plantSyncErr.message);
+
+            
 
             // 2. Gather Outages
             const { data: existingOutage } = await supabase.from('outages').select('*').eq('id', targetDate).maybeSingle();

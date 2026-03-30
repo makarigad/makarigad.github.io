@@ -39,9 +39,6 @@
     /* ── Role gating ── */
     .role-hidden { display: none !important; }
 
-    /* ── SCADA big number ── */
-    .scada-glow { text-shadow: 0 0 30px rgba(52,211,153,0.35), 0 0 60px rgba(52,211,153,0.15); }
-
     /* ── Nav card ── */
     .nav-card { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
     .nav-card:hover { transform: translateY(-2px); }
@@ -52,23 +49,16 @@
     /* ── Card entrance ── */
     .card-fade { animation: fade-up 0.4s ease both; }
     @keyframes fade-up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-
-    /* ── SCADA panel grid lines ── */
-    .scada-cell { border-top: 1px solid rgba(255,255,255,0.06); }
   </style>
 </head>
 <body class="text-slate-800 flex flex-col" style="min-height:100vh;">
 
-  <!-- ─── Global header ─────────────────────────────────────────── -->
   <div id="global-header-container" class="shrink-0 z-50 relative no-print"></div>
 
-  <!-- ─── Main ─────────────────────────────────────────────────── -->
   <main class="flex-grow p-4 md:p-5 lg:p-6 max-w-[1700px] mx-auto w-full flex flex-col gap-5">
 
-    <!-- Status bar -->
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <!-- card-update: classes must stay as-is — JS replaces them on offline -->
         <span id="card-update" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
           Date: Loading...
@@ -80,13 +70,10 @@
       </div>
     </div>
 
-    <!-- ─── Main two-column grid ─────────────────────────────────── -->
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 flex-grow min-h-0">
+    <div class="grid grid-cols-1 gap-5 flex-grow min-h-0">
 
-      <!-- ─── Left: Database snapshot (3/5) ───────────────────── -->
-      <div class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm card-fade flex flex-col overflow-hidden" style="animation-delay:0.05s">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm card-fade flex flex-col overflow-hidden" style="animation-delay:0.05s">
 
-        <!-- Card header -->
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
           <div>
             <h2 class="text-sm font-black text-slate-800 uppercase tracking-wide">Today's Generation</h2>
@@ -95,7 +82,6 @@
           <div class="w-2 h-2 rounded-full bg-indigo-300"></div>
         </div>
 
-        <!-- Hero row: Gross Gen + Net Export -->
         <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
           <div class="p-6 flex flex-col justify-between">
             <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Generation</div>
@@ -109,7 +95,6 @@
           </div>
         </div>
 
-        <!-- Secondary row: Plant Factor + Outages -->
         <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
           <div class="p-5 flex items-center gap-4">
             <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
@@ -131,8 +116,7 @@
           </div>
         </div>
 
-        <!-- Detail row: Unit hours + Contract energy -->
-        <div class="p-5 grid grid-cols-2 gap-3 flex-grow content-start">
+        <div class="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3 flex-grow content-start">
           <div class="bg-slate-50 border border-slate-100 rounded-xl p-4">
             <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Unit 1 Runtime</div>
             <div id="card-u1-hrs" class="text-xl font-black text-slate-700 num">—</div>
@@ -152,70 +136,7 @@
         </div>
       </div>
 
-      <!-- ─── Right: Live telemetry (2/5) ─────────────────────── -->
-      <div class="lg:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 shadow-sm card-fade flex flex-col overflow-hidden" style="animation-delay:0.1s">
-
-        <!-- Card header -->
-        <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
-          <div class="flex items-center gap-2.5">
-            <span class="live-dot online"></span>
-            <h2 class="text-sm font-black text-slate-100 uppercase tracking-wide">Live Telemetry</h2>
-          </div>
-          <!-- scada-status: className fully replaced by JS, initial class is just a placeholder -->
-          <div id="scada-status" class="text-[10px] font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-lg border border-slate-700">Connecting...</div>
-        </div>
-
-        <!-- Big power display -->
-        <div class="flex-grow flex flex-col items-center justify-center py-8 px-5 text-center relative overflow-hidden">
-          <!-- subtle glow effect -->
-          <div class="absolute inset-0 pointer-events-none" style="background:radial-gradient(ellipse 80% 60% at 50% 60%, rgba(16,185,129,0.07) 0%, transparent 70%);"></div>
-
-          <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Active Generation</div>
-
-          <div class="flex items-end justify-center gap-2 relative z-10">
-            <span id="scada-power" class="text-8xl font-black text-emerald-400 scada-glow" style="font-variant-numeric:tabular-nums; letter-spacing:-3px; line-height:1;">--</span>
-            <span class="text-3xl font-bold text-emerald-600 mb-1">KW</span>
-          </div>
-
-          <div class="mt-5 flex items-center gap-2 bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-2">
-            <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Mode</span>
-            <span class="text-slate-200 font-black text-sm" id="scada-control">--</span>
-          </div>
-        </div>
-
-        <!-- SCADA data grid -->
-        <div class="grid grid-cols-2 border-t border-slate-800">
-          <div class="scada-cell border-r border-slate-800 p-4 text-center">
-            <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Water Level</div>
-            <div class="font-black text-blue-400 num">
-              <span id="scada-level" class="text-lg">--</span><span class="text-xs text-blue-700 ml-1">cm</span>
-            </div>
-          </div>
-          <div class="scada-cell p-4 text-center">
-            <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Day Energy</div>
-            <div class="font-black text-emerald-400 num">
-              <span id="scada-day" class="text-lg">--</span><span class="text-xs text-emerald-700 ml-1">MWh</span>
-            </div>
-          </div>
-          <div class="scada-cell border-r border-slate-800 p-4 text-center">
-            <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Month Energy</div>
-            <div class="font-black text-indigo-400 num">
-              <span id="scada-month" class="text-lg">--</span><span class="text-xs text-indigo-700 ml-1">MWh</span>
-            </div>
-          </div>
-          <div class="scada-cell p-4 text-center">
-            <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Total Energy</div>
-            <div class="font-black text-slate-300 num">
-              <span id="scada-total" class="text-lg">--</span><span class="text-xs text-slate-600 ml-1">MWh</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div><!-- /main grid -->
-
-    <!-- ─── Quick Navigation (hidden until logged in) ──────────── -->
-    <div id="quick-nav-section" class="hidden card-fade" style="animation-delay:0.15s">
+    </div><div id="quick-nav-section" class="hidden card-fade" style="animation-delay:0.15s">
       <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Quick Access</div>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
 
@@ -270,12 +191,7 @@
         </a>
 
       </div>
-    </div><!-- /quick-nav -->
-
-  </main><!-- /main -->
-
-  <!-- ─── Login modal (structure & IDs unchanged) ───────────────── -->
-  <div id="login-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] hidden flex items-center justify-center">
+    </div></main><div id="login-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] hidden flex items-center justify-center">
     <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-sm relative transform transition-all">
         <button onclick="document.getElementById('login-modal').classList.add('hidden')" class="absolute top-4 right-5 text-3xl text-slate-400 hover:text-slate-600">&times;</button>
         <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg mx-auto mb-6">M</div>
@@ -300,7 +216,6 @@
     </div>
   </div>
 
-  <!-- ─── Profile modal (structure & IDs unchanged) ─────────────── -->
   <div id="profile-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
     <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-slate-200 relative max-h-[90vh] overflow-y-auto custom-scroll">
         <button onclick="document.getElementById('profile-modal').classList.add('hidden'); document.getElementById('profile-modal').classList.remove('flex');" class="absolute top-4 right-5 text-3xl text-slate-400 hover:text-slate-600">&times;</button>
@@ -346,12 +261,10 @@
     </div>
   </div>
 
-  <!-- ─── Notification toast (used by showNotification) ─────────── -->
   <div id="notification-modal" class="fixed top-5 right-5 z-[200] opacity-0 -translate-y-4 transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-xl border-l-4 px-5 py-4" style="border-left-color:#10b981;">
     <p id="notification-message" class="text-sm font-bold text-slate-700"></p>
   </div>
 
-  <!-- ─── Service Worker ─────────────────────────────────────────── -->
   <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -362,7 +275,6 @@
     }
   </script>
 
-  <!-- ─── App Logic (all original code preserved + minimal additions) -->
   <script type="module">
     import { supabase, initializeApplication, showNotification } from './core-app.js';
 
@@ -450,8 +362,6 @@
         }
 
         loadDatabasePreview();
-        attemptScadaFetch();
-        setInterval(attemptScadaFetch, 30000); 
     }
 
     startPage();
@@ -641,32 +551,6 @@
             
             ['card-gen','card-export','card-pf','card-outages','card-u1-hrs','card-u2-hrs','card-mce','card-ad'].forEach(id => {
                 document.getElementById(id).textContent = '—';
-            });
-        }
-    }
-
-    async function attemptScadaFetch() {
-        const statusEl = document.getElementById('scada-status');
-        try {
-            const response = await fetchWithTimeout(fetch('https://makari-scada-proxy.upenjyo.workers.dev/'), 5000);
-            if (!response.ok) throw new Error('Proxy error');
-            const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
-
-            document.getElementById('scada-power').textContent   = (doc.querySelector('#txtGaugeMeterValue1')?.innerText || '--').replace(/[^0-9.]/g, ''); 
-            document.getElementById('scada-control').textContent  = doc.querySelector('#txtDisplayValue1')?.innerText || '--';
-            document.getElementById('scada-level').textContent    = doc.querySelector('#txtDisplayValue2')?.innerText || '--';
-            document.getElementById('scada-total').textContent    = doc.querySelector('#txtDisplayValue3')?.innerText || '--';
-            document.getElementById('scada-month').textContent    = doc.querySelector('#txtDisplayValue4')?.innerText || '--';
-            document.getElementById('scada-day').textContent      = doc.querySelector('#txtDisplayValue6')?.innerText || '--';
-            
-            statusEl.textContent = 'Live Connection Active';
-            statusEl.className   = 'text-[11px] font-bold text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200';
-        } catch (error) {
-            statusEl.textContent = 'Connection Lost';
-            statusEl.className   = 'text-[11px] font-bold text-rose-700 bg-rose-50 px-4 py-2 rounded-xl border border-rose-200';
-            
-            ['scada-power','scada-control','scada-level','scada-total','scada-month','scada-day'].forEach(id => {
-                document.getElementById(id).textContent = '--';
             });
         }
     }

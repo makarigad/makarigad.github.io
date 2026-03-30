@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+    <title>Makari Gad - Field App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; touch-action: manipulation; }
+        .btn-press:active { transform: scale(0.95); }
+        /* Pulse animation for the Start button */
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .pulse-active { animation: pulse-ring 2s infinite; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <header class="bg-slate-900 text-white p-4 shadow-md shrink-0 flex justify-between items-center z-10">
+        <div>
+            <h1 class="text-lg font-black tracking-wide">Makari Gad App</h1>
+            <p id="user-display-name" class="text-xs text-slate-400 font-semibold mt-0.5">Loading user...</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <div id="network-indicator" class="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+            <span id="network-text" class="text-xs font-bold text-slate-300 uppercase">Online</span>
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-center p-6 gap-6 relative">
+        
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 w-full max-w-sm text-center shadow-sm relative z-10">
+            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">GPS Status</p>
+            <p id="gps-status" class="text-sm font-bold text-slate-700">Acquiring signal...</p>
+        </div>
+
+        <div id="timer-container" class="hidden text-center transition-all">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Shift Duration</p>
+            <p id="shift-timer" class="text-4xl font-black text-slate-800 tabular-nums tracking-tight">00:00:00</p>
+        </div>
+
+        <button id="main-action-btn" class="btn-press pulse-active bg-green-500 w-64 h-64 rounded-full flex flex-col items-center justify-center gap-2 border-4 border-green-300 transition-all z-10">
+            <svg id="btn-icon" class="w-16 h-16 text-white mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="btn-text" class="text-2xl font-black text-white uppercase tracking-widest leading-tight">Start<br>Shift</span>
+        </button>
+
+        <div id="queue-status-box" class="hidden bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 w-full max-w-sm text-center text-xs font-bold flex justify-between items-center mt-auto mb-2">
+            <span>⚠️ <span id="queue-count">0</span> records waiting to sync</span>
+            <button id="force-sync-btn" class="bg-amber-200 hover:bg-amber-300 text-amber-900 px-3 py-1 rounded shadow-sm transition">Sync Now</button>
+        </div>
+    </main>
+
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300 z-50 whitespace-nowrap">
+        Message
+    </div>
+
+<script type="module">
+    // Mock User (Replace with actual login logic later)
+    const activeUser = {
+        name: "Jaman Dhami",
+        designation: "Transmission Linesman",
+        email: "jaman@makarigad.com"
+    };
+
+    // State Variables
+    let isShiftActive = localStorage.getItem('shift_active') === 'true';
+    let shiftStartTime = localStorage.getItem('shift_start_time') || null;
+    let currentCoords = null;
+    let uiTimerInterval = null;
+    let simulatedBackgroundPing = null;
+
+    // DOM Elements
+    const btnMain = document.getElementById('main-action-btn');
+    const btnIcon = document.getElementById('btn-icon');
+    const btnText = document.getElementById('btn-text');
+    const txtGPS = document.getElementById('gps-status');
+    const boxQueue = document.getElementById('queue-status-box');
+    const containerTimer = document.getElementById('timer-container');
+    const txtTimer = document.getElementById('shift-timer');
+
+    function initMobileApp() {
+        document.getElementById('user-display-name').textContent = `${activeUser.name} · ${activeUser.designation}`;
+        
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        updateNetworkStatus();
+
+        locateDevice();
+        updateUI();
+        updateQueueDisplay();
+
+        btnMain.addEventListener('click', handleMainAction);
+        document.getElementById('force-sync-btn').addEventListener('click', syncOfflineQueue);
+    }
+
+    // --- Core Logic: The Main Button ---
+    async function handleMainAction() {
+        btnMain.disabled = true;
+        btnMain.classList.add('opacity-75', 'scale-95');
+
+        if (!isShiftActive) {
+            // START SHIFT
+            isShiftActive = true;
+            shiftStartTime = new Date().toISOString();
+            localStorage.setItem('shift_active', 'true');
+            localStorage.setItem('shift_start_time', shiftStartTime);
+            
+            await logAttendanceEvent('Start');
+            showToast("🟢 Shift Started. Stay safe!");
+        } else {
+            // END SHIFT
+            isShiftActive = false;
+            localStorage.setItem('shift_active', 'false');
+            localStorage.removeItem('shift_start_time');
+            
+            await logAttendanceEvent('End');
+            showToast("🔴 Shift Ended. Data synced.");
+        }
+
+        updateUI();
+        
+        setTimeout(() => {
+            btnMain.disabled = false;
+            btnMain.classList.remove('opacity-75', 'scale-95');
+        }, 1500);
+    }
+
+    // --- UI & Timer Management ---
+    function updateUI() {
+        if (isShiftActive) {
+            // Change button to Red "End Shift"
+            btnMain.className = 'btn-press bg-red-500 w-64 h-64 rounded-full flex flex-col items-center justify-center gap-2 border-4 border-red-300 transition-all shadow-[0_10px_40px_rgba(239,68,68,0.4)] z-10';
+            btnIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />`;
+            btnText.innerHTML = 'End<br>Shift';
+            
+            containerTimer.classList.remove('hidden');
+            startUITimer();
+            startSimulatedBackgroundTracking(); // Start tracking
+        } else {
+            // Change button to Green "Start Shift"
+            btnMain.className = 'btn-press pulse-active bg-green-500 w-64 h-64 rounded-full flex flex-col items-center justify-center gap-2 border-4 border-green-300 transition-all shadow-[0_10px_40px_rgba(34,197,94,0.4)] z-10';
+            btnIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+            btnText.innerHTML = 'Start<br>Shift';
+            
+            containerTimer.classList.add('hidden');
+            stopUITimer();
+            stopSimulatedBackgroundTracking(); // Stop tracking completely
+        }
+    }
+
+    function startUITimer() {
+        if (uiTimerInterval) clearInterval(uiTimerInterval);
+        const start = new Date(shiftStartTime).getTime();
+        
+        uiTimerInterval = setInterval(() => {
+            const now = new Date().getTime();
+            const diff = now - start;
+            
+            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            txtTimer.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }, 1000);
+    }
+
+    function stopUITimer() {
+        if (uiTimerInterval) clearInterval(uiTimerInterval);
+        txtTimer.textContent = '00:00:00';
+    }
+
+    // --- The "Background Tracking" Simulation ---
+    // Note: When we move to Capacitor, this Javascript setInterval is replaced by native Android WorkManager
+    function startSimulatedBackgroundTracking() {
+        if (simulatedBackgroundPing) clearInterval(simulatedBackgroundPing);
+        
+        // For testing, we log a ping every 30 seconds. In reality, this will be 60 minutes.
+        simulatedBackgroundPing = setInterval(() => {
+            if (!isShiftActive) return; // Strict safety check
+            console.log("BACKGROUND PING: Waking up to log location...");
+            logAttendanceEvent('Ping'); // Silently logs location without notifying user
+        }, 30000); 
+    }
+
+    function stopSimulatedBackgroundTracking() {
+        if (simulatedBackgroundPing) clearInterval(simulatedBackgroundPing);
+        console.log("BACKGROUND PING: Terminated.");
+    }
+
+    // --- Database & Offline Queue ---
+    async function logAttendanceEvent(eventType) {
+        // Refresh GPS right before logging
+        await locateDevicePromise();
+
+        const record = {
+            id: crypto.randomUUID(),
+            employee_name: activeUser.name,
+            designation: activeUser.designation,
+            timestamp: new Date().toISOString(),
+            event_type: eventType, // 'Start', 'End', or 'Ping'
+            latitude: currentCoords ? currentCoords.lat : null,
+            longitude: currentCoords ? currentCoords.lng : null,
+            device_fingerprint: getDeviceID()
+        };
+
+        if (navigator.onLine) {
+            await pushToSupabase(record);
+        } else {
+            saveToOfflineQueue(record);
+        }
+    }
+
+    async function pushToSupabase(record) {
+        try {
+            // Replace with: await supabase.from('field_logs').insert(record);
+            console.log("Pushed to server:", record);
+            // showToast is handled by main button, pings are silent
+        } catch (e) {
+            saveToOfflineQueue(record);
+        }
+    }
+
+    function saveToOfflineQueue(record) {
+        let queue = JSON.parse(localStorage.getItem('makari_attendance_queue') || '[]');
+        queue.push(record);
+        localStorage.setItem('makari_attendance_queue', JSON.stringify(queue));
+        updateQueueDisplay();
+    }
+
+    async function syncOfflineQueue() {
+        let queue = JSON.parse(localStorage.getItem('makari_attendance_queue') || '[]');
+        if (queue.length === 0) return;
+
+        showToast(`Syncing ${queue.length} records...`);
+        try {
+            // Replace with: await supabase.from('field_logs').insert(queue);
+            console.log("Synced queue to DB");
+            localStorage.removeItem('makari_attendance_queue');
+            showToast("✅ All records synced");
+            updateQueueDisplay();
+        } catch (e) {
+            showToast("Sync failed. Network unstable.");
+        }
+    }
+
+    function updateQueueDisplay() {
+        let queue = JSON.parse(localStorage.getItem('makari_attendance_queue') || '[]');
+        if (queue.length > 0) {
+            document.getElementById('queue-count').textContent = queue.length;
+            boxQueue.classList.remove('hidden');
+        } else {
+            boxQueue.classList.add('hidden');
+        }
+    }
+
+    // --- Utility Functions ---
+    function updateNetworkStatus() {
+        const i = document.getElementById('network-indicator');
+        const t = document.getElementById('network-text');
+        if (navigator.onLine) {
+            i.className = 'w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]';
+            t.textContent = 'ONLINE';
+            syncOfflineQueue(); 
+        } else {
+            i.className = 'w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]';
+            t.textContent = 'OFFLINE';
+        }
+    }
+
+    function locateDevicePromise() {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) return resolve();
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    txtGPS.innerHTML = `<span class="text-green-600">📍 Location Locked</span><br><span class="text-xs text-slate-400">${currentCoords.lat.toFixed(5)}, ${currentCoords.lng.toFixed(5)}</span>`;
+                    resolve();
+                },
+                (err) => {
+                    txtGPS.innerHTML = `<span class="text-red-500">GPS Failed: Check Permissions</span>`;
+                    resolve();
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        });
+    }
+
+    // Initial non-blocking GPS call for UI display
+    function locateDevice() { locateDevicePromise(); }
+
+    function getDeviceID() {
+        let id = localStorage.getItem('device_id');
+        if (!id) { id = crypto.randomUUID(); localStorage.setItem('device_id', id); }
+        return id;
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.remove('opacity-0');
+        setTimeout(() => t.classList.add('opacity-0'), 3000);
+    }
+
+    // Boot up
+    initMobileApp();
+</script>
+</body>
+</html>

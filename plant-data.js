@@ -834,18 +834,6 @@ function getStandardMonth(m) {
     return m.charAt(0).toUpperCase() + m.slice(1).toLowerCase();
 }
 
-function getCurrentNepaliDate() {
-    const d = new Date();
-    let y = d.getFullYear() + 56;
-    const m = d.getMonth(); 
-    const date = d.getDate();
-    if (m > 3 || (m === 3 && date > 13)) y += 1;
-    const engToNepMap = [9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8];
-    let nepMonthIdx = engToNepMap[m];
-    if (date > 14) nepMonthIdx = (nepMonthIdx + 1) % 12;
-    return { year: y, month: nepaliMonths[nepMonthIdx] };
-}
-
 window.toggleExpInputFields = function() {
     const cat = document.getElementById(`new-exp-category`)?.value;
     const isFuel = (cat === 'Diesel' || cat === 'Petrol');

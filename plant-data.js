@@ -866,8 +866,8 @@ function updateExpenseFilters() {
     const years = [...new Set(allExpensesData.map(d => d.nepali_year))];
     years.sort((a,b) => b-a);
 
-    let defaultY = getCurrentNepaliDate().year;
-    let defaultM = getCurrentNepaliDate().month;
+    let defaultY = getNepDateObj().year;
+    let defaultM = getNepDateObj().month;
     
     if (allExpensesData.length > 0) {
         const getMonthIdx = (m) => nepaliMonths.indexOf(getStandardMonth(m)) !== -1 ? nepaliMonths.indexOf(getStandardMonth(m)) : 99;
@@ -1032,8 +1032,9 @@ async function loadExpensesData() {
             renderExpensesTables();
         }
     } catch(err) {
-        console.warn("Failed to load expenses data");
-    }
+    console.error("Expenses load error:", err.message, err);
+    showNotification(`Expenses error: ${err.message}`, true);
+}
     isLoadingExpenses = false;
 }
 
@@ -2722,16 +2723,17 @@ let currentPage = 1;
 const rowsPerPage = 100;
 
 function renderHistoricalPage() {
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    const pageData = fullHistoricalData.slice(start, end);
+    // Show all records (no pagination)
+    const pageData = fullHistoricalData;
     const keys = ['waterlevel_cm', 'pressure_mwc', 'active_power_kw', 'voltage_kv', 'reactive_power_kvar', 'u1_spear_pct', 'u1_active_power_kw', 'u2_spear_pct', 'u2_active_power_kw'];
 
-    let headerHtml = `.<th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Date</th><th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Time</th>`;
+    // Build header (remove stray dot)
+    let headerHtml = `<th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Date</th><th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Time</th>`;
     keys.forEach(h => headerHtml += `<th class="tight-cell text-left font-bold text-gray-600 uppercase">${h}</th>`);
-    headerHtml += '.<\/tr>';
+    headerHtml += `</tr>`;
     if (historicalThead) historicalThead.innerHTML = headerHtml;
 
+    // Build rows
     const rows = [];
     pageData.forEach(d => {
         let dateStr = '', timeStr = '';
@@ -2740,19 +2742,15 @@ function renderHistoricalPage() {
             dateStr = dateObj.toLocaleDateString('en-GB');
             timeStr = dateObj.toLocaleTimeString('en-GB', { hour12: false });
         }
-        let rowHtml = `.<td class="tight-cell text-gray-900 font-bold border-r border-gray-200">${dateStr}<\/td><td class="tight-cell text-gray-500 border-r border-gray-200">${timeStr}<\/td>`;
-        keys.forEach(k => rowHtml += `<td class="tight-cell text-gray-600">${d[k] ?? ''}<\/td>`);
-        rowHtml += '<\/tr>';
+        let rowHtml = `<td class="tight-cell text-gray-900 font-bold border-r border-gray-200">${dateStr}</td><td class="tight-cell text-gray-500 border-r border-gray-200">${timeStr}</td>`;
+        keys.forEach(k => rowHtml += `<td class="tight-cell text-gray-600">${d[k] ?? ''}</td>`);
+        rowHtml += `</tr>`;
         rows.push(rowHtml);
     });
 
     if (historicalTbody) historicalTbody.innerHTML = rows.join('');
-    const totalPages = Math.ceil(fullHistoricalData.length / rowsPerPage);
-    document.getElementById('historical-page-info').innerText = `Page ${currentPage} of ${totalPages}`;
-    const prevBtn = document.getElementById('historical-prev');
-    const nextBtn = document.getElementById('historical-next');
-    if (prevBtn) prevBtn.disabled = currentPage === 1;
-    if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+
+    // No pagination controls are used, so we skip updating any UI elements
 }
 
 function populateHistoricalYearsFromAllData() {
@@ -2785,8 +2783,8 @@ historicalViewBtn?.addEventListener('click', async () => {
 
     try {
         const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
-        const endDate = `${year}-${month.padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
+        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00`;
+        const endDate = `${year}-${month.padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`;
 
         let data = [], page = 0, more = true;
         while (more) {
@@ -2814,9 +2812,10 @@ historicalViewBtn?.addEventListener('click', async () => {
         if(historicalStatus) historicalStatus.textContent = `Loaded ${fullHistoricalData.length} records.`;
         historicalDownloadBtn?.classList.remove('hidden');
     } catch (error) {
-        if(historicalStatus) historicalStatus.textContent = 'Error loading historical data.';
-        showNotification("Error fetching historical data.", true);
-    }
+    console.error("Supabase query failed:", error);
+    if(historicalStatus) historicalStatus.textContent = `Error: ${error.message || error}`;
+    showNotification(`Error: ${error.message || 'Failed to fetch data'}`, true);
+}
 });
 
 // Attach pagination event listeners after DOM is ready

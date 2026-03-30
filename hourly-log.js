@@ -505,17 +505,23 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
             ]);
 
             // SYNC TO DAILY METERING (x, y)
-            const plantPayload = {
-                ...(curPlant || {}),
-                id: engDate,
-                nepali_date: nepDateStr,
-                unit1_gen: p('u1-pmu'),
-                unit2_gen: p('u2-pmu'),
-                unit1_counter: p('u1-hour'),
-                unit2_counter: p('u2-hour'),
-                export_substation: p('outgoing-kwh'),
-                updated_at: new Date().toISOString()
-            };
+            // Inside the 12:00 PM sync block in hourly-log.js
+const plantPayload = {
+    ...(curPlant || {}),
+    id: engDate,
+    nepali_date: nepDateStr,
+    unit1_gen: p('u1-pmu'),
+    unit2_gen: p('u2-pmu'),
+    unit1_trans: p('u1-feeder'),      // Added sync for Unit 1 Trans
+    unit2_trans: p('u2-feeder'),      // Added sync for Unit 2 Trans
+    station_trans: p('sst-kwh'),     // Added sync for Station Trans
+    export_plant: p('outgoing-kwh'),    // Added sync for Export Plant
+    import_outgoing: p('import-mwh'), // Added sync for Import Substation
+    unit1_counter: p('u1-hour'),
+    unit2_counter: p('u2-hour'),
+   
+    updated_at: new Date().toISOString()
+};
             
             // Smart logic: Fill if empty (x=c)
             if (c_export !== null && (!curPlant || curPlant.export_plant == null)) plantPayload.export_plant = c_export;

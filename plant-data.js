@@ -1722,29 +1722,21 @@ async function handleAddOrUpdateBalanch(docId, isUpdate = false) {
     };
     balanchCols.forEach(c => payload[c] = parseFloat(document.getElementById(prefix + c)?.value) || null);
 
-    try {
-        const { error: bErr } = await supabase.from('balanch_readings').upsert(payload);
-        if (bErr) throw bErr;
+   try {
+    const { error: bErr } = await supabase.from('balanch_readings').upsert(payload);
+    if (bErr) throw bErr;
 
-        const { data: currentPlant } = await supabase.from('plant_data').select('*').eq('id', targetDate).maybeSingle();
-        const plantSync = { id: targetDate, updated_at: new Date().toISOString() };
-        let needsSync = false;
+    // We no longer need to select 'currentPlant' to check for nulls
+    // We simply prepare the update for the Daily Metering tab (plant_data table)
+    const plantSync = { 
+        id: targetDate, 
+        updated_at: new Date().toISOString(),
+        export_plant: payload.main_export,      // Always sync Export
+        import_substation: payload.main_import, // Always sync Import
+        nepali_date: payload.nep_date           // Always sync Nepali Date
+    };
 
-        if (!currentPlant || currentPlant.export_plant == null) { 
-            plantSync.export_plant = payload.main_export; needsSync = true; 
-        }
-        if (!currentPlant || currentPlant.import_substation == null) { 
-            plantSync.import_substation = payload.main_import; needsSync = true; 
-        }
-        // 👉 SYNC NEPALI DATE TO DAILY METERING
-        if (payload.nep_date && (!currentPlant || !currentPlant.nepali_date)) {
-            plantSync.nepali_date = payload.nep_date; needsSync = true;
-        }
-
-        if (needsSync) {
-            await supabase.from('plant_data').upsert({ ...(currentPlant || {}), ...plantSync });
-        }
-
+    await supabase.from('plant_data').upsert(plantSync, { onConflict: 'id' });
         showNotification(`✅ Substation saved & Daily Metering smart-synced!`);
         editingBalanchId = null;
         loadBalanchData();

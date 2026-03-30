@@ -557,9 +557,15 @@
     async function loadDatabasePreview() {
         try {
             const nepalTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
-            const yyyy = nepalTime.getFullYear();
-            const mm = String(nepalTime.getMonth() + 1).padStart(2, '0');
-            const dd = String(nepalTime.getDate()).padStart(2, '0');
+            
+            const now = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
+            const cutoffHour = 12; // Data updates at noon Nepal time
+
+            const displayDate = new Date(now);
+            if (now.getHours() < cutoffHour) displayDate.setDate(displayDate.getDate() - 1);
+            const yyyy = displayDate.getFullYear();
+            const mm = String(displayDate.getMonth()+1).padStart(2,'0');
+            const dd = String(displayDate.getDate()).padStart(2,'0');
             const todayEngDate = `${yyyy}-${mm}-${dd}`;
             
             const yDate = new Date(nepalTime);

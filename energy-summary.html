@@ -93,7 +93,7 @@
       <div class="tab-btn rounded-t-lg" data-target="tab-daily">📅 Daily Report</div>
       <div class="tab-btn active rounded-t-lg" data-target="tab-recon">💰 Energy Summary</div>
       <div class="tab-btn rounded-t-lg" data-target="tab-operations">⚙️ Ops &amp; Losses</div>
-      <div class="tab-btn rounded-t-lg" data-target="tab-report">📑 Report Builder</div>
+      <a class="tab-btn rounded-t-lg" href="monthly_report.html">📑 Monthly Report</a>
       <div class="tab-btn rounded-t-lg" data-target="tab-compare">📈 Multi-Year</div>
       <div class="tab-btn rounded-t-lg" data-target="tab-trends">📉 Trends</div>
   </div>
@@ -952,6 +952,7 @@ startPage();
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if(btn.classList.contains('role-hidden')) return;
+        if(!btn.dataset.target) return;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'border-indigo-600'));
         document.querySelectorAll('.table-container, #report-editor-view, #report-preview-view').forEach(c => c.classList.add('hidden-tab'));
         document.getElementById('tab-report').classList.add('hidden-tab');

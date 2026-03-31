@@ -513,7 +513,39 @@
             if (calErr) throw calErr; 
 
             const displayNepDate = calData ? calData.nep_date_str : todayEngDate;
-            document.getElementById('card-update').textContent = 'Today: ' + displayNepDate;
+            let monthRangeText = '';
+            if (calData && calData.nep_year && calData.nep_month) {
+                try {
+                    const { data: monthRows } = await fetchWithTimeout(
+                        supabase
+                            .from('calendar_mappings')
+                            .select('eng_date')
+                            .eq('nep_year', calData.nep_year)
+                            .eq('nep_month', calData.nep_month)
+                            .order('eng_date', { ascending: true }),
+                        3000
+                    );
+                    if (monthRows && monthRows.length > 0) {
+                        const startDate = new Date(`${monthRows[0].eng_date}T00:00:00`);
+                        const endDate = new Date(`${monthRows[monthRows.length - 1].eng_date}T00:00:00`);
+                        const f = (d) => d.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+                        monthRangeText = ` (${f(startDate)} - ${f(endDate)})`;
+                    } else {
+                        const f = (d) => d.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+                        const fallback = new Date(`${todayEngDate}T00:00:00`);
+                        monthRangeText = ` (${f(fallback)})`;
+                    }
+                } catch {
+                    const f = (d) => d.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+                    const fallback = new Date(`${todayEngDate}T00:00:00`);
+                    monthRangeText = ` (${f(fallback)})`;
+                }
+            } else {
+                const f = (d) => d.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+                const fallback = new Date(`${todayEngDate}T00:00:00`);
+                monthRangeText = ` (${f(fallback)})`;
+            }
+            document.getElementById('card-update').textContent = 'Today: ' + displayNepDate + monthRangeText;
 
             const todayQuery = supabase.from('plant_data').select('*').eq('id', todayEngDate).maybeSingle();
             const prevQuery  = supabase.from('plant_data').select('*').eq('id', yesterdayEngDate).maybeSingle();

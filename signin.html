@@ -33,7 +33,7 @@
     </div>
   </main>
   <script type="module">
-    import { supabase } from './core-app.js';
+    import { supabase } from './assets/js/core-app.js';
 
     // If already logged in, redirect to Hub
     supabase.auth.getSession().then(({ data }) => { 
@@ -62,5 +62,9 @@
       }
     });
   </script>
+
+  <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
+
+

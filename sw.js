@@ -9,15 +9,23 @@ const ASSETS_TO_CACHE = [
     './energy-summary.html',
     './nepali-calendar.html',
     './user-management.html',
+    './attendance.html',
+    './operator-daily.html',
+    './inventory.html',
     './signin.html',
-    './header.html',
-    './core-app.js',
-    './hourly-log-tools.js',
-    './manifest.json',
-    './plant-data.js',
-    './plant-data.css',
-    './hourly-log.css',
-    './footer.html'
+    './components/header.html',
+    './components/footer.html',
+    './assets/js/core-app.js',
+    './assets/js/index.js',
+    './assets/js/plant-data.js',
+    './assets/js/hourly-log.js',
+    './assets/js/hourly-log-tools.js',
+    './assets/js/inventory.js',
+    './assets/js/operator-daily.js',
+    './assets/css/index.css',
+    './assets/css/plant-data.css',
+    './assets/css/hourly-log.css',
+    './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {

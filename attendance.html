@@ -67,19 +67,22 @@
 
 <div id="global-header-container" class="shrink-0 z-50 sticky top-0 no-print"></div>
 
-<div class="bg-white border-b border-slate-200 px-5 py-3 flex flex-wrap justify-between items-center gap-3 shrink-0 no-print">
-    <div class="flex items-center gap-3">
-        <div class="w-9 h-9 bg-violet-600 rounded-xl flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+<div class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 no-print">
+    <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-100">
+            <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         </div>
         <div>
-            <h1 class="text-sm font-black text-slate-900 uppercase tracking-wide">Staff Attendance Register</h1>
-            <p class="text-[10px] text-slate-400 font-medium mt-0.5">Makari Gad Hydroelectric Project</p>
+            <h1 class="text-xl font-black text-slate-900 tracking-tight">Staff Attendance Register</h1>
+            <p class="text-xs text-slate-500 font-medium mt-0.5">Manage workforce deployment and daily attendance logs.</p>
         </div>
     </div>
-    <div class="flex items-center gap-2">
-        <span id="curr-user-badge" class="badge bg-violet-50 text-violet-700 border border-violet-200"></span>
-        <a href="index.html" class="btn btn-secondary" style="padding:.35rem .75rem;font-size:.72rem">← Dashboard</a>
+    <div class="flex items-center gap-3">
+        <span id="curr-user-badge" class="badge bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 font-bold"></span>
+        <a href="index.html" class="btn btn-secondary hover:bg-slate-100 transition-colors shadow-sm">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Back to Dashboard
+        </a>
     </div>
 </div>
 
@@ -241,7 +244,7 @@
 </div>
 
 <script type="module">
-import { supabase, initializeApplication } from './core-app.js';
+import { supabase, initializeApplication } from './assets/js/core-app.js';
 
 const nepMonths = ['Baisakh','Jestha','Ashadh','Shrawan','Bhadra','Ashoj','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'];
 let currentUser = null, userRole = 'normal';
@@ -532,5 +535,9 @@ async function loadSummary() {
 
 init();
 </script>
+
+  <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
+
+

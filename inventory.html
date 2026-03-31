@@ -14,17 +14,30 @@
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
   <div id="global-header-container" class="shrink-0"></div>
 
-  <main class="max-w-7xl mx-auto w-full px-4 py-5 md:px-6 md:py-6 flex flex-col gap-5">
-    <section class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-      <h1 class="text-lg md:text-xl font-black text-slate-900">Office Inventory & Fuel Register</h1>
-      <p class="text-xs text-slate-500 mt-1">Simple practical workflow: choose In, Out, or Report.</p>
-    </section>
+  <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 no-print">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-100">
+        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
+      </div>
+      <div>
+        <h1 class="text-xl font-black text-slate-900 tracking-tight">Inventory & Fuel Management</h1>
+        <p class="text-xs text-slate-500 font-medium mt-0.5">Track consumable items, non-consumable assets, and fuel stocks.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all shadow-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        Hub Dashboard
+      </a>
+    </div>
+  </header>
 
+  <main class="max-w-7xl mx-auto w-full px-4 py-5 md:px-6 md:py-6 flex flex-col gap-5">
     <section class="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-      <div class="grid grid-cols-3 gap-2">
-        <button id="tab-in-btn" class="tab-btn active border border-slate-300 rounded-xl py-2 text-sm font-black">1) In</button>
-        <button id="tab-out-btn" class="tab-btn border border-slate-300 rounded-xl py-2 text-sm font-black">2) Out</button>
-        <button id="tab-report-btn" class="tab-btn border border-slate-300 rounded-xl py-2 text-sm font-black">3) Report</button>
+      <div class="grid grid-cols-3 gap-3">
+        <button id="tab-in-btn" class="tab-btn active border border-slate-200 rounded-xl py-3 text-sm font-black transition-all hover:bg-slate-50">1) Material In</button>
+        <button id="tab-out-btn" class="tab-btn border border-slate-200 rounded-xl py-3 text-sm font-black transition-all hover:bg-slate-50">2) Material Out</button>
+        <button id="tab-report-btn" class="tab-btn border border-slate-200 rounded-xl py-3 text-sm font-black transition-all hover:bg-slate-50">3) Stock Report</button>
       </div>
     </section>
 
@@ -39,34 +52,56 @@
           <label class="text-[11px] font-bold text-slate-500">Nepali Date</label>
           <input id="in-nep-date" type="text" readonly class="mt-1 rounded-lg border border-slate-200 bg-slate-100 p-2.5 text-sm w-full" />
         </div>
-        <select id="in-category" class="rounded-lg border border-slate-300 p-2.5 text-sm mt-5">
-          <option value="material">Material In</option>
-          <option value="fuel">Fuel In</option>
-        </select>
-        <select id="in-store" required class="rounded-lg border border-slate-300 p-2.5 text-sm mt-5">
-          <option value="civil_store">Civil Store</option>
-        <option value="electrical_store">Electrical Store</option>
-        <option value="mechanical_store_s1">Mechanical Store S1</option>
-        <option value="mechanical_store_s2">Mechanical Store S2</option>
-        <option value="consumable_store">Consumable Store</option>
-        <option value="outside_store">Outside Store</option>
-        <option value="powerhouse_store">Powerhouse Store</option>
-        <option value="dam_store">Dam Store</option>
-        <option value="headworks">Headworks</option>
-        <option value="ropeway_store">Ropeway Store</option>
-        <option value="transmission_line_store">Transmission Line Store</option>
-        <option value="outside_transmission_line_store">Transmission Line Store Outside</option>
-        <option value="wkv_materials_store">WKV Materials Store</option>
-        <option value="plant_inventory">Plant Inventory</option>
-        <option value="powerhouse_main_tank">Powerhouse Main Tank (Fuel)</option>
-        <option value="dam_fuel">Dam Fuel</option>
-        <option value="ropeway_fuel">Ropeway Fuel</option>
-        </select>
-        <input id="in-item" type="text" required placeholder="Item name" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-2" />
-        <input id="in-qty" type="number" step="0.01" required placeholder="Quantity" class="rounded-lg border border-slate-300 p-2.5 text-sm" />
-        <input id="in-unit" type="text" required placeholder="Unit (pcs, kg, L)" class="rounded-lg border border-slate-300 p-2.5 text-sm" />
-        <input id="in-gate-pass" type="text" placeholder="Gate pass no" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-2" />
-        <input id="in-party" type="text" placeholder="Supplier / party" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-2" />
+        <div class="md:col-span-1">
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Entry Type</label>
+          <select id="in-category" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition">
+            <option value="consumable">Consumable Item</option>
+            <option value="non_consumable">Non-Consumable (Assets)</option>
+            <option value="fuel">Fuel Item (Diesel/Petrol)</option>
+          </select>
+        </div>
+        <div class="md:col-span-1">
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Store / Location</label>
+          <select id="in-store" required class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition">
+            <option value="civil_store">Civil Store</option>
+            <option value="electrical_store">Electrical Store</option>
+            <option value="mechanical_store_s1">Mechanical Store S1</option>
+            <option value="mechanical_store_s2">Mechanical Store S2</option>
+            <option value="consumable_store">Consumable Store</option>
+            <option value="outside_store">Outside Store</option>
+            <option value="powerhouse_store">Powerhouse Store</option>
+            <option value="dam_store">Dam Store</option>
+            <option value="headworks">Headworks</option>
+            <option value="ropeway_store">Ropeway Store</option>
+            <option value="transmission_line_store">Transmission Line Store</option>
+            <option value="outside_transmission_line_store">Transmission Line Store Outside</option>
+            <option value="wkv_materials_store">WKV Materials Store</option>
+            <option value="plant_inventory">Plant Inventory</option>
+            <option value="powerhouse_main_tank">Powerhouse Main Tank (Fuel)</option>
+            <option value="dam_fuel">Dam Fuel</option>
+            <option value="ropeway_fuel">Ropeway Fuel</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Item Name / Description</label>
+          <input id="in-item" type="text" required placeholder="Ex: Mobil Delvac, Gate Valve 4 inch, Diesel" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Quantity</label>
+          <input id="in-qty" type="number" step="0.01" required placeholder="0.00" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Unit</label>
+          <input id="in-unit" type="text" required placeholder="pcs, kg, L, set" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Gate Pass / Bill No.</label>
+          <input id="in-gate-pass" type="text" placeholder="Ex: GP-102" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Supplier / Source</label>
+          <input id="in-party" type="text" placeholder="Ex: Local Market, KTM Store" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
         <textarea id="in-remark" rows="2" placeholder="Remark" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-4"></textarea>
         <button type="submit" class="md:col-span-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black px-4 py-2.5 rounded-lg">Save In Entry</button>
       </form>
@@ -83,34 +118,56 @@
           <label class="text-[11px] font-bold text-slate-500">Nepali Date</label>
           <input id="out-nep-date" type="text" readonly class="mt-1 rounded-lg border border-slate-200 bg-slate-100 p-2.5 text-sm w-full" />
         </div>
-        <select id="out-category" class="rounded-lg border border-slate-300 p-2.5 text-sm mt-5">
-          <option value="material">Material Out</option>
-          <option value="fuel">Fuel Out</option>
-        </select>
-        <select id="out-store" required class="rounded-lg border border-slate-300 p-2.5 text-sm mt-5">
-          <option value="civil_store">Civil Store</option>
-          <option value="electrical_store">Electrical Store</option>
-          <option value="mechanical_store_s1">Mechanical Store S1</option>
-          <option value="mechanical_store_s2">Mechanical Store S2</option>
-          <option value="consumable_store">Consumable Store</option>
-          <option value="outside_store">Outside Store</option>
-          <option value="powerhouse_store">Powerhouse Store</option>
-          <option value="dam_store">Dam Store</option>
-          <option value="headworks">Headworks</option>
-          <option value="ropeway_store">Ropeway Store</option>
-          <option value="transmission_line_store">Transmission Line Store</option>
-          <option value="outside_transmission_line_store">Transmission Line Store Outside</option>
-          <option value="wkv_materials_store">WKV Materials Store</option>
-          <option value="plant_inventory">Plant Inventory</option>
-          <option value="powerhouse_main_tank">Powerhouse Main Tank (Fuel)</option>
-          <option value="dam_fuel">Dam Fuel</option>
-          <option value="ropeway_fuel">Ropeway Fuel</option>
-        </select>
-        <input id="out-item" type="text" required placeholder="Item name / equipment" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-2" />
-        <input id="out-qty" type="number" step="0.01" required placeholder="Quantity" class="rounded-lg border border-slate-300 p-2.5 text-sm" />
-        <input id="out-unit" type="text" required placeholder="Unit (pcs, kg, L)" class="rounded-lg border border-slate-300 p-2.5 text-sm" />
-        <input id="out-receiver" type="text" placeholder="Issued to / used by" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-2" />
-        <input id="out-purpose" type="text" placeholder="Purpose (tractor, generator, etc.)" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-2" />
+        <div class="md:col-span-1">
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Entry Type</label>
+          <select id="out-category" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition">
+            <option value="consumable">Consumable Consumption</option>
+            <option value="non_consumable">Non-Consumable (Assets)</option>
+            <option value="fuel">Fuel Issue</option>
+          </select>
+        </div>
+        <div class="md:col-span-1">
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">From Store / Location</label>
+          <select id="out-store" required class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition">
+            <option value="civil_store">Civil Store</option>
+            <option value="electrical_store">Electrical Store</option>
+            <option value="mechanical_store_s1">Mechanical Store S1</option>
+            <option value="mechanical_store_s2">Mechanical Store S2</option>
+            <option value="consumable_store">Consumable Store</option>
+            <option value="outside_store">Outside Store</option>
+            <option value="powerhouse_store">Powerhouse Store</option>
+            <option value="dam_store">Dam Store</option>
+            <option value="headworks">Headworks</option>
+            <option value="ropeway_store">Ropeway Store</option>
+            <option value="transmission_line_store">Transmission Line Store</option>
+            <option value="outside_transmission_line_store">Transmission Line Store Outside</option>
+            <option value="wkv_materials_store">WKV Materials Store</option>
+            <option value="plant_inventory">Plant Inventory</option>
+            <option value="powerhouse_main_tank">Powerhouse Main Tank (Fuel)</option>
+            <option value="dam_fuel">Dam Fuel</option>
+            <option value="ropeway_fuel">Ropeway Fuel</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Item Name / Description</label>
+          <input id="out-item" type="text" required placeholder="Ex: Mobil Delvac, Gate Valve 4 inch, Diesel" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Quantity</label>
+          <input id="out-qty" type="number" step="0.01" required placeholder="0.00" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Unit</label>
+          <input id="out-unit" type="text" required placeholder="pcs, kg, L, set" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Issued To / Receiver</label>
+          <input id="out-receiver" type="text" placeholder="Ex: Operator Name, Dept." class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Purpose / Machine</label>
+          <input id="out-purpose" type="text" placeholder="Ex: Tractor, DG-1, Unit-2" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
+        </div>
         <textarea id="out-remark" rows="2" placeholder="Remark" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-4"></textarea>
         <button type="submit" class="md:col-span-4 bg-rose-600 hover:bg-rose-700 text-white text-sm font-black px-4 py-2.5 rounded-lg">Save Out Entry</button>
       </form>
@@ -157,9 +214,10 @@
           <thead>
             <tr class="bg-slate-50 text-slate-600">
               <th class="px-2 py-2 text-left">Date (NP)</th>
+              <th class="px-2 py-2 text-left">In/Out</th>
               <th class="px-2 py-2 text-left">Type</th>
-              <th class="px-2 py-2 text-left">Store</th>
-              <th class="px-2 py-2 text-left">Item</th>
+              <th class="px-2 py-2 text-left">Store Location</th>
+              <th class="px-2 py-2 text-left">Item Description</th>
               <th class="px-2 py-2 text-left">Qty</th>
               <th class="px-2 py-2 text-left">Unit</th>
             </tr>
@@ -174,6 +232,11 @@
     <p id="notification-message" class="text-sm font-bold text-slate-700"></p>
   </div>
 
-  <script type="module" src="./inventory.js"></script>
+  <script type="module" src="./assets/js/inventory.js"></script>
+
+  <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
+
+
+

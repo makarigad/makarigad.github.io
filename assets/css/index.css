@@ -1,0 +1,41 @@
+body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+/* ── Clickable username (unchanged from original) ── */
+.clickable-username {
+    cursor: pointer !important; color: #4f46e5 !important;
+    text-decoration: underline !important; text-decoration-style: dashed !important;
+    text-underline-offset: 4px !important; padding: 4px 8px !important;
+    border-radius: 6px !important; transition: all 0.2s ease-in-out !important;
+    display: inline-block !important; pointer-events: auto !important;
+    position: relative !important; z-index: 100 !important;
+}
+.clickable-username:hover { color: #312e81 !important; background-color: #e0e7ff !important; }
+.offline-disabled { opacity: 0.5 !important; cursor: not-allowed !important; text-decoration: none !important; pointer-events: none !important; }
+
+/* ── Live dot ── */
+.live-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.live-dot.online { background: #10b981; box-shadow: 0 0 0 0 rgba(16,185,129,0.7); animation: pulse-g 2s infinite; }
+.live-dot.offline { background: #f59e0b; box-shadow: 0 0 0 0 rgba(245,158,11,0.7); animation: pulse-a 2s infinite; }
+.live-dot.error  { background: #ef4444; box-shadow: 0 0 0 0 rgba(239,68,68,0.7); animation: pulse-r 2s infinite; }
+@keyframes pulse-g { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.7)} 70%{box-shadow:0 0 0 7px rgba(16,185,129,0)} }
+@keyframes pulse-a { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.7)} 70%{box-shadow:0 0 0 7px rgba(245,158,11,0)} }
+@keyframes pulse-r { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.7)} 70%{box-shadow:0 0 0 7px rgba(239,68,68,0)} }
+
+/* ── Role gating ── */
+.role-hidden { display: none !important; }
+
+/* ── Nav card ── */
+.nav-card { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+.nav-card:hover { transform: translateY(-2px); }
+
+/* ── Metric number ── */
+.num { font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+
+/* ── Card entrance ── */
+.card-fade { animation: fade-up 0.4s ease both; }
+@keyframes fade-up { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }

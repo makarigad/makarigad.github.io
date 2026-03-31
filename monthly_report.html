@@ -146,7 +146,7 @@
 <div id="toast"></div>
 
 <script type="module">
-import { supabase, initializeApplication } from './core-app.js';
+import { supabase, initializeApplication } from './assets/js/core-app.js';
 
 // --------------------------------------------------------------
 //  EXACT MIRROR OF ENERGY-SUMMARY CALCULATION ENGINE
@@ -546,5 +546,9 @@ function renderReportCharts(c, month, year) {
   document.getElementById('btn-generate').addEventListener('click',generateReport);
 })();
 </script>
+
+  <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
+
+

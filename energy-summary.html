@@ -89,13 +89,31 @@
 
   <div id="global-header-container" class="shrink-0 no-print"></div>
 
- <div class="flex px-4 pt-2 border-b-2 border-slate-200 bg-white shrink-0 overflow-x-auto custom-scroll no-print shadow-sm">
-      <div class="tab-btn rounded-t-lg" data-target="tab-daily">📅 Daily Report</div>
-      <div class="tab-btn active rounded-t-lg" data-target="tab-recon">💰 Energy Summary</div>
-      <div class="tab-btn rounded-t-lg" data-target="tab-operations">⚙️ Ops &amp; Losses</div>
-      <a class="tab-btn rounded-t-lg" href="monthly_report.html">📑 Monthly Report</a>
-      <div class="tab-btn rounded-t-lg" data-target="tab-compare">📈 Multi-Year</div>
-      <div class="tab-btn rounded-t-lg" data-target="tab-trends">📉 Trends</div>
+  <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 no-print">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-100">
+        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      </div>
+      <div>
+        <h1 class="text-xl font-black text-slate-900 tracking-tight">Reports & Analytics Dashboard</h1>
+        <p class="text-xs text-slate-500 font-medium mt-0.5">Energy reconciliation, operational trends, and multi-year comparisons.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all shadow-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        Hub Dashboard
+      </a>
+    </div>
+  </header>
+
+ <div class="flex px-6 border-b border-slate-200 bg-white shrink-0 overflow-x-auto custom-scroll no-print shadow-sm">
+      <button class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-daily">📅 Daily Report</button>
+      <button class="tab-btn active px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-recon">💰 Energy Summary</button>
+      <button class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-operations">⚙️ Ops &amp; Losses</button>
+      <a class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" href="monthly_report.html">📑 Monthly Report</a>
+      <button class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-compare">📈 Multi-Year</button>
+      <button class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-trends">📉 Trends</button>
   </div>
 
   <main id="main-content" class="flex-grow flex flex-col overflow-hidden p-4 relative">
@@ -900,7 +918,7 @@
 
   <script type="module">
 
-import { supabase, initializeApplication } from './core-app.js';
+import { supabase, initializeApplication } from './assets/js/core-app.js';
 
 async function startPage() {
     const sessionData = await initializeApplication(true);
@@ -2308,3 +2326,4 @@ startPage();
   </script>
 </body>
 </html>
+

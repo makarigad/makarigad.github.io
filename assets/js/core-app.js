@@ -108,9 +108,8 @@ export async function initializeApplication(requireAuth = true) {
                         const { data, error: dbErr } = await fetchWithTimeout(query, 8000, 1);
                         
                         if (data && !dbErr) {
-                            if (data.role === 'admin') isAdmin = true;
-                            else if (data.role === 'staff') userRole = 'staff';
-                            else userRole = 'operator';
+                            userRole = data.role || 'operator';
+                            if (userRole === 'admin') isAdmin = true;
                             localStorage.setItem('makarigad_offline_role', userRole);
                         } else {
                             throw new Error("DB Error");
@@ -137,12 +136,20 @@ export async function initializeApplication(requireAuth = true) {
             activateUserUI();
             applyRoleBasedUI();
 
-            const href = window.location.href.toLowerCase();
-            if (userRole === 'operator' && (href.includes('energy-summary') || href.includes('nepali-calendar') || href.includes('user-management'))) {
+            const href = window.location.pathname.toLowerCase();
+            const isRestrictedPage = href.includes('energy-summary.html') || 
+                                   href.includes('nepali-calendar.html') || 
+                                   href.includes('user-management.html') ||
+                                   href.includes('attendance.html');
+
+            if (userRole === 'operator' && isRestrictedPage) {
+                // Operators can only access Hub, Data Entry, Hourly Log, Operator Daily, and Inventory
+                // Attendance, Reports, Users, and Calendar are for Staff/Admin
                 window.location.href = 'index.html';
                 return null;
             }
-            if (userRole === 'staff' && (href.includes('nepali-calendar') || href.includes('user-management'))) {
+            if (userRole === 'staff' && (href.includes('nepali-calendar.html') || href.includes('user-management.html'))) {
+                // Staff can see Attendance and Reports, but not Calendar or Users
                 window.location.href = 'index.html';
                 return null;
             }
@@ -168,11 +175,17 @@ async function loadGlobalUI() {
     try {
         let headerContainer = document.getElementById('global-header-container') || document.getElementById('global-header');
         if (headerContainer && !headerContainer.innerHTML.trim()) {
-            const headerRes = await fetch('./header.html'); 
+            const headerRes = await fetch('./components/header.html'); 
             if (headerRes.ok) headerContainer.innerHTML = await headerRes.text();
         }
+        
+        let footerContainer = document.getElementById('global-footer-container') || document.getElementById('global-footer');
+        if (footerContainer && !footerContainer.innerHTML.trim()) {
+            const footerRes = await fetch('./components/footer.html'); 
+            if (footerRes.ok) footerContainer.innerHTML = await footerRes.text();
+        }
     } catch(e) { 
-        console.warn("Could not load global header"); 
+        console.warn("Could not load global UI components"); 
     }
 }
 

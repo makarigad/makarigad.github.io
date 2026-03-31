@@ -92,6 +92,7 @@ function bindInForm() {
                 nep_date: nepDate,
                 movement: 'IN', // Must be uppercase to match SQL constraint
                 store: document.getElementById('in-store').value,
+                category: document.getElementById('in-category').value, // NEW: added category
                 item: document.getElementById('in-item').value.trim(),
                 qty: qty,
                 unit: document.getElementById('in-unit').value.trim(),
@@ -138,6 +139,7 @@ function bindOutForm() {
                 nep_date: nepDate,
                 movement: 'OUT', // Must be uppercase to match SQL constraint
                 store: document.getElementById('out-store').value,
+                category: document.getElementById('out-category').value, // NEW: added category
                 item: document.getElementById('out-item').value.trim(),
                 qty: qty,
                 unit: document.getElementById('out-unit').value.trim(),
@@ -181,15 +183,16 @@ async function renderReports() {
         
         const reportBody = document.getElementById('report-transactions-body');
         reportBody.innerHTML = (txnData && txnData.length > 0) ? txnData.map((r) => `
-            <tr class="border-t border-slate-100">
+            <tr class="border-t border-slate-100 hover:bg-slate-50 transition">
                 <td class="px-2 py-2">${r.nep_date || r.date || '-'}</td>
                 <td class="px-2 py-2 font-bold ${r.movement === 'IN' ? 'text-green-600' : 'text-orange-500'}">${r.movement || '-'}</td>
+                <td class="px-2 py-2 text-[10px] uppercase font-bold text-slate-400">${r.category || 'material'}</td>
                 <td class="px-2 py-2">${STORE_LABELS[r.store] || r.store}</td>
-                <td class="px-2 py-2">${r.item || '-'}</td>
-                <td class="px-2 py-2 font-bold">${Number(r.qty || 0).toFixed(2)}</td>
-                <td class="px-2 py-2 text-slate-500">${r.unit || '-'}</td>
+                <td class="px-2 py-2 font-medium">${r.item || '-'}</td>
+                <td class="px-2 py-2 font-black text-slate-700">${Number(r.qty || 0).toLocaleString()}</td>
+                <td class="px-2 py-2 text-slate-400 text-[10px] uppercase font-bold">${r.unit || '-'}</td>
             </tr>
-        `).join('') : `<tr><td colspan="6" class="px-2 py-3 text-slate-500">No transactions yet.</td></tr>`;
+        `).join('') : `<tr><td colspan="7" class="px-2 py-3 text-slate-500">No transactions yet.</td></tr>`;
 
     } catch (err) {
         console.error('Failed to load reports:', err);

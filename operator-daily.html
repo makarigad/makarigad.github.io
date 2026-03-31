@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Operator Daily | Makari Gad 10MW</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+  <div id="global-header-container" class="shrink-0"></div>
+
+  <main class="max-w-7xl mx-auto w-full px-4 py-5 md:px-6 md:py-6 flex flex-col gap-5">
+    <section class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <h1 class="text-lg md:text-xl font-black text-slate-900">Operator Daily Data Entry</h1>
+      <p class="text-xs text-slate-500 mt-1">Use this page to record shift-wise daily operation details.</p>
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <form id="daily-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label class="text-xs font-bold text-slate-600">Date
+          <input id="entry-date" type="date" required class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm" />
+        </label>
+        <label class="text-xs font-bold text-slate-600">Shift
+          <select id="entry-shift" required class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm">
+            <option value="A">A Shift</option>
+            <option value="B">B Shift</option>
+            <option value="C">C Shift</option>
+          </select>
+        </label>
+        <label class="text-xs font-bold text-slate-600">Operator Name
+          <input id="entry-operator" type="text" required class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm" />
+        </label>
+        <label class="text-xs font-bold text-slate-600">Weather
+          <input id="entry-weather" type="text" placeholder="Clear / Rainy / Cloudy" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm" />
+        </label>
+        <label class="text-xs font-bold text-slate-600 md:col-span-2">Major Task Done
+          <textarea id="entry-task" required rows="2" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"></textarea>
+        </label>
+        <label class="text-xs font-bold text-slate-600 md:col-span-2">Issue / Breakdown / Remark
+          <textarea id="entry-remark" rows="2" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"></textarea>
+        </label>
+        <label class="text-xs font-bold text-slate-600 md:col-span-2">Special Note for Management
+          <textarea id="entry-note" rows="2" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"></textarea>
+        </label>
+        <div class="md:col-span-2 flex items-center gap-3">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black px-4 py-2.5 rounded-lg">Save Daily Entry</button>
+          <button id="export-daily-btn" type="button" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Export JSON</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm overflow-x-auto">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Saved Operator Entries</h2>
+        <span id="entry-count" class="text-xs font-bold text-slate-500">0 records</span>
+      </div>
+      <table class="min-w-full text-xs">
+        <thead>
+          <tr class="bg-slate-50 text-slate-600">
+            <th class="px-2 py-2 text-left">Date</th>
+            <th class="px-2 py-2 text-left">Shift</th>
+            <th class="px-2 py-2 text-left">Operator</th>
+            <th class="px-2 py-2 text-left">Task</th>
+            <th class="px-2 py-2 text-left">Remark</th>
+          </tr>
+        </thead>
+        <tbody id="daily-table-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <div id="notification-modal" class="fixed top-4 right-4 z-50 opacity-0 -translate-y-4 transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-xl border-l-4 px-4 py-3" style="border-left-color:#10b981;">
+    <p id="notification-message" class="text-sm font-bold text-slate-700"></p>
+  </div>
+
+  <script type="module" src="./operator-daily.js"></script>
+</body>
+</html>

@@ -31,16 +31,16 @@ export function parseToUTCDate(dateInput) {
     if (!dateInput) return null;
     let date;
     if (typeof dateInput === 'number') {
-    // Excel serial number (date1904 = false)
-    if (typeof XLSX !== 'undefined' && XLSX.SSF) {
-        const ex = XLSX.SSF.parse_date_code(dateInput, { date1904: false });
-        if (ex) date = new Date(Date.UTC(ex.y, ex.m - 1, ex.d));
-    } else {
-        // Fallback: Excel serial to JS date (works for most dates after 1900)
-        const jsDate = new Date(Math.round((dateInput - 25569) * 86400 * 1000));
-        date = new Date(Date.UTC(jsDate.getUTCFullYear(), jsDate.getUTCMonth(), jsDate.getUTCDate()));
-    }
-} else if (dateInput instanceof Date) {
+        // Excel serial number (date1904 = false)
+        if (typeof XLSX !== 'undefined' && XLSX.SSF) {
+            const ex = XLSX.SSF.parse_date_code(dateInput, { date1904: false });
+            if (ex) date = new Date(Date.UTC(ex.y, ex.m - 1, ex.d));
+        } else {
+            // Fallback: Excel serial to JS date (works for most dates after 1900)
+            const jsDate = new Date(Math.round((dateInput - 25569) * 86400 * 1000));
+            date = new Date(Date.UTC(jsDate.getUTCFullYear(), jsDate.getUTCMonth(), jsDate.getUTCDate()));
+        }
+    } else if (dateInput instanceof Date) {
         date = new Date(Date.UTC(dateInput.getUTCFullYear(), dateInput.getUTCMonth(), dateInput.getUTCDate()));
     } else {
         // Try to parse string
@@ -95,7 +95,8 @@ export async function initializeApplication(requireAuth = true) {
         
         if (session && session.user) {
             currentUser = session.user;
-            let isAdmin = currentUser.email.toLowerCase() === 'upenjyo@gmail.com';
+            // Safe check for email just in case
+            let isAdmin = currentUser.email && currentUser.email.toLowerCase() === 'upenjyo@gmail.com';
 
             if (!isAdmin) {
                 if (navigator.onLine) {
@@ -198,7 +199,7 @@ function activateUserUI() {
             window.location.href = "index.html"; 
         };
     }
-    if (headerEmail && currentUser) {
+    if (headerEmail && currentUser && currentUser.email) {
         headerEmail.classList.remove('hidden');
         headerEmail.classList.add('flex');
         headerEmail.innerText = currentUser.email.split('@')[0];
@@ -206,7 +207,7 @@ function activateUserUI() {
 }
 
 // ============================================================
-// Handle unauthenticated state
+// Handle unauthenticated state (FIXED: Infinite loop bug)
 // ============================================================
 function handleUnauthenticated(requireAuth) {
     currentUser = null;
@@ -233,7 +234,11 @@ function handleUnauthenticated(requireAuth) {
         };
     }
     
-    if (requireAuth) window.location.href = "index.html";
+    // Safety check: Only redirect if we aren't already on the login/index page
+    const isIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
+    if (requireAuth && !isIndexPage) {
+        window.location.href = "index.html";
+    }
 }
 
 // ============================================================
@@ -286,13 +291,20 @@ export async function safeUpsert(tableName, payload) {
 }
 
 // ============================================================
-// Queue data for offline sync (with timestamp)
+// Queue data for offline sync (FIXED: ID generation)
 // ============================================================
 function queueForSync(tableName, payload) {
     let queue = JSON.parse(localStorage.getItem('makarigad_sync_queue')) || [];
+    
+    // Ensure every item has a temporary local ID so new inserts don't overwrite each other
+    const dataArray = Array.isArray(payload) ? payload : [payload];
+    dataArray.forEach(item => {
+        if (!item.id) item.__local_id = 'local_' + Date.now() + Math.random().toString(36).substr(2, 9);
+    });
+
     queue.push({
         table: tableName,
-        data: Array.isArray(payload) ? payload : [payload],
+        data: dataArray,
         timestamp: new Date().toISOString()
     });
     localStorage.setItem('makarigad_sync_queue', JSON.stringify(queue));
@@ -309,7 +321,8 @@ export async function processSyncQueue() {
     const latestMap = new Map();
     for (const task of queue) {
         for (const item of task.data) {
-            const key = `${task.table}|${item.id}`;
+            // Group by actual ID or the temporary local ID
+            const key = `${task.table}|${item.id || item.__local_id}`;
             const existing = latestMap.get(key);
             if (!existing || new Date(task.timestamp) > new Date(existing.timestamp)) {
                 latestMap.set(key, { table: task.table, data: item, timestamp: task.timestamp });
@@ -326,10 +339,18 @@ export async function processSyncQueue() {
     let remainingQueue = [];
     for (const [table, items] of Object.entries(groupedTasks)) {
         try {
-            const { error } = await supabase.from(table).upsert(items);
+            // Strip out our temporary __local_id before sending to Supabase
+            const cleanItems = items.map(item => {
+                const clean = { ...item };
+                delete clean.__local_id;
+                return clean;
+            });
+
+            const { error } = await supabase.from(table).upsert(cleanItems);
             if (error) throw error;
         } catch (e) {
             console.error(`Sync failed for ${table}, keeping in queue.`, e);
+            // Re-queue the exact original tasks (with local IDs intact) for this table
             remainingQueue.push(...queue.filter(t => t.table === table));
         }
     }

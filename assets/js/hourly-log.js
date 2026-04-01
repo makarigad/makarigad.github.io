@@ -80,6 +80,8 @@ async function updateDates() {
             const monthIdx = nepaliMonths.indexOf(data.nep_month) + 1;
             if(document.getElementById('export-month') && monthIdx > 0) document.getElementById('export-month').value = monthIdx;
             if(document.getElementById('export-day')) document.getElementById('export-day').value = data.nep_day;
+            if(document.getElementById('dd-entry-date')) document.getElementById('dd-entry-date').value = todayDate;
+            if(document.getElementById('summary-date-picker')) document.getElementById('summary-date-picker').value = todayDate;
         } else {
             const { data: pdRes } = await supabase.from('plant_data')
                 .select('nepali_date')
@@ -510,13 +512,13 @@ const plantPayload = {
     ...(curPlant || {}),
     id: engDate,
     nepali_date: nepDateStr,
-    unit1_gen: p('u1-pmu'),
-    unit2_gen: p('u2-pmu'),
-    unit1_trans: p('u1-feeder'),      // Added sync for Unit 1 Trans
-    unit2_trans: p('u2-feeder'),      // Added sync for Unit 2 Trans
-    station_trans: p('sst-kwh'),     // Added sync for Station Trans
-    export_plant: p('outgoing-kwh'),    // Added sync for Export Plant
-    import_outgoing: p('import-mwh'), // Added sync for Import Substation
+    unit1_gen: p('u1-pmu') !== null ? p('u1-pmu') * 1000 : null,
+    unit2_gen: p('u2-pmu') !== null ? p('u2-pmu') * 1000 : null,
+    unit1_trans: p('u1-feeder') !== null ? p('u1-feeder') * 1000 : null,
+    unit2_trans: p('u2-feeder') !== null ? p('u2-feeder') * 1000 : null,
+    station_trans: p('sst-kwh'),     // Station Trans is kept as kWh
+    export_plant: p('outgoing-kwh') !== null ? p('outgoing-kwh') * 1000 : null,
+    import_outgoing: p('import-mwh') !== null ? p('import-mwh') * 1000 : null,
     unit1_counter: p('u1-hour'),
     unit2_counter: p('u2-hour'),
    
@@ -541,11 +543,11 @@ const plantPayload = {
             let needsBalanchSync = false;
             // Smart logic: Fill if empty (a=c)
             if (c_export !== null && (!curBalanch || curBalanch.main_export == null)) {
-                balanchPayload.main_export = c_export;
+                balanchPayload.main_export = c_export * 1000;
                 needsBalanchSync = true;
             }
             if (d_import !== null && (!curBalanch || curBalanch.main_import == null)) {
-                balanchPayload.main_import = d_import;
+                balanchPayload.main_import = d_import * 1000;
                 needsBalanchSync = true;
             }
             
@@ -1017,13 +1019,13 @@ if(btnNoon) {
             const targetDate = document.getElementById('dd-entry-date').value;
             if (!targetDate) throw new Error("Please select an English Date first.");
             
-            // 1. Save Substation Readings
+            // 1. Save Substation Readings (Multiply by 1000 to convert GWh to MWh)
             const balPayload = {
                 eng_date: targetDate,
-                main_export: parseFloat(document.getElementById('inp-bal-main-exp').value) || 0,
-                main_import: parseFloat(document.getElementById('inp-bal-main-imp').value) || 0,
-                check_export: parseFloat(document.getElementById('inp-bal-chk-exp').value) || 0,
-                check_import: parseFloat(document.getElementById('inp-bal-chk-imp').value) || 0,
+                main_export: (parseFloat(document.getElementById('inp-bal-main-exp').value) || 0) * 1000,
+                main_import: (parseFloat(document.getElementById('inp-bal-main-imp').value) || 0) * 1000,
+                check_export: (parseFloat(document.getElementById('inp-bal-chk-exp').value) || 0) * 1000,
+                check_import: (parseFloat(document.getElementById('inp-bal-chk-imp').value) || 0) * 1000,
                 operator_email: window.currentUser?.email || null,
                 operator_uid: window.currentUser?.id || null,
             };

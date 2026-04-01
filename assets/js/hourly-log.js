@@ -387,6 +387,12 @@ window.validateForm = function() {
     const waterLvl = val('water-level');
     if (waterLvl !== null && (waterLvl < 0 || waterLvl > 1500)) { errors.push(`Water Level (${waterLvl} cm) is out of expected range (0–1500 cm).`); markErr('water-level'); }
 
+    // Substation MWh range validation (Allowing up to 100,000 MWh)
+    const g_m_e = val('inp-bal-main-exp'); if (g_m_e !== null && (g_m_e < 0 || g_m_e > 100000)) { errors.push('Main Export must be between 0-100,000 MWh'); markErr('inp-bal-main-exp'); }
+    const g_m_i = val('inp-bal-main-imp'); if (g_m_i !== null && (g_m_i < 0 || g_m_i > 100000)) { errors.push('Main Import must be between 0-100,000 MWh'); markErr('inp-bal-main-imp'); }
+    const g_c_e = val('inp-bal-check-exp'); if (g_c_e !== null && (g_c_e < 0 || g_c_e > 100000)) { errors.push('Check Export must be between 0-100,000 MWh'); markErr('inp-bal-check-exp'); }
+    const g_c_i = val('inp-bal-check-imp'); if (g_c_i !== null && (g_c_i < 0 || g_c_i > 100000)) { errors.push('Check Import must be between 0-100,000 MWh'); markErr('inp-bal-check-imp'); }
+
     const chk = (id, min, max, name) => { const v=val(id); if(v!==null && (v<min || v>max)) { errors.push(`${name} must be between ${min} and ${max}.`); markErr(id); } };
     ['t_u1_u', 't_u1_v', 't_u1_w', 't_u1_de', 't_u1_nde', 't_u2_u', 't_u2_v', 't_u2_w', 't_u2_de', 't_u2_nde'].forEach(id => chk(id, 15, 95, id.toUpperCase() + ' Temp'));
     ['t_u1_gov', 't_u1_hyd', 't_u2_gov', 't_u2_hyd'].forEach(id => chk(id, 15, 50, 'Governor/Hyd Temp'));
@@ -497,12 +503,12 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
             console.log("Attempting 12:00 PM 3-Way Sync...");
             
             // Map inputs from the 12:00 PM Master Input section
-            const outgoing_gwh = p('outgoing-kwh'); 
-            const import_gwh = p('import-mwh');
-            const main_exp_gwh = p('inp-bal-main-exp');
-            const main_imp_gwh = p('inp-bal-main-imp');
-            const chk_exp_gwh = p('inp-bal-check-exp');
-            const chk_imp_gwh = p('inp-bal-check-imp');
+            const outgoing_mwh = p('outgoing-kwh'); 
+            const import_mwh = p('import-mwh');
+            const main_exp_mwh = p('inp-bal-main-exp');
+            const main_imp_mwh = p('inp-bal-main-imp');
+            const chk_exp_mwh = p('inp-bal-check-exp');
+            const chk_imp_mwh = p('inp-bal-check-imp');
 
             // FETCH EXISTING DATA to preserve other fields
             const [{ data: curPlant }, { data: curBalanch }] = await Promise.all([
@@ -515,15 +521,15 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
                 ...(curPlant || {}),
                 id: engDate,
                 nepali_date: nepDateStr,
-                unit1_gen: p('u1-pmu') !== null ? p('u1-pmu') * 1000 : null,
-                unit2_gen: p('u2-pmu') !== null ? p('u2-pmu') * 1000 : null,
-                unit1_trans: p('u1-feeder') !== null ? p('u1-feeder') * 1000 : null,
-                unit2_trans: p('u2-feeder') !== null ? p('u2-feeder') * 1000 : null,
-                station_trans: p('sst-kwh'),     // Station Trans is kept as kWh
-                export_plant: outgoing_gwh !== null ? outgoing_gwh * 1000 : null,
-                import_outgoing: import_gwh !== null ? import_gwh * 1000 : null,
-                export_substation: main_exp_gwh !== null ? main_exp_gwh * 1000 : null,
-                import_substation: main_imp_gwh !== null ? main_imp_gwh * 1000 : null,
+                unit1_gen: p('u1-pmu') !== null ? p('u1-pmu') * 1000 : null, // PMU is GWh -> MWh
+                unit2_gen: p('u2-pmu') !== null ? p('u2-pmu') * 1000 : null, // PMU is GWh -> MWh
+                unit1_trans: p('u1-feeder'),     // Feeder is MWh
+                unit2_trans: p('u2-feeder'),     // Feeder is MWh
+                station_trans: p('sst-kwh'),     // Station Trans is kWh
+                export_plant: outgoing_mwh,      // Outgoing is MWh
+                import_outgoing: import_mwh,     // Import is MWh
+                export_substation: main_exp_mwh, // Balanch is MWh
+                import_substation: main_imp_mwh, // Balanch is MWh
                 unit1_counter: p('u1-hour'),
                 unit2_counter: p('u2-hour'),
                 updated_at: new Date().toISOString()
@@ -536,14 +542,30 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
                 ...(curBalanch || {}), 
                 eng_date: engDate,
                 nep_date: nepDateStr,
-                main_export: main_exp_gwh !== null ? main_exp_gwh * 1000 : null,
-                main_import: main_imp_gwh !== null ? main_imp_gwh * 1000 : null,
-                check_export: chk_exp_gwh !== null ? chk_exp_gwh * 1000 : null,
-                check_import: chk_imp_gwh !== null ? chk_imp_gwh * 1000 : null,
                 updated_at: new Date().toISOString()
             };
             
-            await supabase.from('balanch_readings').upsert(balanchPayload);
+            let needsBalanchSync = false;
+            if (main_exp_mwh !== null && (!curBalanch || curBalanch.main_export == null)) {
+                balanchPayload.main_export = main_exp_mwh;
+                needsBalanchSync = true;
+            }
+            if (main_imp_mwh !== null && (!curBalanch || curBalanch.main_import == null)) {
+                balanchPayload.main_import = main_imp_mwh;
+                needsBalanchSync = true;
+            }
+            if (chk_exp_mwh !== null && (!curBalanch || curBalanch.check_export == null)) {
+                balanchPayload.check_export = chk_exp_mwh;
+                needsBalanchSync = true;
+            }
+            if (chk_imp_mwh !== null && (!curBalanch || curBalanch.check_import == null)) {
+                balanchPayload.check_import = chk_imp_mwh;
+                needsBalanchSync = true;
+            }
+            
+            if (needsBalanchSync || (nepDateStr && (!curBalanch || !curBalanch.nep_date))) {
+                await supabase.from('balanch_readings').upsert(balanchPayload);
+            }
             console.log("✅ 12:00 PM Smart Sync Complete!");
         }
 
@@ -1009,13 +1031,13 @@ if(btnNoon) {
             const targetDate = document.getElementById('dd-entry-date').value;
             if (!targetDate) throw new Error("Please select an English Date first.");
             
-            // 1. Save Substation Readings (Multiply by 1000 to convert GWh to MWh)
+            // 1. Save Substation Readings (Entered in MWh, Store in MWh)
             const balPayload = {
                 eng_date: targetDate,
-                main_export: (parseFloat(document.getElementById('inp-bal-main-exp').value) || 0) * 1000,
-                main_import: (parseFloat(document.getElementById('inp-bal-main-imp').value) || 0) * 1000,
-                check_export: (parseFloat(document.getElementById('inp-bal-chk-exp').value) || 0) * 1000,
-                check_import: (parseFloat(document.getElementById('inp-bal-chk-imp').value) || 0) * 1000,
+                main_export: parseFloat(document.getElementById('inp-bal-main-exp').value) || 0,
+                main_import: parseFloat(document.getElementById('inp-bal-main-imp').value) || 0,
+                check_export: parseFloat(document.getElementById('inp-bal-check-exp').value) || 0,
+                check_import: parseFloat(document.getElementById('inp-bal-check-imp').value) || 0,
                 operator_email: window.currentUser?.email || null,
                 operator_uid: window.currentUser?.id || null,
             };

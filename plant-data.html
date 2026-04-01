@@ -67,8 +67,8 @@
                         <tr>
                             <th>English Date</th>
                             <th>Nepali Date</th>
-                            <th>Unit 1 Gen (MWh)</th>
-                            <th>Unit 2 Gen (MWh)</th>
+                            <th>Unit 1 Gen (GWh)</th>
+                            <th>Unit 2 Gen (GWh)</th>
                             <th>Unit 1 Trans (MWh)</th>
                             <th>Unit 2 Trans (MWh)</th>
                             <th>Station Trans (kWh)</th>
@@ -178,11 +178,11 @@
                         <tr>
                             <th>Year</th>
                             <th>Month</th>
-                            <th>Week1 AD (MWh)</th>
-                            <th>Week2 AD (MWh)</th>
-                            <th>Week3 AD (MWh)</th>
-                            <th>Week4 AD (MWh)</th>
-                            <th>Week5 AD (MWh)</th>
+                            <th>Week1 AD (kWh)</th>
+                            <th>Week2 AD (kWh)</th>
+                            <th>Week3 AD (kWh)</th>
+                            <th>Week4 AD (kWh)</th>
+                            <th>Week5 AD (kWh)</th>
                             <th class="bg-indigo-100 text-indigo-900 border-l border-indigo-200">Total AD (MWh)</th>
                             <th class="bg-indigo-100 text-indigo-900">Contract Energy (MWh)</th>
                             <th class="bg-indigo-100 text-indigo-900 border-r border-indigo-200">No. of Days</th>
@@ -222,8 +222,35 @@
                     <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Overlay SCADA Metrics (Daily Energy automatically included)</p>
                     <div id="trend-chart-options" class="flex flex-wrap gap-4"></div>
                 </div>
-                <div class="relative h-[400px] w-full border border-slate-200 rounded-lg p-2 bg-white">
-                    <canvas id="daily-trend-chart"></canvas>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Operation Trends (Generation vs Dispatched)</h3>
+                            <div id="trend-period-badge" class="text-[10px] font-black bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full border border-indigo-100">Loading...</div>
+                        </div>
+                        <div class="relative h-[400px]">
+                            <canvas id="trend-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="bg-indigo-900 rounded-2xl p-6 text-white shadow-lg shadow-indigo-100">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-indigo-300 mb-4">Trend Performance Metrics</h3>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <p class="text-[10px] font-bold text-indigo-200 uppercase mb-1">Total Generation</p>
+                                    <p class="text-2xl font-black" id="trend-total-gen">0.00 <span class="text-xs font-normal text-indigo-300">MWh</span></p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-indigo-200 uppercase mb-1">Total Dispatched</p>
+                                    <p class="text-2xl font-black text-emerald-400" id="trend-total-exp">0.00 <span class="text-xs font-normal text-indigo-300">MWh</span></p>
+                                </div>
+                                <div class="col-span-2 border-t border-indigo-800 pt-4">
+                                    <p class="text-[10px] font-bold text-indigo-200 uppercase mb-1">Total Energy Loss (Trend Period)</p>
+                                    <p class="text-xl font-black text-rose-400" id="trend-total-loss">0.00 <span class="text-xs font-normal text-indigo-300">MWh</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -282,7 +309,10 @@
 
             <div class="bg-white rounded-xl shadow-sm border border-slate-300 p-4 mb-4 shrink-0">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold text-lg text-slate-800">Monthly Summary</h3>
+                    <div class="flex items-center gap-3">
+                        <h3 class="font-bold text-lg text-slate-800">Monthly Summary (Current Month)</h3>
+                        <span id="rainfall-period-display" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">Period: -</span>
+                    </div>
                     <button id="quick-fill-zero" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-1 px-3 rounded shadow transition">Quick Fill Zero</button>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">

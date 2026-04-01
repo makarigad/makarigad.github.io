@@ -521,8 +521,8 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
                 ...(curPlant || {}),
                 id: engDate,
                 nepali_date: nepDateStr,
-                unit1_gen: p('u1-pmu') !== null ? p('u1-pmu') * 1000 : null, // PMU is GWh -> MWh
-                unit2_gen: p('u2-pmu') !== null ? p('u2-pmu') * 1000 : null, // PMU is GWh -> MWh
+                unit1_gen: p('u1-pmu') !== null ? p('u1-pmu') * 1000 : null, // GWh to MWh
+                unit2_gen: p('u2-pmu') !== null ? p('u2-pmu') * 1000 : null, // GWh to MWh
                 unit1_trans: p('u1-feeder'),     // Feeder is MWh
                 unit2_trans: p('u2-feeder'),     // Feeder is MWh
                 station_trans: p('sst-kwh'),     // Station Trans is kWh
@@ -1056,6 +1056,27 @@ if(btnNoon) {
             };
             const { error: plantSyncErr } = await supabase.from('plant_data').upsert(plantSyncPayload);
             if (plantSyncErr) throw new Error("Daily Metering Sync Error: " + plantSyncErr.message);
+
+            // SYNC RAINFALL (From 8:00 AM section if available)
+            const rainDam = parseFloat(document.getElementById('inp-rain-dam')?.value);
+            const rainPh = parseFloat(document.getElementById('inp-rain-ph')?.value);
+            if (!isNaN(rainDam) || !isNaN(rainPh)) {
+                // We need Nepali date details for rainfall table
+                const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', targetDate).maybeSingle();
+                if (cal) {
+                    const rainId = `${cal.nep_year}_${cal.nep_month}_${String(cal.nep_day).padStart(2, '0')}`;
+                    await supabase.from('rainfall_data').upsert({
+                        id: rainId,
+                        nepali_year: cal.nep_year,
+                        nepali_month: cal.nep_month,
+                        day: cal.nep_day,
+                        headworks: !isNaN(rainDam) ? rainDam : 0,
+                        powerhouse: !isNaN(rainPh) ? rainPh : 0,
+                        operator_email: window.currentUser?.email || '',
+                        updated_at: new Date().toISOString()
+                    });
+                }
+            }
 
             
 

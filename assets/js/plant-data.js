@@ -100,6 +100,98 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
+// --- Trend Data Handling ---
+async function loadTrendData() {
+    const ySelect = document.getElementById('grid-rf-year'); 
+    const mSelect = document.getElementById('grid-rf-month');
+    if (!ySelect || !mSelect) return;
+
+    const y = parseInt(ySelect.value);
+    const m = mSelect.value;
+    
+    // FETCH DATE RANGE FOR SELECTED NEPALI MONTH
+    const { data: mappings } = await supabase.from('calendar_mappings')
+        .select('eng_date')
+        .eq('nep_year', y)
+        .eq('nep_month', m)
+        .order('eng_date', { ascending: true });
+
+    if (!mappings || mappings.length === 0) return;
+
+    const startDate = mappings[0].eng_date;
+    const endDate = mappings[mappings.length - 1].eng_date;
+
+    // FETCH PLANT DATA FOR THE RANGE
+    const { data: pData } = await supabase.from('plant_data')
+        .select('id, unit1_gen, unit2_gen, export_substation')
+        .gte('id', startDate)
+        .lte('id', endDate)
+        .order('id', { ascending: true });
+
+    if (!pData || pData.length < 2) return;
+
+    const labels = [];
+    const genData = [];
+    const expData = [];
+    let totalGen = 0, totalExp = 0;
+
+    for (let i = 1; i < pData.length; i++) {
+        const today = pData[i];
+        const yesterday = pData[i-1];
+        
+        // Calculate daily delta (MWh)
+        const dailyGen = ((today.unit1_gen + today.unit2_gen) - (yesterday.unit1_gen + yesterday.unit2_gen));
+        const dailyExp = (today.export_substation - yesterday.export_substation);
+        
+        labels.push(today.id.split('-').slice(1).join('-')); // MM-DD
+        genData.push(Math.max(0, dailyGen));
+        expData.push(Math.max(0, dailyExp));
+        
+        totalGen += Math.max(0, dailyGen);
+        totalExp += Math.max(0, dailyExp);
+    }
+
+    document.getElementById('trend-total-gen').innerHTML = `${formatNumber(totalGen, 2)} <span class="text-xs font-normal text-indigo-300">MWh</span>`;
+    document.getElementById('trend-total-exp').innerHTML = `${formatNumber(totalExp, 2)} <span class="text-xs font-normal text-indigo-300">MWh</span>`;
+    document.getElementById('trend-total-loss').innerHTML = `${formatNumber(totalGen - totalExp, 2)} <span class="text-xs font-normal text-indigo-300">MWh</span>`;
+    document.getElementById('trend-period-badge').textContent = `Period: ${m} ${y}`;
+
+    const canvas = document.getElementById('trend-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (trendChartInstance) trendChartInstance.destroy();
+    trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Gross Gen (MWh)', data: genData, borderColor: '#4f46e5', backgroundColor: '#4f46e5', borderWidth: 2.5, tension: 0.3, pointRadius: 3 },
+                { label: 'Substation Exp (MWh)', data: expData, borderColor: '#10b981', backgroundColor: '#10b981', borderWidth: 2.5, tension: 0.3, pointRadius: 3 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { 
+                y: { beginAtZero: true, grid: { color: '#f1f5f9' }, title: { display: true, text: 'Energy (MWh)', font: { weight: 'bold' } } }, 
+                x: { grid: { display: false } } 
+            },
+            plugins: { 
+                legend: { position: 'top', labels: { boxWidth: 12, font: { weight: 'bold', family: 'Inter' } } },
+                tooltip: { mode: 'index', intersect: false }
+            }
+        }
+    });
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        if (e.target.dataset.target === 'trends-tab') {
+            setTimeout(loadTrendData, 150);
+        }
+    });
+});
+
 function formatNumber(num, decimals = 3) {
     if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) return '';
     const factor = Math.pow(10, decimals);
@@ -433,7 +525,10 @@ function renderRainfallGrid() {
     const y = parseInt(document.getElementById('grid-rf-year')?.value);
     const m = document.getElementById('grid-rf-month')?.value;
     const gridTable = document.getElementById('rainfall-grid-table');
+    const periodDisplay = document.getElementById('rainfall-period-display');
     if(!gridTable || !y || !m) return;
+
+    if (periodDisplay) periodDisplay.textContent = `Period: ${m} ${y}`;
 
     const monthData = allRainfallData.filter(d => d.nepali_year === y && d.nepali_month === m);
     let maxDay = 32; 
@@ -464,8 +559,8 @@ function renderRainfallGrid() {
         if(headVal !== '') sumHead += parseFloat(headVal);
 
         trDay += `<th class="p-2 border font-semibold text-slate-600 min-w-[50px]">${i}</th>`;
-        trDam += `<td class="p-2 border ${getCellColor(damVal)}">${damVal}</td>`;
-        trHead += `<td class="p-2 border ${getCellColor(headVal)}">${headVal}</td>`;
+        trDam += `<td class="p-2 border ${getCellColor(damVal)} cursor-pointer hover:bg-indigo-50" onclick="editRainfallCell('${y}','${m}',${i},'powerhouse',${damVal || 0})">${damVal}</td>`;
+        trHead += `<td class="p-2 border ${getCellColor(headVal)} cursor-pointer hover:bg-indigo-50" onclick="editRainfallCell('${y}','${m}',${i},'headworks',${headVal || 0})">${headVal}</td>`;
     }
 
     trDay += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800 min-w-[60px]">Total</th>`;
@@ -478,6 +573,35 @@ function renderRainfallGrid() {
         updateMonthlySummary();
     }
 }
+
+window.editRainfallCell = async function(y, m, d, field, currentVal) {
+    if (userRole === 'normal') return;
+    const newVal = prompt(`Enter new value for Day ${d} (${field}):`, currentVal);
+    if (newVal === null) return;
+    
+    const floatVal = parseFloat(newVal);
+    if (isNaN(floatVal)) return showNotification("Invalid number", true);
+
+    const id = `${y}_${m}_${String(d).padStart(2, '0')}`;
+    const payload = {
+        id: id,
+        nepali_year: parseInt(y),
+        nepali_month: m,
+        day: d,
+        [field]: floatVal,
+        operator_email: currentUser?.email || '',
+        updated_at: new Date().toISOString()
+    };
+
+    try {
+        const { error } = await supabase.from('rainfall_data').upsert(payload);
+        if (error) throw error;
+        showNotification("Data updated!");
+        loadRainfallData();
+    } catch (e) {
+        showNotification("Error: " + e.message, true);
+    }
+};
 
 document.getElementById('grid-rf-year')?.addEventListener('change', () => {
     renderRainfallGrid();
@@ -3033,6 +3157,14 @@ async function initAuth() {
             loadOutagesData();
             loadRainfallData();
             loadExpensesData();
+
+            // Auto-sync trend filters
+            const ySel = document.getElementById('grid-rf-year');
+            const mSel = document.getElementById('grid-rf-month');
+            if (ySel && mSel) {
+                ySel.addEventListener('change', loadTrendData);
+                mSel.addEventListener('change', loadTrendData);
+            }
             
         } else {
             window.location.href = "index.html";

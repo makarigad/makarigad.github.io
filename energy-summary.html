@@ -2200,7 +2200,7 @@ startPage();
 
             // 1. Calculate Daily
             const daily = {};
-            daily.generation = (pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen); 
+            daily.generation = ((pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen))/1000; 
             daily.exportSubstation = (bTodayExp - bYesterdayExp); 
             daily.exportPlant = (pToday.export_plant - pYesterday.export_plant); 
             daily.stationConsumption = (pToday.station_trans - pYesterday.station_trans) / 1000; 
@@ -2225,7 +2225,7 @@ startPage();
             const bMonthStart = balanchData.find(d => d.eng_date === pMonthStart.id);
             const bMonthStartExp = bMonthStart ? getActiveReading(bMonthStart, 'export') : 0;
 
-            monthly.cumulativeGeneration = ((pToday.unit1_gen + pToday.unit2_gen) - (pMonthStart.unit1_gen + pMonthStart.unit2_gen));
+            monthly.cumulativeGeneration = ((pToday.unit1_gen + pToday.unit2_gen) - (pMonthStart.unit1_gen + pMonthStart.unit2_gen))/1000; 
             monthly.cumulativeExport = (bTodayExp - bMonthStartExp);
             monthly.cumulativePlantExport = (pToday.export_plant - pMonthStart.export_plant);
             monthly.cumulativeStationConsumption = (pToday.station_trans - pMonthStart.station_trans) / 1000; // Convert kWh to MWh

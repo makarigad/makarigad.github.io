@@ -137,19 +137,31 @@ export async function initializeApplication(requireAuth = true) {
             applyRoleBasedUI();
 
             const href = window.location.pathname.toLowerCase();
-            const isRestrictedPage = href.includes('energy-summary.html') || 
-                                   href.includes('nepali-calendar.html') || 
-                                   href.includes('user-management.html') ||
-                                   href.includes('attendance.html');
 
-            if (userRole === 'operator' && isRestrictedPage) {
-                // Operators can only access Hub, Data Entry, Hourly Log, Operator Daily, and Inventory
-                // Attendance, Reports, Users, and Calendar are for Staff/Admin
+            // --- Role-based Page Access Control ---
+            const isOperator = userRole === 'operator';
+            const isStaff = userRole === 'staff';
+
+            // Pages restricted for Operators
+            const operatorRestricted = [
+                '/energy-summary.html',
+                '/nepali-calendar.html',
+                '/user-management.html',
+                '/attendance.html'
+            ];
+
+            // Pages restricted for Staff
+            const staffRestricted = [
+                '/nepali-calendar.html',
+                '/user-management.html'
+            ];
+
+            if (isOperator && operatorRestricted.some(page => href.endsWith(page))) {
                 window.location.href = 'index.html';
                 return null;
             }
-            if (userRole === 'staff' && (href.includes('nepali-calendar.html') || href.includes('user-management.html'))) {
-                // Staff can see Attendance and Reports, but not Calendar or Users
+
+            if (isStaff && staffRestricted.some(page => href.endsWith(page))) {
                 window.location.href = 'index.html';
                 return null;
             }

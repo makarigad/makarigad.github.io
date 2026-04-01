@@ -129,20 +129,16 @@ function showToast(msg, isError = false) {
     setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0'); }, 4000);
 }
 
-    async function startPage() {
-        const sessionData = await initializeApplication(true);
-        
-        if (sessionData) {
-            document.getElementById('user-info').innerText = sessionData.user.email.split('@')[0];
-            
-            if (sessionData.role === 'admin') {
-                document.getElementById('admin-panel').classList.remove('hidden');
-                loadUsers();
-            } else {
-                document.getElementById('access-denied').classList.remove('hidden');
-            }
-        }
-    }
+    async function startPage() { 
+         const sessionData = await initializeApplication(true); 
+          
+         if (sessionData && sessionData.role === 'admin') { 
+             document.getElementById('admin-panel').classList.remove('hidden'); 
+             loadUsers(); 
+         } else { 
+             document.getElementById('access-denied').classList.remove('hidden'); 
+         } 
+     }
 
     async function loadUsers() {
         const { data, error } = await supabase.from('user_roles').select('*').order('role', { ascending: true });

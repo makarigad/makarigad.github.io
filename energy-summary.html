@@ -199,8 +199,8 @@
 
                         <div class="lg:col-span-1 space-y-6">
                             <div class="data-card">
-                                <h3 class="font-bold text-lg mb-3 text-gray-800 text-center">Monthly Energy Fate</h3>
-                                <div class="relative h-64 w-full"><canvas id="dr-energy-pie-chart"></canvas></div>
+                                <h3 class="font-bold text-lg mb-3 text-gray-800 text-center border-b pb-2">Monthly Energy Fate</h3>
+                                <div class="relative h-[450px] w-full"><canvas id="dr-energy-pie-chart"></canvas></div>
                             </div>
                             <div class="data-card bg-slate-50">
                                 <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Major Events / Comments</h3>
@@ -853,7 +853,7 @@
               <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Overlay SCADA Metrics (Daily Energy automatically included)</p>
               <div id="trend-chart-options" class="flex flex-wrap gap-3"></div>
             </div>
-            <div class="relative h-[500px] w-full border border-slate-200 rounded-lg p-4 bg-white shadow-inner">
+            <div class="relative h-[600px] w-full border border-slate-200 rounded-lg p-4 bg-white shadow-inner">
               <canvas id="ops-trend-chart"></canvas>
             </div>
           </div>
@@ -1050,16 +1050,16 @@ startPage();
             if(pRow) {
                 const pPrev = plantData.filter(r => r.id < pRow.id).pop();
                 if(pPrev) {
-                    u1 = Math.max(0, (pRow.unit1_gen || 0) - (pPrev.unit1_gen || 0)) * 1000;
-                    u2 = Math.max(0, (pRow.unit2_gen || 0) - (pPrev.unit2_gen || 0)) * 1000;
+                    u1 = Math.max(0, (pRow.unit1_gen || 0) - (pPrev.unit1_gen || 0));
+                    u2 = Math.max(0, (pRow.unit2_gen || 0) - (pPrev.unit2_gen || 0));
                     gen = u1 + u2;
-                    stCons = Math.max(0, ((pRow.station_trans || 0) - (pPrev.station_trans || 0)) * 1000); 
-                    let pExp = Math.max(0, (pRow.export_plant || 0) - (pPrev.export_plant || 0)) * 1000;
+                    stCons = Math.max(0, (pRow.station_trans || 0) - (pPrev.station_trans || 0)) / 1000; 
+                    let pExp = Math.max(0, (pRow.export_plant || 0) - (pPrev.export_plant || 0));
                     if(bRow) {
                         const bPrev = balanchData.filter(r => r.eng_date < bRow.eng_date).pop();
                         if(bPrev) {
-                            exp = Math.max(0, getActiveReading(bRow, 'export') - getActiveReading(bPrev, 'export')) * 1000;
-                            imp = Math.max(0, getActiveReading(bRow, 'import') - getActiveReading(bPrev, 'import')) * 1000;
+                            exp = Math.max(0, getActiveReading(bRow, 'export') - getActiveReading(bPrev, 'export'));
+                            imp = Math.max(0, getActiveReading(bRow, 'import') - getActiveReading(bPrev, 'import'));
                             lLoss = Math.max(0, pExp - exp);
                         }
                     }
@@ -1094,7 +1094,8 @@ startPage();
             }
             plantData = pData.map(doc => ({
                 id: doc.id, nepali_date: cleanDate(doc.nep_date || doc.nepali_date),
-                unit1_gen: Number(doc.u1_gen) || Number(doc.unit1_gen) || 0, unit2_gen: Number(doc.u2_gen) || Number(doc.unit2_gen) || 0,
+                unit1_gen: (Number(doc.u1_gen) || Number(doc.unit1_gen) || 0) * 1000, 
+                unit2_gen: (Number(doc.u2_gen) || Number(doc.unit2_gen) || 0) * 1000,
                 station_trans: Number(doc.station_trans) || 0, export_plant: Number(doc.export_out) || Number(doc.export_plant) || 0,
                 unit1_counter: Number(doc.u1_hr) || Number(doc.unit1_counter) || 0, unit2_counter: Number(doc.u2_hr) || Number(doc.unit2_counter) || 0,
             }));
@@ -2013,7 +2014,9 @@ startPage();
       const optCont = document.getElementById('trend-chart-options'); optCont.innerHTML = '';
       trendSeries.forEach((field, idx) => {
         const div = document.createElement('div'); div.className = 'flex items-center';
-        div.innerHTML = `<input type="checkbox" id="trend-check-${field.key}" value="${field.key}" class="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 trend-checkbox" ${idx < 2 ? 'checked' : ''}><label for="trend-check-${field.key}" class="ml-2 block text-xs text-slate-700 font-bold">${field.name}</label>`;
+        // Default: only "Active Power" (index 0) and "Energy" (index 1) are checked
+        const isDefaultChecked = field.key === 'active_power_kw';
+        div.innerHTML = `<input type="checkbox" id="trend-check-${field.key}" value="${field.key}" class="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 trend-checkbox" ${isDefaultChecked ? 'checked' : ''}><label for="trend-check-${field.key}" class="ml-2 block text-xs text-slate-700 font-bold">${field.name}</label>`;
         optCont.appendChild(div);
       });
       optCont.addEventListener('change', (e) => { if (e.target.classList.contains('trend-checkbox')) document.getElementById('view-trend-btn').click(); });
@@ -2063,16 +2066,48 @@ startPage();
       const selectedKeys = Array.from(document.querySelectorAll('.trend-checkbox:checked')).map(el => el.value);
       const colors = ['#ef4444', '#f59e0b', '#10b981', '#0ea5e9', '#8b5cf6', '#ec4899', '#f97316'];
       
-      const scales = { x: { type: 'time', time: { unit: 'day' }, grid: { display: false } }, 'y-energy': { type: 'linear', position: 'left', title: { display: true, text: 'Energy (MWh)', color: '#4f46e5' } } };
+      const scales = { 
+          x: { type: 'time', time: { unit: 'day' }, grid: { display: false } }, 
+          'y-energy': { type: 'linear', position: 'left', title: { display: true, text: 'Energy (MWh)', color: '#4f46e5' } } 
+      };
 
       selectedKeys.forEach((key, index) => {
           const fieldInfo = trendSeries.find(s => s.key === key); if (!fieldInfo || historicalData.length === 0) return;
           const color = colors[index % colors.length];
-          datasets.push({ label: fieldInfo.name, data: historicalData.map(d => ({ x: d.timestamp, y: d[key] ?? null })).filter(pt => pt.y !== null), borderColor: color, backgroundColor: color, borderWidth: 2, tension: 0.1, pointRadius: 0, yAxisID: `y-${key}`, type: 'line', order: 1 });
+          datasets.push({ 
+              label: fieldInfo.name, 
+              data: historicalData.map(d => ({ x: d.timestamp, y: d[key] ?? null })).filter(pt => pt.y !== null), 
+              borderColor: color, 
+              backgroundColor: color, 
+              borderWidth: 2, 
+              tension: 0.1, 
+              pointRadius: 0, 
+              yAxisID: `y-${key}`, 
+              type: 'line', // Fixed: Always line for other metrics
+              order: 1 
+          });
           scales[`y-${key}`] = { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: fieldInfo.name, color: color } };
       });
 
-      safeChartRender('ops-trend-chart', { data: { datasets }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: scales } });
+      safeChartRender('ops-trend-chart', { 
+          data: { datasets }, 
+          options: { 
+              responsive: true, 
+              maintainAspectRatio: false, 
+              interaction: { mode: 'index', intersect: false }, 
+              scales: scales,
+              plugins: {
+                  legend: {
+                      position: 'top',
+                      labels: {
+                          usePointStyle: true,
+                          boxWidth: 6,
+                          font: { weight: 'bold' }
+                      }
+                  }
+              }
+          } 
+      });
       btn.disabled = false; btn.textContent = 'Render Chart';
     });
 
@@ -2165,10 +2200,10 @@ startPage();
 
             // 1. Calculate Daily
             const daily = {};
-            daily.generation = ((pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen)); 
+            daily.generation = (pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen); 
             daily.exportSubstation = (bTodayExp - bYesterdayExp); 
             daily.exportPlant = (pToday.export_plant - pYesterday.export_plant); 
-            daily.stationConsumption = (pToday.station_trans - pYesterday.station_trans) / 1000; // Convert kWh to MWh
+            daily.stationConsumption = (pToday.station_trans - pYesterday.station_trans) / 1000; 
             daily.transmissionLoss = daily.exportPlant - daily.exportSubstation;
             daily.transformerLoss = daily.generation - daily.exportPlant - daily.stationConsumption;
             
@@ -2235,8 +2270,8 @@ startPage();
             document.getElementById('dr-val-plant-factor').textContent = n(daily.plantFactor);
             
             document.getElementById('dr-val-generation').textContent = n(daily.generation, 3);
-            document.getElementById('dr-val-export-plant').textContent = n(daily.export_plant, 3);
-            document.getElementById('dr-val-export-substation').textContent = n(daily.export_substation, 3);
+            document.getElementById('dr-val-export-plant').textContent = n(daily.exportPlant, 3);
+            document.getElementById('dr-val-export-substation').textContent = n(daily.exportSubstation, 3);
             document.getElementById('dr-val-cumulative-export-month').textContent = n(monthly.cumulativeExport, 3);
             document.getElementById('dr-val-guaranteed-energy').textContent = n(monthly.guaranteedEnergy, 3);
             document.getElementById('dr-val-availability-declaration').textContent = n(monthly.availabilityDeclaration, 3);
@@ -2268,20 +2303,72 @@ startPage();
 
     function drUpdatePieChart(monthly) {
         const ctx = document.getElementById('dr-energy-pie-chart').getContext('2d');
+        const dataValues = [
+            Math.max(0, monthly.cumulativeExport),
+            Math.max(0, monthly.cumulativeTransformerLoss),
+            Math.max(0, monthly.cumulativeStationConsumption),
+            Math.max(0, monthly.cumulativeTransmissionLoss),
+            Math.max(0, monthly.cumulativeNeaCurtailed),
+            Math.max(0, monthly.cumulativeOtherLosses)
+        ];
+        
         const chartData = {
             labels: [ 'Dispatched', 'Transformer losses', 'Station Consumption', 'Transmission Loss', 'NEA Curtailed', 'Other Losses' ],
             datasets: [{
-                data: [ Math.max(0, monthly.cumulativeExport), Math.max(0, monthly.cumulativeTransformerLoss), Math.max(0, monthly.cumulativeStationConsumption), Math.max(0, monthly.cumulativeTransmissionLoss), Math.max(0, monthly.cumulativeNeaCurtailed), Math.max(0, monthly.cumulativeOtherLosses) ],
+                data: dataValues,
                 backgroundColor: [ '#1e3a8a', '#d97706', '#ca8a04', '#facc15', '#0ea5e9', '#10b981' ],
-                borderWidth: 2
+                borderWidth: 2,
+                hoverOffset: 15
             }]
         };
+
+        const config = {
+            type: 'pie',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { size: 11, weight: 'bold' },
+                            padding: 20,
+                            generateLabels: (chart) => {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        return {
+                                            text: `${label}: ${n(value, 2)} MWh`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed !== null) label += n(context.parsed, 2) + ' MWh';
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
         if (drPieChartInstance) {
-            drPieChartInstance.data = chartData;
-            drPieChartInstance.update();
-        } else {
-            drPieChartInstance = new Chart(ctx, { type: 'pie', data: chartData, options: { responsive: true, maintainAspectRatio: false } });
+            drPieChartInstance.destroy();
         }
+        drPieChartInstance = new Chart(ctx, config);
     }
 
     function drUpdateTrendChart(pIdx) {

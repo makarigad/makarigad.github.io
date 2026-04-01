@@ -496,9 +496,13 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
         if (logTime.startsWith('12:00')) {
             console.log("Attempting 12:00 PM 3-Way Sync...");
             
-            // Map c & d variables from the 12:00 PM input
-            const c_export = p('outgoing-kwh'); // FIX: Grab Outgoing (Plant Export), not U1 Feeder
-            const d_import = p('import-mwh'); // Plant Import
+            // Map inputs from the 12:00 PM Master Input section
+            const outgoing_gwh = p('outgoing-kwh'); 
+            const import_gwh = p('import-mwh');
+            const main_exp_gwh = p('inp-bal-main-exp');
+            const main_imp_gwh = p('inp-bal-main-imp');
+            const chk_exp_gwh = p('inp-bal-check-exp');
+            const chk_imp_gwh = p('inp-bal-check-imp');
 
             // FETCH EXISTING DATA to preserve other fields
             const [{ data: curPlant }, { data: curBalanch }] = await Promise.all([
@@ -506,54 +510,40 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
                 supabase.from('balanch_readings').select('*').eq('eng_date', engDate).maybeSingle()
             ]);
 
-            // SYNC TO DAILY METERING (x, y)
-            // Inside the 12:00 PM sync block in hourly-log.js
-const plantPayload = {
-    ...(curPlant || {}),
-    id: engDate,
-    nepali_date: nepDateStr,
-    unit1_gen: p('u1-pmu') !== null ? p('u1-pmu') * 1000 : null,
-    unit2_gen: p('u2-pmu') !== null ? p('u2-pmu') * 1000 : null,
-    unit1_trans: p('u1-feeder') !== null ? p('u1-feeder') * 1000 : null,
-    unit2_trans: p('u2-feeder') !== null ? p('u2-feeder') * 1000 : null,
-    station_trans: p('sst-kwh'),     // Station Trans is kept as kWh
-    export_plant: p('outgoing-kwh') !== null ? p('outgoing-kwh') * 1000 : null,
-    import_outgoing: p('import-mwh') !== null ? p('import-mwh') * 1000 : null,
-    unit1_counter: p('u1-hour'),
-    unit2_counter: p('u2-hour'),
-   
-    updated_at: new Date().toISOString()
-};
-            
-            // Smart logic: Fill if empty (x=c)
-            if (c_export !== null && (!curPlant || curPlant.export_plant == null)) plantPayload.export_plant = c_export;
-            // FIX: Map to import_outgoing (Plant side), NOT import_substation (Balanch side)
-            if (d_import !== null && (!curPlant || curPlant.import_outgoing == null)) plantPayload.import_outgoing = d_import;
-            
-            await supabase.from('plant_data').upsert(plantPayload);
-
-            // SYNC TO SUBSTATION METERING (a, b)
-            const balanchPayload = { 
-                ...(curBalanch || {}), 
-                eng_date: engDate,
-                nep_date: nepDateStr, // Ensures Substation Nepali Date is updated
+            // SYNC TO DAILY METERING (plant_data table)
+            const plantPayload = {
+                ...(curPlant || {}),
+                id: engDate,
+                nepali_date: nepDateStr,
+                unit1_gen: p('u1-pmu') !== null ? p('u1-pmu') * 1000 : null,
+                unit2_gen: p('u2-pmu') !== null ? p('u2-pmu') * 1000 : null,
+                unit1_trans: p('u1-feeder') !== null ? p('u1-feeder') * 1000 : null,
+                unit2_trans: p('u2-feeder') !== null ? p('u2-feeder') * 1000 : null,
+                station_trans: p('sst-kwh'),     // Station Trans is kept as kWh
+                export_plant: outgoing_gwh !== null ? outgoing_gwh * 1000 : null,
+                import_outgoing: import_gwh !== null ? import_gwh * 1000 : null,
+                export_substation: main_exp_gwh !== null ? main_exp_gwh * 1000 : null,
+                import_substation: main_imp_gwh !== null ? main_imp_gwh * 1000 : null,
+                unit1_counter: p('u1-hour'),
+                unit2_counter: p('u2-hour'),
                 updated_at: new Date().toISOString()
             };
             
-            let needsBalanchSync = false;
-            // Smart logic: Fill if empty (a=c)
-            if (c_export !== null && (!curBalanch || curBalanch.main_export == null)) {
-                balanchPayload.main_export = c_export * 1000;
-                needsBalanchSync = true;
-            }
-            if (d_import !== null && (!curBalanch || curBalanch.main_import == null)) {
-                balanchPayload.main_import = d_import * 1000;
-                needsBalanchSync = true;
-            }
+            await supabase.from('plant_data').upsert(plantPayload);
+
+            // SYNC TO SUBSTATION METERING (balanch_readings table)
+            const balanchPayload = { 
+                ...(curBalanch || {}), 
+                eng_date: engDate,
+                nep_date: nepDateStr,
+                main_export: main_exp_gwh !== null ? main_exp_gwh * 1000 : null,
+                main_import: main_imp_gwh !== null ? main_imp_gwh * 1000 : null,
+                check_export: chk_exp_gwh !== null ? chk_exp_gwh * 1000 : null,
+                check_import: chk_imp_gwh !== null ? chk_imp_gwh * 1000 : null,
+                updated_at: new Date().toISOString()
+            };
             
-            if (needsBalanchSync || (nepDateStr && (!curBalanch || !curBalanch.nep_date))) {
-                await supabase.from('balanch_readings').upsert(balanchPayload);
-            }
+            await supabase.from('balanch_readings').upsert(balanchPayload);
             console.log("✅ 12:00 PM Smart Sync Complete!");
         }
 

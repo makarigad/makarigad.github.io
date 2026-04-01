@@ -108,8 +108,8 @@
   </header>
 
  <div class="flex px-6 border-b border-slate-200 bg-white shrink-0 overflow-x-auto custom-scroll no-print shadow-sm">
-      <button class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-daily">📅 Daily Report</button>
-      <button class="tab-btn active px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-recon">💰 Energy Summary</button>
+      <button class="tab-btn active px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-daily">📅 Daily Report</button>
+      <button class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-recon">💰 Energy Summary</button>
       <button class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-operations">⚙️ Ops &amp; Losses</button>
       <a class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" href="monthly_report.html">📑 Monthly Report</a>
       <button class="tab-btn px-4 py-3 text-sm font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-target="tab-compare">📈 Multi-Year</button>
@@ -118,7 +118,7 @@
 
   <main id="main-content" class="flex-grow flex flex-col overflow-hidden p-4 relative">
 
-    <div id="tab-daily" class="hidden-tab rounded-xl table-container flex-grow custom-scroll bg-slate-100 overflow-y-auto p-4 relative">
+    <div id="tab-daily" class="rounded-xl table-container flex-grow custom-scroll bg-slate-100 overflow-y-auto p-4 relative">
             <div class="data-card max-w-7xl mx-auto">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
                     <div>
@@ -224,7 +224,7 @@
             </div>
         </div>
         
-        <div id="tab-recon" class="rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-white">
+        <div id="tab-recon" class="hidden-tab rounded-xl shadow border border-slate-300 table-container flex-grow custom-scroll bg-white">
           <details id="toggle-container" class="bg-slate-50 border-b border-slate-300 shrink-0 group no-print">
             <summary class="p-3 font-bold text-slate-700 hover:bg-slate-100 flex justify-between items-center outline-none text-sm cursor-pointer">
                 <span><span class="mr-2 text-indigo-600">⚙️</span> Show/Hide Columns</span><span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
@@ -2165,10 +2165,10 @@ startPage();
 
             // 1. Calculate Daily
             const daily = {};
-            daily.generation = ((pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen)) * 1000; 
-            daily.exportSubstation = (bTodayExp - bYesterdayExp) * 1000; 
-            daily.exportPlant = (pToday.export_plant - pYesterday.export_plant) * 1000; 
-            daily.stationConsumption = pToday.station_trans - pYesterday.station_trans; 
+            daily.generation = ((pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen)); 
+            daily.exportSubstation = (bTodayExp - bYesterdayExp); 
+            daily.exportPlant = (pToday.export_plant - pYesterday.export_plant); 
+            daily.stationConsumption = (pToday.station_trans - pYesterday.station_trans) / 1000; // Convert kWh to MWh
             daily.transmissionLoss = daily.exportPlant - daily.exportSubstation;
             daily.transformerLoss = daily.generation - daily.exportPlant - daily.stationConsumption;
             
@@ -2176,9 +2176,9 @@ startPage();
             let activeMins = 1440.01 - rDayOutage.lossTimeMin - ((rDayOutage.lossU1Min + rDayOutage.lossU2Min) / 2);
             if (activeMins <= 0) activeMins = 1440.01;
             
-            daily.avgLoadPowerhouse = (daily.generation * 60) / activeMins;
-            daily.avgLoadSubstation = (daily.exportSubstation * 60) / activeMins;
-            daily.plantFactor = (daily.exportSubstation / (10 * 1000 * 24)) * 100; 
+            daily.avgLoadPowerhouse = (daily.generation * 1000 * 60) / activeMins; // Convert MWh back to kW for load
+            daily.avgLoadSubstation = (daily.exportSubstation * 1000 * 60) / activeMins; // Convert MWh back to kW for load
+            daily.plantFactor = (daily.exportSubstation / (10 * 24)) * 100; 
             daily.unit1Hours = pToday.unit1_counter - pYesterday.unit1_counter;
             daily.unit2Hours = pToday.unit2_counter - pYesterday.unit2_counter;
 
@@ -2190,10 +2190,10 @@ startPage();
             const bMonthStart = balanchData.find(d => d.eng_date === pMonthStart.id);
             const bMonthStartExp = bMonthStart ? getActiveReading(bMonthStart, 'export') : 0;
 
-            monthly.cumulativeGeneration = ((pToday.unit1_gen + pToday.unit2_gen) - (pMonthStart.unit1_gen + pMonthStart.unit2_gen)) * 1000;
-            monthly.cumulativeExport = (bTodayExp - bMonthStartExp) * 1000;
-            monthly.cumulativePlantExport = (pToday.export_plant - pMonthStart.export_plant) * 1000;
-            monthly.cumulativeStationConsumption = pToday.station_trans - pMonthStart.station_trans;
+            monthly.cumulativeGeneration = ((pToday.unit1_gen + pToday.unit2_gen) - (pMonthStart.unit1_gen + pMonthStart.unit2_gen));
+            monthly.cumulativeExport = (bTodayExp - bMonthStartExp);
+            monthly.cumulativePlantExport = (pToday.export_plant - pMonthStart.export_plant);
+            monthly.cumulativeStationConsumption = (pToday.station_trans - pMonthStart.station_trans) / 1000; // Convert kWh to MWh
 
             const cMonthRecords = plantData.slice(baseIdx + 1, pIdx + 1);
             const cMonthEngDates = cMonthRecords.map(d => d.id);
@@ -2216,12 +2216,12 @@ startPage();
             const cInfo = contractData.find(c => Number(c.year) === yYear && c.month === nepaliMonthName);
             const ppaDays = getActualDays(yYear, yMonth - 1);
             
-            monthly.guaranteedEnergy = cInfo ? (cInfo.contract_energy * 1000) : 0;
-            monthly.availabilityDeclaration = cInfo ? (cInfo.total_ad * 1000) : 0;
+            monthly.guaranteedEnergy = cInfo ? cInfo.contract_energy : 0;
+            monthly.availabilityDeclaration = cInfo ? cInfo.total_ad : 0;
             monthly.energyDifference = monthly.cumulativeExport - monthly.availabilityDeclaration;
             
-            monthly.monthlyPlantFactor = ppaDays > 0 ? (monthly.cumulativeExport / (10 * 1000 * 24 * ppaDays)) * 100 : 0;
-            monthly.plantFactorTillDate = yDay > 0 ? (monthly.cumulativeExport / (10 * 1000 * 24 * yDay)) * 100 : 0;
+            monthly.monthlyPlantFactor = ppaDays > 0 ? (monthly.cumulativeExport / (10 * 24 * ppaDays)) * 100 : 0;
+            monthly.plantFactorTillDate = yDay > 0 ? (monthly.cumulativeExport / (10 * 24 * yDay)) * 100 : 0;
             monthly.remainingDays = ppaDays - yDay;
 
             // 3. Render
@@ -2234,21 +2234,21 @@ startPage();
             document.getElementById('dr-val-avg-load-substation').textContent = n(daily.avgLoadSubstation);
             document.getElementById('dr-val-plant-factor').textContent = n(daily.plantFactor);
             
-            document.getElementById('dr-val-generation').textContent = n(daily.generation / 1000, 3);
-            document.getElementById('dr-val-export-plant').textContent = n(daily.exportPlant / 1000, 3);
-            document.getElementById('dr-val-export-substation').textContent = n(daily.exportSubstation / 1000, 3);
-            document.getElementById('dr-val-cumulative-export-month').textContent = n(monthly.cumulativeExport / 1000, 3);
-            document.getElementById('dr-val-guaranteed-energy').textContent = n(monthly.guaranteedEnergy / 1000, 3);
-            document.getElementById('dr-val-availability-declaration').textContent = n(monthly.availabilityDeclaration / 1000, 3);
-            document.getElementById('dr-val-energy-difference').textContent = n(monthly.energyDifference / 1000, 3);
+            document.getElementById('dr-val-generation').textContent = n(daily.generation, 3);
+            document.getElementById('dr-val-export-plant').textContent = n(daily.export_plant, 3);
+            document.getElementById('dr-val-export-substation').textContent = n(daily.export_substation, 3);
+            document.getElementById('dr-val-cumulative-export-month').textContent = n(monthly.cumulativeExport, 3);
+            document.getElementById('dr-val-guaranteed-energy').textContent = n(monthly.guaranteedEnergy, 3);
+            document.getElementById('dr-val-availability-declaration').textContent = n(monthly.availabilityDeclaration, 3);
+            document.getElementById('dr-val-energy-difference').textContent = n(monthly.energyDifference, 3);
             
             document.getElementById('dr-val-monthly-plant-factor').textContent = n(monthly.monthlyPlantFactor);
             document.getElementById('dr-val-plant-factor-till-date').textContent = n(monthly.plantFactorTillDate);
             document.getElementById('dr-val-remaining-days').textContent = n(monthly.remainingDays, 0);
             
-            document.getElementById('dr-val-transformer-loss-month').textContent = n(monthly.cumulativeTransformerLoss / 1000, 3);
-            document.getElementById('dr-val-station-consumption-month').textContent = n(monthly.cumulativeStationConsumption / 1000, 3);
-            document.getElementById('dr-val-transmission-loss-month').textContent = n(monthly.cumulativeTransmissionLoss / 1000, 3);
+            document.getElementById('dr-val-transformer-loss-month').textContent = n(monthly.cumulativeTransformerLoss, 3);
+            document.getElementById('dr-val-station-consumption-month').textContent = n(monthly.cumulativeStationConsumption, 3);
+            document.getElementById('dr-val-transmission-loss-month').textContent = n(monthly.cumulativeTransmissionLoss, 3);
             document.getElementById('dr-val-nea-curtailed-month').textContent = n(monthly.cumulativeNeaCurtailed, 3); 
             document.getElementById('dr-val-other-losses-month').textContent = n(monthly.cumulativeOtherLosses, 3); 
             
@@ -2271,7 +2271,7 @@ startPage();
         const chartData = {
             labels: [ 'Dispatched', 'Transformer losses', 'Station Consumption', 'Transmission Loss', 'NEA Curtailed', 'Other Losses' ],
             datasets: [{
-                data: [ Math.max(0, monthly.cumulativeExport / 1000), Math.max(0, monthly.cumulativeTransformerLoss / 1000), Math.max(0, monthly.cumulativeStationConsumption / 1000), Math.max(0, monthly.cumulativeTransmissionLoss / 1000), Math.max(0, monthly.cumulativeNeaCurtailed), Math.max(0, monthly.cumulativeOtherLosses) ],
+                data: [ Math.max(0, monthly.cumulativeExport), Math.max(0, monthly.cumulativeTransformerLoss), Math.max(0, monthly.cumulativeStationConsumption), Math.max(0, monthly.cumulativeTransmissionLoss), Math.max(0, monthly.cumulativeNeaCurtailed), Math.max(0, monthly.cumulativeOtherLosses) ],
                 backgroundColor: [ '#1e3a8a', '#d97706', '#ca8a04', '#facc15', '#0ea5e9', '#10b981' ],
                 borderWidth: 2
             }]

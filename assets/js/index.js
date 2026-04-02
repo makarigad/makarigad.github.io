@@ -78,8 +78,33 @@ async function startPage() {
     }
 
     loadDashboardData();
+    loadAdminNotice();
 }
 startPage();
+
+async function loadAdminNotice() {
+    try {
+        const { data } = await supabase
+            .from('app_settings')
+            .select('setting_value')
+            .eq('setting_key', 'operator_notice')
+            .maybeSingle();
+        if (data && data.setting_value) {
+            const notice = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
+            if (notice.active && notice.message) {
+                if (!notice.expires_at || new Date(notice.expires_at) > new Date()) {
+                    const bar = document.getElementById('index-admin-notice');
+                    const txt = document.getElementById('index-admin-notice-text');
+                    if (bar && txt) {
+                        txt.textContent = '📢 Admin Notice: ' + notice.message;
+                        bar.classList.remove('hidden');
+                        bar.classList.add('flex');
+                    }
+                }
+            }
+        }
+    } catch(e) { console.warn('Notice load error:', e); }
+}
 
 // ── Login modal form ──
 document.getElementById('login-form')?.addEventListener('submit', async (e) => {

@@ -5,6 +5,22 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Operator Daily | Makari Gad 10MW</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .tab-btn { padding: 10px 18px; font-weight: 700; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s; font-size: 0.875rem; }
+    .tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; background: white; }
+    .form-label { display: block; font-size: 0.7rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+    .form-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.875rem; outline: none; background: #fff; transition: border-color .15s, box-shadow .15s; }
+    .form-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.15); }
+    .weather-btn { padding: 0.5rem 1rem; border: 2px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.15s; background: white; }
+    .weather-btn.selected { border-color: #4f46e5; background: #eef2ff; color: #4338ca; }
+    .maint-table td, .maint-table th { padding: 8px 10px; font-size: 0.78rem; border: 1px solid #e2e8f0; text-align: left; }
+    .maint-table th { background: #f8fafc; font-weight: 700; color: #475569; font-size: 0.7rem; text-transform: uppercase; }
+    .notice-card { border-left: 4px solid #4f46e5; background: #eef2ff; padding: 14px 16px; border-radius: 0.5rem; margin-bottom: 12px; }
+    .complaint-card { border-left: 4px solid #f59e0b; background: #fffbeb; padding: 14px 16px; border-radius: 0.5rem; margin-bottom: 10px; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
   <div id="global-header-container" class="shrink-0"></div>
@@ -16,85 +32,834 @@
       </div>
       <div>
         <h1 class="text-xl font-black text-slate-900 tracking-tight">Operator Daily Log</h1>
-        <p class="text-xs text-slate-500 font-medium mt-0.5">Record shift activities, weather, and maintenance tasks.</p>
+        <p class="text-xs text-slate-500 font-medium mt-0.5">Shift entries, weather, maintenance, and complaint management.</p>
       </div>
     </div>
     <div class="flex items-center gap-3">
+      <span id="od-user-badge" class="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">Loading…</span>
       <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all shadow-sm">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Hub Dashboard
+        Hub
       </a>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto w-full px-4 py-5 md:px-6 md:py-6 flex flex-col gap-5">
-    <section class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-sm font-black uppercase tracking-widest text-slate-400">Shift Entry Form</h2>
-        <div class="h-1 w-12 bg-indigo-100 rounded-full"></div>
-      </div>
-      <form id="daily-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <label class="text-xs font-bold text-slate-600">Date
-          <input id="entry-date" type="date" required class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm" />
-        </label>
-        <label class="text-xs font-bold text-slate-600">Shift
-          <select id="entry-shift" required class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm">
-            <option value="A">A Shift</option>
-            <option value="B">B Shift</option>
-            <option value="C">C Shift</option>
-          </select>
-        </label>
-        <label class="text-xs font-bold text-slate-600">Operator Name
-          <input id="entry-operator" type="text" required class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm" />
-        </label>
-        <label class="text-xs font-bold text-slate-600">Weather
-          <input id="entry-weather" type="text" placeholder="Clear / Rainy / Cloudy" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm" />
-        </label>
-        <label class="text-xs font-bold text-slate-600 md:col-span-2">Major Task Done
-          <textarea id="entry-task" required rows="2" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"></textarea>
-        </label>
-        <label class="text-xs font-bold text-slate-600 md:col-span-2">Issue / Breakdown / Remark
-          <textarea id="entry-remark" rows="2" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"></textarea>
-        </label>
-        <label class="text-xs font-bold text-slate-600 md:col-span-2">Special Note for Management
-          <textarea id="entry-note" rows="2" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm"></textarea>
-        </label>
-        <div class="md:col-span-2 flex items-center gap-3">
-          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black px-4 py-2.5 rounded-lg">Save Daily Entry</button>
-          <button id="export-daily-btn" type="button" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Export JSON</button>
-        </div>
-      </form>
-    </section>
+  <!-- ADMIN NOTICE BANNER (visible to operators only) -->
+  <div id="admin-notice-bar" class="hidden bg-indigo-600 text-white px-6 py-3 text-sm font-bold flex items-center gap-3">
+    <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+    <span id="admin-notice-text">📢 Admin Notice: No active notices.</span>
+  </div>
 
-    <section class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm overflow-x-auto">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-black uppercase tracking-wide text-slate-700">Saved Operator Entries</h2>
-        <span id="entry-count" class="text-xs font-bold text-slate-500">0 records</span>
+  <!-- TABS -->
+  <div class="flex px-6 border-b border-slate-200 bg-white overflow-x-auto shrink-0 shadow-sm">
+    <button class="tab-btn active" data-tab="tab-shift">📋 Shift Log</button>
+    <button class="tab-btn" data-tab="tab-maintenance">🔧 Maintenance Log</button>
+    <button class="tab-btn" data-tab="tab-weather">⛅ Weather Log</button>
+    <button class="tab-btn" data-tab="tab-complaints">📣 Complaints</button>
+    <button class="tab-btn admin-notice-tab hidden" data-tab="tab-admin-notice">📢 Admin Notice</button>
+  </div>
+
+  <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
+
+    <!-- ═══════════════════ TAB: SHIFT LOG ═══════════════════ -->
+    <div id="tab-shift" class="tab-content space-y-5">
+
+      <!-- Today's existing entries from all operators -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-sm font-black uppercase tracking-widest text-slate-700">Today's Shift Entries</h2>
+            <p class="text-xs text-slate-400 mt-0.5">All operators' entries visible here</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="date" id="view-date" class="border border-slate-300 p-1.5 rounded-lg text-sm font-bold text-indigo-700 outline-none">
+            <button id="btn-load-entries" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">Load</button>
+          </div>
+        </div>
+        <div id="entries-list" class="space-y-3 text-sm text-slate-500">Select a date to view entries.</div>
       </div>
-      <table class="min-w-full text-xs">
-        <thead>
-          <tr class="bg-slate-50 text-slate-600">
-            <th class="px-2 py-2 text-left">Date</th>
-            <th class="px-2 py-2 text-left">Shift</th>
-            <th class="px-2 py-2 text-left">Operator</th>
-            <th class="px-2 py-2 text-left">Task</th>
-            <th class="px-2 py-2 text-left">Remark</th>
-          </tr>
-        </thead>
-        <tbody id="daily-table-body"></tbody>
-      </table>
-    </section>
+
+      <!-- New Entry Form -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-sm font-black uppercase tracking-widest text-slate-700 mb-4 flex items-center gap-2">
+          <span class="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs font-black">+</span>
+          Add My Shift Entry
+        </h2>
+        <form id="daily-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Date</label>
+            <input id="entry-date" type="date" required class="form-input">
+          </div>
+          <div>
+            <label class="form-label">Shift</label>
+            <select id="entry-shift" required class="form-input">
+              <option value="">-- Select Shift --</option>
+              <option value="A">A Shift (06:00–14:00)</option>
+              <option value="B">B Shift (14:00–22:00)</option>
+              <option value="C">C Shift (22:00–06:00)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Operator Name <span class="text-slate-400 font-normal lowercase">(auto-filled)</span></label>
+            <input id="entry-operator" type="text" class="form-input bg-slate-50" readonly>
+          </div>
+          <div>
+            <label class="form-label">Weather (select)</label>
+            <div class="flex flex-wrap gap-2 mt-1" id="weather-selector">
+              <button type="button" class="weather-btn" data-weather="☀️ Clear">☀️ Clear</button>
+              <button type="button" class="weather-btn" data-weather="🌤 Partly Cloudy">🌤 Partly Cloudy</button>
+              <button type="button" class="weather-btn" data-weather="☁️ Cloudy">☁️ Cloudy</button>
+              <button type="button" class="weather-btn" data-weather="🌦 Light Rain">🌦 Light Rain</button>
+              <button type="button" class="weather-btn" data-weather="🌧 Medium Rain">🌧 Medium Rain</button>
+              <button type="button" class="weather-btn" data-weather="⛈ Heavy Rain">⛈ Heavy Rain</button>
+            </div>
+            <input type="hidden" id="entry-weather" value="">
+          </div>
+          <div>
+            <label class="form-label">Weather Time Range</label>
+            <div class="flex items-center gap-2">
+              <input type="time" id="weather-from" class="form-input" placeholder="From">
+              <span class="text-slate-500 font-bold text-sm">→</span>
+              <input type="time" id="weather-to" class="form-input" placeholder="To">
+            </div>
+          </div>
+          <div class="md:col-span-2">
+            <label class="form-label">Major Task Done <span class="text-rose-500">*</span></label>
+            <textarea id="entry-task" required rows="2" class="form-input" placeholder="Describe the main tasks performed during this shift..."></textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label class="form-label">Issue / Breakdown / Remark</label>
+            <textarea id="entry-remark" rows="2" class="form-input" placeholder="Any issues, breakdowns, or notable observations..."></textarea>
+          </div>
+          <div class="md:col-span-2">
+            <label class="form-label">Special Note for Management</label>
+            <textarea id="entry-note" rows="2" class="form-input" placeholder="Any notes or requests for management attention..."></textarea>
+          </div>
+          <div class="md:col-span-2 flex items-center gap-3 pt-2">
+            <button type="submit" id="btn-save-shift" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black px-6 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+              <span id="shift-save-spinner" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              💾 Save Shift Entry
+            </button>
+            <span id="shift-save-msg" class="text-xs font-bold text-emerald-600 hidden">✅ Saved!</span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ TAB: MAINTENANCE LOG ═══════════════════ -->
+    <div id="tab-maintenance" class="tab-content hidden space-y-5">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-black uppercase tracking-widest text-slate-700">Maintenance Work Log</h2>
+          <button id="btn-add-maint" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">+ Add Entry</button>
+        </div>
+        
+        <!-- Add/Edit Form (hidden by default) -->
+        <div id="maint-form-wrapper" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5">
+          <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider mb-3" id="maint-form-title">New Maintenance Entry</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label class="form-label">Date <span class="text-rose-500">*</span></label>
+              <input type="date" id="maint-date" class="form-input">
+            </div>
+            <div>
+              <label class="form-label">Start Time <span class="text-rose-500">*</span></label>
+              <input type="time" id="maint-start-time" class="form-input">
+            </div>
+            <div>
+              <label class="form-label">End Time <span class="text-rose-500">*</span></label>
+              <input type="time" id="maint-end-time" class="form-input">
+            </div>
+            <div class="md:col-span-2">
+              <label class="form-label">Work Done <span class="text-rose-500">*</span></label>
+              <textarea id="maint-work-done" rows="2" class="form-input" placeholder="Describe the maintenance work performed..."></textarea>
+            </div>
+            <div>
+              <label class="form-label">Staff Involved <span class="text-rose-500">*</span></label>
+              <input type="text" id="maint-staff" class="form-input" placeholder="Names separated by commas">
+            </div>
+            <div class="md:col-span-2">
+              <label class="form-label">Remarks / Outcome</label>
+              <textarea id="maint-remarks" rows="2" class="form-input" placeholder="Result, follow-up needed, spare parts used..."></textarea>
+            </div>
+          </div>
+          <input type="hidden" id="maint-edit-id">
+          <div class="flex gap-3 mt-4">
+            <button id="btn-save-maint" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition">Save</button>
+            <button id="btn-cancel-maint" type="button" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold px-5 py-2 rounded-lg transition">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Filter Row -->
+        <div class="flex items-center gap-3 mb-4">
+          <label class="form-label mb-0 shrink-0">Filter by date:</label>
+          <input type="date" id="maint-filter-date" class="form-input w-auto">
+          <button id="btn-clear-maint-filter" class="text-xs font-bold text-slate-500 hover:text-slate-700 transition px-2 py-1 border border-slate-300 rounded">Clear</button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="maint-table w-full">
+            <thead>
+              <tr>
+                <th class="min-w-[90px]">Date</th>
+                <th class="min-w-[100px]">Time Range</th>
+                <th class="min-w-[220px]">Work Done</th>
+                <th class="min-w-[150px]">Staff Involved</th>
+                <th class="min-w-[180px]">Remarks</th>
+                <th class="min-w-[70px] text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="maint-table-body">
+              <tr><td colspan="6" class="text-center py-6 text-slate-400 italic">No maintenance records found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ TAB: WEATHER LOG ═══════════════════ -->
+    <div id="tab-weather" class="tab-content hidden space-y-5">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-sm font-black uppercase tracking-widest text-slate-700 mb-4">Weather History</h2>
+        <div class="flex items-center gap-3 mb-4">
+          <label class="form-label mb-0 shrink-0">Month:</label>
+          <input type="month" id="weather-filter-month" class="form-input w-auto">
+          <button id="btn-load-weather" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">Load</button>
+        </div>
+        <div id="weather-log-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-slate-500">
+          Select a month to view weather logs.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ TAB: COMPLAINTS ═══════════════════ -->
+    <div id="tab-complaints" class="tab-content hidden space-y-5">
+      <!-- Submit Complaint -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-sm font-black uppercase tracking-widest text-slate-700 mb-4">Submit a Complaint / Request</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Category <span class="text-rose-500">*</span></label>
+            <select id="complaint-category" class="form-input">
+              <option value="">-- Select Category --</option>
+              <option value="Safety">⚠️ Safety Concern</option>
+              <option value="Equipment">🔧 Equipment Issue</option>
+              <option value="Management">👔 Management Concern</option>
+              <option value="Workplace">🏢 Workplace Environment</option>
+              <option value="HR">👥 HR / Personnel</option>
+              <option value="Other">📝 Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Priority</label>
+            <select id="complaint-priority" class="form-input">
+              <option value="Normal">Normal</option>
+              <option value="Urgent">🔴 Urgent</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          <div class="md:col-span-2">
+            <label class="form-label">Description <span class="text-rose-500">*</span></label>
+            <textarea id="complaint-desc" rows="3" class="form-input" placeholder="Describe the complaint or request in detail..."></textarea>
+          </div>
+          <div class="md:col-span-2 flex items-center gap-3">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="complaint-anonymous" class="w-4 h-4 accent-indigo-600">
+              <span class="text-xs font-bold text-slate-600">Submit Anonymously</span>
+            </label>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-4">
+          <button id="btn-submit-complaint" type="button" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+            📣 Submit Complaint
+          </button>
+        </div>
+      </div>
+
+      <!-- My Complaints -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-sm font-black uppercase tracking-widest text-slate-700 mb-4">My Submitted Complaints</h2>
+        <div id="my-complaints-list" class="space-y-3 text-sm text-slate-500">Loading...</div>
+      </div>
+
+      <!-- Admin: All Complaints (admin only) -->
+      <div id="all-complaints-panel" class="hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-black uppercase tracking-widest text-slate-700">All Complaints (Admin View)</h2>
+          <span id="unread-badge" class="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full hidden">0 new</span>
+        </div>
+        <div id="all-complaints-list" class="space-y-3 text-sm text-slate-500">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ TAB: ADMIN NOTICE ═══════════════════ -->
+    <div id="tab-admin-notice" class="tab-content hidden space-y-5">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-sm font-black uppercase tracking-widest text-slate-700 mb-4">📢 Post Admin Notice</h2>
+        <p class="text-xs text-slate-500 mb-4">Notices posted here appear as a banner on the operator dashboard.</p>
+        <div class="space-y-4">
+          <div>
+            <label class="form-label">Notice Message <span class="text-rose-500">*</span></label>
+            <textarea id="admin-notice-content" rows="3" class="form-input" placeholder="Type the notice for operators..."></textarea>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="flex-1">
+              <label class="form-label">Active Until</label>
+              <input type="datetime-local" id="admin-notice-expiry" class="form-input">
+            </div>
+            <div class="flex items-center gap-2 mt-5">
+              <input type="checkbox" id="admin-notice-active" checked class="w-4 h-4 accent-indigo-600">
+              <label class="text-sm font-bold text-slate-700 cursor-pointer">Active</label>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-4">
+          <button id="btn-post-notice" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow transition">📢 Post Notice</button>
+          <button id="btn-clear-notice" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold px-5 py-2 rounded-xl transition">Clear Active Notice</button>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-sm font-black uppercase tracking-widest text-slate-700 mb-4">Notice History</h2>
+        <div id="notice-history" class="space-y-3 text-sm text-slate-500">Loading...</div>
+      </div>
+    </div>
+
   </main>
 
-  <div id="notification-modal" class="fixed top-4 right-4 z-50 opacity-0 -translate-y-4 transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-xl border-l-4 px-4 py-3" style="border-left-color:#10b981;">
+  <div id="global-footer-container" class="shrink-0 no-print"></div>
+
+  <!-- Toast notification -->
+  <div id="notification-modal" class="fixed top-4 right-4 z-[200] opacity-0 -translate-y-4 transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-xl border-l-4 px-4 py-3" style="border-left-color:#10b981;">
     <p id="notification-message" class="text-sm font-bold text-slate-700"></p>
   </div>
 
-  <script type="module" src="./assets/js/operator-daily.js"></script>
+  <script type="module">
+import { supabase, initializeApplication, showNotification } from './assets/js/core-app.js';
 
-  <div id="global-footer-container" class="shrink-0 no-print"></div>
+let currentUser = null, userRole = 'operator', currentUserName = '';
+
+// ─── Toast ───
+function toast(msg, isErr = false) {
+  const el = document.getElementById('notification-modal');
+  const txt = document.getElementById('notification-message');
+  el.style.borderLeftColor = isErr ? '#ef4444' : '#10b981';
+  txt.textContent = msg;
+  el.classList.remove('opacity-0','-translate-y-4');
+  el.classList.add('opacity-100','translate-y-0');
+  setTimeout(() => { el.classList.remove('opacity-100','translate-y-0'); el.classList.add('opacity-0','-translate-y-4'); }, 3500);
+}
+
+// ─── TABS ───
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab)?.classList.remove('hidden');
+  });
+});
+
+// ─── WEATHER SELECTOR ───
+let selectedWeather = '';
+document.querySelectorAll('.weather-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedWeather = btn.dataset.weather;
+    document.getElementById('entry-weather').value = selectedWeather;
+  });
+});
+
+// ─── DATE INIT ───
+function getNepaliToday() {
+  const n = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+
+// ─── LOAD ADMIN NOTICE ───
+async function loadAdminNotice() {
+  try {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('*')
+      .eq('setting_key', 'operator_notice')
+      .maybeSingle();
+    
+    if (data && data.setting_value) {
+      const notice = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
+      if (notice.active && notice.message) {
+        const bar = document.getElementById('admin-notice-bar');
+        const txt = document.getElementById('admin-notice-text');
+        // Check expiry
+        if (!notice.expires_at || new Date(notice.expires_at) > new Date()) {
+          bar.classList.remove('hidden');
+          txt.textContent = '📢 ' + notice.message;
+        }
+      }
+      // Populate admin form
+      if (userRole === 'admin') {
+        document.getElementById('admin-notice-content').value = notice.message || '';
+        document.getElementById('admin-notice-active').checked = notice.active !== false;
+        if (notice.expires_at) document.getElementById('admin-notice-expiry').value = notice.expires_at.slice(0,16);
+      }
+    }
+  } catch (e) { console.warn('Notice load error:', e); }
+}
+
+// ─── SHIFT LOG ───
+async function loadShiftEntries(date) {
+  const list = document.getElementById('entries-list');
+  list.innerHTML = '<div class="text-slate-400 animate-pulse font-bold">Loading…</div>';
+  try {
+    const { data, error } = await supabase
+      .from('operator_daily_logs')
+      .select('*')
+      .eq('entry_date', date)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      list.innerHTML = '<p class="text-slate-400 italic text-sm py-4 text-center">No entries for this date. Be the first to log your shift!</p>';
+      return;
+    }
+    list.innerHTML = data.map(e => `
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 hover:border-indigo-200 transition">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">${e.shift ? e.shift + ' Shift' : ''}</span>
+            <span class="text-xs font-bold text-slate-700">${e.operator_name || 'Unknown'}</span>
+            ${e.weather ? `<span class="text-xs text-slate-500 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">${e.weather}${e.weather_from ? ' ' + e.weather_from + '–' + e.weather_to : ''}</span>` : ''}
+          </div>
+          <span class="text-[10px] text-slate-400 shrink-0">${new Date(e.created_at).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}</span>
+        </div>
+        ${e.major_task ? `<p class="text-sm text-slate-700 mb-1"><span class="font-bold text-slate-500">Task:</span> ${e.major_task}</p>` : ''}
+        ${e.remark ? `<p class="text-sm text-amber-700 mb-1"><span class="font-bold">Remark:</span> ${e.remark}</p>` : ''}
+        ${e.note_for_management ? `<p class="text-sm text-indigo-700"><span class="font-bold">Note:</span> ${e.note_for_management}</p>` : ''}
+      </div>
+    `).join('');
+  } catch(e) {
+    list.innerHTML = `<p class="text-rose-500 text-sm font-bold">Error: ${e.message}</p>`;
+  }
+}
+
+document.getElementById('btn-load-entries').addEventListener('click', () => {
+  const d = document.getElementById('view-date').value;
+  if (d) loadShiftEntries(d);
+});
+
+document.getElementById('daily-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-shift');
+  const spinner = document.getElementById('shift-save-spinner');
+  btn.disabled = true;
+  spinner.classList.remove('hidden');
+  
+  const entry_date = document.getElementById('entry-date').value;
+  const shift = document.getElementById('entry-shift').value;
+  const major_task = document.getElementById('entry-task').value.trim();
+  
+  if (!entry_date || !shift || !major_task) {
+    toast('⚠️ Date, Shift, and Major Task are required.', true);
+    btn.disabled = false; spinner.classList.add('hidden');
+    return;
+  }
+  
+  const payload = {
+    entry_date,
+    shift,
+    operator_name: currentUserName,
+    operator_email: currentUser?.email || null,
+    operator_uid: currentUser?.id || null,
+    weather: document.getElementById('entry-weather').value || null,
+    weather_from: document.getElementById('weather-from').value || null,
+    weather_to: document.getElementById('weather-to').value || null,
+    major_task,
+    remark: document.getElementById('entry-remark').value.trim() || null,
+    note_for_management: document.getElementById('entry-note').value.trim() || null,
+    created_at: new Date().toISOString()
+  };
+  
+  try {
+    const { error } = await supabase.from('operator_daily_logs').insert(payload);
+    if (error) throw error;
+    toast('✅ Shift entry saved!');
+    document.getElementById('shift-save-msg').classList.remove('hidden');
+    setTimeout(() => document.getElementById('shift-save-msg').classList.add('hidden'), 3000);
+    document.getElementById('daily-form').reset();
+    document.getElementById('entry-date').value = entry_date;
+    document.getElementById('entry-operator').value = currentUserName;
+    selectedWeather = '';
+    document.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('selected'));
+    // Reload entries list
+    document.getElementById('view-date').value = entry_date;
+    loadShiftEntries(entry_date);
+  } catch(err) {
+    toast('❌ Error: ' + err.message, true);
+  } finally {
+    btn.disabled = false; spinner.classList.add('hidden');
+  }
+});
+
+// ─── MAINTENANCE LOG ───
+let allMaintRecords = [];
+
+document.getElementById('btn-add-maint').addEventListener('click', () => {
+  document.getElementById('maint-form-wrapper').classList.remove('hidden');
+  document.getElementById('maint-form-title').textContent = 'New Maintenance Entry';
+  document.getElementById('maint-edit-id').value = '';
+  document.getElementById('maint-date').value = getNepaliToday();
+  ['maint-start-time','maint-end-time','maint-work-done','maint-staff','maint-remarks'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+});
+
+document.getElementById('btn-cancel-maint').addEventListener('click', () => {
+  document.getElementById('maint-form-wrapper').classList.add('hidden');
+});
+
+document.getElementById('btn-save-maint').addEventListener('click', async () => {
+  const work_done = document.getElementById('maint-work-done').value.trim();
+  const staff_involved = document.getElementById('maint-staff').value.trim();
+  const maint_date = document.getElementById('maint-date').value;
+  
+  if (!maint_date || !work_done || !staff_involved) {
+    toast('⚠️ Date, Work Done, and Staff are required.', true);
+    return;
+  }
+  
+  const payload = {
+    maint_date,
+    start_time: document.getElementById('maint-start-time').value || null,
+    end_time: document.getElementById('maint-end-time').value || null,
+    work_done,
+    staff_involved,
+    remarks: document.getElementById('maint-remarks').value.trim() || null,
+    recorded_by: currentUserName,
+    recorded_by_email: currentUser?.email || null,
+    created_at: new Date().toISOString()
+  };
+  
+  const editId = document.getElementById('maint-edit-id').value;
+  if (editId) payload.id = editId;
+  
+  try {
+    const { error } = await supabase.from('maintenance_logs').upsert(payload);
+    if (error) throw error;
+    toast('✅ Maintenance record saved!');
+    document.getElementById('maint-form-wrapper').classList.add('hidden');
+    loadMaintRecords();
+  } catch(err) {
+    toast('❌ Error: ' + err.message, true);
+  }
+});
+
+async function loadMaintRecords(filterDate = null) {
+  try {
+    let query = supabase.from('maintenance_logs').select('*').order('maint_date', { ascending: false }).order('start_time', { ascending: true });
+    if (filterDate) query = query.eq('maint_date', filterDate);
+    
+    const { data, error } = await query.limit(100);
+    if (error) throw error;
+    allMaintRecords = data || [];
+    renderMaintTable(allMaintRecords);
+  } catch(e) {
+    document.getElementById('maint-table-body').innerHTML = `<tr><td colspan="6" class="text-center py-6 text-rose-500 font-bold">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function renderMaintTable(records) {
+  const tbody = document.getElementById('maint-table-body');
+  if (!records.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400 italic">No maintenance records found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = records.map(r => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="font-bold text-slate-700">${r.maint_date || '—'}</td>
+      <td class="text-slate-600">${r.start_time || ''}${r.end_time ? '–'+r.end_time : ''}</td>
+      <td class="text-slate-700">${r.work_done || '—'}</td>
+      <td class="text-indigo-700 font-medium">${r.staff_involved || '—'}</td>
+      <td class="text-slate-500 text-xs">${r.remarks || '—'}</td>
+      <td class="text-center">
+        ${userRole === 'admin' ? `<button onclick="editMaint('${r.id}')" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 mr-1">Edit</button>
+        <button onclick="deleteMaint('${r.id}')" class="text-[10px] font-bold text-rose-500 hover:text-rose-700">Del</button>` : '<span class="text-slate-400 text-xs">—</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+window.editMaint = (id) => {
+  const r = allMaintRecords.find(x => x.id == id); if (!r) return;
+  document.getElementById('maint-form-wrapper').classList.remove('hidden');
+  document.getElementById('maint-form-title').textContent = 'Edit Maintenance Entry';
+  document.getElementById('maint-edit-id').value = r.id;
+  document.getElementById('maint-date').value = r.maint_date || '';
+  document.getElementById('maint-start-time').value = r.start_time || '';
+  document.getElementById('maint-end-time').value = r.end_time || '';
+  document.getElementById('maint-work-done').value = r.work_done || '';
+  document.getElementById('maint-staff').value = r.staff_involved || '';
+  document.getElementById('maint-remarks').value = r.remarks || '';
+  document.getElementById('maint-form-wrapper').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.deleteMaint = async (id) => {
+  if (!confirm('Delete this maintenance record?')) return;
+  try {
+    const { error } = await supabase.from('maintenance_logs').delete().eq('id', id);
+    if (error) throw error;
+    toast('✅ Deleted');
+    loadMaintRecords();
+  } catch(e) { toast('❌ ' + e.message, true); }
+};
+
+document.getElementById('maint-filter-date').addEventListener('change', (e) => loadMaintRecords(e.target.value || null));
+document.getElementById('btn-clear-maint-filter').addEventListener('click', () => {
+  document.getElementById('maint-filter-date').value = '';
+  loadMaintRecords();
+});
+
+// ─── WEATHER LOG ───
+async function loadWeatherLog(month) {
+  const container = document.getElementById('weather-log-list');
+  container.innerHTML = '<div class="col-span-3 text-slate-400 animate-pulse font-bold">Loading…</div>';
+  try {
+    const startDate = month + '-01';
+    const endDate = month + '-31';
+    const { data, error } = await supabase
+      .from('operator_daily_logs')
+      .select('entry_date, shift, operator_name, weather, weather_from, weather_to')
+      .gte('entry_date', startDate)
+      .lte('entry_date', endDate)
+      .not('weather', 'is', null)
+      .order('entry_date', { ascending: true })
+      .order('shift', { ascending: true });
+    
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      container.innerHTML = '<p class="col-span-3 text-slate-400 italic text-center py-4">No weather data for this month.</p>';
+      return;
+    }
+    container.innerHTML = data.map(r => `
+      <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 hover:border-sky-200 transition">
+        <div class="text-2xl shrink-0">${r.weather.split(' ')[0] || '⛅'}</div>
+        <div>
+          <div class="text-xs font-black text-slate-700">${r.entry_date} · ${r.shift || '?'} Shift</div>
+          <div class="text-sm font-bold text-sky-700">${r.weather}</div>
+          ${r.weather_from ? `<div class="text-[10px] text-slate-400">${r.weather_from}–${r.weather_to || '?'}</div>` : ''}
+          <div class="text-[10px] text-slate-400 mt-0.5">${r.operator_name || ''}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = `<p class="col-span-3 text-rose-500 font-bold">Error: ${e.message}</p>`;
+  }
+}
+
+document.getElementById('btn-load-weather').addEventListener('click', () => {
+  const m = document.getElementById('weather-filter-month').value;
+  if (m) loadWeatherLog(m);
+});
+
+// ─── COMPLAINTS ───
+async function loadMyComplaints() {
+  const list = document.getElementById('my-complaints-list');
+  if (!currentUser) { list.innerHTML = '<p class="text-slate-400 italic">Please log in to view your complaints.</p>'; return; }
+  try {
+    let query = supabase.from('operator_complaints').select('*').order('created_at', { ascending: false }).limit(20);
+    if (userRole !== 'admin') query = query.eq('submitted_by_uid', currentUser.id);
+    const { data, error } = await query;
+    if (error) throw error;
+    renderComplaintList(list, data || []);
+  } catch(e) { list.innerHTML = `<p class="text-rose-500 font-bold">Error: ${e.message}</p>`; }
+}
+
+async function loadAllComplaints() {
+  const list = document.getElementById('all-complaints-list');
+  try {
+    const { data, error } = await supabase
+      .from('operator_complaints').select('*').order('created_at', { ascending: false }).limit(50);
+    if (error) throw error;
+    renderComplaintList(list, data || [], true);
+    // Badge
+    const unread = (data || []).filter(c => c.status === 'New').length;
+    const badge = document.getElementById('unread-badge');
+    if (unread > 0) { badge.textContent = unread + ' new'; badge.classList.remove('hidden'); }
+  } catch(e) { list.innerHTML = `<p class="text-rose-500 font-bold">Error: ${e.message}</p>`; }
+}
+
+function renderComplaintList(container, items, isAdmin = false) {
+  if (!items.length) { container.innerHTML = '<p class="text-slate-400 italic text-sm py-3">No complaints found.</p>'; return; }
+  const statusColors = { New: 'bg-rose-50 text-rose-700 border-rose-200', 'In Progress': 'bg-amber-50 text-amber-700 border-amber-200', Resolved: 'bg-emerald-50 text-emerald-700 border-emerald-200', Closed: 'bg-slate-100 text-slate-500 border-slate-200' };
+  container.innerHTML = items.map(c => {
+    const sc = statusColors[c.status] || statusColors.New;
+    return `<div class="complaint-card relative">
+      <div class="flex items-start justify-between gap-2 mb-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-black text-amber-800">${c.category || '—'}</span>
+          <span class="text-[10px] font-bold border px-2 py-0.5 rounded-full ${sc}">${c.status || 'New'}</span>
+          ${c.priority === 'Urgent' ? '<span class="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">🔴 URGENT</span>' : ''}
+          ${c.is_anonymous ? '<span class="text-[10px] text-slate-500 italic">Anonymous</span>' : `<span class="text-[10px] text-slate-500">${c.submitted_by_name || ''}</span>`}
+        </div>
+        <span class="text-[10px] text-slate-400 shrink-0">${new Date(c.created_at).toLocaleDateString()}</span>
+      </div>
+      <p class="text-sm text-slate-700 mt-1">${c.description}</p>
+      ${isAdmin ? `<div class="flex items-center gap-2 mt-2">
+        <select onchange="updateComplaintStatus('${c.id}', this.value)" class="text-xs border border-slate-300 rounded p-1 font-bold bg-white outline-none">
+          ${['New','In Progress','Resolved','Closed'].map(s => `<option value="${s}" ${c.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+        ${c.admin_response ? `<span class="text-xs text-indigo-600 italic">"${c.admin_response}"</span>` : `<input type="text" placeholder="Add response..." onkeydown="if(event.key==='Enter'){addComplaintResponse('${c.id}',this.value);}" class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none">`}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+window.updateComplaintStatus = async (id, status) => {
+  await supabase.from('operator_complaints').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+  toast('✅ Status updated');
+};
+
+window.addComplaintResponse = async (id, response) => {
+  if (!response) return;
+  await supabase.from('operator_complaints').update({ admin_response: response, status: 'In Progress', updated_at: new Date().toISOString() }).eq('id', id);
+  toast('✅ Response added');
+  loadAllComplaints();
+};
+
+document.getElementById('btn-submit-complaint').addEventListener('click', async () => {
+  const category = document.getElementById('complaint-category').value;
+  const description = document.getElementById('complaint-desc').value.trim();
+  const isAnon = document.getElementById('complaint-anonymous').checked;
+  
+  if (!category || !description) { toast('⚠️ Category and Description are required.', true); return; }
+  
+  const payload = {
+    category,
+    description,
+    priority: document.getElementById('complaint-priority').value,
+    is_anonymous: isAnon,
+    submitted_by_uid: isAnon ? null : (currentUser?.id || null),
+    submitted_by_name: isAnon ? null : currentUserName,
+    submitted_by_email: isAnon ? null : (currentUser?.email || null),
+    status: 'New',
+    created_at: new Date().toISOString()
+  };
+  
+  try {
+    const { error } = await supabase.from('operator_complaints').insert(payload);
+    if (error) throw error;
+    toast('✅ Complaint submitted!');
+    document.getElementById('complaint-category').value = '';
+    document.getElementById('complaint-desc').value = '';
+    document.getElementById('complaint-priority').value = 'Normal';
+    document.getElementById('complaint-anonymous').checked = false;
+    loadMyComplaints();
+  } catch(e) { toast('❌ ' + e.message, true); }
+});
+
+// ─── ADMIN NOTICE POST ───
+document.getElementById('btn-post-notice')?.addEventListener('click', async () => {
+  const message = document.getElementById('admin-notice-content').value.trim();
+  if (!message) { toast('⚠️ Notice message cannot be empty.', true); return; }
+  
+  const payload = {
+    message,
+    active: document.getElementById('admin-notice-active').checked,
+    expires_at: document.getElementById('admin-notice-expiry').value || null,
+    posted_by: currentUserName,
+    posted_at: new Date().toISOString()
+  };
+  
+  try {
+    await supabase.from('app_settings').upsert({
+      setting_key: 'operator_notice',
+      setting_value: JSON.stringify(payload),
+      updated_at: new Date().toISOString()
+    });
+    toast('✅ Notice posted!');
+    loadAdminNotice();
+    loadNoticeHistory();
+  } catch(e) { toast('❌ ' + e.message, true); }
+});
+
+document.getElementById('btn-clear-notice')?.addEventListener('click', async () => {
+  if (!confirm('Clear the active notice?')) return;
+  await supabase.from('app_settings').upsert({
+    setting_key: 'operator_notice',
+    setting_value: JSON.stringify({ active: false, message: '' }),
+    updated_at: new Date().toISOString()
+  });
+  document.getElementById('admin-notice-bar').classList.add('hidden');
+  toast('✅ Notice cleared');
+});
+
+async function loadNoticeHistory() {
+  const el = document.getElementById('notice-history');
+  try {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('setting_value, updated_at')
+      .eq('setting_key', 'operator_notice')
+      .maybeSingle();
+    
+    if (data && data.setting_value) {
+      const n = typeof data.setting_value === 'string' ? JSON.parse(data.setting_value) : data.setting_value;
+      el.innerHTML = `<div class="notice-card">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs font-black text-indigo-700 uppercase tracking-wider">Latest Notice</span>
+          <span class="text-[10px] text-indigo-400">${new Date(data.updated_at).toLocaleString()}</span>
+        </div>
+        <p class="text-sm text-slate-800 font-medium">${n.message || 'No message'}</p>
+        <div class="flex gap-2 mt-2">
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${n.active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}">${n.active ? 'Active' : 'Inactive'}</span>
+          ${n.expires_at ? `<span class="text-[10px] text-slate-500">Expires: ${new Date(n.expires_at).toLocaleString()}</span>` : ''}
+        </div>
+      </div>`;
+    } else {
+      el.innerHTML = '<p class="text-slate-400 italic text-sm">No notice history.</p>';
+    }
+  } catch(e) { el.innerHTML = `<p class="text-rose-500 text-sm">Error: ${e.message}</p>`; }
+}
+
+// ─── PAGE START ───
+async function startPage() {
+  const today = getNepaliToday();
+  document.getElementById('entry-date').value = today;
+  document.getElementById('view-date').value = today;
+  
+  // Set current month for weather filter
+  const m = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
+  document.getElementById('weather-filter-month').value = `${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,'0')}`;
+
+  const sessionData = await initializeApplication(true);
+  if (sessionData) {
+    currentUser = sessionData.user;
+    userRole = sessionData.role;
+    
+    try {
+      const { data: roleData } = await supabase.from('user_roles').select('full_name').eq('email', sessionData.user.email).maybeSingle();
+      currentUserName = (roleData && roleData.full_name) ? roleData.full_name : sessionData.user.email.split('@')[0];
+    } catch(e) { currentUserName = sessionData.user.email.split('@')[0]; }
+    
+    document.getElementById('od-user-badge').textContent = currentUserName + ' · ' + userRole.toUpperCase();
+    document.getElementById('entry-operator').value = currentUserName;
+
+    // Show admin tabs
+    if (userRole === 'admin') {
+      document.getElementById('all-complaints-panel').classList.remove('hidden');
+      document.querySelector('.admin-notice-tab')?.classList.remove('hidden');
+      loadAllComplaints();
+      loadNoticeHistory();
+    }
+  }
+  
+  loadAdminNotice();
+  loadShiftEntries(today);
+  loadMaintRecords();
+  loadMyComplaints();
+}
+
+startPage();
+  </script>
 </body>
 </html>
-
-
-

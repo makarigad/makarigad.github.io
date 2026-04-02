@@ -254,10 +254,23 @@ window.validateForm = function() {
         }
     });
 
+    // Use admin-configurable thresholds (with safe defaults)
+    const TH = window.validationThresholds || {};
+    const maxUnitMw  = TH.max_unit_mw  ?? 5.3;
+    const maxOutMw   = TH.max_out_mw   ?? 10.6;
+    const hzMin      = TH.hz_min       ?? 49.5;
+    const hzMax      = TH.hz_max       ?? 50.5;
+    const genVMin    = TH.gen_v_min    ?? 6.3;
+    const genVMax    = TH.gen_v_max    ?? 6.9;
+    const lineVMin   = TH.line_v_min   ?? 31.9;
+    const lineVMax   = TH.line_v_max   ?? 34.1;
+    const genAMin    = TH.gen_a_min    ?? 50;
+    const genAMax    = TH.gen_a_max    ?? 470;
+
     const u1Mw = val('e_u1_mw'), u2Mw = val('e_u2_mw'), outMw = val('e_out_mw');
-    if (u1Mw !== null && (u1Mw < 0 || u1Mw > 5.3)) { errors.push("U1 Load (MW) must be between 0 and 5.3."); markErr('e_u1_mw'); markErr('u1-load'); }
-    if (u2Mw !== null && (u2Mw < 0 || u2Mw > 5.3)) { errors.push("U2 Load (MW) must be between 0 and 5.3."); markErr('e_u2_mw'); markErr('u2-load'); }
-    if (outMw !== null && (outMw < 0 || outMw > 10.6)) { errors.push("Outgoing Load (MW) must be between 0 and 10.6."); markErr('e_out_mw'); markErr('outgoing-kwh'); }
+    if (u1Mw !== null && (u1Mw < 0 || u1Mw > maxUnitMw)) { errors.push(`U1 Load (MW) must be between 0 and ${maxUnitMw}.`); markErr('e_u1_mw'); markErr('u1-load'); }
+    if (u2Mw !== null && (u2Mw < 0 || u2Mw > maxUnitMw)) { errors.push(`U2 Load (MW) must be between 0 and ${maxUnitMw}.`); markErr('e_u2_mw'); markErr('u2-load'); }
+    if (outMw !== null && (outMw < 0 || outMw > maxOutMw)) { errors.push(`Outgoing Load (MW) must be between 0 and ${maxOutMw}.`); markErr('e_out_mw'); markErr('outgoing-kwh'); }
 
     const checkFreqPf = (mwId, hzId, pfId, name) => {
         const m = val(mwId), h = val(hzId), p = val(pfId);
@@ -265,7 +278,7 @@ window.validateForm = function() {
             if (h !== 0 && h !== null) { errors.push(`${name} Freq must be 0 when MW is 0.`); markErr(hzId); }
             if (p !== 0 && p !== null) { errors.push(`${name} PF must be 0 when MW is 0.`); markErr(pfId); }
         } else if (m > 0) {
-            if (h !== null && (h < 49.5 || h > 50.5)) { errors.push(`${name} Frequency must be between 49.5 and 50.5.`); markErr(hzId); }
+            if (h !== null && (h < hzMin || h > hzMax)) { errors.push(`${name} Frequency must be between ${hzMin} and ${hzMax}.`); markErr(hzId); }
             if (p !== null && (p < -1 || p > 1)) { errors.push(`${name} Power Factor must be between -1 and 1.`); markErr(pfId); }
         }
     };
@@ -288,13 +301,13 @@ window.validateForm = function() {
             if (u1z && u2z) {
                 if (!allZero) { errors.push(`Outgoing Voltages must be 0 since both U1 & U2 are 0.`); markErr(ryId); markErr(ybId); markErr(brId); }
             } else if (!allZero) {
-                if (ry<31.9||ry>34.1 || yb<31.9||yb>34.1 || br<31.9||br>34.1) { errors.push(`Outgoing Voltages must be between 31.9 and 34.1`); markErr(ryId); markErr(ybId); markErr(brId); }
+                if (ry<lineVMin||ry>lineVMax || yb<lineVMin||yb>lineVMax || br<lineVMin||br>lineVMax) { errors.push(`Outgoing Voltages must be between ${lineVMin} and ${lineVMax}`); markErr(ryId); markErr(ybId); markErr(brId); }
                 const avg = (ry+yb+br)/3;
                 if (Math.abs(ry-avg) > avg*0.006 || Math.abs(ry-avg) > avg*0.006 || Math.abs(br-avg) > avg*0.006) { errors.push(`Outgoing Voltages vary by > 0.6% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
             }
         } else {
             if (!allZero) {
-                if (ry<6.3||ry>6.9 || yb<6.3||yb>6.9 || br<6.3||br>6.9) { errors.push(`${name} Voltages must be between 6.3 and 6.9`); markErr(ryId); markErr(ybId); markErr(brId); }
+                if (ry<genVMin||ry>genVMax || yb<genVMin||yb>genVMax || br<genVMin||br>genVMax) { errors.push(`${name} Voltages must be between ${genVMin} and ${genVMax}`); markErr(ryId); markErr(ybId); markErr(brId); }
                 const avg = (ry+yb+br)/3;
                 if (Math.abs(ry-avg) > avg*0.005 || Math.abs(yb-avg) > avg*0.005 || Math.abs(br-avg) > avg*0.005) { errors.push(`${name} Voltages vary by > 0.5% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
             }
@@ -322,7 +335,7 @@ window.validateForm = function() {
         } else {
             if ((i1===0 || i2===0 || i3===0) && !allZero) { errors.push(`${name} Currents: If one is 0, all must be 0.`); markErr(i1Id); markErr(i2Id); markErr(i3Id); }
             else if (!allZero) {
-                if (i1<50||i1>470 || i2<50||i2>470 || i3<50||i3>470) { errors.push(`${name} Currents must be between 50 and 470.`); markErr(i1Id); markErr(i2Id); markErr(i3Id); }
+                if (i1<genAMin||i1>genAMax || i2<genAMin||i2>genAMax || i3<genAMin||i3>genAMax) { errors.push(`${name} Currents must be between ${genAMin} and ${genAMax}.`); markErr(i1Id); markErr(i2Id); markErr(i3Id); }
                 const avg = (i1+i2+i3)/3;
                 if (Math.abs(i1-avg) > 60 || Math.abs(i2-avg) > 60 || Math.abs(i3-avg) > 60) { errors.push(`${name} Currents vary by > 60 from average.`); markErr(i1Id); markErr(i2Id); markErr(i3Id); }
             }
@@ -368,19 +381,38 @@ window.validateForm = function() {
     for (let i = window.currentDayLogs.length - 1; i >= 0; i--) {
         if (window.currentDayLogs[i].log_time && window.currentDayLogs[i].log_time.substring(0,5) < curTime) { prevLog = window.currentDayLogs[i]; break; }
     }
+    const pmuMaxDelta  = TH.pmu_max_delta  ?? 0.00535;
+    const outMaxDelta  = TH.out_max_delta  ?? 10.65;
+    const hourCounterMult = TH.hour_counter_max_mult ?? 1.1;
+
     if (prevLog) {
         if (u1Gwh !== null && prevLog.u1_pmu_reading != null) {
             if (u1Gwh < prevLog.u1_pmu_reading) { errors.push(`U1 Energy cannot be less than previous hour (${prevLog.u1_pmu_reading}).`); markErr('e_u1_gwh'); markErr('u1-pmu'); }
-            if (u1Gwh > prevLog.u1_pmu_reading + 0.00535) { errors.push(`U1 Energy increased by more than max allowed (5.35 MWh).`); markErr('e_u1_gwh'); markErr('u1-pmu'); }
+            if (u1Gwh > prevLog.u1_pmu_reading + pmuMaxDelta) { errors.push(`U1 Energy increased by more than max allowed (${(pmuMaxDelta*1000).toFixed(2)} MWh).`); markErr('e_u1_gwh'); markErr('u1-pmu'); }
         }
         if (u2Gwh !== null && prevLog.u2_pmu_reading != null) {
             if (u2Gwh < prevLog.u2_pmu_reading) { errors.push(`U2 Energy cannot be less than previous hour (${prevLog.u2_pmu_reading}).`); markErr('e_u2_gwh'); markErr('u2-pmu'); }
-            if (u2Gwh > prevLog.u2_pmu_reading + 0.00535) { errors.push(`U2 Energy increased by more than max allowed (5.35 MWh).`); markErr('e_u2_gwh'); markErr('u2-pmu'); }
+            if (u2Gwh > prevLog.u2_pmu_reading + pmuMaxDelta) { errors.push(`U2 Energy increased by more than max allowed (${(pmuMaxDelta*1000).toFixed(2)} MWh).`); markErr('e_u2_gwh'); markErr('u2-pmu'); }
         }
         if (outMwh !== null && prevLog.outgoing != null) {
             if (outMwh < prevLog.outgoing) { errors.push(`Outgoing Energy cannot be less than previous hour (${prevLog.outgoing}).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
-            if (outMwh > prevLog.outgoing + 10.65) { errors.push(`Outgoing Energy increased by more than max allowed (10.65 MWh).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
+            if (outMwh > prevLog.outgoing + outMaxDelta) { errors.push(`Outgoing Energy increased by more than max allowed (${outMaxDelta} MWh).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
         }
+        // Hour counter validation: cannot be 0 if unit is running, cannot decrease, cannot exceed prev × multiplier
+        ['u1', 'u2'].forEach(u => {
+            const hcurEl = document.getElementById(`${u}-hour`);
+            const statEl = document.getElementById(`${u}-status`);
+            const prevHour = u === 'u1' ? prevLog.u1_hour_counter : prevLog.u2_hour_counter;
+            if (hcurEl && hcurEl.value !== '' && prevHour != null) {
+                const hcurVal = parseFloat(hcurEl.value);
+                const stat = statEl ? statEl.value : 'O';
+                if (!isNaN(hcurVal)) {
+                    if (hcurVal === 0 && stat === 'O') { errors.push(`${u.toUpperCase()} Hour Counter cannot be 0 while unit is running (O).`); markErr(`${u}-hour`); }
+                    if (hcurVal < prevHour) { errors.push(`${u.toUpperCase()} Hour Counter (${hcurVal}) cannot be less than previous hour (${prevHour}).`); markErr(`${u}-hour`); }
+                    if (hcurVal > prevHour * hourCounterMult) { errors.push(`${u.toUpperCase()} Hour Counter (${hcurVal}) exceeds previous × ${hourCounterMult} (max: ${(prevHour * hourCounterMult).toFixed(3)}).`); markErr(`${u}-hour`); }
+                }
+            }
+        });
     }
 
     // Water level range (0–1200 cm typical; flag if clearly impossible)
@@ -2201,3 +2233,116 @@ window.processLegacyImport = async function() {
 
 // Start the whole process
 startPage();
+// ==========================================
+// ADMIN THRESHOLD MANAGEMENT
+// ==========================================
+
+// Default thresholds (used as fallback if DB not available)
+const DEFAULT_THRESHOLDS = {
+    max_unit_mw: 5.3,
+    max_out_mw: 10.6,
+    hour_counter_max_mult: 1.1,
+    pmu_max_delta: 0.00535,
+    out_max_delta: 10.65,
+    gen_v_min: 6.3,
+    gen_v_max: 6.9,
+    line_v_min: 31.9,
+    line_v_max: 34.1,
+    hz_min: 49.5,
+    hz_max: 50.5,
+    gen_a_min: 50,
+    gen_a_max: 470,
+    bearing_t_min: 15,
+    bearing_t_max: 95,
+    pressure_min: 830,
+    pressure_max: 900
+};
+
+// Global thresholds (loaded from DB, fall back to defaults)
+window.validationThresholds = { ...DEFAULT_THRESHOLDS };
+
+const THRESHOLD_FIELD_MAP = {
+    'th-max-unit-mw':          'max_unit_mw',
+    'th-max-out-mw':           'max_out_mw',
+    'th-hour-counter-max-mult':'hour_counter_max_mult',
+    'th-pmu-max-delta':        'pmu_max_delta',
+    'th-out-max-delta':        'out_max_delta',
+    'th-gen-v-min':            'gen_v_min',
+    'th-gen-v-max':            'gen_v_max',
+    'th-line-v-min':           'line_v_min',
+    'th-line-v-max':           'line_v_max',
+    'th-hz-min':               'hz_min',
+    'th-hz-max':               'hz_max',
+    'th-gen-a-min':            'gen_a_min',
+    'th-gen-a-max':            'gen_a_max',
+    'th-bearing-t-min':        'bearing_t_min',
+    'th-bearing-t-max':        'bearing_t_max',
+    'th-pressure-min':         'pressure_min',
+    'th-pressure-max':         'pressure_max'
+};
+
+async function loadThresholds() {
+    try {
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('*')
+            .eq('setting_key', 'validation_thresholds')
+            .maybeSingle();
+        
+        if (data && data.setting_value) {
+            const saved = typeof data.setting_value === 'string' 
+                ? JSON.parse(data.setting_value) 
+                : data.setting_value;
+            window.validationThresholds = { ...DEFAULT_THRESHOLDS, ...saved };
+        }
+    } catch (e) {
+        console.warn('Using default thresholds (DB error):', e.message);
+    }
+    populateThresholdInputs();
+}
+
+function populateThresholdInputs() {
+    const th = window.validationThresholds;
+    Object.entries(THRESHOLD_FIELD_MAP).forEach(([inputId, thKey]) => {
+        const el = document.getElementById(inputId);
+        if (el && th[thKey] !== undefined) el.value = th[thKey];
+    });
+}
+
+document.getElementById('btn-save-thresholds')?.addEventListener('click', async () => {
+    const newTh = {};
+    Object.entries(THRESHOLD_FIELD_MAP).forEach(([inputId, thKey]) => {
+        const el = document.getElementById(inputId);
+        if (el && el.value !== '') newTh[thKey] = parseFloat(el.value);
+    });
+
+    window.validationThresholds = { ...DEFAULT_THRESHOLDS, ...newTh };
+
+    const statusEl = document.getElementById('threshold-status');
+    try {
+        const { error } = await supabase.from('app_settings').upsert({
+            setting_key: 'validation_thresholds',
+            setting_value: JSON.stringify(newTh),
+            updated_at: new Date().toISOString(),
+            updated_by: window.currentUser?.email || 'admin'
+        });
+        
+        if (error) throw error;
+        if (statusEl) {
+            statusEl.className = 'text-sm font-bold text-center py-3 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200';
+            statusEl.textContent = '✅ Thresholds saved successfully! All operators will use these new limits immediately.';
+            statusEl.classList.remove('hidden');
+            setTimeout(() => statusEl.classList.add('hidden'), 4000);
+        }
+        showNotification('✅ Validation thresholds updated and saved!');
+    } catch (e) {
+        if (statusEl) {
+            statusEl.className = 'text-sm font-bold text-center py-3 rounded-lg bg-rose-50 text-rose-800 border border-rose-200';
+            statusEl.textContent = '❌ Save failed: ' + e.message + '. Thresholds applied locally only.';
+            statusEl.classList.remove('hidden');
+        }
+    }
+});
+
+// Load thresholds after page starts
+setTimeout(loadThresholds, 1500);

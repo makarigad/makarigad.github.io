@@ -73,6 +73,7 @@
                 <div class="section-tab px-5 py-3.5 text-sm font-medium text-slate-600 transition-colors whitespace-nowrap cursor-pointer hover:bg-slate-200" data-target="tab-trans">4. Transformer & DG</div>
                 <div class="section-tab px-5 py-3.5 text-sm font-medium text-slate-600 transition-colors whitespace-nowrap cursor-pointer hover:bg-slate-200" data-target="tab-daily-summary">📊 View Daily Summary</div>
                 <div class="section-tab px-5 py-3.5 text-sm font-bold text-rose-600 transition-colors whitespace-nowrap admin-only role-hidden cursor-pointer hover:bg-slate-200" data-target="tab-admin">⚙️ Admin Exports</div>
+                <div class="section-tab px-5 py-3.5 text-sm font-bold text-amber-600 transition-colors whitespace-nowrap admin-only role-hidden cursor-pointer hover:bg-slate-200" data-target="tab-thresholds">🔧 Thresholds</div>
             </div>
 
             <div class="p-6 flex-grow relative">
@@ -455,6 +456,110 @@
                                 <button onclick="alert('Admin Edit functionality will open the data grid here.')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Admin Edit</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN THRESHOLDS PANEL -->
+                <div id="tab-thresholds" class="section-content hidden admin-only role-hidden">
+                    <div class="max-w-4xl mx-auto space-y-6">
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                            <span class="text-2xl shrink-0">🔧</span>
+                            <div>
+                                <h3 class="font-bold text-amber-900 text-sm">Admin-Configurable Validation Thresholds</h3>
+                                <p class="text-xs text-amber-800 mt-1">These thresholds control the validation rules for hourly log inputs. Changes take effect immediately for all operators without requiring code changes. Thresholds are stored in the database.</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="px-5 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                                <h2 class="font-bold text-slate-800 text-sm">⚡ Generation & Energy Limits</h2>
+                                <button id="btn-save-thresholds" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition shadow">Save All Thresholds</button>
+                            </div>
+                            <div class="p-5">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Unit Load (MW)</h3>
+                                        <label class="threshold-label">Max Load per Unit (MW)
+                                            <input type="number" id="th-max-unit-mw" step="0.1" class="threshold-input" placeholder="5.3">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max Outgoing Total (MW)
+                                            <input type="number" id="th-max-out-mw" step="0.1" class="threshold-input" placeholder="10.6">
+                                        </label>
+                                    </div>
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Hour Counter Rules</h3>
+                                        <label class="threshold-label">Max counter increase per hour (×)
+                                            <input type="number" id="th-hour-counter-max-mult" step="0.01" class="threshold-input" placeholder="1.1" title="Hour counter ≤ previous × this multiplier">
+                                        </label>
+                                        <p class="text-[10px] text-slate-500 mt-1">e.g. 1.1 = counter can increase max 10% vs prev hour</p>
+                                    </div>
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Energy (PMU / Feeder)</h3>
+                                        <label class="threshold-label">Max U1/U2 hourly increase (GWh)
+                                            <input type="number" id="th-pmu-max-delta" step="0.001" class="threshold-input" placeholder="0.00535">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max Outgoing hourly increase (MWh)
+                                            <input type="number" id="th-out-max-delta" step="0.1" class="threshold-input" placeholder="10.65">
+                                        </label>
+                                    </div>
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Generator Voltage (kV)</h3>
+                                        <label class="threshold-label">Min Generator Voltage
+                                            <input type="number" id="th-gen-v-min" step="0.1" class="threshold-input" placeholder="6.3">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max Generator Voltage
+                                            <input type="number" id="th-gen-v-max" step="0.1" class="threshold-input" placeholder="6.9">
+                                        </label>
+                                    </div>
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">33kV Line Voltage (kV)</h3>
+                                        <label class="threshold-label">Min 33kV Line Voltage
+                                            <input type="number" id="th-line-v-min" step="0.1" class="threshold-input" placeholder="31.9">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max 33kV Line Voltage
+                                            <input type="number" id="th-line-v-max" step="0.1" class="threshold-input" placeholder="34.1">
+                                        </label>
+                                    </div>
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Frequency & PF</h3>
+                                        <label class="threshold-label">Min Frequency (Hz)
+                                            <input type="number" id="th-hz-min" step="0.1" class="threshold-input" placeholder="49.5">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max Frequency (Hz)
+                                            <input type="number" id="th-hz-max" step="0.1" class="threshold-input" placeholder="50.5">
+                                        </label>
+                                    </div>
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Generator Currents (A)</h3>
+                                        <label class="threshold-label">Min Generator Current
+                                            <input type="number" id="th-gen-a-min" step="1" class="threshold-input" placeholder="50">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max Generator Current
+                                            <input type="number" id="th-gen-a-max" step="1" class="threshold-input" placeholder="470">
+                                        </label>
+                                    </div>
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Temperature (°C)</h3>
+                                        <label class="threshold-label">Min Generator Bearing Temp
+                                            <input type="number" id="th-bearing-t-min" step="1" class="threshold-input" placeholder="15">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max Generator Bearing Temp
+                                            <input type="number" id="th-bearing-t-max" step="1" class="threshold-input" placeholder="95">
+                                        </label>
+                                    </div>
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Pressure (mWC)</h3>
+                                        <label class="threshold-label">Min Pressure (mWC)
+                                            <input type="number" id="th-pressure-min" step="1" class="threshold-input" placeholder="830">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max Pressure (mWC)
+                                            <input type="number" id="th-pressure-max" step="1" class="threshold-input" placeholder="900">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="threshold-status" class="hidden text-sm font-bold text-center py-3 rounded-lg"></div>
                     </div>
                 </div>
 

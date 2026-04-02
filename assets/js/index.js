@@ -344,5 +344,9 @@ async function loadDashboardData() {
 
 function setText(id, value) {
     const el = document.getElementById(id);
-    if (el) el.textContent = value;
+    if (el) {
+        el.textContent = value;
+        // FIX: Remove the loading shimmer class so the text color becomes visible
+        el.classList.remove('skeleton-text'); 
+    }
 }

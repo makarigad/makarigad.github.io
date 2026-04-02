@@ -175,9 +175,12 @@
               <textarea id="maint-work-done" rows="2" class="form-input" placeholder="Describe the maintenance work performed..."></textarea>
             </div>
             <div>
-              <label class="form-label">Staff Involved <span class="text-rose-500">*</span></label>
-              <input type="text" id="maint-staff" class="form-input" placeholder="Names separated by commas">
-            </div>
+                        <label class="form-label">Staff Involved <span class="text-rose-500">*</span></label>
+                        <select id="maint-staff" multiple class="form-input custom-scroll h-24" required>
+                            <option value="" disabled>Loading staff...</option>
+                        </select>
+                        <p class="text-[10px] text-slate-400 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple staff</p>
+                    </div>
             <div class="md:col-span-2">
               <label class="form-label">Remarks / Outcome</label>
               <textarea id="maint-remarks" rows="2" class="form-input" placeholder="Result, follow-up needed, spare parts used..."></textarea>
@@ -520,7 +523,9 @@ document.getElementById('btn-cancel-maint').addEventListener('click', () => {
 
 document.getElementById('btn-save-maint').addEventListener('click', async () => {
   const work_done = document.getElementById('maint-work-done').value.trim();
-  const staff_involved = document.getElementById('maint-staff').value.trim();
+  // Read all selected options into a comma-separated string
+  const staffSelect = document.getElementById('maint-staff');
+  const staff_involved = Array.from(staffSelect.selectedOptions).map(opt => opt.value).join(', ');  
   const maint_date = document.getElementById('maint-date').value;
   
   if (!maint_date || !work_done || !staff_involved) {
@@ -598,7 +603,12 @@ window.editMaint = (id) => {
   document.getElementById('maint-start-time').value = r.start_time || '';
   document.getElementById('maint-end-time').value = r.end_time || '';
   document.getElementById('maint-work-done').value = r.work_done || '';
-  document.getElementById('maint-staff').value = r.staff_involved || '';
+  // Select multiple options based on saved string
+const staffSelect = document.getElementById('maint-staff');
+const involvedArr = (r.staff_involved || '').split(',').map(s => s.trim());
+Array.from(staffSelect.options).forEach(opt => {
+    opt.selected = involvedArr.includes(opt.value);
+});
   document.getElementById('maint-remarks').value = r.remarks || '';
   document.getElementById('maint-form-wrapper').scrollIntoView({ behavior: 'smooth' });
 };
@@ -821,6 +831,18 @@ async function loadNoticeHistory() {
   } catch(e) { el.innerHTML = `<p class="text-rose-500 text-sm">Error: ${e.message}</p>`; }
 }
 
+async function loadStaffOptions() {
+    try {
+        const { data } = await supabase.from('user_roles').select('full_name, email').order('full_name');
+        if (data) {
+            const select = document.getElementById('maint-staff');
+            select.innerHTML = data.map(u => 
+                `<option value="${u.full_name || u.email}">${u.full_name || u.email}</option>`
+            ).join('');
+        }
+    } catch (e) { console.error('Failed to load staff', e); }
+}
+
 // ─── PAGE START ───
 async function startPage() {
   const today = getNepaliToday();
@@ -850,6 +872,7 @@ async function startPage() {
       document.querySelector('.admin-notice-tab')?.classList.remove('hidden');
       loadAllComplaints();
       loadNoticeHistory();
+
     }
   }
   
@@ -857,7 +880,8 @@ async function startPage() {
   loadShiftEntries(today);
   loadMaintRecords();
   loadMyComplaints();
-}
+  loadStaffOptions();
+  }
 
 startPage();
   </script>

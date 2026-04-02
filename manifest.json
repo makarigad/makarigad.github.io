@@ -1,21 +1,50 @@
 {
   "name": "Makari Gad Command Center",
   "short_name": "Makari Gad",
+  "description": "Offline-capable dashboard for the 10 MW Makari Gad Hydroelectric Project.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f8fafc",
+  "orientation": "any",
+  "background_color": "#f1f5f9",
   "theme_color": "#4f46e5",
-  "description": "Offline-capable dashboard for the 10MW Makari Gad Hydroelectric Project.",
+  "lang": "en",
+  "categories": ["utilities", "productivity"],
   "icons": [
     {
       "src": "https://www.github.com/fluidicon.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "https://www.github.com/fluidicon.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Data Entry",
+      "short_name": "Entry",
+      "description": "Open plant daily data entry",
+      "url": "./plant-data.html",
+      "icons": [{ "src": "https://www.github.com/fluidicon.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Hourly Log",
+      "short_name": "Log",
+      "description": "Open hourly shift log",
+      "url": "./hourly-log.html",
+      "icons": [{ "src": "https://www.github.com/fluidicon.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Inventory",
+      "description": "Open store and fuel inventory",
+      "url": "./inventory.html",
+      "icons": [{ "src": "https://www.github.com/fluidicon.png", "sizes": "96x96" }]
     }
   ]
 }

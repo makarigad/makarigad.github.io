@@ -1,275 +1,291 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-const supabaseUrl = 'https://ineaqjsmabbsjwwbjfya.supabase.co';
-const supabaseKey = 'sb_publishable_uadlDXas6Tpif6j4eWp30g_j6OG326s';
-export const supabase = createClient(supabaseUrl, supabaseKey);
+const SUPABASE_URL = 'https://ineaqjsmabbsjwwbjfya.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_uadlDXas6Tpif6j4eWp30g_j6OG326s';
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export let currentUser = null;
 export let userRole = 'operator';
 
+const ROLE_CACHE_KEY = 'makarigad_offline_role';
+const SYNC_QUEUE_KEY = 'makarigad_sync_queue';
+const ADMIN_EMAIL    = 'upenjyo@gmail.com';
+
 // ============================================================
-// Helper: show a notification using the modal (if present)
+// Notification toast
 // ============================================================
 export function showNotification(msg, isError = false) {
-    const modal = document.getElementById('notification-modal');
-    const messageEl = document.getElementById('notification-message');
-    if (!modal || !messageEl) return;
-    messageEl.textContent = msg;
-    modal.classList.remove('opacity-0', '-translate-y-4');
+    const modal   = document.getElementById('notification-modal');
+    const msgEl   = document.getElementById('notification-message');
+    if (!modal || !msgEl) return;
+
+    msgEl.textContent = msg;
     modal.style.borderLeftColor = isError ? '#dc2626' : '#10b981';
+    modal.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
     modal.classList.add('opacity-100');
-    setTimeout(() => {
+
+    clearTimeout(modal._hideTimer);
+    modal._hideTimer = setTimeout(() => {
         modal.classList.remove('opacity-100');
-        modal.classList.add('opacity-0', '-translate-y-4');
-    }, 4500);
+        modal.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+    }, isError ? 6000 : 4500);
 }
 
 // ============================================================
-// Universal UTC date parser (YYYY-MM-DD)
+// Universal UTC date parser  (supports string / Date / Excel serial)
 // ============================================================
 export function parseToUTCDate(dateInput) {
-    if (!dateInput) return null;
+    if (dateInput == null || dateInput === '') return null;
+
     let date;
     if (typeof dateInput === 'number') {
-        // Excel serial number (date1904 = false)
         if (typeof XLSX !== 'undefined' && XLSX.SSF) {
             const ex = XLSX.SSF.parse_date_code(dateInput, { date1904: false });
             if (ex) date = new Date(Date.UTC(ex.y, ex.m - 1, ex.d));
-        } else {
-            // Fallback: Excel serial to JS date (works for most dates after 1900)
-            const jsDate = new Date(Math.round((dateInput - 25569) * 86400 * 1000));
-            date = new Date(Date.UTC(jsDate.getUTCFullYear(), jsDate.getUTCMonth(), jsDate.getUTCDate()));
+        }
+        if (!date) {
+            const js = new Date(Math.round((dateInput - 25569) * 86400 * 1000));
+            date = new Date(Date.UTC(js.getUTCFullYear(), js.getUTCMonth(), js.getUTCDate()));
         }
     } else if (dateInput instanceof Date) {
         date = new Date(Date.UTC(dateInput.getUTCFullYear(), dateInput.getUTCMonth(), dateInput.getUTCDate()));
     } else {
-        // Try to parse string
-        let s = String(dateInput).trim();
-        let match = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-        if (match) {
-            date = new Date(Date.UTC(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3])));
+        const s = String(dateInput).trim();
+        let m = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+        if (m) {
+            date = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
         } else {
-            match = s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
-            if (match) {
-                date = new Date(Date.UTC(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1])));
-            }
+            m = s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+            if (m) date = new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));
         }
     }
-    if (date && !isNaN(date.getTime())) {
-        return date.toISOString().split('T')[0];
-    }
+
+    if (date && !isNaN(date.getTime())) return date.toISOString().split('T')[0];
     return null;
 }
 
 // ============================================================
-// Enhanced timeout with optional retries (exponential backoff)
+// Fetch with timeout + exponential back-off retries
 // ============================================================
-const fetchWithTimeout = async (promise, ms = 8000, retries = 1) => {
+export async function fetchWithTimeout(promise, ms = 8000, retries = 1) {
     let lastError;
     for (let attempt = 0; attempt <= retries; attempt++) {
+        let timeoutId;
         try {
-            let timeoutId;
-            const timeoutPromise = new Promise((_, reject) => {
+            const timeout = new Promise((_, reject) => {
                 timeoutId = setTimeout(() => reject(new Error('Network Timeout')), ms);
             });
-            const result = await Promise.race([promise, timeoutPromise]);
+            const result = await Promise.race([promise, timeout]);
             clearTimeout(timeoutId);
             return result;
         } catch (err) {
+            clearTimeout(timeoutId);
             lastError = err;
-            if (attempt === retries) break;
-            await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+            if (attempt < retries) {
+                // Exponential back-off: 500 ms, 1000 ms, …
+                await new Promise(res => setTimeout(res, 500 * Math.pow(2, attempt)));
+            }
         }
     }
     throw lastError;
-};
+}
 
 // ============================================================
-// Main initialization function
+// Main initialisation
 // ============================================================
 export async function initializeApplication(requireAuth = true) {
     await loadGlobalUI();
 
     try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (session && session.user) {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
             currentUser = session.user;
-            // Safe check for email just in case
-            let isAdmin = currentUser.email && currentUser.email.toLowerCase() === 'upenjyo@gmail.com';
+            await resolveUserRole();
 
-            if (!isAdmin) {
-                if (navigator.onLine) {
-                    try {
-                        const query = supabase.from('user_roles')
-                            .select('role')
-                            .eq('email', currentUser.email)
-                            .maybeSingle();
-                        const { data, error: dbErr } = await fetchWithTimeout(query, 8000, 1);
-                        
-                        if (data && !dbErr) {
-                            userRole = data.role || 'operator';
-                            if (userRole === 'admin') isAdmin = true;
-                            localStorage.setItem('makarigad_offline_role', userRole);
-                        } else {
-                            throw new Error("DB Error");
-                        }
-                    } catch (e) {
-                        if (!navigator.onLine || e.message === 'Network Timeout') {
-                            userRole = localStorage.getItem('makarigad_offline_role') || 'operator';
-                            if (userRole === 'admin') isAdmin = true;
-                        } else {
-                            userRole = 'operator';
-                        }
-                    }
-                } else {
-                    userRole = localStorage.getItem('makarigad_offline_role') || 'operator';
-                    if (userRole === 'admin') isAdmin = true;
-                }
-            } else {
-                userRole = 'admin';
-                localStorage.setItem('makarigad_offline_role', 'admin');
-            }
-            
             window.userRole = userRole;
-
             activateUserUI();
             applyRoleBasedUI();
-
-            const href = window.location.pathname.toLowerCase();
-
-            // --- Role-based Page Access Control ---
-            const isOperator = userRole === 'operator';
-            const isStaff = userRole === 'staff';
-
-            // Pages restricted for Operators
-            const operatorRestricted = [
-                '/energy-summary.html',
-                '/nepali-calendar.html',
-                '/user-management.html',
-                '/attendance.html'
-            ];
-
-            // Pages restricted for Staff
-            const staffRestricted = [
-                '/nepali-calendar.html',
-                '/user-management.html'
-            ];
-
-            if (isOperator && operatorRestricted.some(page => href.endsWith(page))) {
-                window.location.href = 'index.html';
-                return null;
-            }
-
-            if (isStaff && staffRestricted.some(page => href.endsWith(page))) {
-                window.location.href = 'index.html';
-                return null;
-            }
+            enforcePageAccess();
 
             if (navigator.onLine) processSyncQueue();
 
             return { user: currentUser, role: userRole };
-
         } else {
             handleUnauthenticated(requireAuth);
             return null;
         }
     } catch (err) {
-        console.warn("Auth check failed (Likely Offline):", err);
+        console.warn('Auth check failed (likely offline):', err.message);
         handleUnauthenticated(requireAuth);
+        return null;
     }
 }
 
 // ============================================================
-// Load global header/footer
+// Resolve user role (online → DB, offline → localStorage cache)
+// ============================================================
+async function resolveUserRole() {
+    if (!currentUser?.email) { userRole = 'operator'; return; }
+
+    const email = currentUser.email.toLowerCase();
+
+    // Super-admin shortcut
+    if (email === ADMIN_EMAIL) {
+        userRole = 'admin';
+        localStorage.setItem(ROLE_CACHE_KEY, 'admin');
+        return;
+    }
+
+    if (navigator.onLine) {
+        try {
+            const { data, error } = await fetchWithTimeout(
+                supabase.from('user_roles').select('role').eq('email', email).maybeSingle(),
+                8000, 1
+            );
+            if (!error && data?.role) {
+                userRole = data.role;
+                localStorage.setItem(ROLE_CACHE_KEY, userRole);
+                return;
+            }
+        } catch {
+            // Fall through to cached value
+        }
+    }
+
+    // Use cached role when offline or DB unreachable
+    userRole = localStorage.getItem(ROLE_CACHE_KEY) || 'operator';
+}
+
+// ============================================================
+// Role-based page access guard
+// ============================================================
+function enforcePageAccess() {
+    const href = window.location.pathname.toLowerCase();
+
+    const OPERATOR_BLOCKED = ['/energy-summary.html', '/nepali-calendar.html', '/user-management.html', '/attendance.html'];
+    const STAFF_BLOCKED    = ['/nepali-calendar.html', '/user-management.html'];
+
+    const blocked =
+        (userRole === 'operator' && OPERATOR_BLOCKED.some(p => href.endsWith(p))) ||
+        (userRole === 'staff'    && STAFF_BLOCKED.some(p => href.endsWith(p)));
+
+    if (blocked) {
+        window.location.replace('index.html');
+        return false;
+    }
+    return true;
+}
+
+// ============================================================
+// Load global header / footer HTML fragments
 // ============================================================
 async function loadGlobalUI() {
-    try {
-        let headerContainer = document.getElementById('global-header-container') || document.getElementById('global-header');
-        if (headerContainer && !headerContainer.innerHTML.trim()) {
-            const headerRes = await fetch('./components/header.html'); 
-            if (headerRes.ok) headerContainer.innerHTML = await headerRes.text();
+    const pairs = [
+        ['global-header-container', 'global-header', './components/header.html'],
+        ['global-footer-container', 'global-footer', './components/footer.html'],
+    ];
+
+    await Promise.all(pairs.map(async ([id1, id2, url]) => {
+        const el = document.getElementById(id1) || document.getElementById(id2);
+        if (!el || el.innerHTML.trim()) return;
+        try {
+            const res = await fetch(url);
+            if (res.ok) el.innerHTML = await res.text();
+        } catch {
+            console.warn(`Could not load ${url}`);
         }
-        
-        let footerContainer = document.getElementById('global-footer-container') || document.getElementById('global-footer');
-        if (footerContainer && !footerContainer.innerHTML.trim()) {
-            const footerRes = await fetch('./components/footer.html'); 
-            if (footerRes.ok) footerContainer.innerHTML = await footerRes.text();
-        }
-    } catch(e) { 
-        console.warn("Could not load global UI components"); 
-    }
+    }));
 }
 
 // ============================================================
-// UI activation when logged in
+// UI activation on authenticated state
 // ============================================================
 function activateUserUI() {
-    const mainNav = document.getElementById('main-nav');
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn'); 
-    const headerEmail = document.getElementById('header-email'); 
+    const mainNav    = document.getElementById('main-nav');
+    const loginBtn   = document.getElementById('login-btn');
+    const logoutBtn  = document.getElementById('logout-btn');
+    const headerEmail = document.getElementById('header-email');
+    const mobileBtn  = document.getElementById('mobile-menu-btn');
 
     if (mainNav) { mainNav.classList.remove('hidden'); mainNav.classList.add('flex'); }
     if (loginBtn) loginBtn.classList.add('hidden');
+    if (mobileBtn) mobileBtn.classList.remove('hidden');
+
     if (logoutBtn) {
         logoutBtn.classList.remove('hidden');
-        logoutBtn.onclick = async () => { 
+        logoutBtn.onclick = async () => {
             if (!navigator.onLine) {
-                showNotification("You must be online to sign out safely.", true);
+                showNotification('You must be online to sign out safely.', true);
                 return;
             }
+            logoutBtn.textContent = 'Signing out…';
+            logoutBtn.disabled = true;
             await supabase.auth.signOut();
-            localStorage.removeItem('makarigad_offline_role');
-            window.location.href = "index.html"; 
+            localStorage.removeItem(ROLE_CACHE_KEY);
+            window.location.replace('index.html');
         };
     }
-    if (headerEmail && currentUser && currentUser.email) {
+
+    if (headerEmail && currentUser?.email) {
+        const displayName = currentUser.email.split('@')[0];
         headerEmail.classList.remove('hidden');
         headerEmail.classList.add('flex');
-        headerEmail.innerText = currentUser.email.split('@')[0];
+        // Update the <span> inside the button
+        const span = headerEmail.querySelector('span');
+        if (span) span.textContent = displayName;
+        else headerEmail.childNodes[headerEmail.childNodes.length - 1].textContent = displayName;
     }
 }
 
 // ============================================================
-// Handle unauthenticated state (FIXED: Infinite loop bug)
+// Unauthenticated state handler
 // ============================================================
 function handleUnauthenticated(requireAuth) {
     currentUser = null;
     window.currentUser = null;
-    
-    const mainNav = document.getElementById('main-nav');
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn'); 
-    const headerEmail = document.getElementById('header-email'); 
 
-    if (mainNav) { mainNav.classList.add('hidden'); mainNav.classList.remove('flex'); }
-    if (logoutBtn) logoutBtn.classList.add('hidden');
+    const mainNav    = document.getElementById('main-nav');
+    const loginBtn   = document.getElementById('login-btn');
+    const logoutBtn  = document.getElementById('logout-btn');
+    const headerEmail = document.getElementById('header-email');
+    const mobileBtn  = document.getElementById('mobile-menu-btn');
+
+    if (mainNav)     { mainNav.classList.add('hidden');    mainNav.classList.remove('flex'); }
+    if (logoutBtn)   logoutBtn.classList.add('hidden');
     if (headerEmail) headerEmail.classList.add('hidden');
+    if (mobileBtn)   mobileBtn.classList.add('hidden');
+
     if (loginBtn) {
         loginBtn.classList.remove('hidden');
         loginBtn.onclick = () => {
             if (!navigator.onLine) {
-                showNotification("⚠️ No Internet Connection.\n\nYou must have an internet connection to sign in.", true);
+                showNotification('No internet connection — sign-in requires online access.', true);
                 return;
             }
             const modal = document.getElementById('login-modal');
-            if (modal) modal.classList.remove('hidden');
-            else window.location.href = "index.html";
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } else {
+                window.location.href = 'index.html';
+            }
         };
     }
-    
-    // Safety check: Only redirect if we aren't already on the login/index page
-    const isIndexPage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
-    if (requireAuth && !isIndexPage) {
-        window.location.href = "index.html";
+
+    // Redirect only if truly requiring auth and not already on index/signin
+    const path = window.location.pathname;
+    const onPublicPage = path.endsWith('index.html') || path.endsWith('signin.html') || path === '/';
+    if (requireAuth && !onPublicPage) {
+        window.location.replace('index.html');
     }
 }
 
 // ============================================================
-// Role‑based UI (hide admin/staff elements)
+// Apply role-based element visibility
 // ============================================================
 function applyRoleBasedUI() {
+    // Hide all role-gated elements first
     document.querySelectorAll('.admin-only, .staff-only').forEach(el => el.classList.add('role-hidden'));
 
     if (userRole === 'admin') {
@@ -277,35 +293,33 @@ function applyRoleBasedUI() {
     } else if (userRole === 'staff') {
         document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden'));
     }
-    
-    const nameDisplay = document.getElementById('display-user-name');
-    if (nameDisplay) nameDisplay.innerText = currentUser ? currentUser.email.split('@')[0] : '';
-    const roleDisplay = document.getElementById('display-user-role');
-    if (roleDisplay) roleDisplay.innerText = userRole.toUpperCase();
+
+    const nameEl = document.getElementById('display-user-name');
+    if (nameEl) nameEl.textContent = currentUser?.email?.split('@')[0] ?? '';
+
+    const roleEl = document.getElementById('display-user-role');
+    if (roleEl) roleEl.textContent = userRole.toUpperCase();
 }
 
 // ============================================================
-// Online event handler
+// Online event → trigger sync
 // ============================================================
-window.addEventListener('online', async () => { 
-    console.log("Internet restored! Processing sync queue...");
-    await processSyncQueue(); 
+window.addEventListener('online', async () => {
+    console.info('[Makari Gad] Internet restored – processing sync queue…');
+    await processSyncQueue();
 });
 
 // ============================================================
-// Safe upsert – queues data offline if needed
+// Safe upsert with offline fallback queue
 // ============================================================
 export async function safeUpsert(tableName, payload) {
     if (navigator.onLine) {
         try {
             const { error } = await supabase.from(tableName).upsert(payload);
-            if (error) {
-                console.warn(`Live save failed, queueing for offline sync. Error: ${error.message}`);
-                queueForSync(tableName, payload);
-                return { success: true, queued: true };
-            }
+            if (error) throw error;
             return { success: true, queued: false };
         } catch (e) {
+            console.warn(`[safeUpsert] Live save failed for "${tableName}". Queuing. Error: ${e.message}`);
             queueForSync(tableName, payload);
             return { success: true, queued: true };
         }
@@ -316,79 +330,75 @@ export async function safeUpsert(tableName, payload) {
 }
 
 // ============================================================
-// Queue data for offline sync (FIXED: ID generation)
+// Queue item for offline sync
 // ============================================================
 function queueForSync(tableName, payload) {
-    let queue = JSON.parse(localStorage.getItem('makarigad_sync_queue')) || [];
-    
-    // Ensure every item has a temporary local ID so new inserts don't overwrite each other
-    const dataArray = Array.isArray(payload) ? payload : [payload];
-    dataArray.forEach(item => {
-        if (!item.id) item.__local_id = 'local_' + Date.now() + Math.random().toString(36).substr(2, 9);
+    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]');
+    const items = Array.isArray(payload) ? payload : [payload];
+
+    // Tag items without a real id so they don't overwrite each other
+    items.forEach(item => {
+        if (!item.id) item.__local_id = `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     });
 
-    queue.push({
-        table: tableName,
-        data: dataArray,
-        timestamp: new Date().toISOString()
-    });
-    localStorage.setItem('makarigad_sync_queue', JSON.stringify(queue));
-    console.log(`Data safely queued offline for table: ${tableName}`);
+    queue.push({ table: tableName, data: items, timestamp: new Date().toISOString() });
+    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+    console.info(`[safeUpsert] Queued ${items.length} item(s) for "${tableName}".`);
 }
 
 // ============================================================
-// Process sync queue – group by table+id, keep latest
+// Process sync queue (deduplicate by table + id, keep latest)
 // ============================================================
 export async function processSyncQueue() {
-    let queue = JSON.parse(localStorage.getItem('makarigad_sync_queue')) || [];
-    if (queue.length === 0) return;
-    
+    const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]');
+    if (!queue.length) return;
+
+    // Build a map keyed by "table|id" → keep only the most recent entry
     const latestMap = new Map();
     for (const task of queue) {
         for (const item of task.data) {
-            // Group by actual ID or the temporary local ID
-            const key = `${task.table}|${item.id || item.__local_id}`;
+            const key = `${task.table}|${item.id ?? item.__local_id}`;
             const existing = latestMap.get(key);
-            if (!existing || new Date(task.timestamp) > new Date(existing.timestamp)) {
+            if (!existing || task.timestamp > existing.timestamp) {
                 latestMap.set(key, { table: task.table, data: item, timestamp: task.timestamp });
             }
         }
     }
-    
-    const groupedTasks = {};
-    for (const { table, data } of latestMap.values()) {
-        if (!groupedTasks[table]) groupedTasks[table] = [];
-        groupedTasks[table].push(data);
-    }
-    
-    let remainingQueue = [];
-    for (const [table, items] of Object.entries(groupedTasks)) {
-        try {
-            // Strip out our temporary __local_id before sending to Supabase
-            const cleanItems = items.map(item => {
-                const clean = { ...item };
-                delete clean.__local_id;
-                return clean;
-            });
 
+    // Group deduplicated items by table
+    const grouped = {};
+    for (const { table, data } of latestMap.values()) {
+        (grouped[table] ??= []).push(data);
+    }
+
+    const failedTables = new Set();
+
+    for (const [table, items] of Object.entries(grouped)) {
+        try {
+            const cleanItems = items.map(({ __local_id: _, ...rest }) => rest);
             const { error } = await supabase.from(table).upsert(cleanItems);
             if (error) throw error;
         } catch (e) {
-            console.error(`Sync failed for ${table}, keeping in queue.`, e);
-            // Re-queue the exact original tasks (with local IDs intact) for this table
-            remainingQueue.push(...queue.filter(t => t.table === table));
+            console.error(`[processSyncQueue] Sync failed for "${table}":`, e.message);
+            failedTables.add(table);
         }
     }
-    
-    localStorage.setItem('makarigad_sync_queue', JSON.stringify(remainingQueue));
-    if (remainingQueue.length === 0) {
-        console.log("✅ All offline data successfully synced to Supabase!");
+
+    // Re-queue only items for tables that failed
+    const remaining = failedTables.size
+        ? queue.filter(t => failedTables.has(t.table))
+        : [];
+
+    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(remaining));
+
+    if (!remaining.length) {
+        console.info('[processSyncQueue] ✅ All offline data synced successfully.');
     }
 }
 
 // ============================================================
-// Periodic sync every 10 seconds when online
+// Periodic sync every 15 seconds when online
 // ============================================================
 setInterval(() => {
     if (navigator.onLine) processSyncQueue();
-}, 10000);
+}, 15_000);

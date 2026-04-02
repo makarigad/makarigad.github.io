@@ -5,66 +5,153 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Secure Login | Makari Gad</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap'); body { font-family: 'Inter', sans-serif; }</style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    @keyframes fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fade-up 0.45s ease both; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.8s linear infinite; }
+  </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 bg-slate-900">
-  <main class="w-full max-w-sm">
-    <div class="text-center mb-6">
-       <div class="w-16 h-16 bg-indigo-600 rounded-xl mx-auto flex items-center justify-center text-white font-black text-3xl shadow-lg mb-4">M</div>
-       <h1 class="text-2xl font-bold text-white">Makari Gad Systems</h1>
-       <p class="text-sm text-slate-400 mt-1">Authorized personnel only</p>
+<body class="min-h-screen flex items-center justify-center p-4 bg-slate-900 relative overflow-hidden">
+
+  <!-- Decorative background blobs -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div class="absolute -top-32 -left-32 w-96 h-96 bg-indigo-700/20 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-violet-700/20 rounded-full blur-3xl"></div>
+  </div>
+
+  <main class="w-full max-w-sm relative z-10 fade-up">
+
+    <!-- Logo & Title -->
+    <div class="text-center mb-8">
+      <div class="w-18 h-18 w-[4.5rem] h-[4.5rem] bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl mx-auto flex items-center justify-center text-white font-black text-3xl shadow-2xl mb-5 select-none">M</div>
+      <h1 class="text-2xl font-black text-white tracking-tight">Makari Gad Systems</h1>
+      <p class="text-sm text-slate-400 mt-1 font-medium">Authorized personnel only</p>
     </div>
-    <div class="bg-white rounded-xl shadow-2xl border border-slate-100 p-8">
-      <div id="error-message" class="hidden bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded text-sm mb-4 text-center font-bold"></div>
-      <form id="login-form" class="space-y-5">
+
+    <!-- Card -->
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 p-8">
+
+      <!-- Offline banner -->
+      <div id="offline-banner" class="hidden bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2.5 rounded-xl text-xs font-bold mb-5 flex items-center gap-2">
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        No internet connection. Sign-in requires online access.
+      </div>
+
+      <!-- Error message -->
+      <div id="error-message" class="hidden bg-red-50 border border-red-200 text-red-600 px-3 py-2.5 rounded-xl text-sm mb-5 text-center font-bold flex items-center justify-center gap-2" role="alert">
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636l-12.728 12.728M5.636 5.636l12.728 12.728"/></svg>
+        <span id="error-text">Invalid email or password.</span>
+      </div>
+
+      <form id="login-form" class="space-y-5" novalidate>
         <div>
-          <label class="block text-slate-700 text-xs font-bold uppercase tracking-wide mb-1">Email Address</label>
-          <input id="email" type="email" required placeholder="name@makarigad.com" class="w-full p-3 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+          <label for="email" class="block text-slate-700 text-xs font-bold uppercase tracking-wide mb-1.5">Email Address</label>
+          <input id="email" type="email" required autocomplete="email"
+            placeholder="name@makarigad.com"
+            class="w-full p-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-slate-50 font-medium" />
         </div>
         <div>
-  <label class="block text-slate-700 text-xs font-bold uppercase tracking-wide mb-1">Password</label>
-  <div class="relative">
-    <input id="password" type="password" required placeholder="••••••••" class="w-full p-3 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none transition pr-12" />
-    <button type="button" id="toggle-pw" tabindex="-1" onclick="const i=document.getElementById('password'); i.type=i.type==='password'?'text':'password'; this.textContent=i.type==='password'?'Show':'Hide';" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-indigo-600 transition">Show</button>
-  </div>
-</div>
-        <button id="login-button" type="submit" class="w-full py-3 rounded font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md transition">Authenticate</button>
+          <label for="password" class="block text-slate-700 text-xs font-bold uppercase tracking-wide mb-1.5">Password</label>
+          <div class="relative">
+            <input id="password" type="password" required autocomplete="current-password"
+              placeholder="••••••••"
+              class="w-full p-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-slate-50 font-medium pr-14" />
+            <button type="button" id="toggle-pw" tabindex="-1" aria-label="Toggle password visibility"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-indigo-600 transition px-1 py-1 rounded">Show</button>
+          </div>
+        </div>
+        <button id="login-button" type="submit"
+          class="w-full py-3 rounded-xl font-black bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm uppercase tracking-wide">
+          <span id="btn-text">Authenticate</span>
+          <svg id="btn-spinner" class="hidden w-4 h-4 spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+        </button>
       </form>
     </div>
+
+    <p class="text-center text-slate-500 text-xs mt-6 font-medium">
+      &copy; <span id="copy-year"></span> Makari Gad Hydroelectric Project
+    </p>
   </main>
+
   <script type="module">
     import { supabase } from './assets/js/core-app.js';
 
-    // If already logged in, redirect to Hub
-    supabase.auth.getSession().then(({ data }) => { 
-        if (data.session) window.location.href = 'index.html'; 
+    // Year in footer
+    document.getElementById('copy-year').textContent = new Date().getFullYear();
+
+    // Toggle password
+    document.getElementById('toggle-pw').addEventListener('click', function() {
+      const i = document.getElementById('password');
+      const show = i.type === 'password';
+      i.type = show ? 'text' : 'password';
+      this.textContent = show ? 'Hide' : 'Show';
     });
 
+    // Offline detection
+    function updateOfflineBanner() {
+      const banner = document.getElementById('offline-banner');
+      const btn = document.getElementById('login-button');
+      if (!navigator.onLine) {
+        banner.classList.remove('hidden');
+        banner.classList.add('flex');
+        btn.disabled = true;
+      } else {
+        banner.classList.add('hidden');
+        banner.classList.remove('flex');
+        btn.disabled = false;
+      }
+    }
+    updateOfflineBanner();
+    window.addEventListener('online', updateOfflineBanner);
+    window.addEventListener('offline', updateOfflineBanner);
+
+    // If already logged in, redirect
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.replace('index.html');
+    });
+
+    // Login form
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = document.getElementById('login-button'); 
-      const err = document.getElementById('error-message');
-      
-      btn.innerText = "Authenticating..."; 
-      err.classList.add('hidden');
 
-      const { error } = await supabase.auth.signInWithPassword({ 
-          email: document.getElementById('email').value, 
-          password: document.getElementById('password').value 
+      if (!navigator.onLine) return;
+
+      const btn = document.getElementById('login-button');
+      const btnText = document.getElementById('btn-text');
+      const spinner = document.getElementById('btn-spinner');
+      const errBox = document.getElementById('error-message');
+      const errText = document.getElementById('error-text');
+
+      btnText.textContent = 'Authenticating…';
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      errBox.classList.add('hidden');
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value
       });
 
       if (error) {
-        err.innerText = error.message;
-        err.classList.remove('hidden');
-        btn.innerText = "Authenticate";
+        errText.textContent = error.message === 'Invalid login credentials'
+          ? 'Invalid email or password. Please try again.'
+          : error.message;
+        errBox.classList.remove('hidden');
+        errBox.classList.add('flex');
+        btnText.textContent = 'Authenticate';
+        spinner.classList.add('hidden');
+        btn.disabled = false;
       } else {
-        window.location.href = 'index.html';
+        btnText.textContent = 'Redirecting…';
+        window.location.replace('index.html');
       }
     });
   </script>
-
-  <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
-
-

@@ -1,13 +1,36 @@
-<footer class="bg-slate-900 text-slate-400 text-center py-8">
-  <div class="max-w-6xl mx-auto px-4">
-    <div class="flex items-center justify-center gap-2 mb-4">
-      <div class="w-8 h-8 bg-indigo-600 rounded flex items-center justify-center text-white font-bold">M</div>
-      <span class="text-lg font-semibold text-slate-200">Makari Gad Hydroelectric Project</span>
+<footer class="bg-slate-900 text-slate-400 py-8 mt-auto">
+  <div class="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+
+      <!-- Brand -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-lg flex items-center justify-center text-white font-black text-base select-none">M</div>
+        <div>
+          <div class="text-sm font-bold text-slate-200 leading-tight">Makari Gad Hydroelectric Project</div>
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider">10 MW · Nepal</div>
+        </div>
+      </div>
+
+      <!-- Quick links -->
+      <nav class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs font-semibold" aria-label="Footer navigation">
+        <a href="index.html"          class="hover:text-indigo-400 transition">Hub</a>
+        <a href="plant-data.html"     class="hover:text-indigo-400 transition">Data Entry</a>
+        <a href="hourly-log.html"     class="hover:text-indigo-400 transition">Hourly Log</a>
+        <a href="operator-daily.html" class="hover:text-indigo-400 transition">Operator Daily</a>
+        <a href="inventory.html"      class="hover:text-indigo-400 transition">Inventory</a>
+        <a href="energy-summary.html" class="staff-only role-hidden hover:text-indigo-400 transition">Reports</a>
+      </nav>
+
+      <!-- Copyright -->
+      <p class="text-xs text-slate-500">
+        &copy; <span id="copyright-year"></span> All rights reserved.
+      </p>
     </div>
-    <p class="text-sm">&copy; <span id="copyright-year">2025</span>. All rights reserved.</p>
-<script>
-  const cy = document.getElementById('copyright-year');
-  if (cy) cy.textContent = new Date().getFullYear();
-</script>
   </div>
 </footer>
+<script>
+  (function() {
+    const el = document.getElementById('copyright-year');
+    if (el) el.textContent = new Date().getFullYear();
+  })();
+</script>

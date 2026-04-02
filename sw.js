@@ -1,9 +1,11 @@
-const CACHE_NAME = 'makarigad-cache-v4';
-const API_CACHE_NAME = 'makarigad-api-cache-v1';
+const CACHE_VERSION   = 'v5';
+const CACHE_NAME      = `makarigad-cache-${CACHE_VERSION}`;
+const API_CACHE_NAME  = 'makarigad-api-cache-v2';
 
-const ASSETS_TO_CACHE = [
+const ASSETS_TO_PRECACHE = [
     './',
     './index.html',
+    './signin.html',
     './plant-data.html',
     './hourly-log.html',
     './energy-summary.html',
@@ -12,7 +14,8 @@ const ASSETS_TO_CACHE = [
     './attendance.html',
     './operator-daily.html',
     './inventory.html',
-    './signin.html',
+    './mobile.html',
+    './monthly_report.html',
     './components/header.html',
     './components/footer.html',
     './assets/js/core-app.js',
@@ -25,95 +28,102 @@ const ASSETS_TO_CACHE = [
     './assets/css/index.css',
     './assets/css/plant-data.css',
     './assets/css/hourly-log.css',
-    './manifest.json'
+    './manifest.json',
 ];
 
+// ── Install: pre-cache all app assets ──
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
+        caches.open(CACHE_NAME).then(cache =>
+            cache.addAll(ASSETS_TO_PRECACHE).catch(err => {
+                // Don't block install on missing optional assets
+                console.warn('[SW] Pre-cache partially failed:', err.message);
+            })
+        )
     );
     self.skipWaiting();
 });
 
+// ── Activate: clean up old caches ──
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => Promise.all(
-            cacheNames.map((cacheName) => {
-                if (cacheName !== CACHE_NAME && cacheName !== API_CACHE_NAME) {
-                    return caches.delete(cacheName);
-                }
-            })
-        ))
+        caches.keys().then(keys =>
+            Promise.all(
+                keys.map(key => {
+                    if (key !== CACHE_NAME && key !== API_CACHE_NAME) {
+                        console.info('[SW] Deleting old cache:', key);
+                        return caches.delete(key);
+                    }
+                })
+            )
+        )
     );
     self.clients.claim();
 });
 
+// ── Fetch handler ──
 self.addEventListener('fetch', (event) => {
-    // ==========================================
-    // ⚠️ THE FIX: CRITICAL GUARDS
-    // ==========================================
-    
-    // 1. Never try to cache POST, PUT, or DELETE requests (like database saves)
-    if (event.request.method !== 'GET') {
-        return; // Exits the service worker and lets the browser handle the save normally
-    }
+    const { request } = event;
 
-    // 2. Ignore non-HTTP requests (like chrome extensions) which cause crashes
-    if (!event.request.url.startsWith('http')) {
+    // Skip non-GET and non-HTTP requests (e.g., chrome-extension://)
+    if (request.method !== 'GET' || !request.url.startsWith('http')) return;
+
+    const url = request.url;
+
+    // ── 1. Supabase API calls → network-first with API cache fallback ──
+    if (url.includes('supabase.co/rest/v1/') || url.includes('supabase.co/auth/')) {
+        event.respondWith(
+            fetch(request).then(res => {
+                if (res && res.status === 200) {
+                    const clone = res.clone();
+                    caches.open(API_CACHE_NAME).then(c => c.put(request, clone));
+                }
+                return res;
+            }).catch(() => caches.match(request))
+        );
         return;
     }
 
-    // ==========================================
-    // 1. OFFLINE DATABASE MAGIC
-    // ==========================================
-    if (event.request.url.includes('supabase.co/rest/v1/')) {
+    // ── 2. SCADA proxy → network only, graceful offline response ──
+    if (url.includes('makari-scada-proxy')) {
         event.respondWith(
-            fetch(event.request).then(response => {
-                const clone = response.clone();
-                caches.open(API_CACHE_NAME).then(cache => cache.put(event.request, clone));
-                return response;
-            }).catch(() => {
-                return caches.match(event.request); // Returns offline data!
+            fetch(request).catch(() => new Response('Offline', {
+                status: 503,
+                headers: { 'Content-Type': 'text/plain' }
+            }))
+        );
+        return;
+    }
+
+    // ── 3. External CDN resources (Tailwind, fonts, Supabase JS) → cache on first use ──
+    if (url.includes('cdn.tailwindcss.com') || url.includes('fonts.googleapis.com') ||
+        url.includes('cdn.jsdelivr.net') || url.includes('fonts.gstatic.com')) {
+        event.respondWith(
+            caches.match(request).then(cached => {
+                if (cached) return cached;
+                return fetch(request).then(res => {
+                    if (res?.status === 200) {
+                        caches.open(CACHE_NAME).then(c => c.put(request, res.clone()));
+                    }
+                    return res;
+                }).catch(() => new Response('', { status: 503 }));
             })
         );
         return;
     }
 
-    // ==========================================
-    // 2. STOP FREEZING (SCADA PROXY)
-    // ==========================================
-    if (event.request.url.includes('makari-scada-proxy')) {
-        event.respondWith(
-            fetch(event.request).catch(() => new Response("Offline", { status: 503 }))
-        );
-        return;
-    }
-
-    // ==========================================
-    // 3. NORMAL APP FILES CACHE
-    // ==========================================
+    // ── 4. App assets → stale-while-revalidate ──
     event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-                // Return cached version immediately, but fetch newer version in background
-                fetch(event.request).then((networkResponse) => {
-                    if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
-                    }
-                }).catch(() => {});
-                return cachedResponse;
-            }
-            
-            // If not in cache, fetch from network
-            return fetch(event.request).then((networkResponse) => {
-                if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-                    const responseToCache = networkResponse.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+        caches.match(request).then(cached => {
+            // Return cache immediately, fetch update in background
+            const networkFetch = fetch(request).then(res => {
+                if (res?.ok || res?.type === 'opaque') {
+                    caches.open(CACHE_NAME).then(c => c.put(request, res.clone()));
                 }
-                return networkResponse;
-            }).catch(() => {
-                // Optional: Return an offline fallback page here if you have one
-            });
+                return res;
+            }).catch(() => null);
+
+            return cached ?? networkFetch;
         })
     );
 });

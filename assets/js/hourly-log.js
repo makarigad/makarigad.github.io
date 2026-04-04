@@ -2242,7 +2242,7 @@ const DEFAULT_THRESHOLDS = {
     max_unit_mw: 5.3,
     max_out_mw: 10.6,
     hour_counter_max_mult: 1.1,
-    pmu_max_delta: 0.00535,
+    pmu_max_delta: 0.0054,
     out_max_delta: 10.65,
     gen_v_min: 6.3,
     gen_v_max: 6.9,

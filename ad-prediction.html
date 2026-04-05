@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dynamic AD Rolling Balancer - Makari Gad</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="assets/css/index.css" />
+    <style>
+        .table-header { position: sticky; top: 0; background-color: #f8fafc; z-index: 10; }
+        .highlight-row { background-color: #f0fdf4; }
+    </style>
+</head>
+<body class="flex flex-col h-screen text-slate-800 bg-slate-100 font-sans">
+
+    <header class="bg-indigo-900 border-b border-indigo-950 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 shadow-md">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-900/50 border border-indigo-500">
+                <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-black text-white tracking-tight">Dynamic AD Rolling Balancer</h1>
+                <p class="text-xs text-indigo-200 font-medium mt-0.5">Live Database Integration & Automatic Deviation Tracking</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="plant-data.html" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-800 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm border border-indigo-600">
+                &larr; Back to Dashboard
+            </a>
+        </div>
+    </header>
+
+    <main class="p-6 flex-grow overflow-y-auto custom-scroll flex flex-col gap-6">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
+            
+            <div class="lg:col-span-4 bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 border-b pb-2">1. Target Parameters</h2>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Target Year</label>
+                        <select id="inp-year" class="w-full p-2 border border-slate-300 rounded font-bold text-indigo-700 bg-indigo-50 outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Target Month</label>
+                        <select id="inp-month" class="w-full p-2 border border-slate-300 rounded font-bold text-indigo-700 bg-indigo-50 outline-none"></select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">View Scope</label>
+                        <select id="inp-scope" class="w-full p-2 border border-slate-300 rounded font-bold text-slate-700 outline-none">
+                            <option value="Month" selected>Full Month</option>
+                            <option value="Week1">Week 1 Only</option>
+                            <option value="Week2">Week 2 Only</option>
+                            <option value="Week3">Week 3 Only</option>
+                            <option value="Week4">Week 4 Only</option>
+                            <option value="Week5">Week 5 Only</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Total M. Contract</label>
+                        <input type="number" id="inp-contract" class="w-full p-2 border border-slate-300 rounded font-bold bg-slate-50" value="4005.74">
+                    </div>
+                </div>
+                <button id="btn-fetch" class="mt-4 w-full bg-indigo-600 text-white font-bold py-2 rounded shadow hover:bg-indigo-700 transition">Fetch Data & Analyze</button>
+            </div>
+
+            <div class="lg:col-span-8 bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-5 flex flex-col justify-center">
+                <div class="flex justify-between items-start mb-3 border-b border-slate-600 pb-2">
+                    <h2 class="text-sm font-black text-emerald-400 uppercase tracking-widest">2. Hydrological Correlator (Database Sync)</h2>
+                    <span id="sync-status" class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">Awaiting Fetch...</span>
+                </div>
+                <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+                    The engine automatically fetches the actual <strong>export_substation</strong> data for this month. It computes your Actual Generation per week, calculates deviations, and finds the best historical year to map your future daily targets.
+                </p>
+                
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-slate-900 border border-slate-600 rounded-lg p-3">
+                        <div class="text-[10px] text-slate-400 uppercase font-bold mb-1">Current Base Flow</div>
+                        <div id="out-curr-flow" class="text-xl font-black text-white">-- MWh</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Avg. of available days</div>
+                    </div>
+                    <div class="bg-slate-900 border border-emerald-900 rounded-lg p-3">
+                        <div class="text-[10px] text-emerald-400 uppercase font-bold mb-1">Best Historical Match</div>
+                        <div id="out-match-year" class="text-xl font-black text-emerald-400">--</div>
+                        <div id="out-match-avg" class="text-[10px] text-slate-400 mt-1">Avg flow: -- MWh</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-600 rounded-lg p-3">
+                        <div class="text-[10px] text-slate-400 uppercase font-bold mb-1">Applied Scaling Ratio</div>
+                        <div id="out-match-ratio" class="text-xl font-black text-indigo-400">-- x</div>
+                        <div class="text-[10px] text-slate-500 mt-1">(Current / Historical)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 flex-grow">
+            
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col">
+                <div class="flex justify-between items-center border-b pb-2 mb-3">
+                    <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">3. Rolling Weekly Balancer</h2>
+                    <span class="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-1 rounded">Deviations auto-carry to future weeks</span>
+                </div>
+                
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="p-2 border-b text-slate-500">Week</th>
+                                <th class="p-2 border-b text-slate-500 text-center">Predicted Base</th>
+                                <th class="p-2 border-b text-slate-500 text-center">Actual Gen (DB)</th>
+                                <th class="p-2 border-b text-slate-500 text-center">Deviation</th>
+                                <th class="p-2 border-b text-indigo-700 font-bold text-center bg-indigo-50">Balanced AD Target</th>
+                            </tr>
+                        </thead>
+                        <tbody id="balancer-tbody" class="divide-y divide-slate-100">
+                            <tr><td colspan="5" class="p-4 text-center text-slate-400">Click Fetch Data to analyze</td></tr>
+                        </tbody>
+                        <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-200">
+                            <tr>
+                                <td class="p-2">MONTH TOTAL</td>
+                                <td id="t-base" class="p-2 text-center text-slate-500">--</td>
+                                <td id="t-actual" class="p-2 text-center text-emerald-600">--</td>
+                                <td id="t-dev" class="p-2 text-center">--</td>
+                                <td id="t-final" class="p-2 text-center text-indigo-800 bg-indigo-100 text-sm">--</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div id="balancer-warning" class="mt-2 text-[10px] text-rose-600 font-bold"></div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col">
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-2 border-b pb-2">Historical Context (Database)</h2>
+                <div class="relative flex-grow min-h-[250px]">
+                    <canvas id="multiYearChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mt-2 shrink-0">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-sm font-black text-slate-800 uppercase tracking-widest">4. Daily AD Generation Schedule</h2>
+                <div class="text-xs text-slate-500 font-medium">Standard baseline: <span id="out-daily-base" class="font-bold text-slate-800">--</span> MWh/day</div>
+            </div>
+            <div class="overflow-y-auto max-h-[350px] custom-scroll">
+                <table class="w-full text-left text-xs border-collapse text-center">
+                    <thead class="table-header shadow-sm">
+                        <tr>
+                            <th class="p-3 border-b border-r text-slate-500 font-bold text-left">Day</th>
+                            <th class="p-3 border-b border-r text-slate-500 font-bold">Actual Gen (DB)</th>
+                            <th class="p-3 border-b border-r text-slate-500 font-bold">Hist. Curve (Match)</th>
+                            <th class="p-3 border-b text-emerald-700 font-black bg-emerald-50">Recommended AD (MWh)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="daily-tbody" class="divide-y divide-slate-100">
+                        <tr><td colspan="4" class="p-8 text-center text-slate-400">Awaiting Database Fetch...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        import { supabase } from './assets/js/core-app.js';
+
+        const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+        const wDays = [7, 7, 7, 7, 4]; // Assumes a max 32 day month. Will truncate based on actual days.
+        
+        let allPlantData = [];
+        let chartInstance = null;
+
+        // Initialize Dropdowns
+        function initDropdowns() {
+            const yrSelect = document.getElementById('inp-year');
+            const moSelect = document.getElementById('inp-month');
+            
+            const currentYear = new Date().getFullYear() + 57;
+            for(let i = currentYear - 4; i <= currentYear + 1; i++) {
+                yrSelect.add(new Option(i, i));
+            }
+            yrSelect.value = currentYear;
+
+            nepaliMonths.forEach(m => moSelect.add(new Option(m, m)));
+            moSelect.value = "Falgun"; // Default
+        }
+
+        // Parse YYYY.MM.DD or YYYY-MM-DD
+        function parseNepaliDate(dateStr) {
+            if(!dateStr) return null;
+            const parts = dateStr.split(/[\.\-\/]/);
+            if(parts.length >= 3) {
+                return {
+                    year: parseInt(parts[0]),
+                    month: parseInt(parts[1]),
+                    day: parseInt(parts[2])
+                };
+            }
+            return null;
+        }
+
+        async function fetchAndAnalyze() {
+            const btn = document.getElementById('btn-fetch');
+            const status = document.getElementById('sync-status');
+            btn.innerText = "Fetching Database...";
+            btn.disabled = true;
+            status.innerText = "Syncing with Supabase...";
+            status.classList.replace('bg-slate-700', 'bg-amber-600');
+
+            const targetYear = parseInt(document.getElementById('inp-year').value);
+            const targetMonthName = document.getElementById('inp-month').value;
+            const targetMonthIndex = nepaliMonths.indexOf(targetMonthName) + 1;
+
+            try {
+                // Fetch ALL generation data for correlation
+                const { data, error } = await supabase.from('plant_data').select('nepali_date, export_substation');
+                if (error) throw error;
+                
+                allPlantData = data;
+                processData(targetYear, targetMonthIndex, targetMonthName);
+                
+                status.innerText = "Synced Successfully";
+                status.classList.replace('bg-amber-600', 'bg-emerald-600');
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                status.innerText = "Sync Failed";
+                status.classList.replace('bg-amber-600', 'bg-rose-600');
+                alert("Failed to fetch data from Supabase. Make sure you are logged in.");
+            } finally {
+                btn.innerText = "Fetch Data & Analyze";
+                btn.disabled = false;
+            }
+        }
+
+        function processData(targetYear, targetMonthIndex, targetMonthName) {
+            // Organize data by Year -> Day for the selected month
+            let db = {};
+            let availableYears = new Set();
+
+            allPlantData.forEach(row => {
+                const dateObj = parseNepaliDate(row.nepali_date);
+                if (dateObj && dateObj.month === targetMonthIndex && row.export_substation != null) {
+                    if (!db[dateObj.year]) db[dateObj.year] = new Array(32).fill(null);
+                    db[dateObj.year][dateObj.day] = row.export_substation;
+                    availableYears.add(dateObj.year);
+                }
+            });
+
+            // Ensure Target Year exists in our local object (even if empty)
+            if (!db[targetYear]) db[targetYear] = new Array(32).fill(null);
+
+            // Compute Actual Generation per Week for Target Year
+            const actuals = { W1: 0, W2: 0, W3: 0, W4: 0, W5: 0 };
+            const actualDaysCount = { W1: 0, W2: 0, W3: 0, W4: 0, W5: 0 };
+
+            let totalDaysInTargetMonth = 30; // Default
+            for (let day = 1; day <= 32; day++) {
+                let val = db[targetYear][day];
+                if (val != null) {
+                    totalDaysInTargetMonth = Math.max(totalDaysInTargetMonth, day);
+                    let wIdx = Math.floor((day - 1) / 7);
+                    if (wIdx > 4) wIdx = 4;
+                    let wKey = `W${wIdx + 1}`;
+                    actuals[wKey] += val;
+                    actualDaysCount[wKey]++;
+                }
+            }
+
+            // Convert sums to null if the week hasn't started yet (0 days of data)
+            ['W1', 'W2', 'W3', 'W4', 'W5'].forEach(w => {
+                if (actualDaysCount[w] === 0) actuals[w] = null;
+            });
+
+            // Calculate Target Year Base Flow Average
+            let sumCurr = 0; let countCurr = 0;
+            for(let day=1; day<=32; day++) {
+                if(db[targetYear][day] != null) { sumCurr += db[targetYear][day]; countCurr++; }
+            }
+            const currAvg = countCurr > 0 ? (sumCurr / countCurr) : 0;
+            document.getElementById('out-curr-flow').innerText = currAvg > 0 ? currAvg.toFixed(2) + " MWh/day" : "No Data Yet";
+
+            // Find Best Historical Match
+            let bestYear = null;
+            let smallestDiff = Infinity;
+            let bestYearAvg = 0;
+
+            availableYears.forEach(year => {
+                if(year === targetYear) return; // Skip comparing against itself
+                let sumHist = 0; let countHist = 0;
+                for(let day=1; day<=countCurr; day++) { // Compare the same number of days
+                    if(db[year] && db[year][day] != null) { sumHist += db[year][day]; countHist++; }
+                }
+                if(countHist > 0) {
+                    let hAvg = sumHist / countHist;
+                    let diff = Math.abs(currAvg - hAvg);
+                    if (diff < smallestDiff) {
+                        smallestDiff = diff;
+                        bestYear = year;
+                        bestYearAvg = hAvg;
+                    }
+                }
+            });
+
+            let scalingRatio = 1;
+            if (bestYear && bestYearAvg > 0 && currAvg > 0) {
+                scalingRatio = currAvg / bestYearAvg;
+                document.getElementById('out-match-year').innerText = `${targetMonthName} ${bestYear}`;
+                document.getElementById('out-match-avg').innerText = `Avg flow: ${bestYearAvg.toFixed(2)} MWh`;
+                document.getElementById('out-match-ratio').innerText = scalingRatio.toFixed(3) + " x";
+            } else {
+                // Fallback if no history
+                bestYear = bestYear || targetYear;
+                document.getElementById('out-match-year').innerText = "Insufficient History";
+                document.getElementById('out-match-avg').innerText = "--";
+                document.getElementById('out-match-ratio').innerText = "1.000 x";
+            }
+
+            executeBalancer(db, targetYear, bestYear, actuals, actualDaysCount, scalingRatio, totalDaysInTargetMonth);
+        }
+
+        function executeBalancer(db, targetYear, bestYear, actuals, actualDaysCount, scalingRatio, totalDaysInMonth) {
+            const scope = document.getElementById('inp-scope').value;
+            const contract = parseFloat(document.getElementById('inp-contract').value) || 4005.74;
+            const standardDaily = contract / totalDaysInMonth;
+            document.getElementById('out-daily-base').innerText = standardDaily.toFixed(2);
+
+            // Step 1: Base Predictions using Scaled Best Year
+            let basePreds = [0,0,0,0,0];
+            let startIdx = 1;
+            
+            wDays.forEach((days, wIdx) => {
+                let actualDays = (wIdx === 4) ? (totalDaysInMonth - 28) : days;
+                let sum = 0;
+                for(let i=0; i<actualDays; i++) { 
+                    let histVal = (db[bestYear] && db[bestYear][startIdx + i]) ? db[bestYear][startIdx + i] : standardDaily;
+                    sum += histVal * scalingRatio; 
+                }
+                basePreds[wIdx] = sum;
+                startIdx += actualDays;
+            });
+
+            // Step 2: Optimistic Bias for W1 & W2
+            let balancedTargets = [...basePreds];
+            balancedTargets[0] *= 1.05; 
+            balancedTargets[1] *= 1.05;
+
+            // Step 3: Rolling Deviation Distribution
+            let totalDeviation = 0;
+            const tbodyBal = document.getElementById('balancer-tbody');
+            tbodyBal.innerHTML = '';
+            let tBase=0, tAct=0, tDev=0, tFin=0;
+
+            ['W1', 'W2', 'W3', 'W4', 'W5'].forEach((wStr, i) => {
+                let act = actuals[wStr];
+                let base = balancedTargets[i];
+                let dev = 0;
+                let target = base;
+
+                if (act !== null) {
+                    dev = act - base; 
+                    totalDeviation += dev; 
+                    target = act; 
+                } else {
+                    // Spread deficit safely
+                    if (totalDeviation < 0) {
+                        if (i === 2) { target += Math.abs(totalDeviation) * 0.6; } // W3 absorbs 60%
+                        if (i === 3) { target += Math.abs(totalDeviation) * 0.4; } // W4 absorbs 40%
+                    }
+                    
+                    // Historic Max Check
+                    let maxHist = 0;
+                    Object.keys(db).forEach(y => {
+                        if(y == targetYear) return;
+                        let startD = (i*7) + 1;
+                        let endD = startD + ((i === 4) ? totalDaysInMonth - 28 : 7);
+                        let wSum = 0;
+                        for(let d=startD; d<endD; d++) { if(db[y] && db[y][d]) wSum += db[y][d]; }
+                        if(wSum > maxHist) maxHist = wSum;
+                    });
+                    
+                    if(maxHist > 0 && target > maxHist * 1.05) {
+                        target = maxHist * 1.05; 
+                        document.getElementById('balancer-warning').innerText = `*Notice: W${i+1} AD target was dynamically capped near historical limits.`;
+                    }
+                }
+
+                tBase += base; tAct += (act || 0); tDev += dev; tFin += target;
+
+                tbodyBal.innerHTML += `
+                    <tr class="${act !== null ? 'bg-slate-50 text-slate-500' : 'hover:bg-indigo-50'}">
+                        <td class="p-2 border-b font-bold">${wStr}</td>
+                        <td class="p-2 border-b text-center">${base.toFixed(1)}</td>
+                        <td class="p-2 border-b text-center ${act !== null ? 'font-bold text-emerald-600' : ''}">${act !== null ? act.toFixed(1) : 'Awaiting'}</td>
+                        <td class="p-2 border-b text-center font-mono ${dev < 0 ? 'text-rose-600 font-bold' : (dev > 0 ? 'text-emerald-600 font-bold' : '')}">${dev !== 0 ? dev.toFixed(1) : '--'}</td>
+                        <td class="p-2 border-b text-center font-bold ${act===null?'text-indigo-700 bg-indigo-50/50':''}">${target.toFixed(1)}</td>
+                    </tr>
+                `;
+                balancedTargets[i] = target; 
+            });
+
+            document.getElementById('t-base').innerText = tBase.toFixed(1);
+            document.getElementById('t-actual').innerText = tAct > 0 ? tAct.toFixed(1) : '--';
+            document.getElementById('t-dev').innerText = tDev.toFixed(1);
+            document.getElementById('t-final').innerText = tFin.toFixed(1);
+
+            renderDailyTable(db, targetYear, bestYear, balancedTargets, totalDaysInMonth, scope, standardDaily);
+            renderMultiChart(db, scope, totalDaysInMonth);
+        }
+
+        function renderDailyTable(db, targetYear, bestYear, balancedTargets, totalDaysInMonth, scope, standardDaily) {
+            const dBody = document.getElementById('daily-tbody');
+            dBody.innerHTML = '';
+            
+            let dayCounter = 1;
+            wDays.forEach((daysInWk, wIdx) => {
+                let actualDays = (wIdx === 4) ? (totalDaysInMonth - 28) : daysInWk;
+
+                if (scope !== 'Month' && scope !== `Week${wIdx+1}`) {
+                    dayCounter += actualDays;
+                    return; 
+                }
+
+                let bestWkSum = 0;
+                for(let i=0; i<actualDays; i++) { 
+                    bestWkSum += (db[bestYear] && db[bestYear][dayCounter+i]) ? db[bestYear][dayCounter+i] : standardDaily; 
+                }
+                
+                for(let i=0; i<actualDays; i++) {
+                    let actVal = db[targetYear][dayCounter];
+                    let histVal = (db[bestYear] && db[bestYear][dayCounter]) ? db[bestYear][dayCounter] : standardDaily;
+                    
+                    let dailyRatio = histVal / bestWkSum;
+                    let recommendedDailyAD = balancedTargets[wIdx] * dailyRatio;
+
+                    let trClass = actVal != null ? "bg-slate-50 text-slate-500" : "hover:bg-slate-50";
+                    if(wIdx === 3 && actVal == null) trClass = "bg-amber-50/30 hover:bg-amber-50"; 
+                    
+                    dBody.innerHTML += `
+                        <tr class="${trClass} border-b border-slate-100">
+                            <td class="p-3 border-r font-bold text-slate-700 text-left">Day ${dayCounter} <span class="text-[10px] text-slate-400 font-normal ml-2">(W${wIdx+1})</span></td>
+                            <td class="p-3 border-r ${actVal != null ? 'font-bold text-emerald-600' : 'text-slate-400'}">${actVal != null ? actVal.toFixed(2) : '--'}</td>
+                            <td class="p-3 border-r text-slate-500">${histVal.toFixed(2)}</td>
+                            <td class="p-3 text-emerald-700 font-black ${actVal == null ? 'bg-emerald-50/50 highlight-row' : ''}">${actVal == null ? recommendedDailyAD.toFixed(2) : '<span class="text-slate-400 font-normal text-xs">Concluded</span>'}</td>
+                        </tr>
+                    `;
+                    dayCounter++;
+                }
+            });
+        }
+
+        function renderMultiChart(db, scope, totalDaysInMonth) {
+            const ctx = document.getElementById('multiYearChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+
+            let labels = [];
+            let datasets = [];
+            const colors = ['#94a3b8', '#cbd5e1', '#fcd34d', '#38bdf8', '#818cf8', '#f43f5e', '#10b981'];
+
+            let start = 1, end = totalDaysInMonth;
+            if(scope.includes('Week')) {
+                let wIdx = parseInt(scope.replace('Week','')) - 1;
+                start = (wIdx * 7) + 1;
+                end = (wIdx === 4) ? totalDaysInMonth : start + 6;
+            }
+
+            for(let i=start; i<=end; i++) labels.push(`Day ${i}`);
+
+            let colorIdx = 0;
+            Object.keys(db).forEach(y => {
+                let dataPoints = [];
+                for(let i=start; i<=end; i++) dataPoints.push(db[y][i] || null);
+                
+                // Only plot if there is data
+                if (dataPoints.some(d => d !== null)) {
+                    datasets.push({
+                        label: y.toString(),
+                        data: dataPoints,
+                        borderColor: y == document.getElementById('inp-year').value ? '#10b981' : colors[colorIdx % colors.length],
+                        borderWidth: y == document.getElementById('inp-year').value ? 4 : 2,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    });
+                    colorIdx++;
+                }
+            });
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: {size: 10} } } },
+                    scales: {
+                        y: { title: { display: true, text: 'MWh' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // Initialize Listeners
+        document.getElementById('btn-fetch').addEventListener('click', fetchAndAnalyze);
+        document.getElementById('inp-scope').addEventListener('change', () => document.getElementById('btn-fetch').click());
+
+        // Run Setup
+        initDropdowns();
+        // Delay initial fetch slightly to ensure core-app.js Supabase module is ready
+        setTimeout(() => document.getElementById('btn-fetch').click(), 500);
+
+    </script>
+</body>
+</html>

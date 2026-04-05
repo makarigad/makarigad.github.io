@@ -452,6 +452,26 @@
                                 <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Plant Loss Time</span><span id="sum-out-time" class="font-bold text-slate-800">0</span> <span class="text-xs text-slate-400">mins</span></div>
                             </div>
                             
+
+                            <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm">
+                                <h3 class="font-bold text-rose-900 mb-3 border-b border-rose-100 pb-2">⚠️ Aggregated Outages & Losses</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Trippings</span><span id="sum-out-trips" class="font-black text-xl text-rose-700">0</span></div>
+                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Grid Faults (MWh)</span><span id="sum-out-grid" class="font-bold text-slate-800">0</span></div>
+                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">132kV Faults (MWh)</span><span id="sum-out-132" class="font-bold text-slate-800">0</span></div>
+                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Dispatch (MWh)</span><span id="sum-out-disp" class="font-bold text-slate-800">0</span></div>
+                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Non-Dispatch (MWh)</span><span id="sum-out-force" class="font-bold text-slate-800">0</span></div>
+                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Plant Loss Time</span><span id="sum-out-time" class="font-bold text-slate-800">0</span> <span class="text-xs text-slate-400">mins</span></div>
+                                </div>
+                                
+                                <div id="summary-fault-details-container" class="mt-6 overflow-x-auto"></div>
+                                
+                                <div class="mt-6 pt-4 border-t border-rose-100 flex justify-end col-actions">
+                                    <button onclick="alert('Admin Edit functionality will open the data grid here.')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Admin Edit</button>
+                                </div>
+                            </div>
+
+
                             <div class="mt-6 pt-4 border-t border-rose-100 flex justify-end col-actions">
                                 <button onclick="alert('Admin Edit functionality will open the data grid here.')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Admin Edit</button>
                             </div>
@@ -538,6 +558,17 @@
                                             <input type="number" id="th-gen-a-max" step="1" class="threshold-input" placeholder="470">
                                         </label>
                                     </div>
+
+                                    <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Transformer</h3>
+                                        <label class="threshold-label">Max Trans Temp (°C)
+                                            <input type="number" id="th-trans-t-max" step="1" class="threshold-input" placeholder="70">
+                                        </label>
+                                        <label class="threshold-label mt-2">Max Oil Level Limit
+                                            <input type="number" id="th-trans-lvl-max" step="0.1" class="threshold-input" placeholder="9.5">
+                                        </label>
+                                    </div>
+
                                     <div class="threshold-group bg-slate-50 p-4 rounded-lg border border-slate-200">
                                         <h3 class="text-[11px] font-black text-slate-600 uppercase tracking-wider mb-3">Temperature (°C)</h3>
                                         <label class="threshold-label">Min Generator Bearing Temp

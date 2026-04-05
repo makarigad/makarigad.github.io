@@ -266,11 +266,16 @@ window.validateForm = function() {
     const lineVMax   = TH.line_v_max   ?? 34.1;
     const genAMin    = TH.gen_a_min    ?? 50;
     const genAMax    = TH.gen_a_max    ?? 470;
+    const transTMax    = TH.trans_t_max ?? 70;
+    const transLvlMax   = TH.trans_lvl_max ?? 9.5;
 
     const u1Mw = val('e_u1_mw'), u2Mw = val('e_u2_mw'), outMw = val('e_out_mw');
     if (u1Mw !== null && (u1Mw < 0 || u1Mw > maxUnitMw)) { errors.push(`U1 Load (MW) must be between 0 and ${maxUnitMw}.`); markErr('e_u1_mw'); markErr('u1-load'); }
     if (u2Mw !== null && (u2Mw < 0 || u2Mw > maxUnitMw)) { errors.push(`U2 Load (MW) must be between 0 and ${maxUnitMw}.`); markErr('e_u2_mw'); markErr('u2-load'); }
     if (outMw !== null && (outMw < 0 || outMw > maxOutMw)) { errors.push(`Outgoing Load (MW) must be between 0 and ${maxOutMw}.`); markErr('e_out_mw'); markErr('outgoing-kwh'); }
+
+    ['tr_1_temp', 'tr_2_temp', 'tr_aux_temp'].forEach(id => chk(id, 15, transTMax, 'Transformer Temp'));
+    ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, 3, transLvlMax, 'Trans Oil Level'));
 
     const checkFreqPf = (mwId, hzId, pfId, name) => {
         const m = val(mwId), h = val(hzId), p = val(pfId);
@@ -945,15 +950,29 @@ document.getElementById('dd-entry-time')?.addEventListener('change', async (e) =
 function addFaultRow() {
     const container = document.getElementById('faults-container');
     const rowId = 'fault-' + Date.now();
-    let options = faultCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    // NEW: Add a blank, disabled default option forcing the user to make a choice
+    let typeOptions = '<option value="" disabled selected>-- Select type of fault --</option>' + 
+                      faultCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    // Generate Hour options (00 to 23)
+    let hourOptions = '<option value="">HH</option>';
+    for(let h=0; h<24; h++) {
+        let hr = h.toString().padStart(2, '0');
+        hourOptions += `<option value="${hr}">${hr}</option>`;
+    }
+    
+    // Get local date format YYYY-MM-DD for the auto-fill
+    const todayStr = new Date().toLocaleDateString('en-CA'); 
     
     const html = `
     <div class="fault-row bg-slate-50 p-4 rounded border border-slate-200 relative mb-3" id="${rowId}">
         <button type="button" onclick="document.getElementById('${rowId}').remove()" class="absolute top-2 right-2 text-rose-500 hover:text-rose-700 font-bold text-lg">&times;</button>
+        
         <div class="grid grid-cols-12 gap-4 mb-4">
             <div class="col-span-12 md:col-span-3">
                 <label class="block text-[10px] font-bold text-slate-500 uppercase">Type of Fault</label>
-                <select class="f-type w-full border p-2 rounded text-sm font-bold text-rose-700 outline-none">${options}</select>
+                <select class="f-type w-full border p-2 rounded text-sm font-bold text-rose-700 outline-none">${typeOptions}</select>
             </div>
             <div class="col-span-12 md:col-span-5">
                 <label class="block text-[10px] font-bold text-slate-500 uppercase">Reason for Tripping / Event</label>
@@ -968,13 +987,39 @@ function addFaultRow() {
                 <input type="number" step="any" class="f-dispatch-power w-full border border-purple-300 bg-purple-50 p-2 rounded text-sm outline-none" placeholder="MW">
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-4">
-            <div class="flex space-x-2"><div class="w-1/2"><label class="block text-[10px] font-bold text-slate-500 uppercase">Start Date</label><input type="date" class="f-start-date w-full border p-2 rounded text-sm"></div>
-            <div class="w-1/2"><label class="block text-[10px] font-bold text-slate-500 uppercase">Start Time</label><input type="time" class="f-start-time w-full border p-2 rounded text-sm"></div></div>
-            <div class="flex space-x-2"><div class="w-1/2"><label class="block text-[10px] font-bold text-slate-500 uppercase">End Date</label><input type="date" class="f-end-date w-full border p-2 rounded text-sm"></div>
-            <div class="w-1/2"><label class="block text-[10px] font-bold text-slate-500 uppercase">End Time</label><input type="time" class="f-end-time w-full border p-2 rounded text-sm"></div></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex gap-3">
+                <div class="flex-1">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Start Date</label>
+                    <input type="date" class="f-start-date w-full border p-1.5 rounded text-sm outline-none" value="${todayStr}">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1 text-center w-full">Start Time</label>
+                    <div class="flex items-center space-x-1">
+                        <select class="f-start-hour w-16 border p-1.5 rounded text-sm font-bold text-indigo-700 cursor-pointer outline-none text-center">${hourOptions}</select>
+                        <span class="font-bold text-slate-400">:</span>
+                        <input type="number" min="0" max="59" class="f-start-minute w-16 border p-1.5 rounded text-sm font-bold text-indigo-700 outline-none text-center" placeholder="MM">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <div class="flex-1">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">End Date</label>
+                    <input type="date" class="f-end-date w-full border p-1.5 rounded text-sm outline-none" value="${todayStr}">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1 text-center w-full">End Time</label>
+                    <div class="flex items-center space-x-1">
+                        <select class="f-end-hour w-16 border p-1.5 rounded text-sm font-bold text-indigo-700 cursor-pointer outline-none text-center">${hourOptions}</select>
+                        <span class="font-bold text-slate-400">:</span>
+                        <input type="number" min="0" max="59" class="f-end-minute w-16 border p-1.5 rounded text-sm font-bold text-indigo-700 outline-none text-center" placeholder="MM">
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>`;
+        </div>`;
     container.insertAdjacentHTML('beforeend', html);
     
     const newRow = document.getElementById(rowId);
@@ -1112,85 +1157,115 @@ if(btnNoon) {
 
             
 
-            // 2. Gather Outages
-            const { data: existingOutage } = await supabase.from('outages').select('*').eq('id', targetDate).maybeSingle();
-            let faultDetailsArray = existingOutage && existingOutage.fault_details ? [...existingOutage.fault_details] : [];
-
-            let newDetailsArray = [];
-            const u1Stat = document.getElementById('u1-status')?.value || 'O';
-            const u2Stat = document.getElementById('u2-status')?.value || 'O';
+            // 2. Gather Outages by their Cycle Date
+            let faultsByCycleDate = {};
 
             document.querySelectorAll('.fault-row').forEach(row => {
                 const type = row.querySelector('.f-type').value;
                 const reason = row.querySelector('.f-reason').value.trim() || 'No reason provided';
-                const startD = row.querySelector('.f-start-date').value;
-                const startT = row.querySelector('.f-start-time').value;
-                const endD = row.querySelector('.f-end-date').value;
-                const endT = row.querySelector('.f-end-time').value;
                 
-                if(!startD || !startT || !endD || !endT) return;
+                const startD = row.querySelector('.f-start-date').value;
+                const startH = row.querySelector('.f-start-hour').value;
+                // Read minutes, default to '00' if left blank, and ensure it always has 2 digits (e.g. '5' becomes '05')
+                const startM = (row.querySelector('.f-start-minute').value || '0').padStart(2, '0');
+                
+                const endD = row.querySelector('.f-end-date').value;
+                const endH = row.querySelector('.f-end-hour').value;
+                const endM = (row.querySelector('.f-end-minute').value || '0').padStart(2, '0');
+                
+                // If they haven't selected an hour, skip saving this row to prevent errors
+                if(!startD || !startH || !endD || !endH) return;
+
+                // Stitch them back into standard HH:MM format
+                const startT = `${startH}:${startM}`;
+                const endT = `${endH}:${endM}`;
 
                 const start = new Date(`${startD}T${startT}`);
                 const end = new Date(`${endD}T${endT}`);
                 const durMins = (end - start) / 60000;
                 if(durMins <= 0) return;
                 
+                // ... (The rest of your cycle date logic continues here exactly as before)
+                
+                // --- CYCLE DATE LOGIC: Noon to Noon ---
+                // If fault starts before 12:00 PM, it belongs to the previous day's log.
+                let cycleDateObj = new Date(start);
+                if (start.getHours() < 12) {
+                    cycleDateObj.setDate(cycleDateObj.getDate() - 1);
+                }
+                const cYear = cycleDateObj.getFullYear();
+                const cMonth = String(cycleDateObj.getMonth() + 1).padStart(2, '0');
+                const cDay = String(cycleDateObj.getDate()).padStart(2, '0');
+                const cycleDateStr = `${cYear}-${cMonth}-${cDay}`;
+                // --------------------------------------
+
                 const plantMw = parseFloat(row.querySelector('.f-power').value) || 0;
                 let lossMw = type === 'Dispatch instruction' ? Math.max(0, plantMw - (parseFloat(row.querySelector('.f-dispatch-power').value) || 0)) : plantMw;
                 const mwh = lossMw * (durMins/60);
                 
-                newDetailsArray.push({
-                    type: type, reason: reason, start: `${startD} ${startT}`, end: `${endD} ${endT}`, durMins: durMins, plantMw: plantMw, lossMw: lossMw, mwh: Number(mwh.toFixed(3))
+                if (!faultsByCycleDate[cycleDateStr]) faultsByCycleDate[cycleDateStr] = [];
+
+                faultsByCycleDate[cycleDateStr].push({
+                    type: type, 
+                    reason: reason, 
+                    start: `${startD} ${startT}`, 
+                    end: `${endD} ${endT}`, 
+                    durMins: durMins, 
+                    plantMw: plantMw, 
+                    lossMw: lossMw, 
+                    mwh: Number(mwh.toFixed(3)),
+                    operator: window.currentUserName || 'Unknown' // Capture Operator
                 });
             });
 
-            faultDetailsArray = [...faultDetailsArray, ...newDetailsArray];
-
-            let agg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0, loss_time_min: 0, nea_trip: 0, u1_min: 0, u2_min: 0, trippings: faultDetailsArray.length };
-            let reasonsText = [];
-
-            faultDetailsArray.forEach(f => {
-                reasonsText.push(f.reason);
-                if (f.type === 'Dispatch instruction') { agg.disp += f.mwh; agg.nea_trip += f.durMins; }
-                else if (f.type === 'Non-Dispatch') { agg.non += f.mwh; agg.nea_trip += f.durMins; }
-                else if (f.type === 'Grid Faults') { agg.grid += f.mwh; agg.loss_time_min += f.durMins; }
-                else if (f.type === '132 kV line faults') { agg.l132 += f.mwh; agg.loss_time_min += f.durMins; }
-                else if (f.type === '33 kV line fault') { agg.l33 += f.mwh; }
-                else if (f.type === 'penstock pipe fault') { agg.pen += f.mwh; }
-                else if (f.type === 'plant equipment issue') { agg.eq += f.mwh; }
+            // Upsert faults directly into the calculated cycle dates
+            for (const [cDate, newDetailsArray] of Object.entries(faultsByCycleDate)) {
                 
-                if(f.type !== 'Dispatch instruction' && f.type !== 'Non-Dispatch' && f.type !== 'Grid Faults' && f.type !== '132 kV line faults'){
-                    if (u1Stat === 'O') agg.u1_min += f.durMins;
-                    if (u2Stat === 'O') agg.u2_min += f.durMins;
-                }
-            });
+                const { data: existingOutage } = await supabase.from('outages').select('*').eq('id', cDate).maybeSingle();
+                let faultDetailsArray = existingOutage && existingOutage.fault_details ? [...existingOutage.fault_details] : [];
+                faultDetailsArray = [...faultDetailsArray, ...newDetailsArray];
 
-            // Fallback for older existing legacy summaries
-            if (existingOutage && (!existingOutage.fault_details || existingOutage.fault_details.length === 0)) {
-                 agg.disp += Number(existingOutage.nea_curtailed_energy || 0);
-                 agg.grid += Number(existingOutage.energy_loss_line_trip || 0);
-                 agg.eq += Number(existingOutage.energy_loss_other || 0);
+                let agg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0, loss_time_min: 0, nea_trip: 0, u1_min: 0, u2_min: 0, trippings: faultDetailsArray.length };
+                let reasonsText = [];
+
+                faultDetailsArray.forEach(f => {
+                    reasonsText.push(f.reason);
+                    if (f.type === 'Dispatch instruction') { agg.disp += f.mwh; agg.nea_trip += f.durMins; }
+                    else if (f.type === 'Non-Dispatch') { agg.non += f.mwh; agg.nea_trip += f.durMins; }
+                    else if (f.type === 'Grid Faults') { agg.grid += f.mwh; agg.loss_time_min += f.durMins; }
+                    else if (f.type === '132 kV line faults') { agg.l132 += f.mwh; agg.loss_time_min += f.durMins; }
+                    else if (f.type === '33 kV line fault') { agg.l33 += f.mwh; }
+                    else if (f.type === 'penstock pipe fault') { agg.pen += f.mwh; }
+                    else if (f.type === 'plant equipment issue') { agg.eq += f.mwh; }
+                    
+                    // Simple estimation for unit loss time
+                    if(f.type !== 'Dispatch instruction' && f.type !== 'Non-Dispatch' && f.type !== 'Grid Faults' && f.type !== '132 kV line faults'){
+                        agg.u1_min += f.durMins;
+                        agg.u2_min += f.durMins;
+                    }
+                });
+
+                const outagePayload = {
+                    id: cDate,
+                    nea_curtailed_energy: Number((agg.disp + agg.non).toFixed(3)),
+                    nea_trip_loss_time_min: agg.nea_trip,
+                    no_of_trippings: agg.trippings,
+                    loss_time_min: agg.loss_time_min,
+                    loss_time_u1_min: agg.u1_min,
+                    loss_time_u2_min: agg.u2_min,
+                    energy_loss_line_trip: Number((agg.grid + agg.l132).toFixed(3)),
+                    energy_loss_other: Number((agg.l33 + agg.pen + agg.eq).toFixed(3)),
+                    total_energy_loss: Number((agg.disp + agg.non + agg.grid + agg.l132 + agg.l33 + agg.pen + agg.eq).toFixed(3)),
+                    reason: reasonsText.join(' + '),
+                    fault_details: faultDetailsArray, 
+                    updated_at: new Date().toISOString()
+                };
+
+                const { error: outErr } = await supabase.from('outages').upsert(outagePayload);
+                if(outErr) throw new Error("Outages Save Error for date " + cDate + ": " + outErr.message);
+                
+                // (Note: The monthly contract energy sync logic can remain identical, just move it inside this loop and use `cDate` to look up the mapping).
             }
-
-            const outagePayload = {
-                id: targetDate,
-                nea_curtailed_energy: Number((agg.disp + agg.non).toFixed(3)),
-                nea_trip_loss_time_min: agg.nea_trip,
-                no_of_trippings: agg.trippings,
-                loss_time_min: agg.loss_time_min,
-                loss_time_u1_min: agg.u1_min,
-                loss_time_u2_min: agg.u2_min,
-                energy_loss_line_trip: Number((agg.grid + agg.l132).toFixed(3)),
-                energy_loss_other: Number((agg.l33 + agg.pen + agg.eq).toFixed(3)),
-                total_energy_loss: Number((agg.disp + agg.non + agg.grid + agg.l132 + agg.l33 + agg.pen + agg.eq).toFixed(3)),
-                reason: reasonsText.join(' + '),
-                fault_details: faultDetailsArray, 
-                updated_at: new Date().toISOString()
-            };
-
-            const { error: outErr } = await supabase.from('outages').upsert(outagePayload);
-            if(outErr) throw new Error("Outages Save Error: " + outErr.message);
-
             // 3. Update Contract Energy (Monthly Summary)
             if (newDetailsArray.length > 0) {
                 let newAgg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0 };
@@ -1292,10 +1367,56 @@ if(btnLoadSum) {
             document.getElementById('sum-out-trips').innerText = o.no_of_trippings ?? '0';
             document.getElementById('sum-out-grid').innerText = o.energy_loss_line_trip ?? '0';
             document.getElementById('sum-out-132').innerText = '0'; 
+           // Existing logic to load basic stats
             document.getElementById('sum-out-disp').innerText = o.nea_curtailed_energy ?? '0';
             document.getElementById('sum-out-force').innerText = o.energy_loss_other ?? '0';
             document.getElementById('sum-out-time').innerText = o.loss_time_min ?? '0';
 
+            // NEW LOGIC: Build the detailed breakdown table
+            const detailsContainer = document.getElementById('summary-fault-details-container');
+            if (o.fault_details && o.fault_details.length > 0) {
+                let tableHtml = `
+                <table class="w-full text-left border-collapse border border-slate-200 shadow-sm text-xs">
+                    <thead class="bg-rose-50 text-rose-900 border-b-2 border-rose-200 uppercase tracking-wider">
+                        <tr>
+                            <th class="p-2 border-r border-rose-200">Type</th>
+                            <th class="p-2 border-r border-rose-200">Reason</th>
+                            <th class="p-2 border-r border-rose-200">Start (Date & Time)</th>
+                            <th class="p-2 border-r border-rose-200">End (Date & Time)</th>
+                            <th class="p-2 border-r border-rose-200 text-center">Operator</th>
+                            <th class="p-2 text-right">Loss (MWh)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-100">`;
+                
+                let grandTotal = 0;
+
+                o.fault_details.forEach(f => {
+                    grandTotal += Number(f.mwh || 0);
+                    tableHtml += `
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-2 border-r border-slate-200 text-slate-700 font-medium">${f.type}</td>
+                            <td class="p-2 border-r border-slate-200 text-slate-600">${f.reason}</td>
+                            <td class="p-2 border-r border-slate-200 text-slate-500 font-mono">${f.start}</td>
+                            <td class="p-2 border-r border-slate-200 text-slate-500 font-mono">${f.end}</td>
+                            <td class="p-2 border-r border-slate-200 text-center"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold">${f.operator || 'Unknown'}</span></td>
+                            <td class="p-2 text-right font-black text-rose-600">${Number(f.mwh || 0).toFixed(3)}</td>
+                        </tr>`;
+                });
+
+                tableHtml += `
+                        <tr class="bg-rose-50 font-black border-t-2 border-rose-300">
+                            <td colspan="5" class="p-2 text-right text-rose-900 uppercase tracking-widest">Total Cycle Loss</td>
+                            <td class="p-2 text-right text-rose-700 text-sm">${grandTotal.toFixed(3)}</td>
+                        </tr>
+                    </tbody>
+                </table>`;
+                detailsContainer.innerHTML = tableHtml;
+            } else {
+                detailsContainer.innerHTML = `<div class="p-4 bg-slate-50 text-slate-500 text-center rounded border border-dashed border-slate-300 text-xs font-bold">No detailed fault records found for this cycle.</div>`;
+            }
+
+            
             const editBtnContainer = document.querySelector('.col-actions');
             if (editBtnContainer) {
                 editBtnContainer.innerHTML = `<button onclick="editFaultModal('${targetDate}')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Edit</button>`;
@@ -2255,7 +2376,10 @@ const DEFAULT_THRESHOLDS = {
     bearing_t_min: 15,
     bearing_t_max: 95,
     pressure_min: 830,
-    pressure_max: 900
+    pressure_max: 900,
+    trans_t_max: 70,
+    trans_lvl_max: 9.5
+
 };
 
 // Global thresholds (loaded from DB, fall back to defaults)
@@ -2278,7 +2402,9 @@ const THRESHOLD_FIELD_MAP = {
     'th-bearing-t-min':        'bearing_t_min',
     'th-bearing-t-max':        'bearing_t_max',
     'th-pressure-min':         'pressure_min',
-    'th-pressure-max':         'pressure_max'
+    'th-pressure-max':         'pressure_max',
+    'th-trans-t-max':          'trans_t_max',
+    'th-trans-lvl-max':        'trans_lvl_max'
 };
 
 async function loadThresholds() {

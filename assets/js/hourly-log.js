@@ -222,7 +222,18 @@ window.validateForm = function() {
     let errors = [];
     document.querySelectorAll('.validation-warning').forEach(el => el.classList.remove('validation-warning', 'bg-rose-50', 'ring-2', 'ring-rose-500'));
 
-    const val = (id) => { const el = document.getElementById(id); return (el && el.value !== '') ? parseFloat(el.value) : null; };
+    // FIX: Catch HTML5 "badInput" trap where invalid characters make the value return as ""
+    const val = (id) => { 
+        const el = document.getElementById(id); 
+        if (!el) return null;
+        if (el.validity && el.validity.badInput) {
+            errors.push(`Invalid numeric format entered.`);
+            markErr(id);
+            return null;
+        }
+        return el.value !== '' ? parseFloat(el.value) : null; 
+    };
+    
     const markErr = (id) => { const el = document.getElementById(id); if (el) el.classList.add('validation-warning', 'bg-rose-50', 'ring-2', 'ring-rose-500'); };
 
     ['u1', 'u2'].forEach(u => {
@@ -254,7 +265,6 @@ window.validateForm = function() {
         }
     });
 
-    // Use admin-configurable thresholds (with safe defaults)
     const TH = window.validationThresholds || {};
     const maxUnitMw  = TH.max_unit_mw  ?? 5.3;
     const maxOutMw   = TH.max_out_mw   ?? 10.6;
@@ -266,8 +276,8 @@ window.validateForm = function() {
     const lineVMax   = TH.line_v_max   ?? 34.1;
     const genAMin    = TH.gen_a_min    ?? 50;
     const genAMax    = TH.gen_a_max    ?? 470;
-    const transTMax    = TH.trans_t_max ?? 70;
-    const transLvlMax   = TH.trans_lvl_max ?? 9.5;
+    const transTMax  = TH.trans_t_max ?? 70;
+    const transLvlMax = TH.trans_lvl_max ?? 9.5;
 
     const u1Mw = val('e_u1_mw'), u2Mw = val('e_u2_mw'), outMw = val('e_out_mw');
     if (u1Mw !== null && (u1Mw < 0 || u1Mw > maxUnitMw)) { errors.push(`U1 Load (MW) must be between 0 and ${maxUnitMw}.`); markErr('e_u1_mw'); markErr('u1-load'); }
@@ -308,7 +318,8 @@ window.validateForm = function() {
             } else if (!allZero) {
                 if (ry<lineVMin||ry>lineVMax || yb<lineVMin||yb>lineVMax || br<lineVMin||br>lineVMax) { errors.push(`Outgoing Voltages must be between ${lineVMin} and ${lineVMax}`); markErr(ryId); markErr(ybId); markErr(brId); }
                 const avg = (ry+yb+br)/3;
-                if (Math.abs(ry-avg) > avg*0.006 || Math.abs(ry-avg) > avg*0.006 || Math.abs(br-avg) > avg*0.006) { errors.push(`Outgoing Voltages vary by > 0.6% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
+                // FIX: Corrected typo checking 'ry' twice instead of 'yb'
+                if (Math.abs(ry-avg) > avg*0.006 || Math.abs(yb-avg) > avg*0.006 || Math.abs(br-avg) > avg*0.006) { errors.push(`Outgoing Voltages vary by > 0.6% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
             }
         } else {
             if (!allZero) {
@@ -353,7 +364,6 @@ window.validateForm = function() {
     const checkCalcMw = (mwId, vIds, iIds, name) => {
         const mw = val(mwId);
         if (mw !== null && mw > 0) {
-            // Guard: only check if all voltage and current values are present
             const v0 = val(vIds[0]), v1 = val(vIds[1]), v2 = val(vIds[2]);
             const i0 = val(iIds[0]), i1 = val(iIds[1]), i2 = val(iIds[2]);
             if (v0 === null || v1 === null || v2 === null || i0 === null || i1 === null || i2 === null) return;
@@ -372,11 +382,12 @@ window.validateForm = function() {
     
     if (u1Gwh!==null && u2Gwh!==null && outMwh!==null && (u1Gwh*1000 + u2Gwh*1000) < outMwh) { errors.push(`Sum of U1+U2 Energy must be ≥ Outgoing Energy (U1+U2=${(u1Gwh*1000+u2Gwh*1000).toFixed(3)}, Out=${outMwh}).`); markErr('e_out_mwh'); }
 
-    // Outgoing MW cannot exceed U1+U2 total MW (losses are always positive)
-    if (u1Mw !== null && u2Mw !== null && outMw !== null && outMw > 0) {
-        const totalGenMw = u1Mw + u2Mw;
+    // FIX: Fallback u1/u2 MW to 0 if null, so if a unit is off, outMw is still checked against the running unit
+    if (outMw !== null && outMw > 0) {
+        const totalGenMw = (u1Mw || 0) + (u2Mw || 0);
         if (outMw > totalGenMw + 0.25) { errors.push(`Outgoing MW (${outMw}) cannot exceed U1+U2 total (${totalGenMw.toFixed(3)} MW). Check transformer losses.`); markErr('e_out_mw'); }
     }
+
     if (feed1!==null && feed2!==null && outMwh!==null && (feed1 + feed2) < outMwh) { errors.push(`Sum of Feeders must be > Outgoing.`); markErr('u1-feeder'); markErr('u2-feeder'); }
     if (pmu1!==null && feed1!==null && pmu1*1000 < feed1) { errors.push(`U1 PMU (GWh) must be > U1 Feeder (MWh).`); markErr('u1-pmu'); markErr('u1-feeder'); }
     if (pmu2!==null && feed2!==null && pmu2*1000 < feed2) { errors.push(`U2 PMU (GWh) must be > U2 Feeder (MWh).`); markErr('u2-pmu'); markErr('u2-feeder'); }
@@ -403,7 +414,6 @@ window.validateForm = function() {
             if (outMwh < prevLog.outgoing) { errors.push(`Outgoing Energy cannot be less than previous hour (${prevLog.outgoing}).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
             if (outMwh > prevLog.outgoing + outMaxDelta) { errors.push(`Outgoing Energy increased by more than max allowed (${outMaxDelta} MWh).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
         }
-        // Hour counter validation: cannot be 0 if unit is running, cannot decrease, cannot exceed prev × multiplier
         ['u1', 'u2'].forEach(u => {
             const hcurEl = document.getElementById(`${u}-hour`);
             const statEl = document.getElementById(`${u}-status`);
@@ -420,17 +430,15 @@ window.validateForm = function() {
         });
     }
 
-    // Water level range (0–1200 cm typical; flag if clearly impossible)
     const waterLvl = val('water-level');
     if (waterLvl !== null && (waterLvl < 0 || waterLvl > 1500)) { errors.push(`Water Level (${waterLvl} cm) is out of expected range (0–1500 cm).`); markErr('water-level'); }
 
-    // Substation MWh range validation (Allowing up to 100,000 MWh)
     const g_m_e = val('inp-bal-main-exp'); if (g_m_e !== null && (g_m_e < 0 || g_m_e > 100000)) { errors.push('Main Export must be between 0-100,000 MWh'); markErr('inp-bal-main-exp'); }
     const g_m_i = val('inp-bal-main-imp'); if (g_m_i !== null && (g_m_i < 0 || g_m_i > 100000)) { errors.push('Main Import must be between 0-100,000 MWh'); markErr('inp-bal-main-imp'); }
     const g_c_e = val('inp-bal-check-exp'); if (g_c_e !== null && (g_c_e < 0 || g_c_e > 100000)) { errors.push('Check Export must be between 0-100,000 MWh'); markErr('inp-bal-check-exp'); }
     const g_c_i = val('inp-bal-check-imp'); if (g_c_i !== null && (g_c_i < 0 || g_c_i > 100000)) { errors.push('Check Import must be between 0-100,000 MWh'); markErr('inp-bal-check-imp'); }
 
-    const chk = (id, min, max, name) => { const v=val(id); if(v!==null && (v<min || v>max)) { errors.push(`${name} must be between ${min} and ${max}.`); markErr(id); } };
+    function chk(id, min, max, name) { const v=val(id); if(v!==null && (v<min || v>max)) { errors.push(`${name} must be between ${min} and ${max}.`); markErr(id); } }
     ['t_u1_u', 't_u1_v', 't_u1_w', 't_u1_de', 't_u1_nde', 't_u2_u', 't_u2_v', 't_u2_w', 't_u2_de', 't_u2_nde'].forEach(id => chk(id, 15, 95, id.toUpperCase() + ' Temp'));
     ['t_u1_gov', 't_u1_hyd', 't_u2_gov', 't_u2_hyd'].forEach(id => chk(id, 15, 50, 'Governor/Hyd Temp'));
     chk('t_temp_out', 10, 50, 'Outside Temp'); chk('t_temp_in', 10, 50, 'Inside Temp'); chk('t_temp_intake', -5, 30, 'Intake Temp');
@@ -445,7 +453,6 @@ window.validateForm = function() {
         const stat = document.getElementById(`u${unitNum}-status`)?.value;
         if (v !== null) {
             if ((stat === 'S' || stat === 'B') && v === 0) {
-                // Valid
             } else if (v < 40 || v > 50) {
                 errors.push(`Unit ${unitNum} Oil Flow must be between 40 and 50 (or 0 if Unit Status is S/B).`);
                 markErr(id);
@@ -462,15 +469,21 @@ window.validateForm = function() {
          
          if(saveBtn) { 
              saveBtn.innerHTML = "⚠️ Save with Errors"; 
-             saveBtn.classList.replace('bg-indigo-600', 'bg-rose-600');
-             saveBtn.classList.replace('bg-amber-500', 'bg-rose-600');
+             saveBtn.classList.remove('bg-indigo-600', 'bg-amber-500');
+             saveBtn.classList.add('bg-rose-600');
          }
     } else { 
          if(banner) banner.classList.add('hidden'); 
          
          if(saveBtn) { 
-             saveBtn.innerHTML = saveBtn.innerText.includes('Errors') ? "💾 Save Hour Data" : saveBtn.innerText;
-             saveBtn.classList.replace('bg-rose-600', 'bg-indigo-600');
+             // Restore proper UI colors based on New vs Update
+             const isUpdate = document.getElementById('log-time').value.length > 0 && 
+                              window.currentDayLogs && 
+                              window.currentDayLogs.find(l => l.log_time && l.log_time.startsWith(document.getElementById('log-time').value.substring(0,5)));
+             
+             saveBtn.innerHTML = isUpdate ? "💾 Update Existing Data" : "💾 Save Hour Data";
+             saveBtn.classList.remove('bg-rose-600', 'bg-indigo-600', 'bg-amber-500');
+             saveBtn.classList.add(isUpdate ? 'bg-amber-500' : 'bg-indigo-600');
          }
     }
 };

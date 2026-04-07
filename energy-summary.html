@@ -1613,12 +1613,19 @@ startPage();
     document.getElementById('trend-nepali-month').addEventListener('change', updateEnglishDatesFromNepaliSelection);
 
     document.getElementById('view-trend-btn').addEventListener('click', async () => {
-      const btn = document.getElementById('view-trend-btn'); btn.disabled = true; btn.textContent = 'Loading...';
-      const s = document.getElementById('trend-start-date').value; const e = document.getElementById('trend-end-date').value;
-      if (!s || !e) { alert("Please select a date range."); btn.disabled = false; btn.textContent = 'Render Chart'; return; }
-      
-      const filteredBalanchData = balanchData.filter(d => d.eng_date >= s && d.eng_date <= e);
-      let historicalData = [];
+          const btn = document.getElementById('view-trend-btn'); btn.disabled = true; btn.textContent = 'Loading...';
+          const s = document.getElementById('trend-start-date').value; const e = document.getElementById('trend-end-date').value;
+          if (!s || !e) { alert("Please select a date range."); btn.disabled = false; btn.textContent = 'Render Chart'; return; }
+          
+          // CRITICAL FIX: Include the day *before* the start date so the first selected day's dispatch can be calculated!
+          const filteredBalanchData = [];
+          const sIndex = balanchData.findIndex(d => d.eng_date >= s);
+          if (sIndex > 0) {
+              filteredBalanchData.push(balanchData[sIndex - 1]); // Inject previous day's reading
+          }
+          filteredBalanchData.push(...balanchData.filter(d => d.eng_date >= s && d.eng_date <= e));
+
+          let historicalData = [];
       if (filteredBalanchData.length > 0) {
           const endObj = new Date(e); endObj.setHours(23, 59, 59, 999);
           const startIso = new Date(s).toISOString(); const endIso = endObj.toISOString();
@@ -1807,17 +1814,20 @@ startPage();
     // Report date does NOT advance until noon Nepal time.
     // ============================================================
     function getReportDateStr() {
-        // Nepal time offset = UTC+5:45 = 345 minutes
-        const now = new Date();
-        const nepalOffset = 5 * 60 + 45; // minutes
-        const nepalMs = now.getTime() + (nepalOffset - now.getTimezoneOffset()) * 60000;
-        const nepalNow = new Date(nepalMs);
+        // Fetch current time strictly in Asia/Kathmandu timezone
+        const nepalNow = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
         const hh = nepalNow.getHours();
-        // Before noon Nepal time, use yesterday as the report date
+        
+        // Before noon (12:00 PM) Nepal time, default the report to yesterday
         if (hh < 12) {
             nepalNow.setDate(nepalNow.getDate() - 1);
         }
-        return nepalNow.toISOString().split('T')[0];
+        
+        // Format to YYYY-MM-DD exactly as required by the date picker
+        const yyyy = nepalNow.getFullYear();
+        const mm = String(nepalNow.getMonth() + 1).padStart(2, '0');
+        const dd = String(nepalNow.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
     }
 
     function generateDailyReport(englishDateStr) {
@@ -1847,24 +1857,29 @@ startPage();
             let [yYear, yMonth, yDay] = (pToday.nepali_date || pYesterday.nepali_date || '').replace(/[\/\-]/g, '.').split('.').map(p => parseInt(p));
             const nepaliMonthName = canonicalMonths[yMonth - 1];
 
-            // 1. Calculate Daily
+            // 1. Calculate Daily safely (preventing negative values on missing data)
             const daily = {};
-            daily.generation = ((pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen))/1000; 
-            daily.exportSubstation = (bTodayExp - bYesterdayExp); 
-            daily.exportPlant = (pToday.export_plant - pYesterday.export_plant); 
-            daily.stationConsumption = (pToday.station_trans - pYesterday.station_trans) / 1000; 
-            daily.transmissionLoss = daily.exportPlant - daily.exportSubstation;
-            daily.transformerLoss = daily.generation - daily.exportPlant - daily.stationConsumption;
+            daily.generation = Math.max(0, ((pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen))/1000); 
+            
+            // Substation Dispatch safely bounded
+            daily.exportSubstation = Math.max(0, bTodayExp - bYesterdayExp); 
+            
+            daily.exportPlant = Math.max(0, pToday.export_plant - pYesterday.export_plant); 
+            daily.stationConsumption = Math.max(0, (pToday.station_trans - pYesterday.station_trans) / 1000); 
+            
+            // Losses calculation
+            daily.transmissionLoss = Math.max(0, daily.exportPlant - daily.exportSubstation);
+            daily.transformerLoss = Math.max(0, daily.generation - daily.exportPlant - daily.stationConsumption);
             
             const rDayOutage = outagesData.find(o => o.id === pYesterday.id) || { lossTimeMin: 0, lossU1Min: 0, lossU2Min: 0 };
             let activeMins = 1440.01 - rDayOutage.lossTimeMin - ((rDayOutage.lossU1Min + rDayOutage.lossU2Min) / 2);
             if (activeMins <= 0) activeMins = 1440.01;
             
-            daily.avgLoadPowerhouse = (daily.generation * 1000 * 60) / activeMins; // Convert MWh back to kW for load
-            daily.avgLoadSubstation = (daily.exportSubstation * 1000 * 60) / activeMins; // Convert MWh back to kW for load
+            daily.avgLoadPowerhouse = (daily.generation * 1000 * 60) / activeMins; 
+            daily.avgLoadSubstation = (daily.exportSubstation * 1000 * 60) / activeMins; 
             daily.plantFactor = (daily.exportSubstation / (10 * 24)) * 100; 
-            daily.unit1Hours = pToday.unit1_counter - pYesterday.unit1_counter;
-            daily.unit2Hours = pToday.unit2_counter - pYesterday.unit2_counter;
+            daily.unit1Hours = Math.max(0, pToday.unit1_counter - pYesterday.unit1_counter);
+            daily.unit2Hours = Math.max(0, pToday.unit2_counter - pYesterday.unit2_counter);
 
             // 2. Calculate Monthly
             const monthly = { cumulativeGeneration: 0, cumulativeExport: 0, cumulativePlantExport: 0, cumulativeStationConsumption: 0 };
@@ -2058,36 +2073,55 @@ startPage();
             if (parts.length === 3) { trendNepYear = parseInt(parts[0]); trendNepMonth = parseInt(parts[1]); }
         }
 
-        // Gather all plant data rows belonging to this Nepali month (day 1 → report date)
         const prefix = trendNepYear && trendNepMonth ? `${trendNepYear}.${String(trendNepMonth).padStart(2,'0')}.` : null;
         let monthPlantRows = [];
+        
         if (prefix) {
-            monthPlantRows = plantData.filter(p => p.nepali_date && cleanDate(p.nepali_date).startsWith(prefix));
-            // Only up to and including the selected date
-            monthPlantRows = monthPlantRows.filter(p => p.id <= pToday.id);
+            // Get all rows for the current month up to pToday
+            let monthRows = plantData.filter(p => p.nepali_date && cleanDate(p.nepali_date).startsWith(prefix) && p.id <= pToday.id);
+            
+            // CRITICAL FIX: To calculate Day 1's dispatch, we MUST include the last day of the PREVIOUS month
+            if (monthRows.length > 0) {
+                const firstDayIdx = plantData.findIndex(p => p.id === monthRows[0].id);
+                if (firstDayIdx > 0) {
+                    monthPlantRows = [plantData[firstDayIdx - 1], ...monthRows];
+                } else {
+                    monthPlantRows = monthRows;
+                }
+            }
         } else {
             monthPlantRows = plantData.slice(Math.max(0, pIdx - 30), pIdx + 1);
         }
 
         const labels = [], dailyValues = [], avgLoadValues = [];
         for (let i = 1; i < monthPlantRows.length; i++) {
-            const todayP = monthPlantRows[i]; const yestP = monthPlantRows[i - 1];
+            const todayP = monthPlantRows[i]; 
+            const yestP = monthPlantRows[i - 1];
+            
             const bT = balanchData.find(d => d.eng_date === todayP.id);
             const bY = balanchData.find(d => d.eng_date === yestP.id);
+            
             if (bT && bY) {
                 const dispatched = Math.max(0, getActiveReading(bT, 'export') - getActiveReading(bY, 'export'));
                 const nepParts = cleanDate(todayP.nepali_date || '').split('.');
                 const dayLabel = nepParts.length === 3 ? `Day ${parseInt(nepParts[2])}` : todayP.id.slice(5);
+                
                 labels.push(dayLabel);
                 dailyValues.push(dispatched);
-                // Average load (MW) = dispatched MWh / 24h
-                avgLoadValues.push(parseFloat((dispatched / 24).toFixed(3)));
+                
+                // Fix: Use actual active minutes instead of a flat 24 hours for accurate Avg Load
+                const rDayOutage = outagesData.find(o => o.id === yestP.id) || { lossTimeMin: 0, lossU1Min: 0, lossU2Min: 0 };
+                let activeMins = 1440.01 - rDayOutage.lossTimeMin - ((rDayOutage.lossU1Min + rDayOutage.lossU2Min) / 2);
+                if (activeMins <= 0) activeMins = 1440.01;
+                
+                const avgLoad = (dispatched * 1000 * 60) / activeMins; // MW Calculation
+                avgLoadValues.push(parseFloat(avgLoad.toFixed(3)));
             }
         }
 
         const ctx = document.getElementById('dr-daily-trend-chart').getContext('2d');
         const nepMonthName = trendNepYear && trendNepMonth ? `${canonicalMonths[trendNepMonth - 1]} ${trendNepYear}` : 'Current Month';
-        
+                 
         const chartConfig = {
             type: 'bar',
             data: {

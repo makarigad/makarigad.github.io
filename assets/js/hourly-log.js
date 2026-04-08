@@ -1134,8 +1134,7 @@ if(btnNoon) {
             const { error: balErr } = await supabase.from('balanch_readings').upsert(balPayload);
             if (balErr) throw new Error("Substation Save Error: " + balErr.message);
 
-            // FIX: Safely Sync these Balanch readings to the Daily Metering (plant_data) table
-            // Must fetch existing plant_data to avoid overwriting the morning generation data
+            // Safely Sync these Balanch readings to the Daily Metering (plant_data) table
             const { data: curPlant } = await supabase.from('plant_data').select('*').eq('id', targetDate).maybeSingle();
             const plantSyncPayload = {
                 ...(curPlant || {}),
@@ -1151,7 +1150,6 @@ if(btnNoon) {
             const rainDam = parseFloat(document.getElementById('inp-rain-dam')?.value);
             const rainPh = parseFloat(document.getElementById('inp-rain-ph')?.value);
             if (!isNaN(rainDam) || !isNaN(rainPh)) {
-                // We need Nepali date details for rainfall table
                 const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', targetDate).maybeSingle();
                 if (cal) {
                     const rainId = `${cal.nep_year}_${cal.nep_month}_${String(cal.nep_day).padStart(2, '0')}`;
@@ -1168,8 +1166,6 @@ if(btnNoon) {
                 }
             }
 
-            
-
             // 2. Gather Outages by their Cycle Date
             let faultsByCycleDate = {};
 
@@ -1179,29 +1175,24 @@ if(btnNoon) {
                 
                 const startD = row.querySelector('.f-start-date').value;
                 const startH = row.querySelector('.f-start-hour').value;
-                // Read minutes, default to '00' if left blank, and ensure it always has 2 digits (e.g. '5' becomes '05')
                 const startM = (row.querySelector('.f-start-minute').value || '0').padStart(2, '0');
                 
                 const endD = row.querySelector('.f-end-date').value;
                 const endH = row.querySelector('.f-end-hour').value;
                 const endM = (row.querySelector('.f-end-minute').value || '0').padStart(2, '0');
                 
-                // If they haven't selected an hour, skip saving this row to prevent errors
                 if(!startD || !startH || !endD || !endH) return;
+                if(!type) throw new Error("Please select a 'Type of Fault' for all entries.");
 
-                // Stitch them back into standard HH:MM format
                 const startT = `${startH}:${startM}`;
                 const endT = `${endH}:${endM}`;
 
                 const start = new Date(`${startD}T${startT}`);
                 const end = new Date(`${endD}T${endT}`);
                 const durMins = (end - start) / 60000;
-                if(durMins <= 0) return;
+                if(durMins <= 0) throw new Error("End time must be after Start time.");
                 
-                // ... (The rest of your cycle date logic continues here exactly as before)
-                
-                // --- CYCLE DATE LOGIC: Noon to Noon ---
-                // If fault starts before 12:00 PM, it belongs to the previous day's log.
+                // CYCLE DATE LOGIC: Noon to Noon
                 let cycleDateObj = new Date(start);
                 if (start.getHours() < 12) {
                     cycleDateObj.setDate(cycleDateObj.getDate() - 1);
@@ -1210,7 +1201,6 @@ if(btnNoon) {
                 const cMonth = String(cycleDateObj.getMonth() + 1).padStart(2, '0');
                 const cDay = String(cycleDateObj.getDate()).padStart(2, '0');
                 const cycleDateStr = `${cYear}-${cMonth}-${cDay}`;
-                // --------------------------------------
 
                 const plantMw = parseFloat(row.querySelector('.f-power').value) || 0;
                 let lossMw = type === 'Dispatch instruction' ? Math.max(0, plantMw - (parseFloat(row.querySelector('.f-dispatch-power').value) || 0)) : plantMw;
@@ -1227,16 +1217,47 @@ if(btnNoon) {
                     plantMw: plantMw, 
                     lossMw: lossMw, 
                     mwh: Number(mwh.toFixed(3)),
-                    operator: window.currentUserName || 'Unknown' // Capture Operator
+                    operator: window.currentUserName || 'Unknown' 
                 });
             });
 
-            // Upsert faults directly into the calculated cycle dates
+            // 3. Process each cycle date, Validate Overlaps, and Save
+            let updatedOutagePayloadForUI = null;
+
             for (const [cDate, newDetailsArray] of Object.entries(faultsByCycleDate)) {
                 
                 const { data: existingOutage } = await supabase.from('outages').select('*').eq('id', cDate).maybeSingle();
                 let faultDetailsArray = existingOutage && existingOutage.fault_details ? [...existingOutage.fault_details] : [];
                 faultDetailsArray = [...faultDetailsArray, ...newDetailsArray];
+
+                // OVERLAP VALIDATION ENGINE
+                // First, sort all faults strictly by start time so we know which one happened "first"
+                faultDetailsArray.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+                for (let i = 0; i < faultDetailsArray.length; i++) {
+                    for (let j = i + 1; j < faultDetailsArray.length; j++) {
+                        let f1 = faultDetailsArray[i]; // This is guaranteed to be the earlier fault
+                        let f2 = faultDetailsArray[j]; // This is the later fault
+
+                        let s1 = new Date(f1.start).getTime();
+                        let e1 = new Date(f1.end).getTime();
+                        let s2 = new Date(f2.start).getTime();
+                        let e2 = new Date(f2.end).getTime();
+
+                        // 1. Block exact matches
+                        if (s1 === s2 && e1 === e2) {
+                            throw new Error(`Exact duplicate time frame found:\n${f1.start} to ${f1.end}\n\nYou cannot save two faults with the exact same start and end time.`);
+                        }
+
+                        // 2. Overlap check logic
+                        if (Math.max(s1, s2) < Math.min(e1, e2)) {
+                            // Only allow overlap if the FIRST fault (f1) is 'Dispatch instruction'
+                            if (f1.type !== 'Dispatch instruction') {
+                                throw new Error(`Time overlap detected!\nA fault (${f2.type}) cannot overlap with an existing (${f1.type}) unless the earlier fault is a 'Dispatch instruction'.`);
+                            }
+                        }
+                    }
+                }
 
                 let agg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0, loss_time_min: 0, nea_trip: 0, u1_min: 0, u2_min: 0, trippings: faultDetailsArray.length };
                 let reasonsText = [];
@@ -1251,7 +1272,6 @@ if(btnNoon) {
                     else if (f.type === 'penstock pipe fault') { agg.pen += f.mwh; }
                     else if (f.type === 'plant equipment issue') { agg.eq += f.mwh; }
                     
-                    // Simple estimation for unit loss time
                     if(f.type !== 'Dispatch instruction' && f.type !== 'Non-Dispatch' && f.type !== 'Grid Faults' && f.type !== '132 kV line faults'){
                         agg.u1_min += f.durMins;
                         agg.u2_min += f.durMins;
@@ -1277,46 +1297,49 @@ if(btnNoon) {
                 const { error: outErr } = await supabase.from('outages').upsert(outagePayload);
                 if(outErr) throw new Error("Outages Save Error for date " + cDate + ": " + outErr.message);
                 
-                // (Note: The monthly contract energy sync logic can remain identical, just move it inside this loop and use `cDate` to look up the mapping).
-            }
-            // 3. Update Contract Energy (Monthly Summary)
-            if (newDetailsArray.length > 0) {
-                let newAgg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0 };
-                newDetailsArray.forEach(f => {
-                    if (f.type === 'Dispatch instruction') newAgg.disp += f.mwh;
-                    else if (f.type === 'Non-Dispatch') newAgg.non += f.mwh;
-                    else if (f.type === 'Grid Faults') newAgg.grid += f.mwh;
-                    else if (f.type === '132 kV line faults') newAgg.l132 += f.mwh;
-                    else if (f.type === '33 kV line fault') newAgg.l33 += f.mwh;
-                    else if (f.type === 'penstock pipe fault') newAgg.pen += f.mwh;
-                    else if (f.type === 'plant equipment issue') newAgg.eq += f.mwh;
-                });
+                if (cDate === targetDate) {
+                    updatedOutagePayloadForUI = outagePayload;
+                }
 
-                const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
-                const nums = nepaliDateStr.match(/\d+/g);
-                
-                if(nums && nums.length >= 2) {
-                    const nYear = parseInt(nums[0]);
-                    const nMonth = parseInt(nums[1]);
-                    const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-                    const monthName = bsMonthNames[nMonth - 1];
+                // 4. Update Contract Energy (Monthly Summary) -> NOW SAFELY INSIDE THE LOOP
+                if (newDetailsArray.length > 0) {
+                    let newAgg = { disp: 0, non: 0, grid: 0, l132: 0, l33: 0, pen: 0, eq: 0 };
+                    newDetailsArray.forEach(f => {
+                        if (f.type === 'Dispatch instruction') newAgg.disp += f.mwh;
+                        else if (f.type === 'Non-Dispatch') newAgg.non += f.mwh;
+                        else if (f.type === 'Grid Faults') newAgg.grid += f.mwh;
+                        else if (f.type === '132 kV line faults') newAgg.l132 += f.mwh;
+                        else if (f.type === '33 kV line fault') newAgg.l33 += f.mwh;
+                        else if (f.type === 'penstock pipe fault') newAgg.pen += f.mwh;
+                        else if (f.type === 'plant equipment issue') newAgg.eq += f.mwh;
+                    });
 
-                    const { data: ext } = await supabase.from('contract_energy').select('*').eq('year', nYear).eq('month', monthName).maybeSingle();
+                    const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
+                    const nums = nepaliDateStr.match(/\d+/g);
                     
-                    if(ext) {
-                        const { error: ceErr } = await supabase.from('contract_energy').update({
-                            dispatch_mwh: (parseFloat(ext.dispatch_mwh)||0) + newAgg.disp,
-                            forced_outage_mwh: (parseFloat(ext.forced_outage_mwh)||0) + newAgg.non,
-                            grid_fault_mwh: (parseFloat(ext.grid_fault_mwh)||0) + newAgg.grid,
-                            line_132kv_mwh: (parseFloat(ext.line_132kv_mwh)||0) + newAgg.l132,
-                            fm_33kv_mwh: (parseFloat(ext.fm_33kv_mwh)||0) + newAgg.l33,
-                            fm_penstock_mwh: (parseFloat(ext.fm_penstock_mwh)||0) + newAgg.pen,
-                            fm_equipment_mwh: (parseFloat(ext.fm_equipment_mwh)||0) + newAgg.eq
-                        }).eq('year', nYear).eq('month', monthName);
-                        if(ceErr) console.error("Contract Energy Sync Error: ", ceErr);
+                    if(nums && nums.length >= 2) {
+                        const nYear = parseInt(nums[0]);
+                        const nMonth = parseInt(nums[1]);
+                        const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+                        const monthName = bsMonthNames[nMonth - 1];
+
+                        const { data: ext } = await supabase.from('contract_energy').select('*').eq('year', nYear).eq('month', monthName).maybeSingle();
+                        
+                        if(ext) {
+                            const { error: ceErr } = await supabase.from('contract_energy').update({
+                                dispatch_mwh: (parseFloat(ext.dispatch_mwh)||0) + newAgg.disp,
+                                forced_outage_mwh: (parseFloat(ext.forced_outage_mwh)||0) + newAgg.non,
+                                grid_fault_mwh: (parseFloat(ext.grid_fault_mwh)||0) + newAgg.grid,
+                                line_132kv_mwh: (parseFloat(ext.line_132kv_mwh)||0) + newAgg.l132,
+                                fm_33kv_mwh: (parseFloat(ext.fm_33kv_mwh)||0) + newAgg.l33,
+                                fm_penstock_mwh: (parseFloat(ext.fm_penstock_mwh)||0) + newAgg.pen,
+                                fm_equipment_mwh: (parseFloat(ext.fm_equipment_mwh)||0) + newAgg.eq
+                            }).eq('year', nYear).eq('month', monthName);
+                            if(ceErr) console.error("Contract Energy Sync Error: ", ceErr);
+                        }
                     }
                 }
-            }
+            } // <--- THE LOOP SAFELY CLOSES HERE NOW
 
             // Clean up the UI
             document.getElementById('faults-container').innerHTML = '';
@@ -1325,7 +1348,14 @@ if(btnNoon) {
             const faultInfoDiv = document.getElementById('existing-faults-info');
             if (faultInfoDiv) faultInfoDiv.innerHTML = `<div class="mb-3 p-3 bg-emerald-50 text-emerald-800 text-xs font-bold rounded border border-emerald-200">✅ Data saved. Any new faults added below will be appended.</div>`;
 
-            // --- THE FIX: Unmissable Popup Alerts ---
+            // Refresh the table UI
+            if (!updatedOutagePayloadForUI) {
+                const { data: fOut } = await supabase.from('outages').select('*').eq('id', targetDate).maybeSingle();
+                if(typeof window.renderSavedFaultsTable === 'function') window.renderSavedFaultsTable(fOut, targetDate);
+            } else {
+                if(typeof window.renderSavedFaultsTable === 'function') window.renderSavedFaultsTable(updatedOutagePayloadForUI, targetDate);
+            }
+
             const successMsg = "✅ 12:00 PM Data (Substation & Outages) Synced Successfully!";
             alert(successMsg);
             showNotification(successMsg);

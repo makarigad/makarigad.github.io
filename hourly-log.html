@@ -413,64 +413,83 @@
                 </div>
 
                 <div id="tab-daily-summary" class="section-content hidden">
-                    <div class="flex justify-between items-center mb-6 bg-slate-100 p-4 rounded-xl shadow-sm border border-slate-200">
-                        <h2 class="text-xl font-bold text-slate-800">Daily Submission Summary</h2>
-                        <div>
-                            <label class="text-xs font-bold text-slate-500 mr-2">Check Date:</label>
-                            <input type="date" id="summary-date-picker" class="border border-slate-300 p-1.5 rounded text-sm font-bold text-indigo-700 outline-none bg-white">
-                            <button id="btn-load-summary" class="ml-2 bg-slate-800 hover:bg-slate-900 transition text-white px-4 py-1.5 rounded text-sm font-bold shadow">Load</button>
-                        </div>
-                    </div>
+    <div class="flex flex-wrap justify-between items-center mb-6 bg-slate-100 p-4 rounded-xl shadow-sm border border-slate-200 gap-4">
+        <h2 class="text-xl font-bold text-slate-800">Data Summary & Audit</h2>
+        
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="admin-only role-hidden flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden shadow-sm">
+                <label class="cursor-pointer px-3 py-1.5 text-xs font-bold border-r border-slate-300 flex items-center">
+                    <input type="radio" name="summary-view-mode" value="daily" checked onchange="window.toggleSummaryViewMode()" class="mr-1.5"> Daily
+                </label>
+                <label class="cursor-pointer px-3 py-1.5 text-xs font-bold flex items-center text-indigo-700 bg-indigo-50">
+                    <input type="radio" name="summary-view-mode" value="monthly" onchange="window.toggleSummaryViewMode()" class="mr-1.5"> Monthly Tabular
+                </label>
+            </div>
 
-                    <div id="summary-content" class="space-y-6 hidden">
-                        <div class="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm relative">
-                            <h3 class="font-bold text-emerald-900 mb-3 border-b border-emerald-100 pb-2">⚡ Balanch Readings</h3>
-                            <div class="grid grid-cols-4 gap-4 text-sm">
-                                <div><span class="text-slate-500 text-xs block">Main Export</span><span id="sum-bal-m-exp" class="font-bold text-lg text-emerald-700">0</span></div>
-                                <div><span class="text-slate-500 text-xs block">Main Import</span><span id="sum-bal-m-imp" class="font-bold text-lg text-emerald-700">0</span></div>
-                                <div><span class="text-slate-500 text-xs block">Check Export</span><span id="sum-bal-c-exp" class="font-bold text-slate-600">0</span></div>
-                                <div><span class="text-slate-500 text-xs block">Check Import</span><span id="sum-bal-c-imp" class="font-bold text-slate-600">0</span></div>
-                            </div>
-                        </div>
+            <div id="summary-daily-controls" class="flex items-center">
+                <label class="text-xs font-bold text-slate-500 mr-2">Check Date:</label>
+                <input type="date" id="summary-date-picker" class="border border-slate-300 p-1.5 rounded text-sm font-bold text-indigo-700 outline-none bg-white">
+            </div>
 
-                        <div class="bg-white p-5 rounded-xl border border-blue-200 shadow-sm">
-                            <h3 class="font-bold text-blue-900 mb-3 border-b border-blue-100 pb-2">🌧️ Rainfall Data</h3>
-                            <div class="grid grid-cols-2 gap-4 text-sm">
-                                <div><span class="text-slate-500 text-xs block">Dam / Headworks</span><span id="sum-rain-dam" class="font-bold text-lg text-blue-700">0</span> <span class="text-xs text-slate-400">mm</span></div>
-                                <div><span class="text-slate-500 text-xs block">Powerhouse</span><span id="sum-rain-ph" class="font-bold text-lg text-blue-700">0</span> <span class="text-xs text-slate-400">mm</span></div>
-                            </div>
-                        </div>
+            <div id="summary-monthly-controls" class="hidden items-center gap-2">
+                <select id="summary-month-year" class="border border-slate-300 p-1.5 rounded text-sm font-bold text-indigo-700 outline-none bg-white">
+                    <option value="2081">2081</option><option value="2082" selected>2082</option><option value="2083">2083</option>
+                </select>
+                <select id="summary-month-select" class="border border-slate-300 p-1.5 rounded text-sm font-bold text-indigo-700 outline-none bg-white">
+                    <option value="1">Baisakh</option><option value="2">Jestha</option><option value="3">Ashadh</option>
+                    <option value="4">Shrawan</option><option value="5">Bhadra</option><option value="6">Ashoj</option>
+                    <option value="7">Kartik</option><option value="8">Mangsir</option><option value="9">Poush</option>
+                    <option value="10">Magh</option><option value="11" selected>Falgun</option><option value="12">Chaitra</option>
+                </select>
+            </div>
 
-                        <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm">
-                            <h3 class="font-bold text-rose-900 mb-3 border-b border-rose-100 pb-2">⚠️ Aggregated Outages & Losses</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
-                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Trippings</span><span id="sum-out-trips" class="font-black text-xl text-rose-700">0</span></div>
-                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Grid Faults (MWh)</span><span id="sum-out-grid" class="font-bold text-slate-800">0</span></div>
-                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">132kV Faults (MWh)</span><span id="sum-out-132" class="font-bold text-slate-800">0</span></div>
-                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Dispatch (MWh)</span><span id="sum-out-disp" class="font-bold text-slate-800">0</span></div>
-                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Non-Dispatch (MWh)</span><span id="sum-out-force" class="font-bold text-slate-800">0</span></div>
-                                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Plant Loss Time</span><span id="sum-out-time" class="font-bold text-slate-800">0</span> <span class="text-xs text-slate-400">mins</span></div>
-                            </div>
-                            
+            <button id="btn-load-summary" class="bg-slate-800 hover:bg-slate-900 transition text-white px-4 py-1.5 rounded text-sm font-bold shadow">Load Data</button>
+        </div>
+    </div>
 
-                            <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm">
-                                <h3 class="font-bold text-rose-900 mb-3 border-b border-rose-100 pb-2">⚠️ Aggregated Outages & Losses</h3>
-                                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
-                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Trippings</span><span id="sum-out-trips" class="font-black text-xl text-rose-700">0</span></div>
-                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Grid Faults (MWh)</span><span id="sum-out-grid" class="font-bold text-slate-800">0</span></div>
-                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">132kV Faults (MWh)</span><span id="sum-out-132" class="font-bold text-slate-800">0</span></div>
-                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Dispatch (MWh)</span><span id="sum-out-disp" class="font-bold text-slate-800">0</span></div>
-                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Non-Dispatch (MWh)</span><span id="sum-out-force" class="font-bold text-slate-800">0</span></div>
-                                    <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Plant Loss Time</span><span id="sum-out-time" class="font-bold text-slate-800">0</span> <span class="text-xs text-slate-400">mins</span></div>
-                                </div>
-                                
-                                <div id="summary-fault-details-container" class="mt-6 overflow-x-auto"></div>
-                                
-                                <div class="mt-6 pt-4 border-t border-rose-100 flex justify-end col-actions">
-                                    <button onclick="alert('Admin Edit functionality will open the data grid here.')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Admin Edit</button>
-                                </div>
-                            </div>
+    <div id="summary-content" class="space-y-6 hidden">
+        <div class="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm relative">
+            <h3 class="font-bold text-emerald-900 mb-3 border-b border-emerald-100 pb-2">⚡ Balanch Readings</h3>
+            <div class="grid grid-cols-4 gap-4 text-sm">
+                <div><span class="text-slate-500 text-xs block">Main Export</span><span id="sum-bal-m-exp" class="font-bold text-lg text-emerald-700">0</span></div>
+                <div><span class="text-slate-500 text-xs block">Main Import</span><span id="sum-bal-m-imp" class="font-bold text-lg text-emerald-700">0</span></div>
+                <div><span class="text-slate-500 text-xs block">Check Export</span><span id="sum-bal-c-exp" class="font-bold text-slate-600">0</span></div>
+                <div><span class="text-slate-500 text-xs block">Check Import</span><span id="sum-bal-c-imp" class="font-bold text-slate-600">0</span></div>
+            </div>
+        </div>
 
+        <div class="bg-white p-5 rounded-xl border border-blue-200 shadow-sm">
+            <h3 class="font-bold text-blue-900 mb-3 border-b border-blue-100 pb-2">🌧️ Rainfall Data</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div><span class="text-slate-500 text-xs block">Dam / Headworks</span><span id="sum-rain-dam" class="font-bold text-lg text-blue-700">0</span> <span class="text-xs text-slate-400">mm</span></div>
+                <div><span class="text-slate-500 text-xs block">Powerhouse</span><span id="sum-rain-ph" class="font-bold text-lg text-blue-700">0</span> <span class="text-xs text-slate-400">mm</span></div>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm">
+            <h3 class="font-bold text-rose-900 mb-3 border-b border-rose-100 pb-2">⚠️ Aggregated Outages & Losses</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Trippings</span><span id="sum-out-trips" class="font-black text-xl text-rose-700">0</span></div>
+                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Grid Faults (MWh)</span><span id="sum-out-grid" class="font-bold text-slate-800">0</span></div>
+                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">132kV Faults (MWh)</span><span id="sum-out-132" class="font-bold text-slate-800">0</span></div>
+                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Dispatch (MWh)</span><span id="sum-out-disp" class="font-bold text-slate-800">0</span></div>
+                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Non-Dispatch (MWh)</span><span id="sum-out-force" class="font-bold text-slate-800">0</span></div>
+                <div><span class="text-slate-500 text-[11px] uppercase tracking-wider block">Total Plant Loss Time</span><span id="sum-out-time" class="font-bold text-slate-800">0</span> <span class="text-xs text-slate-400">mins</span></div>
+            </div>
+            
+            <div id="summary-fault-details-container" class="mt-6 overflow-x-auto"></div>
+            
+            <div class="mt-6 pt-4 border-t border-rose-100 flex justify-end col-actions">
+                </div>
+        </div>
+    </div>
+
+    <div id="monthly-summary-content" class="hidden space-y-8">
+        <div id="monthly-balanch-container" class="bg-white p-5 rounded-xl border border-emerald-200 shadow-sm overflow-x-auto"></div>
+        <div id="monthly-rainfall-container" class="bg-white p-5 rounded-xl border border-blue-200 shadow-sm overflow-x-auto"></div>
+        <div id="monthly-outages-container" class="bg-white p-5 rounded-xl border border-rose-200 shadow-sm overflow-x-auto"></div>
+    </div>
+</div>
 
                             <div class="mt-6 pt-4 border-t border-rose-100 flex justify-end col-actions">
                                 <button onclick="alert('Admin Edit functionality will open the data grid here.')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Admin Edit</button>

@@ -922,10 +922,10 @@ document.getElementById('dd-entry-time')?.addEventListener('change', async (e) =
                 if (curBal) {
                     m('inp-bal-main-exp', curBal.main_export);
                     m('inp-bal-main-imp', curBal.main_import);
-                    m('inp-bal-chk-exp', curBal.check_export);
-                    m('inp-bal-chk-imp', curBal.check_import);
+                    m('inp-bal-check-exp', curBal.check_export); // Fixed ID
+                    m('inp-bal-check-imp', curBal.check_import); // Fixed ID
                 } else {
-                    ['inp-bal-main-exp', 'inp-bal-main-imp', 'inp-bal-chk-exp', 'inp-bal-chk-imp'].forEach(id => m(id, ''));
+                    ['inp-bal-main-exp', 'inp-bal-main-imp', 'inp-bal-check-exp', 'inp-bal-check-imp'].forEach(id => m(id, '')); // Fixed IDs
                 }
 
                 // 2. Check Existing Outages/Faults
@@ -1231,29 +1231,65 @@ if(btnNoon) {
                 faultDetailsArray = [...faultDetailsArray, ...newDetailsArray];
 
                 // OVERLAP VALIDATION ENGINE
-                // First, sort all faults strictly by start time so we know which one happened "first"
-                faultDetailsArray.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+                // Sort by start time. If start times are equal, prioritize 'Dispatch instruction' to be processed first
+                faultDetailsArray.sort((a, b) => {
+                    let tA = new Date(a.start).getTime();
+                    let tB = new Date(b.start).getTime();
+                    if (tA === tB) {
+                        return a.type === 'Dispatch instruction' ? -1 : (b.type === 'Dispatch instruction' ? 1 : 0);
+                    }
+                    return tA - tB;
+                });
 
                 for (let i = 0; i < faultDetailsArray.length; i++) {
                     for (let j = i + 1; j < faultDetailsArray.length; j++) {
-                        let f1 = faultDetailsArray[i]; // This is guaranteed to be the earlier fault
-                        let f2 = faultDetailsArray[j]; // This is the later fault
+                        let f1 = faultDetailsArray[i]; 
+                        let f2 = faultDetailsArray[j]; 
 
                         let s1 = new Date(f1.start).getTime();
                         let e1 = new Date(f1.end).getTime();
                         let s2 = new Date(f2.start).getTime();
                         let e2 = new Date(f2.end).getTime();
 
-                        // 1. Block exact matches
-                        if (s1 === s2 && e1 === e2) {
-                            throw new Error(`Exact duplicate time frame found:\n${f1.start} to ${f1.end}\n\nYou cannot save two faults with the exact same start and end time.`);
-                        }
-
-                        // 2. Overlap check logic
+                        // Check if an overlap exists
                         if (Math.max(s1, s2) < Math.min(e1, e2)) {
-                            // Only allow overlap if the FIRST fault (f1) is 'Dispatch instruction'
-                            if (f1.type !== 'Dispatch instruction') {
-                                throw new Error(`Time overlap detected!\nA fault (${f2.type}) cannot overlap with an existing (${f1.type}) unless the earlier fault is a 'Dispatch instruction'.`);
+                            
+                            // Block exact duplicates completely
+                            if (s1 === s2 && e1 === e2 && f1.type === f2.type) {
+                                throw new Error(`Exact duplicate time frame found:\n${f1.start} to ${f1.end}.`);
+                            }
+
+                            // If neither is a Dispatch instruction, block the overlap entirely
+                            if (f1.type !== 'Dispatch instruction' && f2.type !== 'Dispatch instruction') {
+                                throw new Error(`Time overlap detected between '${f1.type}' and '${f2.type}'!\nFaults cannot overlap unless one is a 'Dispatch instruction'.`);
+                            }
+                            
+                            // If f1 is the Dispatch instruction, deduct f2's overlap time from f1
+                            if (f1.type === 'Dispatch instruction') {
+                                let overlapMs = Math.min(e1, e2) - Math.max(s1, s2);
+                                let overlapMins = overlapMs / 60000;
+                                
+                                f1.durMins = Math.max(0, f1.durMins - overlapMins);
+                                let mwhReduction = (overlapMins / 60) * f1.lossMw;
+                                f1.mwh = Number(Math.max(0, f1.mwh - mwhReduction).toFixed(3));
+                                
+                                // Silently append a note to the reason so the math makes sense in audits
+                                if (!f1.reason.includes('(Auto-deducted')) {
+                                    f1.reason += ` (Auto-deducted ${overlapMins}m for overlapping ${f2.type})`;
+                                }
+                            } 
+                            // If f2 is the Dispatch instruction (started later but overlaps earlier fault)
+                            else if (f2.type === 'Dispatch instruction') {
+                                let overlapMs = Math.min(e1, e2) - Math.max(s1, s2);
+                                let overlapMins = overlapMs / 60000;
+                                
+                                f2.durMins = Math.max(0, f2.durMins - overlapMins);
+                                let mwhReduction = (overlapMins / 60) * f2.lossMw;
+                                f2.mwh = Number(Math.max(0, f2.mwh - mwhReduction).toFixed(3));
+                                
+                                if (!f2.reason.includes('(Auto-deducted')) {
+                                    f2.reason += ` (Auto-deducted ${overlapMins}m for overlapping ${f1.type})`;
+                                }
                             }
                         }
                     }
@@ -1375,100 +1411,218 @@ const btnLoadSum = document.getElementById('btn-load-summary');
 if(btnLoadSum) {
     btnLoadSum.replaceWith(btnLoadSum.cloneNode(true));
     document.getElementById('btn-load-summary').addEventListener('click', async () => {
-        const targetDate = document.getElementById('summary-date-picker').value;
-        if (!targetDate) return;
-        const btn = document.getElementById('btn-load-summary'); btn.innerText = "Loading...";
+        const btn = document.getElementById('btn-load-summary'); 
+        
+        // Check which mode we are in
+        const viewModeEl = document.querySelector('input[name="summary-view-mode"]:checked');
+        const isMonthly = viewModeEl && viewModeEl.value === 'monthly';
 
-        try {
-            const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
-            const nums = nepaliDateStr.match(/\d+/g) || [2081, 1, 1];
-            const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-            const rainfallId = `${nums[0]}_${bsMonthNames[nums[1] - 1]}_${nums[2]}`;
+        if (!isMonthly) {
+            // ==========================================
+            // EXISTING DAILY LOGIC (For Operators)
+            // ==========================================
+            const targetDate = document.getElementById('summary-date-picker').value;
+            if (!targetDate) return;
+            btn.innerText = "Loading...";
 
-            const [balRes, rainRes, outRes] = await Promise.all([
-                supabase.from('balanch_readings').select('*').eq('eng_date', targetDate).limit(1).maybeSingle(),
-                supabase.from('rainfall_data').select('*').eq('id', rainfallId).limit(1).maybeSingle(),
-                supabase.from('outages').select('*').eq('id', targetDate).limit(1).maybeSingle()
-            ]);
+            try {
+                const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
+                const nums = nepaliDateStr.match(/\d+/g) || [2081, 1, 1];
+                const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+                const rainfallId = `${nums[0]}_${bsMonthNames[nums[1] - 1]}_${String(nums[2]).padStart(2, '0')}`;
 
-            document.getElementById('summary-content').classList.remove('hidden');
-            
-            const b = balRes.data || {};
-            const r = rainRes.data || {};
-            const o = outRes.data || {};
+                const [balRes, rainRes, outRes] = await Promise.all([
+                    supabase.from('balanch_readings').select('*').eq('eng_date', targetDate).limit(1).maybeSingle(),
+                    supabase.from('rainfall_data').select('*').eq('id', rainfallId).limit(1).maybeSingle(),
+                    supabase.from('outages').select('*').eq('id', targetDate).limit(1).maybeSingle()
+                ]);
 
-            if(outRes.data) window.outagesDataCache = [outRes.data];
-
-            document.getElementById('sum-bal-m-exp').innerText = b.main_export ?? '-';
-            document.getElementById('sum-bal-m-imp').innerText = b.main_import ?? '-';
-            document.getElementById('sum-bal-c-exp').innerText = b.check_export ?? '-';
-            document.getElementById('sum-bal-c-imp').innerText = b.check_import ?? '-';
-
-            document.getElementById('sum-rain-dam').innerText = r.headworks ?? '-';
-            document.getElementById('sum-rain-ph').innerText = r.powerhouse ?? '-';
-
-            document.getElementById('sum-out-trips').innerText = o.no_of_trippings ?? '0';
-            document.getElementById('sum-out-grid').innerText = o.energy_loss_line_trip ?? '0';
-            document.getElementById('sum-out-132').innerText = '0'; 
-           // Existing logic to load basic stats
-            document.getElementById('sum-out-disp').innerText = o.nea_curtailed_energy ?? '0';
-            document.getElementById('sum-out-force').innerText = o.energy_loss_other ?? '0';
-            document.getElementById('sum-out-time').innerText = o.loss_time_min ?? '0';
-
-            // NEW LOGIC: Build the detailed breakdown table
-            const detailsContainer = document.getElementById('summary-fault-details-container');
-            if (o.fault_details && o.fault_details.length > 0) {
-                let tableHtml = `
-                <table class="w-full text-left border-collapse border border-slate-200 shadow-sm text-xs">
-                    <thead class="bg-rose-50 text-rose-900 border-b-2 border-rose-200 uppercase tracking-wider">
-                        <tr>
-                            <th class="p-2 border-r border-rose-200">Type</th>
-                            <th class="p-2 border-r border-rose-200">Reason</th>
-                            <th class="p-2 border-r border-rose-200">Start (Date & Time)</th>
-                            <th class="p-2 border-r border-rose-200">End (Date & Time)</th>
-                            <th class="p-2 border-r border-rose-200 text-center">Operator</th>
-                            <th class="p-2 text-right">Loss (MWh)</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-slate-100">`;
+                document.getElementById('summary-content').classList.remove('hidden');
+                document.getElementById('monthly-summary-content').classList.add('hidden');
                 
-                let grandTotal = 0;
+                const b = balRes.data || {};
+                const r = rainRes.data || {};
+                const o = outRes.data || {};
 
-                o.fault_details.forEach(f => {
-                    grandTotal += Number(f.mwh || 0);
-                    tableHtml += `
-                        <tr class="hover:bg-slate-50">
-                            <td class="p-2 border-r border-slate-200 text-slate-700 font-medium">${f.type}</td>
-                            <td class="p-2 border-r border-slate-200 text-slate-600">${f.reason}</td>
-                            <td class="p-2 border-r border-slate-200 text-slate-500 font-mono">${f.start}</td>
-                            <td class="p-2 border-r border-slate-200 text-slate-500 font-mono">${f.end}</td>
-                            <td class="p-2 border-r border-slate-200 text-center"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold">${f.operator || 'Unknown'}</span></td>
-                            <td class="p-2 text-right font-black text-rose-600">${Number(f.mwh || 0).toFixed(3)}</td>
+                if(outRes.data) window.outagesDataCache = [outRes.data];
+
+                document.getElementById('sum-bal-m-exp').innerText = b.main_export ?? '-';
+                document.getElementById('sum-bal-m-imp').innerText = b.main_import ?? '-';
+                document.getElementById('sum-bal-c-exp').innerText = b.check_export ?? '-';
+                document.getElementById('sum-bal-c-imp').innerText = b.check_import ?? '-';
+
+                document.getElementById('sum-rain-dam').innerText = r.headworks ?? '-';
+                document.getElementById('sum-rain-ph').innerText = r.powerhouse ?? '-';
+
+                document.getElementById('sum-out-trips').innerText = o.no_of_trippings ?? '0';
+                document.getElementById('sum-out-grid').innerText = o.energy_loss_line_trip ?? '0';
+                document.getElementById('sum-out-132').innerText = '0'; 
+                document.getElementById('sum-out-disp').innerText = o.nea_curtailed_energy ?? '0';
+                document.getElementById('sum-out-force').innerText = o.energy_loss_other ?? '0';
+                document.getElementById('sum-out-time').innerText = o.loss_time_min ?? '0';
+
+                const detailsContainer = document.getElementById('summary-fault-details-container');
+                if (o.fault_details && o.fault_details.length > 0) {
+                    let tableHtml = `
+                    <table class="w-full text-left border-collapse border border-slate-200 shadow-sm text-xs">
+                        <thead class="bg-rose-50 text-rose-900 border-b-2 border-rose-200 uppercase tracking-wider">
+                            <tr>
+                                <th class="p-2 border-r border-rose-200">Type</th><th class="p-2 border-r border-rose-200">Reason</th>
+                                <th class="p-2 border-r border-rose-200">Start</th><th class="p-2 border-r border-rose-200">End</th>
+                                <th class="p-2 border-r border-rose-200 text-center">Operator</th><th class="p-2 text-right">Loss (MWh)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-100">`;
+                    
+                    let grandTotal = 0;
+                    o.fault_details.forEach(f => {
+                        grandTotal += Number(f.mwh || 0);
+                        tableHtml += `<tr class="hover:bg-slate-50">
+                                <td class="p-2 border-r border-slate-200 font-medium">${f.type}</td><td class="p-2 border-r border-slate-200">${f.reason}</td>
+                                <td class="p-2 border-r border-slate-200 font-mono">${f.start}</td><td class="p-2 border-r border-slate-200 font-mono">${f.end}</td>
+                                <td class="p-2 border-r border-slate-200 text-center"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold">${f.operator || 'Unknown'}</span></td>
+                                <td class="p-2 text-right font-black text-rose-600">${Number(f.mwh || 0).toFixed(3)}</td>
+                            </tr>`;
+                    });
+                    tableHtml += `<tr class="bg-rose-50 font-black border-t-2 border-rose-300"><td colspan="5" class="p-2 text-right text-rose-900 uppercase">Total Cycle Loss</td><td class="p-2 text-right text-rose-700 text-sm">${grandTotal.toFixed(3)}</td></tr></tbody></table>`;
+                    detailsContainer.innerHTML = tableHtml;
+                } else {
+                    detailsContainer.innerHTML = `<div class="p-4 bg-slate-50 text-slate-500 text-center rounded border border-dashed border-slate-300 text-xs font-bold">No detailed fault records found for this cycle.</div>`;
+                }
+
+                const editBtnContainer = document.querySelector('.col-actions');
+                if (editBtnContainer) {
+                    editBtnContainer.innerHTML = `<button onclick="editFaultModal('${targetDate}')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Edit Faults</button>`;
+                }
+
+            } catch (e) {
+                console.error(e);
+                showNotification("Error loading summary: " + e.message, true);
+            } finally { btn.innerText = "Load Data"; }
+
+        } else {
+            // ==========================================
+            // NEW MONTHLY TABULAR LOGIC (For Admins)
+            // ==========================================
+            btn.innerText = "Loading Month...";
+            try {
+                if(window.userRole !== 'admin') throw new Error("Only admins can view monthly tabular data.");
+                
+                const y = document.getElementById('summary-month-year').value;
+                const mSelect = document.getElementById('summary-month-select');
+                const mName = mSelect.options[mSelect.selectedIndex].text;
+                const mNum = mSelect.value;
+                
+                document.getElementById('summary-content').classList.add('hidden');
+                document.getElementById('monthly-summary-content').classList.remove('hidden');
+
+                // 1. Get all English dates for this Nepali Month
+                const { data: calMap } = await supabase.from('calendar_mappings').select('eng_date, nep_date_str').eq('nep_year', y).eq('nep_month', mName);
+                if(!calMap || calMap.length === 0) throw new Error("No calendar mappings found for this month.");
+                
+                const engDates = calMap.map(c => c.eng_date);
+
+                // 2. Fetch data
+                const [balRes, rainRes, outRes] = await Promise.all([
+                    supabase.from('balanch_readings').select('*').in('eng_date', engDates).order('eng_date', {ascending: true}),
+                    supabase.from('rainfall_data').select('*').eq('nepali_year', y).eq('nepali_month', mName).order('day', {ascending: true}),
+                    supabase.from('outages').select('*').in('id', engDates).order('id', {ascending: true})
+                ]);
+
+                // Cache outages for the edit modal
+                window.outagesDataCache = outRes.data || [];
+
+                // 3. Render Balanch Table
+                let balHtml = `<h3 class="font-bold text-emerald-900 mb-3 border-b border-emerald-100 pb-2 text-lg">⚡ Balanch Substation Readings (${mName} ${y})</h3>
+                <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                    <thead class="bg-emerald-50 text-emerald-900 border-b-2 border-emerald-200">
+                        <tr><th class="p-2 border-r border-emerald-200">English Date</th><th class="p-2 border-r border-emerald-200">Main Export</th><th class="p-2 border-r border-emerald-200">Main Import</th><th class="p-2 border-r border-emerald-200">Check Export</th><th class="p-2 border-r border-emerald-200">Check Import</th><th class="p-2 text-center">Actions</th></tr>
+                    </thead><tbody class="divide-y divide-slate-100">`;
+                
+                if (balRes.data && balRes.data.length > 0) {
+                    balRes.data.forEach(b => {
+                        balHtml += `<tr class="hover:bg-slate-50">
+                            <td class="p-2 border-r border-slate-200 font-bold">${b.eng_date}</td>
+                            <td class="p-2 border-r border-slate-200">${b.main_export ?? '-'}</td><td class="p-2 border-r border-slate-200">${b.main_import ?? '-'}</td>
+                            <td class="p-2 border-r border-slate-200">${b.check_export ?? '-'}</td><td class="p-2 border-r border-slate-200">${b.check_import ?? '-'}</td>
+                            <td class="p-2 text-center">
+                                <button onclick="window.editGenericRecord('balanch_readings', 'eng_date', '${b.eng_date}')" class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold mr-1">✏️ Edit</button>
+                                <button onclick="window.deleteGenericRecord('balanch_readings', 'eng_date', '${b.eng_date}')" class="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold">🗑️ Del</button>
+                            </td>
                         </tr>`;
-                });
+                    });
+                } else { balHtml += `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">No Balanch data recorded for this month.</td></tr>`; }
+                balHtml += `</tbody></table>`;
+                document.getElementById('monthly-balanch-container').innerHTML = balHtml;
 
-                tableHtml += `
-                        <tr class="bg-rose-50 font-black border-t-2 border-rose-300">
-                            <td colspan="5" class="p-2 text-right text-rose-900 uppercase tracking-widest">Total Cycle Loss</td>
-                            <td class="p-2 text-right text-rose-700 text-sm">${grandTotal.toFixed(3)}</td>
-                        </tr>
-                    </tbody>
-                </table>`;
-                detailsContainer.innerHTML = tableHtml;
-            } else {
-                detailsContainer.innerHTML = `<div class="p-4 bg-slate-50 text-slate-500 text-center rounded border border-dashed border-slate-300 text-xs font-bold">No detailed fault records found for this cycle.</div>`;
-            }
+                // 4. Render Rainfall Table
+                let rainHtml = `<h3 class="font-bold text-blue-900 mb-3 border-b border-blue-100 pb-2 text-lg">🌧️ 08:00 AM Rainfall Data (${mName} ${y})</h3>
+                <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                    <thead class="bg-blue-50 text-blue-900 border-b-2 border-blue-200">
+                        <tr><th class="p-2 border-r border-blue-200">Nepali Day</th><th class="p-2 border-r border-blue-200">ID</th><th class="p-2 border-r border-blue-200">Headworks (mm)</th><th class="p-2 border-r border-blue-200">Powerhouse (mm)</th><th class="p-2 text-center">Actions</th></tr>
+                    </thead><tbody class="divide-y divide-slate-100">`;
+                
+                if (rainRes.data && rainRes.data.length > 0) {
+                    rainRes.data.forEach(r => {
+                        rainHtml += `<tr class="hover:bg-slate-50">
+                            <td class="p-2 border-r border-slate-200 font-bold">${r.day}</td><td class="p-2 border-r border-slate-200 text-slate-400 font-mono">${r.id}</td>
+                            <td class="p-2 border-r border-slate-200">${r.headworks ?? '-'}</td><td class="p-2 border-r border-slate-200">${r.powerhouse ?? '-'}</td>
+                            <td class="p-2 text-center">
+                                <button onclick="window.editGenericRecord('rainfall_data', 'id', '${r.id}')" class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-bold mr-1">✏️ Edit</button>
+                                <button onclick="window.deleteGenericRecord('rainfall_data', 'id', '${r.id}')" class="bg-red-100 text-red-800 px-2 py-1 rounded text-[10px] font-bold">🗑️ Del</button>
+                            </td>
+                        </tr>`;
+                    });
+                } else { rainHtml += `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">No Rainfall data recorded for this month.</td></tr>`; }
+                rainHtml += `</tbody></table>`;
+                document.getElementById('monthly-rainfall-container').innerHTML = rainHtml;
 
-            
-            const editBtnContainer = document.querySelector('.col-actions');
-            if (editBtnContainer) {
-                editBtnContainer.innerHTML = `<button onclick="editFaultModal('${targetDate}')" class="bg-amber-100 hover:bg-amber-200 transition text-amber-800 px-4 py-2 rounded text-xs font-bold shadow-sm">✏️ Edit</button>`;
-            }
+                // 5. Render Outages Table (Flattened sorted by Start Time)
+                let outHtml = `<h3 class="font-bold text-rose-900 mb-3 border-b border-rose-100 pb-2 text-lg">⚠️ Daily Outages & Faults (${mName} ${y})</h3>
+                <table class="w-full text-left border-collapse text-[11px]">
+                    <thead class="bg-rose-50 text-rose-900 border-b-2 border-rose-200">
+                        <tr><th class="p-2 border-r border-rose-200">Cycle Date</th><th class="p-2 border-r border-rose-200">Type</th><th class="p-2 border-r border-rose-200 w-1/3">Reason</th><th class="p-2 border-r border-rose-200">Start - End</th><th class="p-2 border-r border-rose-200 text-right">MWh</th><th class="p-2 text-center">Actions</th></tr>
+                    </thead><tbody class="divide-y divide-slate-100">`;
+                
+                let hasOutages = false;
+                if (outRes.data && outRes.data.length > 0) {
+                    outRes.data.forEach(cycle => {
+                        if (cycle.fault_details && cycle.fault_details.length > 0) {
+                            hasOutages = true;
+                            // Sort faults by start time within the cycle
+                            const sortedFaults = cycle.fault_details.sort((a,b) => new Date(a.start) - new Date(b.start));
+                            
+                            sortedFaults.forEach((f, idx) => {
+                                outHtml += `<tr class="hover:bg-slate-50">
+                                    <td class="p-2 border-r border-slate-200 font-bold text-indigo-700">${idx === 0 ? cycle.id : ''}</td>
+                                    <td class="p-2 border-r border-slate-200 font-medium">${f.type}</td>
+                                    <td class="p-2 border-r border-slate-200 text-slate-600 truncate max-w-[200px]" title="${f.reason}">${f.reason}</td>
+                                    <td class="p-2 border-r border-slate-200 font-mono text-slate-500">${f.start.split(' ')[1]} - ${f.end.split(' ')[1]}</td>
+                                    <td class="p-2 border-r border-slate-200 font-black text-rose-600 text-right">${Number(f.mwh).toFixed(3)}</td>
+                                    <td class="p-2 text-center flex justify-center gap-1">
+                                    <button onclick="window.editFaultModal('${cycle.id}', ${idx})" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded text-[10px] font-bold transition">✏️ Edit</button>
+                                    <button onclick="window.deleteSingleFaultEvent('${cycle.id}', ${idx})" class="bg-red-100 hover:bg-red-200 text-red-800 px-2 py-1 rounded text-[10px] font-bold transition">🗑️ Del</button>
+                                </td>
+                                </tr>`;
+                            });
+                            // Add cycle total row and master delete
+                            outHtml += `<tr class="bg-slate-50/50 border-b-2 border-slate-300">
+                                <td colspan="4" class="p-1.5 text-right font-bold text-[10px] text-slate-500 uppercase tracking-widest">Cycle Total:</td>
+                                <td class="p-1.5 text-right font-black text-rose-800 border-r border-slate-200">${Number(cycle.total_energy_loss).toFixed(3)}</td>
+                                <td class="p-1 text-center"><button onclick="window.deleteGenericRecord('outages', 'id', '${cycle.id}')" class="bg-red-100 hover:bg-red-200 text-red-800 w-full py-1 rounded text-[10px] font-bold transition">🗑️ Delete Entire Day</button></td>
+                            </tr>`;
+                        }
+                    });
+                } 
+                if(!hasOutages) { outHtml += `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">No faults recorded for this month.</td></tr>`; }
+                outHtml += `</tbody></table>`;
+                document.getElementById('monthly-outages-container').innerHTML = outHtml;
 
-        } catch (e) {
-            console.error(e);
-            showNotification("Error loading summary: " + e.message, true);
-        } finally { btn.innerText = "Load"; }
+            } catch (e) {
+                console.error(e);
+                showNotification("Error loading monthly summary: " + e.message, true);
+            } finally { btn.innerText = "Load Data"; }
+        }
     });
 }
 
@@ -2512,6 +2666,136 @@ document.getElementById('btn-save-thresholds')?.addEventListener('click', async 
         }
     }
 });
+
+window.toggleSummaryViewMode = function() {
+    const isMonthly = document.querySelector('input[name="summary-view-mode"]:checked').value === 'monthly';
+    
+    const dailyControls = document.getElementById('summary-daily-controls');
+    const monthlyControls = document.getElementById('summary-monthly-controls');
+    const dailyContent = document.getElementById('summary-content');
+    const monthlyContent = document.getElementById('monthly-summary-content');
+
+    if (isMonthly) {
+        dailyControls.classList.add('hidden');
+        dailyControls.classList.remove('flex');
+        monthlyControls.classList.remove('hidden');
+        monthlyControls.classList.add('flex');
+        dailyContent.classList.add('hidden');
+    } else {
+        monthlyControls.classList.add('hidden');
+        monthlyControls.classList.remove('flex');
+        dailyControls.classList.remove('hidden');
+        dailyControls.classList.add('flex');
+        monthlyContent.classList.add('hidden');
+    }
+};
+
+window.deleteGenericRecord = async function(table, keyColumn, idValue) {
+    if (!confirm(`⚠️ DANGER: Are you sure you want to delete this record from ${table}? This cannot be undone.`)) return;
+    
+    try {
+        const { error } = await supabase.from(table).delete().eq(keyColumn, idValue);
+        if (error) throw error;
+        
+        showNotification(`✅ Record deleted successfully from ${table}.`);
+        document.getElementById('btn-load-summary').click(); // Auto-refresh the tables
+    } catch (err) {
+        showNotification(`❌ Delete failed: ${err.message}`, true);
+    }
+};
+
+window.editGenericRecord = async function(table, keyColumn, idValue) {
+    try {
+        // Fetch current data to pre-fill prompts
+        const { data: currentData, error: fetchErr } = await supabase.from(table).select('*').eq(keyColumn, idValue).single();
+        if (fetchErr) throw fetchErr;
+
+        let updatePayload = { updated_at: new Date().toISOString() };
+
+        if (table === 'balanch_readings') {
+            const exp = prompt(`Edit Main Export (MWh) for ${idValue}:`, currentData.main_export || 0);
+            if (exp === null) return;
+            const imp = prompt(`Edit Main Import (MWh) for ${idValue}:`, currentData.main_import || 0);
+            if (imp === null) return;
+            const cExp = prompt(`Edit Check Export (MWh) for ${idValue}:`, currentData.check_export || 0);
+            if (cExp === null) return;
+            const cImp = prompt(`Edit Check Import (MWh) for ${idValue}:`, currentData.check_import || 0);
+            if (cImp === null) return;
+
+            updatePayload.main_export = parseFloat(exp) || 0;
+            updatePayload.main_import = parseFloat(imp) || 0;
+            updatePayload.check_export = parseFloat(cExp) || 0;
+            updatePayload.check_import = parseFloat(cImp) || 0;
+        } 
+        else if (table === 'rainfall_data') {
+            const hw = prompt(`Edit Headworks Rainfall (mm) for ${idValue}:`, currentData.headworks || 0);
+            if (hw === null) return;
+            const ph = prompt(`Edit Powerhouse Rainfall (mm) for ${idValue}:`, currentData.powerhouse || 0);
+            if (ph === null) return;
+
+            updatePayload.headworks = parseFloat(hw) || 0;
+            updatePayload.powerhouse = parseFloat(ph) || 0;
+        }
+
+        const { error: updateErr } = await supabase.from(table).update(updatePayload).eq(keyColumn, idValue);
+        if (updateErr) throw updateErr;
+
+        showNotification(`✅ Record updated successfully!`);
+        document.getElementById('btn-load-summary').click(); // Auto-refresh the tables
+
+    } catch (err) {
+        showNotification(`❌ Edit failed: ${err.message}`, true);
+    }
+};
+
+window.deleteSingleFaultEvent = async function(rowId, faultIndex) {
+    if (!confirm(`⚠️ Are you sure you want to delete this specific fault event? This will recalculate the daily totals.`)) return;
+
+    // 1. Find the row from our loaded cache
+    let row = window.outagesDataCache.find(r => r.id === rowId);
+    if (!row || !row.fault_details) {
+        return showNotification("❌ Error: Could not find detailed data for this date.", true);
+    }
+    
+    // 2. Clone the array and remove the specific fault
+    let details = [...row.fault_details];
+    details.splice(faultIndex, 1);
+
+    // 3. Recalculate all the MWh aggregates for the day
+    let agg = { dispatch_mwh: 0, forced_outage_mwh: 0, grid_fault_mwh: 0, line_132kv_mwh: 0, fm_33kv_mwh: 0, fm_penstock_mwh: 0, fm_equipment_mwh: 0, reasons: [] };
+    
+    details.forEach(f => {
+        agg.reasons.push(f.reason);
+        if(f.type === 'Dispatch instruction') agg.dispatch_mwh += Number(f.mwh || 0);
+        else if(f.type === 'Non-Dispatch') agg.forced_outage_mwh += Number(f.mwh || 0);
+        else if(f.type === 'Grid Faults') agg.grid_fault_mwh += Number(f.mwh || 0);
+        else if(f.type === '132 kV line faults') agg.line_132kv_mwh += Number(f.mwh || 0);
+        else if(f.type === '33 kV line fault') agg.fm_33kv_mwh += Number(f.mwh || 0);
+        else if(f.type === 'penstock pipe fault') agg.fm_penstock_mwh += Number(f.mwh || 0);
+        else if(f.type === 'plant equipment issue') agg.fm_equipment_mwh += Number(f.mwh || 0);
+    });
+
+    const updatePayload = {
+        nea_curtailed_energy: Number((agg.dispatch_mwh + agg.forced_outage_mwh).toFixed(3)),
+        energy_loss_line_trip: Number((agg.grid_fault_mwh + agg.line_132kv_mwh).toFixed(3)),
+        energy_loss_other: Number((agg.fm_33kv_mwh + agg.fm_penstock_mwh + agg.fm_equipment_mwh).toFixed(3)),
+        total_energy_loss: Number((agg.dispatch_mwh + agg.forced_outage_mwh + agg.grid_fault_mwh + agg.line_132kv_mwh + agg.fm_33kv_mwh + agg.fm_penstock_mwh + agg.fm_equipment_mwh).toFixed(3)),
+        reason: agg.reasons.join(' + '),
+        fault_details: details,
+        updated_at: new Date().toISOString()
+    };
+
+    // 4. Save to Database
+    try {
+        const { error } = await supabase.from('outages').update(updatePayload).eq('id', rowId);
+        if (error) throw error;
+        
+        showNotification(`✅ Fault event deleted and daily totals updated!`);
+        document.getElementById('btn-load-summary').click(); // Auto-refresh the tables immediately
+    } catch (err) {
+        showNotification("❌ Failed to delete fault: " + err.message, true);
+    }
+};
 
 // Load thresholds after page starts
 setTimeout(loadThresholds, 1500);

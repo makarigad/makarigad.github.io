@@ -2144,26 +2144,40 @@ window.downloadPDF = async function() {
                     margin: { top: startY, right: 15, bottom: 60, left: 15 }
                 });
 
-                const finalY = doc.lastAutoTable.finalY + 10;
+                const finalY = doc.lastAutoTable.finalY + 20; // Slightly more top margin
+                
+                // Calculate even spacing using the full landscape page width
+                const col1 = 15;
+                const col2 = pageWidth * 0.40; // 40% across the page
+                const col3 = pageWidth * 0.75; // 75% across the page
+
+                // 1. Shift Headings (Bold)
+                doc.setFont("times", "bold");
+                doc.setFontSize(10);
+                doc.text("Shift A", col1, finalY);
+                doc.text("Shift B", col2, finalY);
+                doc.text("Shift C", col3, finalY);
+
+                // 2. Operator Names
                 doc.setFont("times", "normal");
                 doc.setFontSize(9);
+                doc.text(`Name: ${shiftA}`, col1, finalY + 15);
+                doc.text(`Name: ${shiftB}`, col2, finalY + 15);
+                doc.text(`Name: ${shiftC}`, col3, finalY + 15);
 
-                doc.text("Shift A", 15, finalY);
-                doc.text("Shift B", 15 + 150, finalY);
-                doc.text("Shift C", 15 + 300, finalY);
+                // 3. Operator Signatures
+                doc.text("Signature: .............................", col1, finalY + 30);
+                doc.text("Signature: .............................", col2, finalY + 30);
+                doc.text("Signature: .............................", col3, finalY + 30);
 
-                doc.text("Signature: .............................", 15, finalY + 15);
-                doc.text("Signature: .............................", 15 + 150, finalY + 15);
-                doc.text("Signature: .............................", 15 + 300, finalY + 15);
-
-                doc.text(`Name: ${shiftA}`, 15, finalY + 30);
-                doc.text(`Name: ${shiftB}`, 15 + 150, finalY + 30);
-                doc.text(`Name: ${shiftC}`, 15 + 300, finalY + 30);
-
-                doc.text("Signature: .............................", 15, finalY + 45);
-                doc.text("Name: Upendra Chand", 15, finalY + 60);
-                doc.text("Designation: Plant Manager", 15, finalY + 75);
-                doc.text("Official Seal", 15, finalY + 90);
+                // 4. Plant Manager Section (spaced lower down)
+                const managerY = finalY + 65; 
+                doc.text("Signature: ........................................", col1, managerY);
+                doc.setFont("times", "bold");
+                doc.text("Name: Upendra Chand", col1, managerY + 15);
+                doc.setFont("times", "normal");
+                doc.text("Designation: Plant Manager", col1, managerY + 30);
+                doc.text("Official Seal", col1, managerY + 45);
             } 
         });
         const safeDate = uniqueDates[0] ? uniqueDates[0].replace(/[\/.]/g, '-') : 'Export';

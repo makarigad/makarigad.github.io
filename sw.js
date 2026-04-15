@@ -103,7 +103,9 @@ self.addEventListener('fetch', (event) => {
                 if (cached) return cached;
                 return fetch(request).then(res => {
                     if (res?.status === 200) {
-                        caches.open(CACHE_NAME).then(c => c.put(request, res.clone()));
+                        // FIX: Clone the response immediately BEFORE the async cache open
+                        const resClone = res.clone(); 
+                        caches.open(CACHE_NAME).then(c => c.put(request, resClone));
                     }
                     return res;
                 }).catch(() => new Response('', { status: 503 }));
@@ -118,12 +120,20 @@ self.addEventListener('fetch', (event) => {
             // Return cache immediately, fetch update in background
             const networkFetch = fetch(request).then(res => {
                 if (res?.ok || res?.type === 'opaque') {
-                    caches.open(CACHE_NAME).then(c => c.put(request, res.clone()));
+                    // FIX: Clone the response immediately BEFORE the async cache open
+                    const resClone = res.clone();
+                    caches.open(CACHE_NAME).then(c => c.put(request, resClone));
                 }
                 return res;
             }).catch(() => null);
+
+            // FIX: Prevent the service worker from going to sleep before the background update finishes
+            if (cached) {
+                event.waitUntil(networkFetch);
+            }
 
             return cached ?? networkFetch;
         })
     );
 });
+

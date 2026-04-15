@@ -873,10 +873,8 @@ startPage();
                 document.getElementById('dr-report-date').max = plantData[plantData.length - 1].id;
                 document.getElementById('dr-report-date').min = plantData[1].id;
                 
-                const defaultDate = getReportDateStr();
-                const clampedDate = defaultDate <= plantData[plantData.length - 1].id 
-                    ? (defaultDate >= plantData[1].id ? defaultDate : plantData[1].id) 
-                    : plantData[plantData.length - 1].id;
+                // Force the dashboard to always load the latest available data row
+                const clampedDate = plantData[plantData.length - 1].id;
                 
                 document.getElementById('dr-report-date').value = clampedDate;
 
@@ -1996,8 +1994,7 @@ let nepaliDateMap = {};
             daily.avgLoadPowerhouse = (daily.generation * 1000 * 60) / activeMins; 
             daily.avgLoadSubstation = (daily.exportSubstation * 1000 * 60) / activeMins; 
             
-            // CORRECTED: Plant factor uses full 24h capacity (240 MWh)
-            daily.plantFactor = (daily.exportSubstation / 240) * 100; 
+            daily.plantFactor = (daily.generation / 240) * 100; 
             
             daily.unit1Hours = Math.max(0, pToday.unit1_counter - pYesterday.unit1_counter);
             daily.unit2Hours = Math.max(0, pToday.unit2_counter - pYesterday.unit2_counter);
@@ -2034,44 +2031,29 @@ let nepaliDateMap = {};
             monthly.cumulativeTransformerLoss = monthly.cumulativeGeneration - monthly.cumulativePlantExport - monthly.cumulativeStationConsumption;
             
             const cInfo = contractData.find(c => Number(c.year) === yYear && c.month === nepaliMonthName);
-            const ppaDays = getActualDays(yYear, yMonth - 1);
-
-            // Distinguish actual calendar days from PPA days
-           // 1. Get the actual total calendar days for the current reporting month
+            
+            // 1. Get the actual total calendar days for the correct reporting month
             const actualMonthDays = getActualDays(yYear, yMonth - 1);
             
-            // 2. Extract the original calendar day you clicked from the database string
-            const clickedDay = parseInt((pToday.nepali_date || '').replace(/[\/\-]/g, '.').split('.')[2], 10);
-            
-            // 3. Calculate exact elapsed 24-hour cycles:
-            // If Day 1: The whole previous month has elapsed (yDay was shifted to total days)
-            // If Day > 1: Elapsed days is simply (Clicked Day - 1)
-            const elapsedDays = (clickedDay === 1) ? yDay : (clickedDay - 1);
-
-            // 4. Calculate true remaining days
-            monthly.remainingDays = Math.max(0, actualMonthDays - elapsedDays);
-            
             monthly.guaranteedEnergy = cInfo ? cInfo.contract_energy : 0;
             monthly.availabilityDeclaration = cInfo ? cInfo.total_ad : 0;
             
             monthly.energyDifference = Math.max(0, monthly.availabilityDeclaration - monthly.cumulativeExport);
             
-               
-            // Plant factor and remaining days math now strictly respects actual calendar days
+            // --- CRITICAL FIX FOR REMAINING DAYS ---
+            const rawClickedDay = parseInt((pToday.nepali_date || '').replace(/[\/\-]/g, '.').split('.')[2], 10);
+            let correctElapsedDays;
+            if (rawClickedDay === 1) {
+                correctElapsedDays = actualMonthDays;
+            } else {
+                correctElapsedDays = Math.max(1, rawClickedDay - 1);
+            }
+            
             monthly.monthlyPlantFactor = actualMonthDays > 0 ? (monthly.cumulativeGeneration / (240 * actualMonthDays)) * 100 : 0;
-            monthly.plantFactorTillDate = (monthly.cumulativeGeneration / (240 * elapsedDays)) * 100;
+            monthly.plantFactorTillDate = (monthly.cumulativeGeneration / (240 * correctElapsedDays)) * 100;
             
-            monthly.guaranteedEnergy = cInfo ? cInfo.contract_energy : 0;
-            monthly.availabilityDeclaration = cInfo ? cInfo.total_ad : 0;
-            
-            // CORRECTED: Difference floored to 0 to prevent negative values
-            monthly.energyDifference = Math.max(0, monthly.availabilityDeclaration - monthly.cumulativeExport);
-            
-            monthly.monthlyPlantFactor = ppaDays > 0 ? (monthly.cumulativeExport / (240 * ppaDays)) * 100 : 0;
-            monthly.plantFactorTillDate = yDay > 0 ? (monthly.cumulativeExport / (240 * yDay)) * 100 : 0;
-            
-            // CORRECTED: Remaining days logic
-            monthly.remainingDays = Math.max(0, ppaDays - yDay);
+            monthly.remainingDays = Math.max(0, actualMonthDays - correctElapsedDays);
+            // ---------------------------------------
 
             // --- DYNAMIC TREND MESSAGE LOGIC ---
             let yestStation = 0, yestTransf = 0, yestTransm = 0;
@@ -2090,10 +2072,10 @@ let nepaliDateMap = {};
             }
 
             let avgStation = 0, avgTransf = 0, avgTransm = 0;
-            if (yDay > 1) { 
-                avgStation = (monthly.cumulativeStationConsumption - daily.stationConsumption) / (yDay - 1);
-                avgTransf = (monthly.cumulativeTransformerLoss - daily.transformerLoss) / (yDay - 1);
-                avgTransm = (monthly.cumulativeTransmissionLoss - daily.transmissionLoss) / (yDay - 1);
+            if (correctElapsedDays > 1) { 
+                avgStation = (monthly.cumulativeStationConsumption - daily.stationConsumption) / (correctElapsedDays - 1);
+                avgTransf = (monthly.cumulativeTransformerLoss - daily.transformerLoss) / (correctElapsedDays - 1);
+                avgTransm = (monthly.cumulativeTransmissionLoss - daily.transmissionLoss) / (correctElapsedDays - 1);
             }
 
             const buildCompareText = (name, today, yest, avg) => {
@@ -2101,15 +2083,15 @@ let nepaliDateMap = {};
                 const avgDiff = today - avg;
                 let text = `<strong>${name}</strong> (${n(today,3)} MWh) is `;
                 text += yestDiff > 0 ? `<span class="text-red-600 font-bold">${n(Math.abs(yestDiff),3)} MWh higher</span> than yesterday` : `<span class="text-emerald-600 font-bold">${n(Math.abs(yestDiff),3)} MWh lower</span> than yesterday`;
-                if (yDay > 1) {
+                if (correctElapsedDays > 1) {
                     text += ` and `;
-                    text += avgDiff > 0 ? `<span class="text-red-600">${n(Math.abs(avgDiff),3)} MWh above</span> the monthly average.` : `<span class="text-emerald-600">${n(Math.abs(avgDiff),3)} MWh below</span> the monthly average.`;
+                    text += avgDiff > 0 ? `<span class="text-red-600">${n(Math.abs(avgDiff),3)} MWh above</span> the monthly avg.` : `<span class="text-emerald-600">${n(Math.abs(avgDiff),3)} MWh below</span> the monthly avg.`;
                 } else { text += `.`; }
                 return text;
             };
 
             const msgHtml = `
-                <ul class="list-disc pl-5 mt-1 space-y-1">
+                <ul class="list-disc pl-5 mt-1 space-y-1 text-xs">
                     <li>${buildCompareText('Station Consumption', daily.stationConsumption, yestStation, avgStation)}</li>
                     <li>${buildCompareText('Transformer Loss', daily.transformerLoss, yestTransf, avgTransf)}</li>
                     <li>${buildCompareText('Transmission Loss', daily.transmissionLoss, yestTransm, avgTransm)}</li>
@@ -2122,7 +2104,6 @@ let nepaliDateMap = {};
             // 3. Render Updates
             document.getElementById('dr-report-content').classList.remove('hidden');
             
-            // Show Corrected Nepali Month & Year if rolled back
             document.getElementById('dr-display-nepali-month').textContent = `${nepaliMonthName} ${yYear}`;
             document.getElementById('dr-display-nepali-date').textContent = displayNepaliDate;
             document.getElementById('dr-val-major-events').textContent = majorEvents;
@@ -2141,6 +2122,7 @@ let nepaliDateMap = {};
             
             document.getElementById('dr-val-monthly-plant-factor').textContent = n(monthly.monthlyPlantFactor);
             document.getElementById('dr-val-plant-factor-till-date').textContent = n(monthly.plantFactorTillDate);
+            
             document.getElementById('dr-val-remaining-days').textContent = n(monthly.remainingDays, 0) + ' out of ' + actualMonthDays;
             
             document.getElementById('dr-val-transformer-loss-month').textContent = n(monthly.cumulativeTransformerLoss, 3);
@@ -2154,19 +2136,20 @@ let nepaliDateMap = {};
             document.getElementById('dr-val-unit1-counter').textContent = n(pToday.unit1_counter, 1);
             document.getElementById('dr-val-unit2-counter').textContent = n(pToday.unit2_counter, 1);
 
-            // Sync Nepali Dropdown 
-            const sel = document.getElementById('dr-nepali-date-sel');
-            if(sel) sel.value = englishDateStr;
+            // Sync the cascading dropdowns with the current English date
+            if (typeof syncNepaliDropdowns === 'function') {
+                syncNepaliDropdowns(englishDateStr);
+            }
 
             drUpdatePieChart(monthly);
-            // Pass yYear, yMonth to the trend chart
             drUpdateTrendChart(pIdx, yYear, yMonth);
             
         } catch (error) {
             console.error('Report Error:', error);
             alert('Failed to generate report: ' + error.message);
         }
-        }
+    }
+
     
     function drUpdatePieChart(monthly) {
         const ctx = document.getElementById('dr-energy-pie-chart').getContext('2d');

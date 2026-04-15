@@ -127,9 +127,16 @@
                     </div>
                     <div class="mt-4 sm:mt-0 flex flex-wrap items-center gap-3">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Report Date</label>
-                            <input type="date" id="dr-report-date" class="mt-1 table-input font-bold text-indigo-700">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Report Date (Eng / Nep)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="dr-report-date" class="mt-1 table-input font-bold text-indigo-700 w-36">
+                            <div class="flex gap-1">
+                                <select id="dr-nep-year" class="mt-1 table-input font-bold text-emerald-700 w-20 text-xs px-1"></select>
+                                <select id="dr-nep-month" class="mt-1 table-input font-bold text-emerald-700 w-24 text-xs px-1"></select>
+                                <select id="dr-nep-day" class="mt-1 table-input font-bold text-emerald-700 w-16 text-xs px-1"></select>
+                            </div>
                         </div>
+                    </div>
                         <button id="dr-download-jpg" class="bg-emerald-600 text-white px-4 py-2.5 rounded-md hover:bg-emerald-700 flex items-center space-x-2 mt-5 shadow-sm transition font-bold">
                             <span id="dr-download-spinner" class="spinner hidden"></span>
                             <span>📸 Download JPG</span>
@@ -138,6 +145,10 @@
                 </div>
                 
                 <div id="dr-report-content" class="hidden">
+                    <div id="dr-dynamic-message-container" class="mb-6 p-4 rounded-md bg-blue-50 border border-blue-200 hidden">
+                    <h3 class="text-sm font-bold text-blue-900 mb-1 flex items-center">📊 Daily Performance Insight</h3>
+                    <p id="dr-dynamic-message-text" class="text-xs text-blue-800 leading-relaxed"></p>
+                    </div>
                     <div class="mb-6 p-4 rounded-md bg-indigo-50 border border-indigo-200 text-center">
                         <h2 class="text-xl font-semibold text-gray-800">
                             Energy Summary for the month of <span id="dr-display-nepali-month" class="text-indigo-600 font-bold"></span>
@@ -861,12 +872,33 @@ startPage();
             if (plantData.length > 1) {
                 document.getElementById('dr-report-date').max = plantData[plantData.length - 1].id;
                 document.getElementById('dr-report-date').min = plantData[1].id;
-                // Use the 12pm-aware report date (don't advance past noon Nepal time)
+                
                 const defaultDate = getReportDateStr();
                 const clampedDate = defaultDate <= plantData[plantData.length - 1].id 
                     ? (defaultDate >= plantData[1].id ? defaultDate : plantData[1].id) 
                     : plantData[plantData.length - 1].id;
+                
                 document.getElementById('dr-report-date').value = clampedDate;
+
+                populateDailyNepaliDates();
+                
+                // --- NEW: POPULATE NEPALI DATES ---
+                const nepSel = document.getElementById('dr-nepali-date-sel');
+                nepSel.innerHTML = '<option value="">Select Nepali Date</option>';
+                for (let i = plantData.length - 1; i >= 0; i--) {
+                    if (plantData[i].nepali_date) {
+                        nepSel.add(new Option(plantData[i].nepali_date, plantData[i].id));
+                    }
+                }
+                // Sync the main report when Nepali date is selected
+                nepSel.addEventListener('change', (e) => {
+                    if(e.target.value) {
+                        document.getElementById('dr-report-date').value = e.target.value;
+                        generateDailyReport(e.target.value);
+                    }
+                });
+                // ----------------------------------
+
                 generateDailyReport(clampedDate);
             }
 
@@ -1829,6 +1861,93 @@ startPage();
         const dd = String(nepalNow.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
     }
+    
+let nepaliDateMap = {};
+
+    function populateDailyNepaliDates() {
+        nepaliDateMap = {};
+        if (!plantData || plantData.length === 0) return;
+
+        // Build the hierarchy map from available plant data
+        plantData.forEach(d => {
+            if (!d.nepali_date) return;
+            let parts = String(d.nepali_date).replace(/[\/\-]/g, '.').split('.');
+            if (parts.length === 3) {
+                let y = parseInt(parts[0], 10);
+                let m = parseInt(parts[1], 10);
+                let day = parseInt(parts[2], 10);
+
+                if (!nepaliDateMap[y]) nepaliDateMap[y] = {};
+                if (!nepaliDateMap[y][m]) nepaliDateMap[y][m] = [];
+                nepaliDateMap[y][m].push({ day: day, eng_date: d.id });
+            }
+        });
+
+        const ySel = document.getElementById('dr-nep-year');
+        const mSel = document.getElementById('dr-nep-month');
+        const dSel = document.getElementById('dr-nep-day');
+
+        ySel.innerHTML = '<option value="">Year</option>';
+        mSel.innerHTML = '<option value="">Month</option>';
+        dSel.innerHTML = '<option value="">Day</option>';
+
+        // Populate Years (Descending)
+        Object.keys(nepaliDateMap).sort((a, b) => b - a).forEach(y => ySel.add(new Option(y, y)));
+
+        ySel.addEventListener('change', () => {
+            mSel.innerHTML = '<option value="">Month</option>';
+            dSel.innerHTML = '<option value="">Day</option>';
+            if (ySel.value && nepaliDateMap[ySel.value]) {
+                Object.keys(nepaliDateMap[ySel.value]).sort((a, b) => a - b).forEach(m => {
+                    mSel.add(new Option(canonicalMonths[m - 1] || m, m));
+                });
+            }
+        });
+
+        mSel.addEventListener('change', () => {
+            dSel.innerHTML = '<option value="">Day</option>';
+            if (ySel.value && mSel.value && nepaliDateMap[ySel.value][mSel.value]) {
+                nepaliDateMap[ySel.value][mSel.value].sort((a, b) => a.day - b.day).forEach(item => {
+                    dSel.add(new Option(String(item.day).padStart(2, '0'), item.eng_date));
+                });
+            }
+        });
+
+        dSel.addEventListener('change', () => {
+            if (dSel.value) {
+                document.getElementById('dr-report-date').value = dSel.value;
+                generateDailyReport(dSel.value);
+            }
+        });
+    }
+
+    function syncNepaliDropdowns(eng_date) {
+        const d = plantData.find(p => p.id === eng_date);
+        if (!d || !d.nepali_date) return;
+        
+        let parts = String(d.nepali_date).replace(/[\/\-]/g, '.').split('.');
+        if (parts.length === 3) {
+            let y = parseInt(parts[0], 10);
+            let m = parseInt(parts[1], 10);
+            
+            const ySel = document.getElementById('dr-nep-year');
+            const mSel = document.getElementById('dr-nep-month');
+            const dSel = document.getElementById('dr-nep-day');
+
+            if (ySel.value != y) {
+                ySel.value = y;
+                ySel.dispatchEvent(new Event('change'));
+            }
+            if (mSel.value != m) {
+                mSel.value = m;
+                mSel.dispatchEvent(new Event('change'));
+            }
+            if (dSel.value != eng_date) {
+                dSel.value = eng_date;
+            }
+        }
+    }
+
 
     function generateDailyReport(englishDateStr) {
         if(!englishDateStr || plantData.length === 0) return;
@@ -1838,36 +1957,35 @@ startPage();
             if (pIdx === -1) return alert(`No powerhouse data found for ${englishDateStr}.`);
             if (pIdx === 0) return alert(`Need previous day's reading to calculate generation differentials.`);
             
-            // 12pm→12pm window:
-            // pToday  = plant reading at REPORT DATE (end of reporting period, noon)
-            // pYesterday = plant reading at DAY BEFORE (start of reporting period, noon)
             const pToday = plantData[pIdx];
             const pYesterday = plantData[pIdx - 1]; 
             
-            // Balanch: use today's reading as end, yesterday as start (12pm snapshots)
             const bToday = balanchData.find(d => d.eng_date === englishDateStr);
             const bYesterday = balanchData.find(d => d.eng_date === pYesterday.id);
 
             const bTodayExp = bToday ? getActiveReading(bToday, 'export') : 0;
             const bYesterdayExp = bYesterday ? getActiveReading(bYesterday, 'export') : 0;
 
-            // Report "date" label: show the Nepali date of pToday (the reporting period END)
             const displayNepaliDate = pToday.nepali_date || 'N/A';
-            // For monthly calculations, use pToday's nepali month context
+            
+            // --- DATE CONTEXT SHIFT ---
             let [yYear, yMonth, yDay] = (pToday.nepali_date || pYesterday.nepali_date || '').replace(/[\/\-]/g, '.').split('.').map(p => parseInt(p));
+            
+            if (yDay === 1) {
+                yMonth -= 1;
+                if (yMonth === 0) { yMonth = 12; yYear -= 1; }
+                yDay = getActualDays(yYear, yMonth - 1); 
+            }
             const nepaliMonthName = canonicalMonths[yMonth - 1];
+            // --------------------------
 
-            // 1. Calculate Daily safely (preventing negative values on missing data)
+            // 1. Calculate Daily safely
             const daily = {};
             daily.generation = Math.max(0, ((pToday.unit1_gen + pToday.unit2_gen) - (pYesterday.unit1_gen + pYesterday.unit2_gen))/1000); 
-            
-            // Substation Dispatch safely bounded
             daily.exportSubstation = Math.max(0, bTodayExp - bYesterdayExp); 
-            
             daily.exportPlant = Math.max(0, pToday.export_plant - pYesterday.export_plant); 
             daily.stationConsumption = Math.max(0, (pToday.station_trans - pYesterday.station_trans) / 1000); 
             
-            // Losses calculation
             daily.transmissionLoss = Math.max(0, daily.exportPlant - daily.exportSubstation);
             daily.transformerLoss = Math.max(0, daily.generation - daily.exportPlant - daily.stationConsumption);
             
@@ -1877,7 +1995,10 @@ startPage();
             
             daily.avgLoadPowerhouse = (daily.generation * 1000 * 60) / activeMins; 
             daily.avgLoadSubstation = (daily.exportSubstation * 1000 * 60) / activeMins; 
-            daily.plantFactor = (daily.exportSubstation / (10 * 24)) * 100; 
+            
+            // CORRECTED: Plant factor uses full 24h capacity (240 MWh)
+            daily.plantFactor = (daily.exportSubstation / 240) * 100; 
+            
             daily.unit1Hours = Math.max(0, pToday.unit1_counter - pYesterday.unit1_counter);
             daily.unit2Hours = Math.max(0, pToday.unit2_counter - pYesterday.unit2_counter);
 
@@ -1892,7 +2013,7 @@ startPage();
             monthly.cumulativeGeneration = ((pToday.unit1_gen + pToday.unit2_gen) - (pMonthStart.unit1_gen + pMonthStart.unit2_gen))/1000; 
             monthly.cumulativeExport = (bTodayExp - bMonthStartExp);
             monthly.cumulativePlantExport = (pToday.export_plant - pMonthStart.export_plant);
-            monthly.cumulativeStationConsumption = (pToday.station_trans - pMonthStart.station_trans) / 1000; // Convert kWh to MWh
+            monthly.cumulativeStationConsumption = (pToday.station_trans - pMonthStart.station_trans) / 1000; 
 
             const cMonthRecords = plantData.slice(baseIdx + 1, pIdx + 1);
             const cMonthEngDates = cMonthRecords.map(d => d.id);
@@ -1914,18 +2035,95 @@ startPage();
             
             const cInfo = contractData.find(c => Number(c.year) === yYear && c.month === nepaliMonthName);
             const ppaDays = getActualDays(yYear, yMonth - 1);
+
+            // Distinguish actual calendar days from PPA days
+           // 1. Get the actual total calendar days for the current reporting month
+            const actualMonthDays = getActualDays(yYear, yMonth - 1);
+            
+            // 2. Extract the original calendar day you clicked from the database string
+            const clickedDay = parseInt((pToday.nepali_date || '').replace(/[\/\-]/g, '.').split('.')[2], 10);
+            
+            // 3. Calculate exact elapsed 24-hour cycles:
+            // If Day 1: The whole previous month has elapsed (yDay was shifted to total days)
+            // If Day > 1: Elapsed days is simply (Clicked Day - 1)
+            const elapsedDays = (clickedDay === 1) ? yDay : (clickedDay - 1);
+
+            // 4. Calculate true remaining days
+            monthly.remainingDays = Math.max(0, actualMonthDays - elapsedDays);
             
             monthly.guaranteedEnergy = cInfo ? cInfo.contract_energy : 0;
             monthly.availabilityDeclaration = cInfo ? cInfo.total_ad : 0;
-            monthly.energyDifference = monthly.cumulativeExport - monthly.availabilityDeclaration;
             
-            monthly.monthlyPlantFactor = ppaDays > 0 ? (monthly.cumulativeExport / (10 * 24 * ppaDays)) * 100 : 0;
-            monthly.plantFactorTillDate = yDay > 0 ? (monthly.cumulativeExport / (10 * 24 * yDay)) * 100 : 0;
-            monthly.remainingDays = ppaDays - yDay;
+            monthly.energyDifference = Math.max(0, monthly.availabilityDeclaration - monthly.cumulativeExport);
+            
+               
+            // Plant factor and remaining days math now strictly respects actual calendar days
+            monthly.monthlyPlantFactor = actualMonthDays > 0 ? (monthly.cumulativeGeneration / (240 * actualMonthDays)) * 100 : 0;
+            monthly.plantFactorTillDate = (monthly.cumulativeGeneration / (240 * elapsedDays)) * 100;
+            
+            monthly.guaranteedEnergy = cInfo ? cInfo.contract_energy : 0;
+            monthly.availabilityDeclaration = cInfo ? cInfo.total_ad : 0;
+            
+            // CORRECTED: Difference floored to 0 to prevent negative values
+            monthly.energyDifference = Math.max(0, monthly.availabilityDeclaration - monthly.cumulativeExport);
+            
+            monthly.monthlyPlantFactor = ppaDays > 0 ? (monthly.cumulativeExport / (240 * ppaDays)) * 100 : 0;
+            monthly.plantFactorTillDate = yDay > 0 ? (monthly.cumulativeExport / (240 * yDay)) * 100 : 0;
+            
+            // CORRECTED: Remaining days logic
+            monthly.remainingDays = Math.max(0, ppaDays - yDay);
 
-            // 3. Render
+            // --- DYNAMIC TREND MESSAGE LOGIC ---
+            let yestStation = 0, yestTransf = 0, yestTransm = 0;
+            if (pIdx >= 2) {
+                const pDayBefYest = plantData[pIdx - 2];
+                const bDayBefYest = balanchData.find(d => d.eng_date === pDayBefYest.id);
+                const bDayBefYestExp = bDayBefYest ? getActiveReading(bDayBefYest, 'export') : 0;
+                
+                const yGen = Math.max(0, ((pYesterday.unit1_gen + pYesterday.unit2_gen) - (pDayBefYest.unit1_gen + pDayBefYest.unit2_gen))/1000);
+                const yExpSub = Math.max(0, bYesterdayExp - bDayBefYestExp);
+                const yExpPlant = Math.max(0, pYesterday.export_plant - pDayBefYest.export_plant);
+                
+                yestStation = Math.max(0, (pYesterday.station_trans - pDayBefYest.station_trans) / 1000);
+                yestTransm = Math.max(0, yExpPlant - yExpSub);
+                yestTransf = Math.max(0, yGen - yExpPlant - yestStation);
+            }
+
+            let avgStation = 0, avgTransf = 0, avgTransm = 0;
+            if (yDay > 1) { 
+                avgStation = (monthly.cumulativeStationConsumption - daily.stationConsumption) / (yDay - 1);
+                avgTransf = (monthly.cumulativeTransformerLoss - daily.transformerLoss) / (yDay - 1);
+                avgTransm = (monthly.cumulativeTransmissionLoss - daily.transmissionLoss) / (yDay - 1);
+            }
+
+            const buildCompareText = (name, today, yest, avg) => {
+                const yestDiff = today - yest;
+                const avgDiff = today - avg;
+                let text = `<strong>${name}</strong> (${n(today,3)} MWh) is `;
+                text += yestDiff > 0 ? `<span class="text-red-600 font-bold">${n(Math.abs(yestDiff),3)} MWh higher</span> than yesterday` : `<span class="text-emerald-600 font-bold">${n(Math.abs(yestDiff),3)} MWh lower</span> than yesterday`;
+                if (yDay > 1) {
+                    text += ` and `;
+                    text += avgDiff > 0 ? `<span class="text-red-600">${n(Math.abs(avgDiff),3)} MWh above</span> the monthly average.` : `<span class="text-emerald-600">${n(Math.abs(avgDiff),3)} MWh below</span> the monthly average.`;
+                } else { text += `.`; }
+                return text;
+            };
+
+            const msgHtml = `
+                <ul class="list-disc pl-5 mt-1 space-y-1">
+                    <li>${buildCompareText('Station Consumption', daily.stationConsumption, yestStation, avgStation)}</li>
+                    <li>${buildCompareText('Transformer Loss', daily.transformerLoss, yestTransf, avgTransf)}</li>
+                    <li>${buildCompareText('Transmission Loss', daily.transmissionLoss, yestTransm, avgTransm)}</li>
+                </ul>
+            `;
+            document.getElementById('dr-dynamic-message-text').innerHTML = msgHtml;
+            document.getElementById('dr-dynamic-message-container').classList.remove('hidden');
+            // ------------------------------------
+
+            // 3. Render Updates
             document.getElementById('dr-report-content').classList.remove('hidden');
-            document.getElementById('dr-display-nepali-month').textContent = nepaliMonthName;
+            
+            // Show Corrected Nepali Month & Year if rolled back
+            document.getElementById('dr-display-nepali-month').textContent = `${nepaliMonthName} ${yYear}`;
             document.getElementById('dr-display-nepali-date').textContent = displayNepaliDate;
             document.getElementById('dr-val-major-events').textContent = majorEvents;
 
@@ -1943,7 +2141,7 @@ startPage();
             
             document.getElementById('dr-val-monthly-plant-factor').textContent = n(monthly.monthlyPlantFactor);
             document.getElementById('dr-val-plant-factor-till-date').textContent = n(monthly.plantFactorTillDate);
-            document.getElementById('dr-val-remaining-days').textContent = n(monthly.remainingDays, 0);
+            document.getElementById('dr-val-remaining-days').textContent = n(monthly.remainingDays, 0) + ' out of ' + actualMonthDays;
             
             document.getElementById('dr-val-transformer-loss-month').textContent = n(monthly.cumulativeTransformerLoss, 3);
             document.getElementById('dr-val-station-consumption-month').textContent = n(monthly.cumulativeStationConsumption, 3);
@@ -1956,15 +2154,20 @@ startPage();
             document.getElementById('dr-val-unit1-counter').textContent = n(pToday.unit1_counter, 1);
             document.getElementById('dr-val-unit2-counter').textContent = n(pToday.unit2_counter, 1);
 
+            // Sync Nepali Dropdown 
+            const sel = document.getElementById('dr-nepali-date-sel');
+            if(sel) sel.value = englishDateStr;
+
             drUpdatePieChart(monthly);
-            drUpdateTrendChart(pIdx);
+            // Pass yYear, yMonth to the trend chart
+            drUpdateTrendChart(pIdx, yYear, yMonth);
             
         } catch (error) {
             console.error('Report Error:', error);
             alert('Failed to generate report: ' + error.message);
         }
-    }
-
+        }
+    
     function drUpdatePieChart(monthly) {
         const ctx = document.getElementById('dr-energy-pie-chart').getContext('2d');
         const rawValues = [
@@ -2064,36 +2267,27 @@ startPage();
         drPieChartInstance = new Chart(ctx, config);
     }
 
-    function drUpdateTrendChart(pIdx) {
-        // Find the Nepali month/year for the selected report date
+   function drUpdateTrendChart(pIdx, yYear, yMonth) {
         const pToday = plantData[pIdx];
-        let trendNepYear = null, trendNepMonth = null;
-        if (pToday && pToday.nepali_date) {
-            const parts = cleanDate(pToday.nepali_date).split('.');
-            if (parts.length === 3) { trendNepYear = parseInt(parts[0]); trendNepMonth = parseInt(parts[1]); }
-        }
-
-        const prefix = trendNepYear && trendNepMonth ? `${trendNepYear}.${String(trendNepMonth).padStart(2,'0')}.` : null;
+        const prefix = `${yYear}.${String(yMonth).padStart(2,'0')}.`;
         let monthPlantRows = [];
         
-        if (prefix) {
-            // Get all rows for the current month up to pToday
-            let monthRows = plantData.filter(p => p.nepali_date && cleanDate(p.nepali_date).startsWith(prefix) && p.id <= pToday.id);
-            
-            // CRITICAL FIX: To calculate Day 1's dispatch, we MUST include the last day of the PREVIOUS month
-            if (monthRows.length > 0) {
-                const firstDayIdx = plantData.findIndex(p => p.id === monthRows[0].id);
-                if (firstDayIdx > 0) {
-                    monthPlantRows = [plantData[firstDayIdx - 1], ...monthRows];
-                } else {
-                    monthPlantRows = monthRows;
-                }
+        let monthRows = plantData.filter(p => p.nepali_date && cleanDate(p.nepali_date).startsWith(prefix) && p.id <= pToday.id);
+        
+        if (monthRows.length > 0) {
+            const firstDayIdx = plantData.findIndex(p => p.id === monthRows[0].id);
+            if (firstDayIdx > 0) {
+                monthPlantRows = [plantData[firstDayIdx - 1], ...monthRows];
+            } else {
+                monthPlantRows = monthRows;
             }
         } else {
             monthPlantRows = plantData.slice(Math.max(0, pIdx - 30), pIdx + 1);
         }
 
         const labels = [], dailyValues = [], avgLoadValues = [];
+        const stConsValues = [], transfLossValues = [], transmLossValues = [];
+
         for (let i = 1; i < monthPlantRows.length; i++) {
             const todayP = monthPlantRows[i]; 
             const yestP = monthPlantRows[i - 1];
@@ -2103,24 +2297,34 @@ startPage();
             
             if (bT && bY) {
                 const dispatched = Math.max(0, getActiveReading(bT, 'export') - getActiveReading(bY, 'export'));
-                const nepParts = cleanDate(todayP.nepali_date || '').split('.');
-                const dayLabel = nepParts.length === 3 ? `Day ${parseInt(nepParts[2])}` : todayP.id.slice(5);
+                
+                // Shift Labels to the actual generated day
+                const nepParts = cleanDate(yestP.nepali_date || '').split('.');
+                const dayLabel = nepParts.length === 3 ? `Day ${parseInt(nepParts[2])}` : yestP.id.slice(5);
                 
                 labels.push(dayLabel);
                 dailyValues.push(dispatched);
                 
-                // Fix: Use actual active minutes instead of a flat 24 hours for accurate Avg Load
                 const rDayOutage = outagesData.find(o => o.id === yestP.id) || { lossTimeMin: 0, lossU1Min: 0, lossU2Min: 0 };
                 let activeMins = 1440.01 - rDayOutage.lossTimeMin - ((rDayOutage.lossU1Min + rDayOutage.lossU2Min) / 2);
                 if (activeMins <= 0) activeMins = 1440.01;
                 
-                const avgLoad = (dispatched * 1000 * 60) / activeMins; // MW Calculation
+                const avgLoad = (dispatched * 1000 * 60) / activeMins; 
                 avgLoadValues.push(parseFloat(avgLoad.toFixed(3)));
+
+                // Calculate Daily Losses for Graph
+                const gen = Math.max(0, ((todayP.unit1_gen + todayP.unit2_gen) - (yestP.unit1_gen + yestP.unit2_gen))/1000);
+                const expPlant = Math.max(0, todayP.export_plant - yestP.export_plant);
+                const stCons = Math.max(0, (todayP.station_trans - yestP.station_trans) / 1000);
+                
+                stConsValues.push(stCons);
+                transfLossValues.push(Math.max(0, gen - expPlant - stCons));
+                transmLossValues.push(Math.max(0, expPlant - dispatched));
             }
         }
 
         const ctx = document.getElementById('dr-daily-trend-chart').getContext('2d');
-        const nepMonthName = trendNepYear && trendNepMonth ? `${canonicalMonths[trendNepMonth - 1]} ${trendNepYear}` : 'Current Month';
+        const nepMonthName = `${canonicalMonths[yMonth - 1]} ${yYear}`;
                  
         const chartConfig = {
             type: 'bar',
@@ -2136,7 +2340,7 @@ startPage();
                         borderWidth: 1.5,
                         borderRadius: 4,
                         yAxisID: 'y-energy',
-                        order: 2
+                        order: 5
                     },
                     {
                         type: 'line',
@@ -2151,6 +2355,39 @@ startPage();
                         fill: false,
                         yAxisID: 'y-load',
                         order: 1
+                    },
+                    {
+                        type: 'line',
+                        label: 'Station Cons. (MWh)',
+                        data: stConsValues,
+                        borderColor: '#ef4444',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        tension: 0.2,
+                        yAxisID: 'y-loss', // <--- CHANGED THIS
+                        order: 2
+                    },
+                    {
+                        type: 'line',
+                        label: 'Transformer Loss (MWh)',
+                        data: transfLossValues,
+                        borderColor: '#8b5cf6',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        tension: 0.2,
+                        yAxisID: 'y-loss', // <--- CHANGED THIS
+                        order: 3
+                    },
+                    {
+                        type: 'line',
+                        label: 'Transmission Loss (MWh)',
+                        data: transmLossValues,
+                        borderColor: '#10b981',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        tension: 0.2,
+                        yAxisID: 'y-loss', // <--- CHANGED THIS
+                        order: 4
                     }
                 ]
             },
@@ -2159,8 +2396,8 @@ startPage();
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 6, font: { weight: 'bold', size: 11 } } },
-                    title: { display: true, text: `Daily Dispatch Trend — ${nepMonthName}`, font: { size: 13, weight: 'bold' }, color: '#1e3a8a', padding: { bottom: 8 } },
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 6, font: { weight: 'bold', size: 10 } } },
+                    title: { display: true, text: `Monthly Dispatch Trend — ${nepMonthName}`, font: { size: 13, weight: 'bold' }, color: '#1e3a8a', padding: { bottom: 8 } },
                     tooltip: {
                         callbacks: {
                             label: ctx => {
@@ -2175,7 +2412,7 @@ startPage();
                     x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
                     'y-energy': {
                         type: 'linear', position: 'left', beginAtZero: true,
-                        title: { display: true, text: 'Dispatch (MWh)', color: '#4f46e5', font: { weight: 'bold', size: 10 } },
+                        title: { display: true, text: 'Energy (MWh)', color: '#4f46e5', font: { weight: 'bold', size: 10 } },
                         grid: { color: 'rgba(79,70,229,0.08)' },
                         ticks: { color: '#4f46e5', font: { size: 10 } }
                     },
@@ -2184,7 +2421,15 @@ startPage();
                         title: { display: true, text: 'Avg Load (MW)', color: '#d97706', font: { weight: 'bold', size: 10 } },
                         grid: { drawOnChartArea: false },
                         ticks: { color: '#d97706', font: { size: 10 } }
+                    },
+                    // --- ADD THIS NEW LOSS AXIS ---
+                    'y-loss': {
+                        type: 'linear', position: 'right', beginAtZero: true,
+                        title: { display: true, text: 'Losses (MWh)', color: '#ef4444', font: { weight: 'bold', size: 10 } },
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#ef4444', font: { size: 10 } }
                     }
+                    // ------------------------------
                 }
             }
         };
@@ -2210,8 +2455,6 @@ startPage();
         }
     });
 
-   
-  </script>
+     </script>
 </body>
 </html>
-

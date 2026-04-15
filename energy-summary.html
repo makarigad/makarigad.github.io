@@ -869,35 +869,32 @@ startPage();
             setDefaultTrendToLastNepaliMonth();
             
             // Auto-populate the Daily Report date picker using 12pm→12pm logic
-            if (plantData.length > 1) {
-                document.getElementById('dr-report-date').max = plantData[plantData.length - 1].id;
-                document.getElementById('dr-report-date').min = plantData[1].id;
-                
-                // Force the dashboard to always load the latest available data row
-                const clampedDate = plantData[plantData.length - 1].id;
-                
-                document.getElementById('dr-report-date').value = clampedDate;
-
-                populateDailyNepaliDates();
-                
-                // --- NEW: POPULATE NEPALI DATES ---
-                const nepSel = document.getElementById('dr-nepali-date-sel');
-                nepSel.innerHTML = '<option value="">Select Nepali Date</option>';
-                for (let i = plantData.length - 1; i >= 0; i--) {
-                    if (plantData[i].nepali_date) {
-                        nepSel.add(new Option(plantData[i].nepali_date, plantData[i].id));
+            // Auto-populate the Daily Report date picker
+            if (plantData && plantData.length > 1) {
+                // Safely find the absolute latest row that actually has a valid date ID
+                let latestValidDate = null;
+                for (let i = plantData.length - 1; i >= 1; i--) {
+                    if (plantData[i] && plantData[i].id) {
+                        latestValidDate = plantData[i].id;
+                        break;
                     }
                 }
-                // Sync the main report when Nepali date is selected
-                nepSel.addEventListener('change', (e) => {
-                    if(e.target.value) {
-                        document.getElementById('dr-report-date').value = e.target.value;
-                        generateDailyReport(e.target.value);
-                    }
-                });
-                // ----------------------------------
 
-                generateDailyReport(clampedDate);
+                if (latestValidDate) {
+                    document.getElementById('dr-report-date').max = latestValidDate;
+                    document.getElementById('dr-report-date').min = plantData[1].id;
+                    
+                    // Force the English date picker to the newest valid date
+                    document.getElementById('dr-report-date').value = latestValidDate;
+
+                    // Build the Nepali Dropdowns
+                    if (typeof populateDailyNepaliDates === 'function') {
+                        populateDailyNepaliDates();
+                    }
+
+                    // Generate the initial report
+                    generateDailyReport(latestValidDate);
+                }
             }
 
         } catch (error) { document.getElementById('recon-body').innerHTML = `<tr><td colspan="24" class="text-center py-4 text-red-600 font-bold">Error: ${error.message}</td></tr>`; }

@@ -6,549 +6,1167 @@
   <title>Monthly Enterprise Report — Makari Gad</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #eef2f8; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
-    #left-panel { width: 340px; min-width: 340px; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
-    #left-scroll { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-    .card { background: white; border: 1px solid #eef2ff; border-radius: 1rem; padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    .lbl { display: block; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.3rem; }
-    .inp { width: 100%; padding: 0.5rem 0.75rem; border: 1.5px solid #e2e8f0; border-radius: 0.7rem; font-size: 0.8rem; font-weight: 600; background: white; outline: none; transition: all 0.15s; }
-    .inp:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.15); }
-    textarea.inp { min-height: 70px; font-weight: 400; line-height: 1.5; resize: vertical; }
-    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 0.7rem; font-size: 0.75rem; font-weight: 800; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
-    .btn-primary { background: #4f46e5; color: white; }
-    .btn-primary:hover { background: #4338ca; transform: translateY(-1px); }
-    .btn-green { background: #16a34a; color: white; }
-    .btn-green:hover { background: #15803d; }
-    .btn-red { background: #dc2626; color: white; }
-    .btn-red:hover { background: #b91c1c; }
-    .btn-outline { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
-    .btn-outline:hover { background: #e2e8f0; }
+    /* ── Design Tokens ─────────────────────────────────────── */
+    :root {
+      --app-bg:       #0b0f1a;
+      --sidebar-bg:   #111827;
+      --sidebar-border:#1f2937;
+      --card-bg:      #1a2234;
+      --card-border:  #263148;
+      --accent:       #3b82f6;
+      --accent-glow:  rgba(59,130,246,0.15);
+      --accent-hover: #2563eb;
+      --success:      #10b981;
+      --warn:         #f59e0b;
+      --danger:       #ef4444;
+      --text-primary: #f1f5f9;
+      --text-muted:   #64748b;
+      --text-dim:     #94a3b8;
+      --doc-navy:     #1e3a8a;
+      --doc-bg:       #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--app-bg);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      color: var(--text-primary);
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 99px; }
+
+    /* ── Top Bar ────────────────────────────────────────────── */
+    #top-bar {
+      background: var(--sidebar-bg);
+      border-bottom: 1px solid var(--sidebar-border);
+      padding: 0.6rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .logo-badge {
+      width: 2rem; height: 2rem;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      border-radius: 0.5rem;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 12px rgba(59,130,246,0.4);
+    }
+    .top-title  { font-size: 0.75rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.02em; }
+    .top-sub    { font-size: 0.65rem; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+
+    /* ── Left Panel ─────────────────────────────────────────── */
+    #left-panel {
+      width: 320px; min-width: 320px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    #left-scroll { flex-grow:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:0.875rem; }
+
+    /* ── Step Indicator ─────────────────────────────────────── */
+    .step-bar {
+      display: flex; align-items: center; gap: 0;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--sidebar-border);
+      background: var(--sidebar-bg);
+    }
+    .step-item { display: flex; align-items: center; gap: 0.4rem; }
+    .step-dot {
+      width: 1.5rem; height: 1.5rem;
+      border-radius: 99px;
+      font-size: 0.6rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      background: #1f2937; color: var(--text-muted);
+      border: 1.5px solid var(--sidebar-border);
+      font-family: 'DM Mono', monospace;
+      transition: all 0.25s ease;
+    }
+    .step-dot.active { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+    .step-dot.done   { background: var(--success); color: white; border-color: var(--success); }
+    .step-label { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); transition: color 0.2s; }
+    .step-label.active { color: var(--accent); }
+    .step-label.done   { color: var(--success); }
+    .step-connector { flex: 1; height: 1px; background: var(--sidebar-border); margin: 0 0.5rem; }
+
+    /* ── Cards & Inputs ─────────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 0.875rem;
+      padding: 0.875rem;
+    }
+    .card-title {
+      font-size: 0.65rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-muted); margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .card-title::before { content: ''; width: 3px; height: 12px; background: var(--accent); border-radius: 2px; display: inline-block; }
+
+    .lbl { display: block; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.3rem; }
+
+    .inp {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1.5px solid var(--card-border);
+      border-radius: 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      background: #0f172a;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .inp option { background: #1a2234; }
+    textarea.inp { min-height: 72px; line-height: 1.55; resize: vertical; font-weight: 400; font-size: 0.76rem; }
+
+    /* ── Buttons ─────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1rem; border-radius: 0.6rem;
+      font-size: 0.73rem; font-weight: 700; cursor: pointer;
+      border: none; transition: all 0.15s; white-space: nowrap;
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0.02em;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
     .btn-full { width: 100%; justify-content: center; }
-    .step { display: inline-flex; align-items: center; justify-content: center; width: 1.8rem; height: 1.8rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 900; background: #e2e8f0; color: #475569; }
-    .step-active { background: #4f46e5; color: white; }
-    .step-done { background: #10b981; color: white; }
-    .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.9rem; padding: 0.7rem; }
-    .kpi-value { font-size: 1.1rem; font-weight: 900; line-height: 1.2; }
-    .prog-bar { height: 4px; background: #e2e8f0; border-radius: 99px; margin-top: 0.5rem; overflow: hidden; }
-    .prog-fill { background: #4f46e5; height: 100%; width: 0%; transition: width 0.4s; }
-    #right-panel { flex-grow: 1; overflow-y: auto; padding: 1.5rem; background: #eef2f8; display: flex; flex-direction: column; align-items: center; }
-    /* MODERN REPORT STYLES (mirror energy-summary) */
-    .doc-page { background: white; width: 210mm; margin: 0 auto; font-family: 'Merriweather', serif; color: #0f172a; box-shadow: 0 20px 35px -12px rgba(0,0,0,0.2); }
-    .cover-page { min-height: 270mm; display: flex; flex-direction: column; justify-content: center; padding: 25mm; text-align: center; background: white; }
-    .cover-title { font-size: 32pt; font-weight: 900; color: #1e3a8a; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem; }
-    .cover-subtitle { font-size: 16pt; font-weight: 600; color: #334155; margin-bottom: 2rem; }
-    .cover-details { border-top: 2px solid #e2e8f0; padding-top: 2rem; margin-top: 2rem; font-size: 11pt; color: #475569; }
-    .doc-h1 { font-size: 16pt; font-weight: 900; color: #fff; background: #1e40af; padding: 0.5rem 1rem; margin: 1.5rem 0 1rem 0; font-family: 'Inter', sans-serif; text-transform: uppercase; page-break-after: avoid; break-after: avoid-page; border-radius: 0 0.5rem 0.5rem 0; }
-    .doc-h2 { font-size: 13pt; font-weight: 700; color: #1e40af; margin-top: 1.2rem; margin-bottom: 0.7rem; font-family: 'Inter', sans-serif; border-left: 4px solid #1e40af; padding-left: 0.7rem; page-break-after: avoid; break-after: avoid-page; }
-    .doc-p { text-align: justify; font-size: 10.5pt; line-height: 1.75; margin-bottom: 1rem; color: #1e293b; }
-    .doc-ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; }
-    .doc-li { font-size: 10pt; line-height: 1.7; margin-bottom: 0.3rem; }
-    .doc-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 9pt; font-family: 'Inter', sans-serif; page-break-inside: avoid; break-inside: avoid-page; }
-    .doc-table th { background: #0f172a; color: white; padding: 8px 10px; text-align: center; font-weight: 700; text-transform: uppercase; font-size: 8pt; border: 1px solid #334155; }
-    .doc-table td { border: 1px solid #cbd5e1; padding: 7px 8px; text-align: right; }
-    .doc-table td.lft { text-align: left; font-weight: 600; }
-    .doc-table tr.total td { background: #f1f5f9; font-weight: 900; }
-    .kpi-highlight td { background: #eff6ff; }
-    .chart-box { background: #f9fafb; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.8rem; margin: 1rem 0; page-break-inside: avoid; break-inside: avoid-page; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.35); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover:not(:disabled) { background: #059669; transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text-dim); border: 1.5px solid var(--card-border); }
+    .btn-ghost:hover:not(:disabled) { background: var(--card-bg); border-color: var(--accent); color: var(--text-primary); }
+
+    /* ── KPI Cards ──────────────────────────────────────────── */
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .kpi-card {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 0.6rem;
+      padding: 0.6rem 0.75rem;
+      position: relative; overflow: hidden;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 2px;
+    }
+    .kpi-card.blue::before  { background: var(--accent); }
+    .kpi-card.green::before { background: var(--success); }
+    .kpi-card.amber::before { background: var(--warn); }
+    .kpi-card.red::before   { background: var(--danger); }
+    .kpi-val { font-size: 1rem; font-weight: 800; line-height: 1.2; font-family: 'DM Mono', monospace; }
+    .kpi-val.blue  { color: #93c5fd; }
+    .kpi-val.green { color: #6ee7b7; }
+    .kpi-val.amber { color: #fcd34d; }
+    .kpi-val.red   { color: #fca5a5; }
+    .kpi-lbl { font-size: 0.6rem; font-weight: 600; color: var(--text-muted); margin-top: 0.15rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ── Progress Bar ────────────────────────────────────────── */
+    .prog-track { height: 3px; background: var(--card-border); border-radius: 99px; margin-top: 0.75rem; overflow: hidden; }
+    .prog-fill  { height: 100%; background: linear-gradient(90deg, var(--accent), var(--success)); width: 0%; transition: width 0.5s ease; border-radius: 99px; }
+
+    /* ── Right Panel ─────────────────────────────────────────── */
+    #right-panel {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      background: #0d1117;
+      background-image: radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.04) 0%, transparent 70%);
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* ── Empty State ─────────────────────────────────────────── */
+    #empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; text-align: center; gap: 1rem;
+    }
+    .empty-icon {
+      width: 5rem; height: 5rem;
+      background: rgba(59,130,246,0.06);
+      border: 1px solid rgba(59,130,246,0.15);
+      border-radius: 1.25rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Report Actions Bar ──────────────────────────────────── */
+    #report-actions {
+      display: none;
+      width: 210mm;
+      margin: 0 auto 0.75rem;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+    #report-actions.visible { display: flex; }
+
+    /* ── Document Styles (A4 Report) ─────────────────────────── */
+    .doc-page {
+      background: white;
+      width: 210mm;
+      margin: 0 auto;
+      font-family: 'Lora', Georgia, serif;
+      color: #0f172a;
+      box-shadow: 0 32px 64px -12px rgba(0,0,0,0.6);
+      border-radius: 4px;
+    }
+    .cover-page {
+      min-height: 270mm;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 25mm 22mm; text-align: center;
+      background: white;
+      position: relative;
+    }
+    .cover-accent-line {
+      width: 60px; height: 4px;
+      background: #1e40af; border-radius: 2px;
+      margin: 1.5rem auto;
+    }
+    .cover-logo-band {
+      position: absolute; top: 0; left: 0; right: 0; height: 8px;
+      background: linear-gradient(90deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%);
+    }
+    .cover-title { font-size: 30pt; font-weight: 700; color: #1e3a8a; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 1.5px; line-height: 1.1; }
+    .cover-subtitle { font-size: 15pt; font-weight: 400; color: #475569; font-family: 'Lora', serif; font-style: italic; margin-top: 0.5rem; }
+    .cover-meta { margin-top: 3rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .cover-meta-row { display: flex; justify-content: center; gap: 3rem; font-size: 10pt; }
+    .cover-meta-key { font-weight: 700; color: #334155; font-family: 'DM Sans', sans-serif; text-transform: uppercase; font-size: 8pt; letter-spacing: 0.08em; }
+    .cover-meta-val { color: #1e3a8a; font-weight: 600; font-family: 'DM Sans', sans-serif; }
+    .cover-footer { position: absolute; bottom: 15mm; left: 0; right: 0; text-align: center; font-size: 8pt; color: #94a3b8; font-family: 'DM Sans', sans-serif; }
+
+    .doc-section { padding: 8mm 18mm; }
+    .doc-h1 {
+      font-size: 12pt; font-weight: 700; color: white;
+      background: #1e3a8a;
+      padding: 0.6rem 1rem;
+      margin: 1.5rem 0 1rem 0;
+      font-family: 'DM Sans', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      page-break-after: avoid; break-after: avoid-page;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .doc-h1-num {
+      background: rgba(255,255,255,0.15);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'DM Mono', monospace;
+      font-size: 9pt;
+    }
+    .doc-h2 {
+      font-size: 11pt; font-weight: 700; color: #1e40af;
+      margin-top: 1.2rem; margin-bottom: 0.6rem;
+      font-family: 'DM Sans', sans-serif;
+      border-left: 3px solid #1e40af; padding-left: 0.65rem;
+      page-break-after: avoid; break-after: avoid-page;
+    }
+    .doc-p { text-align: justify; font-size: 10pt; line-height: 1.8; margin-bottom: 0.875rem; color: #1e293b; }
+    .doc-ul { list-style: none; margin-left: 0; margin-bottom: 1rem; }
+    .doc-li {
+      font-size: 9.5pt; line-height: 1.7; margin-bottom: 0.3rem;
+      padding-left: 1.2rem; position: relative; color: #1e293b;
+    }
+    .doc-li::before { content: '›'; position: absolute; left: 0; color: #1e40af; font-weight: 700; }
+
+    .doc-table {
+      width: 100%; border-collapse: collapse;
+      margin: 0.875rem 0; font-size: 9pt;
+      font-family: 'DM Sans', sans-serif;
+      page-break-inside: avoid; break-inside: avoid-page;
+    }
+    .doc-table th {
+      background: #1e3a8a; color: white;
+      padding: 7px 9px; text-align: right;
+      font-weight: 700; text-transform: uppercase;
+      font-size: 7.5pt; letter-spacing: 0.06em;
+    }
+    .doc-table th.lft { text-align: left; }
+    .doc-table td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: right; }
+    .doc-table td.lft { text-align: left; font-weight: 500; }
+    .doc-table tr:nth-child(even) td { background: #f8fafc; }
+    .doc-table tr.total td { background: #eff6ff; font-weight: 800; border-top: 2px solid #bfdbfe; }
+    .doc-table tr.total td.lft { color: #1e3a8a; }
+
+    .kpi-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin: 0.75rem 0; }
+    .kpi-summary-box {
+      background: #f0f9ff; border: 1px solid #bae6fd;
+      border-radius: 0.4rem; padding: 0.6rem 0.75rem;
+      text-align: center;
+    }
+    .kpi-summary-val { font-size: 14pt; font-weight: 800; color: #1e3a8a; font-family: 'DM Mono', monospace; line-height: 1.2; }
+    .kpi-summary-key { font-size: 7pt; text-transform: uppercase; letter-spacing: 0.06em; color: #475569; margin-top: 0.2rem; font-family: 'DM Sans', sans-serif; font-weight: 600; }
+
+    .chart-box { background: #fafafa; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; margin: 0.75rem 0; page-break-inside: avoid; break-inside: avoid-page; }
+    .chart-caption { font-size: 8pt; color: #64748b; font-style: italic; text-align: center; margin-top: 0.4rem; font-family: 'DM Sans', sans-serif; }
+
+    .hse-box { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 0.75rem 1rem; border-radius: 0.4rem; margin: 0.75rem 0; }
+    .hse-box p { font-size: 9.5pt; line-height: 1.7; color: #166534; font-style: italic; }
+
+    .yoy-up   { color: #16a34a; font-weight: 700; }
+    .yoy-down { color: #dc2626; font-weight: 700; }
+
     .page-break { page-break-before: always; }
-    .hse-note { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 0.8rem 1rem; border-radius: 0.5rem; font-style: italic; color: #166534; margin: 1rem 0; }
+
+    /* ── Toast ───────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-left: 3px solid var(--success);
+      border-radius: 0.6rem; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      padding: 0.65rem 1rem; font-weight: 600; font-size: 0.76rem;
+      z-index: 999; opacity: 0; transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+      max-width: 300px; font-family: 'DM Sans', sans-serif;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.error { border-left-color: var(--danger); }
+
+    /* ── Spinner ─────────────────────────────────────────────── */
+    .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Skeleton ────────────────────────────────────────────── */
+    .skeleton { background: linear-gradient(90deg, #1a2234 25%, #263148 50%, #1a2234 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 0.4rem; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* ── Print ───────────────────────────────────────────────── */
     @media print {
       body { background: white; overflow: auto; }
-      #left-panel, #top-bar, .no-print { display: none !important; }
+      #left-panel, #top-bar, .no-print, #report-actions { display: none !important; }
       #right-panel { padding: 0; background: white; }
       .doc-page { box-shadow: none; margin: 0; width: 100%; }
       .page-break { page-break-before: always; }
-      .doc-h1, .doc-h2 { page-break-after: avoid; break-after: avoid-page; page-break-inside: avoid; break-inside: avoid-page; }
-      .doc-h1 + *, .doc-h2 + * { page-break-inside: avoid; break-inside: avoid-page; }
-      .doc-table, .doc-table thead, .doc-table tbody, .doc-table tr, .chart-box, .hse-note, .doc-ul { page-break-inside: avoid; break-inside: avoid-page; }
     }
-    #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: white; border-left: 4px solid #10b981; border-radius: 0.7rem; box-shadow: 0 8px 20px rgba(0,0,0,0.12); padding: 0.75rem 1rem; font-weight: 700; font-size: 0.8rem; z-index: 999; opacity: 0; transition: 0.2s; pointer-events: none; }
-    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── Fade In ─────────────────────────────────────────────── */
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
   </style>
 </head>
 <body>
 
-<div id="top-bar" class="bg-white border-b border-slate-200 px-5 py-2.5 flex items-center justify-between shrink-0 shadow-sm no-print">
-  <div class="flex items-center gap-3">
-    <div class="w-8 h-8 bg-indigo-700 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-    <div><div class="text-xs font-black text-slate-900 uppercase">Makari Gad · Monthly Enterprise Report</div><div class="text-[10px] text-slate-400">Powered by unified Supabase engine</div></div>
+<div id="top-bar" class="no-print">
+  <div style="display:flex;align-items:center;gap:0.75rem;">
+    <div class="logo-badge">
+      <svg width="16" height="16" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    </div>
+    <div>
+      <div class="top-title">Makari Gad · Monthly Enterprise Report</div>
+      <div class="top-sub">10 MW Hydroelectric Project · Unified Analytics</div>
+    </div>
   </div>
-  <div class="flex gap-2"><a href="energy-summary.html" class="btn btn-outline text-xs">← Full Dashboard</a></div>
+  <div style="display:flex;gap:0.5rem;">
+    <a href="energy-summary.html" class="btn btn-ghost" style="font-size:0.7rem;">← Dashboard</a>
+  </div>
 </div>
 
-<div class="flex flex-grow min-h-0">
-  <!-- LEFT CONTROL PANEL -->
+<div style="display:flex;flex-grow:1;min-height:0;">
+
   <div id="left-panel" class="no-print">
-    <div class="flex items-center gap-2 px-4 py-2 border-b bg-slate-50">
-      <div class="flex gap-1"><span class="step" id="step1">1</span><span class="text-[10px] font-bold text-indigo-700">Period</span></div>
-      <div class="h-px bg-slate-200 flex-1"></div>
-      <div class="flex gap-1"><span class="step" id="step2">2</span><span class="text-[10px] text-slate-400">Narratives</span></div>
-      <div class="h-px bg-slate-200 flex-1"></div>
-      <div class="flex gap-1"><span class="step" id="step3">3</span><span class="text-[10px] text-slate-400">Preview</span></div>
+    <div class="step-bar">
+      <div class="step-item">
+        <div class="step-dot active" id="s1">1</div>
+        <span class="step-label active" id="sl1">Period</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item">
+        <div class="step-dot" id="s2">2</div>
+        <span class="step-label" id="sl2">Narratives</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item">
+        <div class="step-dot" id="s3">3</div>
+        <span class="step-label" id="sl3">Preview</span>
+      </div>
     </div>
+
     <div id="left-scroll">
-      <div class="card">
-        <div class="flex gap-2 items-center mb-3"><span class="step step-active">1</span><span class="text-xs font-black uppercase">Reporting period</span></div>
-        <div class="grid grid-cols-2 gap-2 mb-3">
-          <div><span class="lbl">Nepali Year</span><select id="rep-year" class="inp font-black text-indigo-700"></select></div>
-          <div><span class="lbl">Nepali Month</span><select id="rep-month" class="inp font-black text-indigo-700"></select></div>
+      <div class="card fade-in">
+        <div class="card-title">Reporting Period</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem;">
+          <div><span class="lbl">Nepali Year</span><select id="rep-year" class="inp"></select></div>
+          <div><span class="lbl">Month</span><select id="rep-month" class="inp"></select></div>
         </div>
-        <button id="btn-load" class="btn btn-primary btn-full">📊 Load Data & Analytics</button>
-        <div id="load-msg" class="text-[10px] text-slate-500 mt-2 hidden"></div>
+        <button id="btn-load" class="btn btn-primary btn-full">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Load Data
+        </button>
       </div>
 
-      <div id="kpi-panel" class="hidden card">
-        <div class="lbl mb-1">Snapshot — <span id="kpi-label" class="text-indigo-700 font-black"></span></div>
-        <div class="grid grid-cols-2 gap-2">
-          <div class="kpi-card"><div class="kpi-value text-indigo-700" id="kv-gen">—</div><div class="text-[9px] font-bold">Gross Gen (MWh)</div></div>
-          <div class="kpi-card"><div class="kpi-value text-emerald-700" id="kv-exp">—</div><div class="text-[9px] font-bold">Export (MWh)</div></div>
-          <div class="kpi-card"><div class="kpi-value text-blue-700" id="kv-pf">—</div><div class="text-[9px] font-bold">Plant Factor %</div></div>
-          <div class="kpi-card"><div class="kpi-value text-rose-600" id="kv-loss">—</div><div class="text-[9px] font-bold">Total Losses (MWh)</div></div>
-          <div class="kpi-card"><div class="kpi-value text-amber-700" id="kv-rev">—</div><div class="text-[9px] font-bold">Gross Revenue (NRs)</div></div>
-          <div class="kpi-card"><div class="kpi-value text-slate-800" id="kv-net">—</div><div class="text-[9px] font-bold">Net Receivable</div></div>
+      <div id="kpi-panel" class="card fade-in" style="display:none;">
+        <div class="card-title" style="justify-content:space-between;">
+          <span>Snapshot</span>
+          <span id="kpi-label" style="font-family:'DM Mono',monospace;color:var(--accent);font-size:0.65rem;text-transform:none;letter-spacing:normal;"></span>
         </div>
-        <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
-        <div class="text-[9px] text-slate-400 text-right mt-1" id="data-coverage-txt"></div>
+        <div class="kpi-grid">
+          <div class="kpi-card blue"><div class="kpi-val blue" id="kv-gen">—</div><div class="kpi-lbl">Gross Gen</div></div>
+          <div class="kpi-card green"><div class="kpi-val green" id="kv-exp">—</div><div class="kpi-lbl">Export</div></div>
+          <div class="kpi-card amber"><div class="kpi-val amber" id="kv-pf">—</div><div class="kpi-lbl">Plant Factor</div></div>
+          <div class="kpi-card red"><div class="kpi-val red" id="kv-loss">—</div><div class="kpi-lbl">Total Losses</div></div>
+          <div class="kpi-card amber"><div class="kpi-val amber" id="kv-rev" style="font-size:0.78rem;">—</div><div class="kpi-lbl">Gross Revenue</div></div>
+          <div class="kpi-card blue"><div class="kpi-val blue" id="kv-net" style="font-size:0.78rem;">—</div><div class="kpi-lbl">Net Receivable</div></div>
+        </div>
+        <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+        <div style="font-size:0.6rem;color:var(--text-muted);text-align:right;margin-top:0.35rem;font-family:'DM Mono',monospace;" id="data-coverage-txt"></div>
       </div>
 
-      <div id="editor-panel" class="hidden" style="display:none; flex-direction:column; gap:0.75rem;">
-        <div class="card">
-          <div class="flex gap-2 items-center mb-3"><span class="step">2</span><span class="text-xs font-black uppercase">Narrative inputs</span></div>
-          <p class="text-[10px] text-slate-500 mb-2">Add bullet points (dash per line) for highlights, issues, maintenance & HSE.</p>
-          <div class="mb-2"><span class="lbl">✨ Key Highlights</span><textarea id="inp-hi" class="inp" rows="2" placeholder="- Desilting basin cleaned&#10;- Unit 1 after maintenance ran at 98% efficiency"></textarea></div>
-          <div class="mb-2"><span class="lbl">⚠️ Problems / Challenges</span><textarea id="inp-pr" class="inp" rows="2" placeholder="- Grid instability week 2 (33kV fault)&#10;- Low flow due to dry spell"></textarea></div>
-          <div class="mb-2"><span class="lbl">🔧 Maintenance Activities</span><textarea id="inp-mt" class="inp" rows="2" placeholder="- Governor oil filter replaced U1&#10;- 33kV tree trimming at Marma"></textarea></div>
-          <div><span class="lbl">🛡️ HSE & Environment</span><textarea id="inp-hse" class="inp" rows="2" placeholder="Zero LTI. Daily toolbox talks. All PPE compliance."></textarea></div>
+      <div id="editor-panel" style="display:none;flex-direction:column;gap:0.75rem;">
+        <div class="card fade-in">
+          <div class="card-title">Narrative Inputs</div>
+          <p style="font-size:0.63rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.5;">One bullet per line (dash prefix optional). Included verbatim in the report.</p>
+
+          <div style="margin-bottom:0.6rem;">
+            <span class="lbl">✦ Key Highlights</span>
+            <textarea id="inp-hi" class="inp" rows="2" placeholder="- Unit 1 ran at 98% efficiency&#10;- Desilting basin cleaned"></textarea>
+          </div>
+          <div style="margin-bottom:0.6rem;">
+            <span class="lbl">⚠ Problems / Challenges</span>
+            <textarea id="inp-pr" class="inp" rows="2" placeholder="- Grid instability week 2&#10;- Low flow due to dry spell"></textarea>
+          </div>
+          <div style="margin-bottom:0.6rem;">
+            <span class="lbl">⚙ Maintenance Activities</span>
+            <textarea id="inp-mt" class="inp" rows="2" placeholder="- Governor oil filter replaced U1&#10;- 33kV tree trimming at Marma"></textarea>
+          </div>
+          <div>
+            <span class="lbl">🛡 HSE & Environment</span>
+            <textarea id="inp-hse" class="inp" rows="2" placeholder="- Zero LTI this period&#10;- Daily toolbox talks conducted"></textarea>
+          </div>
         </div>
-        <button id="btn-save-notes" class="btn btn-outline btn-full">💾 Save Narratives</button>
-        <button id="btn-generate" class="btn btn-green btn-full">📄 Generate Document Preview</button>
+
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+          <div style="display:flex;gap:0.5rem;">
+            <button id="btn-save-notes" class="btn btn-ghost" style="flex:1;">💾 Save</button>
+            <button id="btn-generate" class="btn btn-success" style="flex:1.5;">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Generate Report
+            </button>
+          </div>
+        </div>
       </div>
     </div>
+  </div><div id="right-panel">
+    <div id="empty-state">
+      <div class="empty-icon">
+        <svg width="32" height="32" fill="none" stroke="#3b82f6" stroke-width="1.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <h3 style="font-size:1rem;font-weight:800;color:#f1f5f9;">No report generated</h3>
+      <p style="color:#475569;font-size:0.8rem;max-width:260px;line-height:1.5;">Select a reporting period, load data, fill in narratives, then generate your document.</p>
+    </div>
+
+    <div id="report-actions" class="no-print">
+      <button class="btn btn-ghost" onclick="window.print()" style="font-size:0.7rem;">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+        Print / Save PDF
+      </button>
+      <button class="btn btn-primary" id="btn-regen" style="font-size:0.7rem;">↺ Regenerate</button>
+    </div>
+
+    <div id="printable-report" class="doc-page" style="display:none;"></div>
   </div>
 
-  <!-- RIGHT PREVIEW PANEL -->
-  <div id="right-panel">
-    <div id="empty-state" class="flex flex-col items-center justify-center h-full text-center">
-      <div class="w-20 h-20 bg-white/70 rounded-2xl flex items-center justify-center mb-4"><svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-      <h3 class="text-base font-black text-white">No report generated</h3>
-      <p class="text-slate-400 text-xs mt-1">Select period → Load Data → Fill narratives → Generate</p>
-    </div>
-    <div id="printable-report" class="doc-page hidden"></div>
-  </div>
 </div>
+
 <div id="toast"></div>
 
 <script type="module">
 import { supabase, initializeApplication } from './assets/js/core-app.js';
 
-// --------------------------------------------------------------
-//  EXACT MIRROR OF ENERGY-SUMMARY CALCULATION ENGINE
-// --------------------------------------------------------------
+// ── Constants ─────────────────────────────────────────────────────────────────
 const CANONICAL = ["Baisakh","Jestha","Ashar","Shrawan","Bhadra","Ashoj","Kartik","Mangshir","Poush","Magh","Falgun","Chaitra"];
-const DISPLAY = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Ashoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
-const PPA_C = { 0:{days:31,energy:5454.574},1:{days:31,energy:7070.976},2:{days:32,energy:7299.072},3:{days:31,energy:7070.976},4:{days:31,energy:7070.976},5:{days:31,energy:7070.976},6:{days:30,energy:6697.698},7:{days:29,energy:5450.850},8:{days:30,energy:4560.670},9:{days:29,energy:3850.343},10:{days:30,energy:4005.746},11:{days:30,energy:4153.565} };
-const NEP_DAYS = { 2079:[31,31,32,31,31,30,30,29,30,29,30,30], 2080:[31,32,31,32,31,30,30,30,29,29,30,30], 2081:[31,32,31,32,31,30,30,30,29,30,29,31], 2082:[31,31,32,31,31,31,30,29,30,29,30,30], 2083:[31,31,32,31,31,30,30,30,29,30,30,30] };
-const IMPORT_RATE = 10.8;
-const PLANT_MW = 10;
-const n = (v, d=2) => (v==null || isNaN(v)) ? "0.00" : parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-const nk = v => n(v,0);
-const cleanDate = (str) => { if(!str) return ""; let s = String(str).replace(/[\/\-]/g, '.').trim(); let p = s.split('.'); if(p.length===3 && p[2].length===4) s = `${p[2]}.${p[1].padStart(2,'0')}.${p[0].padStart(2,'0')}`; else if(p.length===3) s = `${p[0]}.${p[1].padStart(2,'0')}.${p[2].padStart(2,'0')}`; return s; };
-const getMIdx = (m) => { if(!m) return -1; let l = String(m).toLowerCase(); let i = CANONICAL.findIndex(x=>x.toLowerCase()===l); if(i>=0) return i; if(l.includes('ashadh')) return 2; if(l.includes('mangsir')) return 7; if(l.includes('falgun')) return 10; if(l.includes('chait')) return 11; if(l.includes('shrawan')) return 3; if(l.includes('ashoj')) return 5; return -1; };
-const getActualDays = (y,mIdx) => (Number(y)===2079 && mIdx===10) ? 4 : (NEP_DAYS[y] ? NEP_DAYS[y][mIdx] : PPA_C[mIdx].days);
-const getPpaRate = (y,mIdx) => { const wet = Math.max(0,y-2080); const dry = Math.max(0,mIdx===11?y-2079:y-2080); const wR = [8.4,8.65,8.9,9.16,9.43,9.71]; const rR = [4.8,4.94,5.09,5.24,5.39,5.55]; return mIdx>=8 ? wR[Math.min(wet,5)] : rR[Math.min(dry,5)]; };
-const getActiveReading = (r,type) => { if(!r) return 0; if(type==='export') return r.main_export!=null ? r.main_export : (r.check_export||0); return r.main_import!=null ? r.main_import : (r.check_import||0); };
-const fmtBullets = (txt) => { if(!txt) return ''; return txt.split('\n').filter(l=>l.trim()).map(l=>`<li class="doc-li">${l.replace(/^-/,'').trim()}</li>`).join(''); };
+const DISPLAY   = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Ashoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
 
-// GLOBAL STATE
+const PPA_C = {
+  0:{days:31,energy:5454.574},1:{days:31,energy:7070.976},2:{days:32,energy:7299.072},
+  3:{days:31,energy:7070.976},4:{days:31,energy:7070.976},5:{days:31,energy:7070.976},
+  6:{days:30,energy:6697.698},7:{days:29,energy:5450.850},8:{days:30,energy:4560.670},
+  9:{days:29,energy:3850.343},10:{days:30,energy:4005.746},11:{days:30,energy:4153.565}
+};
+const IMPORT_RATE  = 10.8;
+const PLANT_MW     = 10;
+const NARRATIVE_TB = 'monthly_report_narratives';
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+const pN = v => { if(v==null||v===''||v==='-') return 0; const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; };
+const fmt = (v,d=2) => (v==null||isNaN(v)) ? '0.00' : parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtI = v => fmt(v,0);
+
+const cleanDate = s => {
+  if(!s) return '';
+  s = String(s).replace(/[\/\-]/g,'.').trim();
+  const p = s.split('.');
+  if(p.length===3 && p[2].length===4) s=`${p[2]}.${p[1].padStart(2,'0')}.${p[0].padStart(2,'0')}`;
+  else if(p.length===3) s=`${p[0]}.${p[1].padStart(2,'0')}.${p[2].padStart(2,'0')}`;
+  return s;
+};
+
+const getMIdx = m => {
+  if(!m) return -1;
+  const l = String(m).toLowerCase();
+  const i = CANONICAL.findIndex(x => x.toLowerCase()===l);
+  if(i>=0) return i;
+  const aliases = {ashadh:2,mangsir:7,mangshir:7,falgun:10,chait:11,shrawan:3,ashoj:5};
+  return Object.entries(aliases).find(([k])=>l.includes(k))?.[1] ?? -1;
+};
+
+const getPpaRate = (y, mIdx) => {
+  const wet = Math.max(0, y-2080), dry = Math.max(0, mIdx===11?y-2079:y-2080);
+  const wR=[8.4,8.65,8.9,9.16,9.43,9.71], rR=[4.8,4.94,5.09,5.24,5.39,5.55];
+  return mIdx>=8 ? wR[Math.min(wet,5)] : rR[Math.min(dry,5)];
+};
+
+const getExport = r => r ? pN(r.main_export??r.check_export) : 0;
+const getImport = r => r ? pN(r.main_import??r.check_import) : 0;
+
+const fmtBullets = txt => (txt||'').split('\n').filter(l=>l.trim())
+  .map(l=>`<li class="doc-li">${l.replace(/^-\s*/,'').trim()}</li>`).join('');
+
+// ── State ─────────────────────────────────────────────────────────────────────
 let plantData=[], balanchData=[], contractData=[], outagesData=[], combinedData=[];
-let currentComputed=null, dailySeries=[], prevYearRow=null, dbRainfall=[], dbExpenses=[];
-let charts = {};
-let reportPeriodEngRange = '';
-const NARRATIVE_TABLE = 'monthly_report_narratives';
-const NARRATIVE_LS_PREFIX = 'monthly_report_narrative_';
+let currentRow=null, currentComputed=null, dailySeries=[], prevYearRow=null;
+let dbRainfall=[], dbExpenses=[], dbHourly=[];
+let charts={};
 
-function destroyChart(id) { if(charts[id]) { charts[id].destroy(); delete charts[id]; } }
-function mkChart(id, cfg) { destroyChart(id); let ctx = document.getElementById(id)?.getContext('2d'); if(ctx) charts[id]=new Chart(ctx,cfg); return charts[id]; }
+// ── Chart helpers ─────────────────────────────────────────────────────────────
+const destroyChart = id => { if(charts[id]){ charts[id].destroy(); delete charts[id]; } };
+const mkChart = (id, cfg) => { destroyChart(id); const ctx=document.getElementById(id)?.getContext('2d'); if(ctx) charts[id]=new Chart(ctx,cfg); return charts[id]; };
 
-function toast(msg, err=false) { let t = document.getElementById('toast'); t.textContent=msg; t.style.borderLeftColor=err?'#dc2626':'#10b981'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3500); }
-
-function getNarrativeInputs() {
-  return {
-    key_highlights: document.getElementById('inp-hi').value || '',
-    problems: document.getElementById('inp-pr').value || '',
-    maintenance: document.getElementById('inp-mt').value || '',
-    hse: document.getElementById('inp-hse').value || ''
-  };
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer=null;
+function toast(msg, isError=false){
+  const t=document.getElementById('toast');
+  t.innerHTML = `<span>${isError?'✗':'✓'}</span><span>${msg}</span>`;
+  t.className = `show${isError?' error':''}`;
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show','error'),3800);
 }
 
-function applyNarrativeInputs(data = {}) {
-  document.getElementById('inp-hi').value = data.key_highlights || '';
-  document.getElementById('inp-pr').value = data.problems || '';
-  document.getElementById('inp-mt').value = data.maintenance || '';
-  document.getElementById('inp-hse').value = data.hse || '';
-}
+// ── Narrative helpers ─────────────────────────────────────────────────────────
+const getNarratives = () => ({
+  key_highlights: document.getElementById('inp-hi').value||'',
+  problems:       document.getElementById('inp-pr').value||'',
+  maintenance:    document.getElementById('inp-mt').value||'',
+  hse:            document.getElementById('inp-hse').value||''
+});
+const setNarratives = (d={}) => {
+  document.getElementById('inp-hi').value  = d.key_highlights||'';
+  document.getElementById('inp-pr').value  = d.problems||'';
+  document.getElementById('inp-mt').value  = d.maintenance||'';
+  document.getElementById('inp-hse').value = d.hse||'';
+};
 
-function narrativeLocalKey(year, month) {
-  return `${NARRATIVE_LS_PREFIX}${year}_${month}`;
-}
-
-async function saveNarratives() {
-  const year = parseInt(document.getElementById('rep-year').value);
-  const month = document.getElementById('rep-month').value;
-  if (!year || !month) return toast("Select period first", true);
-
-  const btn = document.getElementById('btn-save-notes');
-  if (btn) { btn.disabled = true; btn.textContent = "Saving..."; }
-
-  const notes = getNarrativeInputs();
-  const payload = {
-    id: `${year}_${month}`,
-    nepali_year: year,
-    nepali_month: month,
-    key_highlights: notes.key_highlights,
-    problems: notes.problems,
-    maintenance: notes.maintenance,
-    hse: notes.hse,
-    updated_at: new Date().toISOString()
-  };
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user?.email) payload.updated_by = session.user.email;
-    const { error } = await supabase.from(NARRATIVE_TABLE).upsert(payload, { onConflict: 'id' });
-    if (error) throw error;
-    localStorage.setItem(narrativeLocalKey(year, month), JSON.stringify(payload));
-    toast(`Narratives saved for ${month} ${year}`);
-  } catch (e) {
-    localStorage.setItem(narrativeLocalKey(year, month), JSON.stringify(payload));
-    toast(`Saved locally only. Supabase save failed: ${e.message}`, true);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "💾 Save Narratives"; }
+// ── Steps ─────────────────────────────────────────────────────────────────────
+function setStep(n) {
+  for(let i=1;i<=3;i++){
+    const dot=document.getElementById(`s${i}`), lbl=document.getElementById(`sl${i}`);
+    if(i<n)  { dot.className='step-dot done';   lbl.className='step-label done'; }
+    else if(i===n) { dot.className='step-dot active'; lbl.className='step-label active'; }
+    else { dot.className='step-dot'; lbl.className='step-label'; }
   }
 }
 
-async function loadNarratives(year, month) {
-  if (!year || !month) return;
-  try {
-    const { data, error } = await supabase
-      .from(NARRATIVE_TABLE)
-      .select('key_highlights, problems, maintenance, hse, updated_at')
-      .eq('id', `${year}_${month}`)
-      .maybeSingle();
-
-    if (error) throw error;
-    if (data) {
-      applyNarrativeInputs(data);
-      return;
-    }
-  } catch (_) {
-    // fall back to local storage
+// ── Paginated fetch ───────────────────────────────────────────────────────────
+async function fetchAll(table, dateCol, maxDate){
+  let all=[], page=0, more=true;
+  while(more){
+    const {data,error}=await supabase.from(table).select('*')
+      .lte(dateCol,maxDate).order(dateCol,{ascending:true})
+      .range(page*1000,(page+1)*1000-1);
+    if(error) throw error;
+    if(data) all=all.concat(data);
+    more = data&&data.length===1000;
+    page++;
   }
-
-  try {
-    const raw = localStorage.getItem(narrativeLocalKey(year, month));
-    if (raw) applyNarrativeInputs(JSON.parse(raw));
-    else applyNarrativeInputs({});
-  } catch {
-    applyNarrativeInputs({});
-  }
+  return all;
 }
 
-// LOAD ALL DATA (exact same as energy-summary)
-async function loadAllData() {
-  let today = new Date(new Date().getTime() - new Date().getTimezoneOffset()*60000).toISOString().split('T')[0];
-  let pD=[], pg=0, pm=true;
-  while(pm){ let {data,error}=await supabase.from('plant_data').select('*').lte('id',today).order('id',{ascending:true}).range(pg*1000,(pg+1)*1000-1); if(error) pm=false; else if(data) pD=pD.concat(data); pm = data && data.length===1000; pg++; }
-  plantData = pD.map(d=>({ id:d.id, nepali_date:cleanDate(d.nep_date||d.nepali_date), unit1_gen:Number(d.u1_gen||d.unit1_gen||0), unit2_gen:Number(d.u2_gen||d.unit2_gen||0), station_trans:Number(d.station_trans||0), export_plant:Number(d.export_out||d.export_plant||0), unit1_counter:Number(d.u1_hr||d.unit1_counter||0), unit2_counter:Number(d.u2_hr||d.unit2_counter||0) }));
-  let bD=[], bg=0, bm=true;
-  while(bm){ let {data}=await supabase.from('balanch_readings').select('*').lte('eng_date',today).order('eng_date',{ascending:true}).range(bg*1000,(bg+1)*1000-1); if(data) bD=bD.concat(data); bm = data && data.length===1000; bg++; }
+// ── Load base data ────────────────────────────────────────────────────────────
+async function loadAllData(){
+  const today = new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().split('T')[0];
+  const [pD,bD,oD,mce] = await Promise.all([
+    fetchAll('plant_data','id',today),
+    fetchAll('balanch_readings','eng_date',today),
+    fetchAll('outages','id',today),
+    supabase.from('contract_energy').select('*')
+  ]);
+
+  plantData = pD.map(d=>({
+    id: d.id,
+    nepali_date: cleanDate(d.nep_date||d.nepali_date),
+    unit1_gen:   pN(d.u1_gen||d.unit1_gen),
+    unit2_gen:   pN(d.u2_gen||d.unit2_gen),
+    station_trans: pN(d.station_trans),
+    export_plant:  pN(d.export_out||d.export_plant),
+    unit1_counter: pN(d.u1_hr||d.unit1_counter),
+    unit2_counter: pN(d.u2_hr||d.unit2_counter)
+  }));
+
   balanchData = bD;
-  let oD=[], og=0, om=true;
-  while(om){ let {data}=await supabase.from('outages').select('*').lte('id',today).order('id',{ascending:true}).range(og*1000,(og+1)*1000-1); if(data) oD=oD.concat(data); om = data && data.length===1000; og++; }
-  outagesData = oD.map(d=>({ id:String(d.id||d.date||d.eng_date).split('T')[0], totalEnergyLoss:parseFloat(d.total_energy_loss)||0, reason:d.reason||d.remarks||'', lossTimeMin:parseFloat(d.loss_time_min)||0, gridFaultMwh:parseFloat(d.grid_fault_mwh)||0, line132kvMwh:parseFloat(d.line_132kv_mwh)||0, fm33kvMwh:parseFloat(d.fm_33kv_mwh)||0, fmPenstockMwh:parseFloat(d.fm_penstock_mwh)||0, fmEquipMwh:parseFloat(d.fm_equipment_mwh)||0, dispatchMwh:parseFloat(d.dispatch_mwh)||0 }));
-  let {data:mce}=await supabase.from('contract_energy').select('*'); contractData=mce||[];
+
+  outagesData = oD.map(d=>({
+    id: String(d.id||d.date||d.eng_date).split('T')[0],
+    totalEnergyLoss: pN(d.total_energy_loss),
+    reason:          d.reason||d.remarks||'',
+    gridFaultMwh:    pN(d.grid_fault_mwh),
+    line132kvMwh:    pN(d.line_132kv_mwh),
+    fm33kvMwh:       pN(d.fm_33kv_mwh),
+    fmPenstockMwh:   pN(d.fm_penstock_mwh),
+    fmEquipMwh:      pN(d.fm_equipment_mwh),
+    dispatchMwh:     pN(d.dispatch_mwh)
+  }));
+
+  contractData = mce.data||[];
   buildCombinedData();
 }
 
-function buildCombinedData() {
-  const pMap={}; plantData.forEach(r=>{ if(r.nepali_date) pMap[cleanDate(r.nepali_date)]=r; });
-  const bMap={}; balanchData.forEach(r=>{ if(r.eng_date) bMap[r.eng_date]=r; });
+function buildCombinedData(){
+  const pMap={}, bMap={};
+  plantData.forEach(r=>{ if(r.nepali_date) pMap[cleanDate(r.nepali_date)]=r; });
+  balanchData.forEach(r=>{ if(r.eng_date) bMap[r.eng_date]=r; });
+
   let maxY=2079, maxM=10;
-  plantData.forEach(p=>{ if(p.nepali_date){ let pts=cleanDate(p.nepali_date).split('.'); if(pts.length>=2){ let y=parseInt(pts[0]), m=parseInt(pts[1])-1; if(y>maxY||(y===maxY&&m>maxM)){maxY=y; maxM=m;}} } });
-  let months=[];
-  for(let y=2079; y<=maxY; y++) for(let m=0; m<12; m++) { if(y===2079 && m<10) continue; if(y===maxY && m>maxM) continue; months.push({ year:y, mIdx:m, month:CANONICAL[m], displayMonth:DISPLAY[m] }); }
-  contractData.forEach(row=>{ let mIdx=getMIdx(row.month); let entry=months.find(m=>m.year===Number(row.year) && m.mIdx===mIdx); if(entry) Object.assign(entry,row); });
-  months.forEach(row=>{ const {year:y, mIdx}=row; const ppaDays=PPA_C[mIdx].days; const ppaEnergy=PPA_C[mIdx].energy; const ppaRate=getPpaRate(y,mIdx); const actualDays=getActualDays(y,mIdx); const mStr=String(mIdx+1).padStart(2,'0'); let ny=y, nIdx=mIdx+1; if(nIdx>11){ nIdx=0; ny++; } let d1Str=`${y}.${mStr}.01`; let nd1Str=`${ny}.${String(nIdx+1).padStart(2,'0')}.01`; if(y===2079 && mIdx===10) d1Str='2079.11.27';
-    let pStart=pMap[d1Str]||plantData.find(r=>r.nepali_date&&cleanDate(r.nepali_date).startsWith(`${y}.${mStr}.`));
-    let pEnd=pMap[nd1Str]||plantData.filter(r=>r.nepali_date&&cleanDate(r.nepali_date).startsWith(`${y}.${mStr}.`)).pop();
-    let bStart=pStart?bMap[pStart.id]:null, bEnd=pEnd?bMap[pEnd.id]:null;
-    let exported=0, imported=0, u1Gen=0,u2Gen=0,totalGen=0,stCons=0,pExp=0,lineLoss=0,u1Hrs=0,u2Hrs=0;
-    if(bStart&&bEnd){ exported=Math.max(0,getActiveReading(bEnd,'export')-getActiveReading(bStart,'export')); imported=Math.max(0,getActiveReading(bEnd,'import')-getActiveReading(bStart,'import')); }
-    if(pStart&&pEnd&&pStart!==pEnd){
-      u1Gen=Math.max(0,(pEnd.unit1_gen||0)-(pStart.unit1_gen||0));
-      u2Gen=Math.max(0,(pEnd.unit2_gen||0)-(pStart.unit2_gen||0));
-      totalGen=u1Gen+u2Gen;
-      // NOTE: station_trans is recorded in kWh in DB → convert to MWh for reporting.
-      stCons=Math.max(0,((pEnd.station_trans||0)-(pStart.station_trans||0)) / 1000);
-      pExp=Math.max(0,(pEnd.export_plant||0)-(pStart.export_plant||0));
-      lineLoss=Math.max(0,pExp-exported);
-      u1Hrs=Math.max(0,(pEnd.unit1_counter||0)-(pStart.unit1_counter||0));
-      u2Hrs=Math.max(0,(pEnd.unit2_counter||0)-(pStart.unit2_counter||0));
+  plantData.forEach(p=>{
+    const pts=cleanDate(p.nepali_date).split('.');
+    if(pts.length>=2){
+      const y=parseInt(pts[0]),m=parseInt(pts[1])-1;
+      if(y>maxY||(y===maxY&&m>maxM)){maxY=y;maxM=m;}
     }
-    const newContract=(ppaEnergy/ppaDays)*actualDays; const declaredAd=Number(row.total_ad||0); const gridFault=Number(row.grid_fault_mwh||0); const line132=Number(row.line_132kv_mwh||0); const fm33=Number(row.fm_33kv_mwh||0); const fmPen=Number(row.fm_penstock_mwh||0); const fmEq=Number(row.fm_equipment_mwh||0); const dispatch=Number(row.dispatch_mwh||0); let plantFm=fm33+fmPen+fmEq; if(!plantFm && row.forced_outage_mwh) plantFm=Number(row.forced_outage_mwh); const knownExt=dispatch+gridFault+line132+plantFm; const actualUsed=totalGen>0?totalGen:exported; const lowDischarge=Math.max(0,newContract-actualUsed-knownExt);
-    const initPenalty=Math.max(0,(0.9*declaredAd)-exported)*0.10*ppaRate*1000; const deemed=exported+knownExt; const trueShort=Math.max(0,(0.9*declaredAd)-deemed); const nonRefPen=trueShort*0.10*ppaRate*1000; const refPen=Math.max(0,initPenalty-nonRefPen);
-    const excessRate=Math.floor((ppaRate/2)*100)/100; const normalMwh=Math.min(exported,declaredAd,newContract); const excessWC=Math.max(0,Math.min(exported,newContract)-normalMwh); const excessAC=row.excess_approved?Math.max(0,exported-newContract):0; const totalExcess=excessWC+excessAC;
-    const normalCharge=normalMwh*ppaRate*1000; const excessCharge=totalExcess*excessRate*1000; const grossInv=normalCharge+excessCharge; const importNRs=imported*IMPORT_RATE*1000;
-    let royBase=grossInv; if(y<2081||(y===2081&&mIdx===0)) royBase=grossInv-initPenalty-importNRs; else if(y===2081&&(mIdx===1||mIdx===2)) royBase=grossInv-importNRs; const royalty=Math.max(0,royBase*0.02); const bayCharge=Number(row.bay_control_nrs||0); const extraAdj=Number(row.extra_adjustment_nrs||0); const netComp=grossInv-initPenalty-importNRs-royalty-bayCharge+extraAdj;
-    row.computed={ actualDays, ppaRate, contractMwh:newContract, declaredMwh:declaredAd, exportedMwh:exported, importedMwh:imported, u1GenMwh:u1Gen, u2GenMwh:u2Gen, totalGenMwh:totalGen, stConsMwh:stCons, lineLossMwh:lineLoss, u1Hrs, u2Hrs, gridFaultMwh:gridFault, line132kvMwh:line132, fm33kvMwh:fm33, fmPenstockMwh:fmPen, fmEquipMwh:fmEq, dispatchMwh:dispatch, lowDischargeMwh:lowDischarge, normalCharge, excessCharge, grossInvAmt:grossInv, importNRs, royalty, bayCharge, initPenalty, nonRefPen, refPen, netComputed:netComp };
+  });
+
+  const months=[];
+  for(let y=2079;y<=maxY;y++)
+    for(let m=0;m<12;m++){
+      if(y===2079&&m<10) continue;
+      if(y===maxY&&m>maxM) continue;
+      months.push({year:y,mIdx:m,month:CANONICAL[m],displayMonth:DISPLAY[m]});
+    }
+
+  contractData.forEach(row=>{
+    const mIdx=getMIdx(row.month);
+    const entry=months.find(e=>e.year===Number(row.year)&&e.mIdx===mIdx);
+    if(entry) Object.assign(entry,row);
+  });
+
+  months.forEach(row=>{
+    const {year:y,mIdx}=row;
+    const mStr=String(mIdx+1).padStart(2,'0');
+    const thisMonth=plantData.filter(r=>r.nepali_date&&cleanDate(r.nepali_date).startsWith(`${y}.${mStr}.`));
+    const actualDays=thisMonth.length>0
+      ? Math.max(...thisMonth.map(r=>parseInt(cleanDate(r.nepali_date).split('.')[2])))
+      : ((y===2079&&mIdx===10)?4:PPA_C[mIdx].days);
+
+    const ppaRate=getPpaRate(y,mIdx);
+    const pStart=thisMonth[0]||null, pEnd=thisMonth[thisMonth.length-1]||null;
+    let ny=y,nIdx=mIdx+1; if(nIdx>11){nIdx=0;ny++;}
+    const pNxt=pMap[`${ny}.${String(nIdx+1).padStart(2,'0')}.01`];
+    const pEndFinal=pNxt||pEnd;
+
+    const bStart=pStart?bMap[pStart.id]:null;
+    const bEnd=pEndFinal?bMap[pEndFinal.id]:null;
+
+    let exported=0,imported=0,u1Gen=0,u2Gen=0,totalGen=0,stCons=0,pExp=0,lineLoss=0,trLoss=0,u1Hrs=0,u2Hrs=0;
+
+    if(bStart&&bEnd){
+      exported=Math.max(0,getExport(bEnd)-getExport(bStart));
+      imported=Math.max(0,getImport(bEnd)-getImport(bStart));
+    }
+    if(pStart&&pEndFinal&&pStart!==pEndFinal){
+      u1Gen=Math.max(0,pN(pEndFinal.unit1_gen)-pN(pStart.unit1_gen));
+      u2Gen=Math.max(0,pN(pEndFinal.unit2_gen)-pN(pStart.unit2_gen));
+      totalGen=u1Gen+u2Gen;
+      stCons=Math.max(0,(pN(pEndFinal.station_trans)-pN(pStart.station_trans))/1000);
+      pExp=Math.max(0,pN(pEndFinal.export_plant)-pN(pStart.export_plant));
+      trLoss=Math.max(0,totalGen-pExp-stCons);
+      lineLoss=Math.max(0,pExp-exported);
+      u1Hrs=Math.max(0,pN(pEndFinal.unit1_counter)-pN(pStart.unit1_counter));
+      u2Hrs=Math.max(0,pN(pEndFinal.unit2_counter)-pN(pStart.unit2_counter));
+    }
+
+    const newContract=(PPA_C[mIdx].energy/PPA_C[mIdx].days)*actualDays;
+    const declaredAd=Number(row.total_ad||0);
+    const gF=pN(row.grid_fault_mwh),l132=pN(row.line_132kv_mwh),
+          fm33=pN(row.fm_33kv_mwh),fmP=pN(row.fm_penstock_mwh),
+          fmE=pN(row.fm_equipment_mwh),disp=pN(row.dispatch_mwh);
+    let plantFm=fm33+fmP+fmE;
+    if(!plantFm&&pN(row.forced_outage_mwh)) plantFm=pN(row.forced_outage_mwh);
+    const knownExt=disp+gF+l132+plantFm;
+
+    const initPenalty=Math.max(0,(0.9*declaredAd)-exported)*0.10*ppaRate*1000;
+    const deemed=exported+knownExt;
+    const trueShort=Math.max(0,(0.9*declaredAd)-deemed);
+    const nonRefPen=trueShort*0.10*ppaRate*1000;
+
+    const normalMwh=Math.min(exported,declaredAd,newContract);
+    const excessWC=Math.max(0,Math.min(exported,newContract)-normalMwh);
+    const totalExcess=excessWC+(row.excess_approved?Math.max(0,exported-newContract):0);
+    const normalCharge=normalMwh*ppaRate*1000;
+    const excessCharge=totalExcess*Math.floor((ppaRate/2)*100)/100*1000;
+    const grossInv=normalCharge+excessCharge;
+    const importNRs=imported*IMPORT_RATE*1000;
+
+    let royBase=grossInv;
+    if(y<2081||(y===2081&&mIdx===0)) royBase=grossInv-initPenalty-importNRs;
+    else if(y===2081&&(mIdx===1||mIdx===2)) royBase=grossInv-importNRs;
+    const royalty=Math.max(0,royBase*0.02);
+    const netComp=grossInv-initPenalty-importNRs-royalty-pN(row.bay_control_nrs)+pN(row.extra_adjustment_nrs);
+
+    row.computed={
+      actualDays,ppaRate,contractMwh:newContract,declaredMwh:declaredAd,
+      exportedMwh:exported,importedMwh:imported,u1GenMwh:u1Gen,u2GenMwh:u2Gen,
+      totalGenMwh:totalGen,stConsMwh:stCons,transformerLossMwh:trLoss,
+      transmissionLossMwh:lineLoss,u1Hrs,u2Hrs,gridFaultMwh:gF,
+      line132kvMwh:l132,fm33kvMwh:fm33,fmPenstockMwh:fmP,fmEquipMwh:fmE,
+      dispatchMwh:disp,grossInvAmt:grossInv,initPenalty,netComputed:netComp,
+      importNRs,royalty
+    };
   });
   combinedData=months;
 }
 
-function buildDailySeries(y, mIdx) {
-  const days=getActualDays(y,mIdx); const res=[];
-  // IMPORTANT: All monthly report computations are in MWh.
-  // `plant_data` and `balanch_readings` are treated as cumulative MWh readings across this report engine.
-  for(let d=1;d<=days;d++){
-    const dateStr=`${y}.${String(mIdx+1).padStart(2,'0')}.${String(d).padStart(2,'0')}`;
-    const pRow=plantData.find(r=>r.nepali_date===dateStr);
-    const pPrev=pRow?plantData.filter(r=>r.id<pRow.id).pop():null;
-    const bRow=pRow?balanchData.find(r=>r.eng_date===pRow.id):null;
-    const bPrev=bRow?balanchData.filter(r=>r.eng_date<bRow.eng_date).pop():null;
+function buildDailySeries(y,mIdx){
+  const mStr=String(mIdx+1).padStart(2,'0');
+  const bMap={};
+  balanchData.forEach(r=>{ if(r.eng_date) bMap[r.eng_date]=r; });
+  const pByDate={};
+  plantData.forEach(r=>{ if(r.nepali_date) pByDate[cleanDate(r.nepali_date)]=r; });
+  const thisMo=plantData.filter(r=>r.nepali_date&&cleanDate(r.nepali_date).startsWith(`${y}.${mStr}.`));
+  const maxDay=thisMo.length>0?Math.max(...thisMo.map(r=>parseInt(cleanDate(r.nepali_date).split('.')[2]))):PPA_C[mIdx].days;
+  const res=[];
+
+  for(let d=1;d<=maxDay;d++){
+    const dateStr=`${y}.${mStr}.${String(d).padStart(2,'0')}`;
+    const pRow=pByDate[dateStr]||null;
+    const allBefore=pRow?plantData.filter(r=>r.id<pRow.id):[];
+    const pPrev=allBefore.length?allBefore[allBefore.length-1]:null;
+    const bRow=pRow?bMap[pRow.id]:null;
+    const bAllBefore=bRow?balanchData.filter(r=>r.eng_date<bRow.eng_date):[];
+    const bPrev=bAllBefore.length?bAllBefore[bAllBefore.length-1]:null;
+
     let u1=0,u2=0,gen=0,exp=0,stCons=0,pExp=0;
     if(pRow&&pPrev){
-      u1=Math.max(0,(pRow.unit1_gen-pPrev.unit1_gen));
-      u2=Math.max(0,(pRow.unit2_gen-pPrev.unit2_gen));
+      u1=Math.max(0,pN(pRow.unit1_gen)-pN(pPrev.unit1_gen));
+      u2=Math.max(0,pN(pRow.unit2_gen)-pN(pPrev.unit2_gen));
       gen=u1+u2;
-      // station_trans is kWh → convert to MWh for daily series
-      stCons=Math.max(0,(pRow.station_trans-pPrev.station_trans) / 1000);
-      pExp=Math.max(0,(pRow.export_plant-pPrev.export_plant));
+      stCons=Math.max(0,(pN(pRow.station_trans)-pN(pPrev.station_trans))/1000);
+      pExp=Math.max(0, pN(pRow.export_plant) - pN(pPrev.export_plant)); // FIXED
     }
-    if(bRow&&bPrev) exp=Math.max(0,(getActiveReading(bRow,'export')-getActiveReading(bPrev,'export')));
-    res.push({ date:dateStr, day:d, engDate:pRow?.id||'', u1,u2,gen,exp,stCons });
+    if(bRow&&bPrev) exp=Math.max(0,getExport(bRow)-getExport(bPrev));
+    res.push({date:dateStr,day:d,engDate:pRow?.id||'',u1,u2,gen,exp,stCons,pExp});
   }
   return res;
 }
 
-async function loadReport() {
-  const y=parseInt(document.getElementById('rep-year').value); const m=document.getElementById('rep-month').value; const mIdx=getMIdx(m); if(mIdx<0) return toast("Invalid month",true);
-  const btn=document.getElementById('btn-load'); btn.disabled=true; btn.textContent="Loading...";
+// ── Save / Load narratives ────────────────────────────────────────────────────
+async function saveNarratives(){
+  const year=parseInt(document.getElementById('rep-year').value);
+  const month=document.getElementById('rep-month').value;
+  if(!year||!month) return toast('Select period first',true);
+  const btn=document.getElementById('btn-save-notes');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> Saving…';
+  try{
+    const {data:{session}}=await supabase.auth.getSession();
+    const payload={
+      id:`${year}_${month}`,nepali_year:year,nepali_month:month,
+      ...getNarratives(),updated_at:new Date().toISOString()
+    };
+    if(session?.user?.email) payload.updated_by=session.user.email;
+    const{error}=await supabase.from(NARRATIVE_TB).upsert(payload,{onConflict:'id'});
+    if(error) throw error;
+    toast(`Narratives saved for ${month} ${year}`);
+  }catch(e){ toast(`Save failed: ${e.message}`,true); }
+  finally{ btn.disabled=false; btn.innerHTML='💾 Save'; }
+}
+
+async function loadNarratives(year,month){
+  try{
+    const{data,error}=await supabase.from(NARRATIVE_TB).select('*').eq('id',`${year}_${month}`).maybeSingle();
+    if(error) throw error;
+    setNarratives(data||{});
+  }catch(_){ setNarratives({}); }
+}
+
+// ── Load Report ───────────────────────────────────────────────────────────────
+async function loadReport(){
+  const y=parseInt(document.getElementById('rep-year').value);
+  const m=document.getElementById('rep-month').value;
+  const mIdx=getMIdx(m);
+  if(mIdx<0) return toast('Invalid month selection',true);
+
+  const btn=document.getElementById('btn-load');
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> Loading…';
+
   try{
     if(!combinedData.length) await loadAllData();
-    const row=combinedData.find(x=>x.year===y && x.mIdx===mIdx);
-    if(!row||!row.computed) throw new Error(`No computed data for ${m} ${y}`);
-    const {data:rain}=await supabase.from('rainfall_data').select('*').eq('nepali_year',y).eq('nepali_month',m).order('day');
-    dbRainfall=rain||[];
-    const {data:exp}=await supabase.from('site_expense_items').select('*').eq('nepali_year',y).eq('nepali_month',m);
-    dbExpenses=exp||[];
-    reportPeriodEngRange = '';
-    try {
-      const { data: monthMap } = await supabase
-        .from('calendar_mappings')
-        .select('eng_date')
-        .eq('nep_year', y)
-        .eq('nep_month', m)
-        .order('eng_date', { ascending: true });
-      if (monthMap && monthMap.length) {
-        const start = new Date(`${monthMap[0].eng_date}T00:00:00`);
-        const end = new Date(`${monthMap[monthMap.length - 1].eng_date}T00:00:00`);
-        const fmt = (d) => d.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' });
-        reportPeriodEngRange = `${fmt(start)} to ${fmt(end)}`;
-      }
-    } catch (_) {
-      reportPeriodEngRange = '';
+    const row=combinedData.find(x=>x.year===y&&x.mIdx===mIdx);
+    if(!row?.computed) throw new Error(`No data found for ${m} ${y}`);
+
+    const [rainRes,expRes]=await Promise.all([
+      supabase.from('rainfall_data').select('*').eq('nepali_year',y).eq('nepali_month',m),
+      supabase.from('site_expense_items').select('*').eq('nepali_year',y).eq('nepali_month',m)
+    ]);
+    dbRainfall=rainRes.data||[];
+    dbExpenses=expRes.data||[];
+
+    currentRow=row;
+    currentComputed=row.computed;
+    dailySeries=buildDailySeries(y,mIdx);
+    prevYearRow=combinedData.find(x=>x.year===y-1&&x.mIdx===mIdx)?.computed||null;
+    await loadNarratives(y,m);
+
+    const sD=dailySeries.find(d=>d.engDate)?.engDate;
+    const eD=dailySeries.filter(d=>d.engDate).pop()?.engDate;
+    dbHourly=[]; window.meteoData=null;
+
+    if(sD&&eD){
+      const[hrRes]=await Promise.all([
+        supabase.from('hourly_logs').select('date,t_temp_in,t_temp_intake').gte('date',sD).lte('date',eD)
+      ]);
+      dbHourly=hrRes.data||[];
+      try{
+        const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=29.7405&longitude=80.9634&start_date=${sD}&end_date=${eD}&daily=temperature_2m_max,precipitation_sum&timezone=Asia%2FKathmandu`);
+        window.meteoData=await r.json();
+      }catch(e){ console.warn('Meteo fetch failed:',e); }
     }
-    let prevY=y, prevM=mIdx-1; if(prevM<0){ prevM=11; prevY--; }
-    const {data:pExp}=await supabase.from('site_expense_items').select('*').eq('nepali_year',prevY).eq('nepali_month',DISPLAY[prevM]);
-    window.prevDbExpenses=pExp||[];
-    currentComputed=row.computed; dailySeries=buildDailySeries(y,mIdx); prevYearRow=combinedData.find(x=>x.year===y-1 && x.mIdx===mIdx)?.computed;
-    await loadNarratives(y, m);
-    document.getElementById('step1').className='step step-done'; document.getElementById('step2').className='step step-active';
-    const c=currentComputed; const totLoss=c.gridFaultMwh+c.line132kvMwh+c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh+c.dispatchMwh+c.lowDischargeMwh;
-    document.getElementById('kpi-label').innerText=`${m} ${y}`;
-    document.getElementById('kv-gen').innerText=n(c.totalGenMwh)+' MWh'; document.getElementById('kv-exp').innerText=n(c.exportedMwh)+' MWh';
-    const pf=c.exportedMwh/(PLANT_MW*24*c.actualDays)*100; document.getElementById('kv-pf').innerText=n(pf)+'%';
-    document.getElementById('kv-loss').innerText=n(totLoss)+' MWh'; document.getElementById('kv-rev').innerText='NRs '+nk(c.grossInvAmt); document.getElementById('kv-net').innerText='NRs '+nk(c.netComputed);
-    const daysWithData=dailySeries.filter(d=>d.gen>0).length; document.getElementById('prog-fill').style.width=Math.round(daysWithData/c.actualDays*100)+'%'; document.getElementById('data-coverage-txt').innerText=`${daysWithData}/${c.actualDays} generating days`;
-    document.getElementById('kpi-panel').classList.remove('hidden'); document.getElementById('editor-panel').style.display='flex'; document.getElementById('editor-panel').classList.remove('hidden');
-    toast(`${m} ${y} loaded — ${daysWithData} days with generation`);
-  } catch(e){ toast(e.message,true); } finally{ btn.disabled=false; btn.textContent="Load Data & Analytics"; }
+
+    setStep(2);
+    const c=currentComputed;
+    const totLoss=c.gridFaultMwh+c.line132kvMwh+c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh+c.dispatchMwh;
+    const pf=c.actualDays>0?(c.exportedMwh/(PLANT_MW*24*c.actualDays)*100):0;
+
+    document.getElementById('kpi-label').textContent=`${m} ${y}`;
+    document.getElementById('kv-gen').textContent=fmt(c.totalGenMwh)+' MWh';
+    document.getElementById('kv-exp').textContent=fmt(c.exportedMwh)+' MWh';
+    document.getElementById('kv-pf').textContent=fmt(pf)+'%';
+    document.getElementById('kv-loss').textContent=fmt(totLoss)+' MWh';
+    document.getElementById('kv-rev').textContent='NRs '+fmtI(c.grossInvAmt);
+    document.getElementById('kv-net').textContent='NRs '+fmtI(c.netComputed);
+
+    const daysWithData=dailySeries.filter(d=>d.gen>0).length;
+    document.getElementById('prog-fill').style.width=Math.round(c.actualDays>0?(daysWithData/c.actualDays*100):0)+'%';
+    document.getElementById('data-coverage-txt').textContent=`${daysWithData}/${c.actualDays} generating days`;
+
+    document.getElementById('kpi-panel').style.display='block';
+    document.getElementById('editor-panel').style.display='flex';
+    toast(`${m} ${y} loaded — ${daysWithData} days of data`);
+  }catch(e){ toast(e.message,true); }
+  finally{ btn.disabled=false; btn.innerHTML='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg> Load Data'; }
 }
 
-function generateReport() {
-  if(!currentComputed) return toast("Load data first",true);
-  const c=currentComputed; const y=parseInt(document.getElementById('rep-year').value); const m=document.getElementById('rep-month').value;
-  document.getElementById('step2').className='step step-done'; document.getElementById('step3').className='step step-active';
-  document.getElementById('empty-state').classList.add('hidden');
-  const docDiv=document.getElementById('printable-report'); docDiv.classList.remove('hidden');
-  const htmlContent=buildReportHTML(c,m,y); docDiv.innerHTML=htmlContent;
-  setTimeout(()=>{ renderReportCharts(c,m,y); },100);
-  document.getElementById('right-panel').scrollTo({top:0,behavior:'smooth'});
-  toast("Report generated – use browser print or PDF/Word buttons");
-}
+// ── Build Report HTML ─────────────────────────────────────────────────────────
+function buildReportHTML(c, month, year){
+  const totLoss=c.gridFaultMwh+c.line132kvMwh+c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh+c.dispatchMwh;
+  const pf=c.actualDays>0?(c.exportedMwh/(PLANT_MW*24*c.actualDays)*100):0;
+  const avgDaily=c.actualDays>0?c.totalGenMwh/c.actualDays:0;
+  const valid=dailySeries.filter(d=>d.gen>0);
+  const maxDay=valid.length?valid.reduce((a,b)=>b.gen>a.gen?b:a,valid[0]):{gen:0,date:'-'};
+  const minDay=valid.length?valid.reduce((a,b)=>b.gen<a.gen?b:a,valid[0]):{gen:0,date:'-'};
 
-function buildReportHTML(c, month, year) {
-  const totLoss=c.gridFaultMwh+c.line132kvMwh+c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh+c.dispatchMwh+c.lowDischargeMwh;
-  const hiText=fmtBullets(document.getElementById('inp-hi').value)||'<li class="doc-li">Standard operation maintained.</li>';
-  const prText=fmtBullets(document.getElementById('inp-pr').value)||'<li class="doc-li">No critical prolonged faults.</li>';
-  const mtText=fmtBullets(document.getElementById('inp-mt').value)||'<li class="doc-li">Routine scheduled maintenance completed.</li>';
-  const hseText=document.getElementById('inp-hse').value||'Zero LTI. Toolbox talks conducted daily. Full PPE compliance.';
-  const pf=(c.exportedMwh/(PLANT_MW*24*c.actualDays))*100;
-  const avgDaily = c.actualDays > 0 ? (c.totalGenMwh / c.actualDays) : 0;
-  const maxDay = dailySeries.reduce((a,b)=> b.gen>a.gen ? b : a, {gen:0, date:'-'});
-  const minCandidates = dailySeries.filter(d=>d.gen>0);
-  const minDay = minCandidates.length ? minCandidates.reduce((a,b)=> b.gen<a.gen ? b : a, minCandidates[0]) : {gen:0, date:'-'};
-  const lossRows = [
-    ['Dispatch Instruction', c.dispatchMwh],
-    ['Low Discharge', c.lowDischargeMwh],
-    ['Grid Fault', c.gridFaultMwh],
-    ['33kV Line Issue', c.fm33kvMwh],
-    ['Penstock Pipe Issue', c.fmPenstockMwh],
-    ['Plant Equipment Issue', c.fmEquipMwh],
-    ['132kV Line Issue', c.line132kvMwh],
-    ['Station Consumption', c.stConsMwh],
-    ['33kV Line Loss', c.lineLossMwh]
-  ];
-  const periodLabel = reportPeriodEngRange ? `${month} ${year} (${reportPeriodEngRange})` : `${month} ${year}`;
-  return `
-    <div class="cover-page"><div class="cover-title">Monthly Report</div><div class="cover-subtitle">Makari Gad Hydroelectric Project (10 MW)</div><div class="cover-details"><p><strong>Period:</strong> ${periodLabel}</p><p><strong>Prepared By:</strong> Plant Operations Team</p><p><strong>Approved By:</strong> Plant Manager</p></div></div>
-    <div class="page-break"></div><div style="padding:18mm 20mm;">
-    <div class="doc-h1">1. Executive Summary</div>
-    <div class="doc-h2">Performance Highlights</div>
-    <ul class="doc-ul">
-      <li class="doc-li">Total Energy Generation: <strong>${n(c.totalGenMwh)} MWh</strong></li>
-      <li class="doc-li">Plant Factor: <strong>${n(pf)}%</strong></li>
-      <li class="doc-li">Export to Grid: <strong>${n(c.exportedMwh)} MWh</strong></li>
-      ${hiText}
-    </ul>
-    <div class="doc-h2">Performance Overview</div>
-    <p class="doc-p">The project generated <strong>${n(c.totalGenMwh)} MWh</strong> during ${month} ${year}. Total exported energy was <strong>${n(c.exportedMwh)} MWh</strong> against contract energy of <strong>${n(c.contractMwh)} MWh</strong>. Estimated gross revenue is <strong>NRs ${nk(c.grossInvAmt)}</strong>, with net receivable of <strong>NRs ${nk(c.netComputed)}</strong>.</p>
-    <div class="doc-h2">Key Observations</div>
-    <ul class="doc-ul">
-      <li class="doc-li">Unit 1 runtime: ${n(c.u1Hrs,1)} hours; Unit 2 runtime: ${n(c.u2Hrs,1)} hours.</li>
-      <li class="doc-li">Average daily generation: ${n(avgDaily)} MWh.</li>
-      <li class="doc-li">Highest daily generation: ${n(maxDay.gen)} MWh (${maxDay.date}).</li>
-      <li class="doc-li">Lowest daily generation: ${n(minDay.gen)} MWh (${minDay.date}).</li>
-    </ul>
-    <div class="chart-box"><canvas id="targetChart" style="height:200px; width:100%"></canvas></div>
-    <p class="text-[9pt] text-slate-500 italic">Figure 1: Monthly Energy Generation Summary</p>
-    <div class="chart-box"><canvas id="dailyGenChart" style="height:250px; width:100%"></canvas></div>
-    <p class="text-[9pt] text-slate-500 italic">Figure 2: Daily Energy Generation for ${month} ${year}</p>
-    <div class="chart-box"><canvas id="expVsGenChart" style="height:240px; width:100%"></canvas></div>
-    <p class="text-[9pt] text-slate-500 italic">Figure 3: Power and Energy Trend for ${month} ${year}</p>
+  // YoY section (FIXED)
+  let yoyHTML='';
+  if(prevYearRow && prevYearRow.totalGenMwh != null){
+    const genDiff = c.totalGenMwh - prevYearRow.totalGenMwh;
+    const genPct = prevYearRow.totalGenMwh > 0 ? Math.abs((genDiff / prevYearRow.totalGenMwh) * 100).toFixed(1) : '0.0';
+    
+    const expDiff = c.exportedMwh - prevYearRow.exportedMwh;
+    const expPct = prevYearRow.exportedMwh > 0 ? Math.abs((expDiff / prevYearRow.exportedMwh) * 100).toFixed(1) : '0.0';
+    
+    const up=v=>`<span class="yoy-up">▲ ${v}%</span>`;
+    const dn=v=>`<span class="yoy-down">▼ ${v}%</span>`;
+    yoyHTML=`
+      <div class="doc-h2">Year-on-Year Comparison (vs ${month} ${year-1})</div>
+      <table class="doc-table">
+        <thead><tr><th class="lft">Metric</th><th>${month} ${year-1}</th><th>${month} ${year}</th><th>Change</th></tr></thead>
+        <tbody>
+          <tr><td class="lft">Gross Generation (MWh)</td><td>${fmt(prevYearRow.totalGenMwh)}</td><td>${fmt(c.totalGenMwh)}</td><td>${genDiff>=0?up(genPct):dn(genPct)}</td></tr>
+          <tr><td class="lft">Export to Grid (MWh)</td><td>${fmt(prevYearRow.exportedMwh)}</td><td>${fmt(c.exportedMwh)}</td><td>${expDiff>=0?up(expPct):dn(expPct)}</td></tr>
+          <tr><td class="lft">Plant Factor (%)</td>
+            <td>${fmt(prevYearRow.actualDays>0?prevYearRow.exportedMwh/(PLANT_MW*24*prevYearRow.actualDays)*100:0)}</td>
+            <td>${fmt(pf)}</td><td>—</td></tr>
+          <tr><td class="lft">Gross Revenue (NRs)</td><td>${fmtI(prevYearRow.grossInvAmt)}</td><td>${fmtI(c.grossInvAmt)}</td><td>—</td></tr>
+        </tbody>
+      </table>`;
+  }
 
-    <div class="doc-h1">2. Energy Generation Overview</div>
-    <div class="doc-h2">Detailed Generation Metrics</div>
-    <table class="doc-table"><thead><tr><th class="lft">Metric</th><th>Value</th></tr></thead><tbody>
-    <tr><td class="lft">Total Energy Generated</td><td>${n(c.totalGenMwh)} MWh</td></tr>
-    <tr><td class="lft">Plant Factor</td><td>${n(pf)} %</td></tr>
-    <tr><td class="lft">Average Daily Generation</td><td>${n(avgDaily)} MWh</td></tr>
-    <tr><td class="lft">Highest Daily Generation</td><td>${n(maxDay.gen)} MWh (${maxDay.date})</td></tr>
-    <tr><td class="lft">Lowest Daily Generation</td><td>${n(minDay.gen)} MWh (${minDay.date})</td></tr>
-    </tbody></table>
-    <div class="doc-h2">Generation Reduction Factors</div>
-    <ul class="doc-ul">${prText}</ul>
-
-    <div class="doc-h1">3. Financial Performance</div>
-    <div class="doc-h2">Revenue Analysis</div>
-    <table class="doc-table"><thead><tr><th class="lft">Financial Metric</th><th>Amount (NPR)</th></tr></thead><tbody>
-    <tr><td class="lft">PPA Rate (NRs/kWh)</td><td>${n(c.ppaRate,2)}</td></tr>
-    <tr><td class="lft">Total Energy Revenue as per PPA</td><td>${nk(c.grossInvAmt)}</td></tr>
-    <tr><td class="lft">Actual Billed Amount</td><td>${nk(c.grossInvAmt-c.initPenalty)}</td></tr>
-    <tr><td class="lft">Import</td><td>${nk(c.importNRs)}</td></tr>
-    <tr><td class="lft">Receivable from NEA</td><td>${nk(c.netComputed)}</td></tr>
-    <tr><td class="lft">Royalty (2%)</td><td>${nk(c.royalty)}</td></tr>
-    </tbody></table>
-    <div class="doc-h2">Loss Analysis</div>
-    <table class="doc-table"><thead><tr><th class="lft">Loss Category</th><th>Energy (MWh)</th><th>Financial Impact (NPR)</th></tr></thead><tbody>
-    ${lossRows.map(([nm,val])=>`<tr><td class="lft">${nm}</td><td>${n(val)}</td><td>${nk((val||0)*c.ppaRate*1000)}</td></tr>`).join('')}
-    <tr class="total"><td class="lft">Total Losses</td><td>${n(totLoss + c.stConsMwh + c.lineLossMwh)}</td><td>${nk((totLoss + c.stConsMwh + c.lineLossMwh)*c.ppaRate*1000)}</td></tr>
-    </tbody></table>
-    <p class="doc-p"><strong>Loss Impact:</strong> Total losses are ${n((totLoss + c.stConsMwh + c.lineLossMwh)/Math.max(c.totalGenMwh,1)*100)}% of gross generation equivalent for this period.</p>
-    <div class="chart-box"><canvas id="fateChart" style="height:250px; width:100%"></canvas></div>
-    <p class="text-[9pt] text-slate-500 italic">Figure 4: Breakdown of Contract (PPA) Energy and losses</p>
-
-    <div class="doc-h1">4. Operations and Maintenance</div>
-    <div class="doc-h2">Maintenance Activities</div><ul class="doc-ul">${mtText}</ul>
-    <div class="doc-h2">Problems Faced and Work Done</div><ul class="doc-ul">${prText}</ul>
-    <div class="doc-h2">Rainfall Summary</div><div class="chart-box"><canvas id="rainChart" style="height:220px; width:100%"></canvas></div>
-    <div class="doc-h2">Health, Safety and Environment (HSE)</div><div class="hse-note">${hseText}</div>
-    <div class="doc-h2">Additional Analytics</div>
-    <div class="chart-box"><canvas id="unitSplitChart" style="height:240px; width:100%"></canvas></div>
-    <div class="chart-box"><canvas id="cumExportChart" style="height:220px; width:100%"></canvas></div>
-    <div class="chart-box"><canvas id="outageLossChart" style="height:210px; width:100%"></canvas></div>
-    <div class="chart-box"><canvas id="runtimeChart" style="height:200px; width:100%"></canvas></div>
-    <div class="chart-box"><canvas id="yoyChart" style="height:210px; width:100%"></canvas></div>
-    <div class="chart-box"><canvas id="expChart" style="height:220px; width:100%"></canvas></div>
-
-    <div class="doc-h1">Appendices</div>
-    <div class="doc-h1">Annex A: Daily Generation Log</div><table class="doc-table"><thead><tr><th class="lft">Nepali Date</th><th>Unit1 (MWh)</th><th>Unit2 (MWh)</th><th>Gross (MWh)</th><th>Export (MWh)</th><th>Cons (MWh)</th></tr></thead><tbody>
-    ${dailySeries.map(d=>`<tr><td class="lft">${d.date}</td><td>${n(d.u1)}</td><td>${n(d.u2)}</td><td><strong>${n(d.gen)}</strong></td><td>${n(d.exp)}</td><td>${n(d.stCons)}</td></tr>`).join('')}
-    </tbody></table>
-    <div class="doc-h1">Annex B: Outage Register</div><table class="doc-table"><thead><tr><th class="lft">Date</th><th class="lft">Reason</th><th>Loss (MWh)</th></tr></thead><tbody>
-    ${outagesData.filter(o=>dailySeries.some(d=>d.engDate===o.id)).map(o=>`<tr><td class="lft">${o.id}</td><td class="lft">${o.reason||'—'}</td><td>${n(o.totalEnergyLoss)}</td></tr>`).join('')||'<tr><td colspan="3" class="lft">No recorded outages</td></tr>'}
-    </tbody></table>
-    </div>`;
-}
-
-function renderReportCharts(c, month, year) {
-  mkChart('dailyGenChart', { type:'line', data:{ labels:dailySeries.map(d=>d.day), datasets:[{ label:'Gross Generation (MWh)', data:dailySeries.map(d=>d.gen), borderColor:'#2563eb', fill:true, backgroundColor:'rgba(37,99,235,0.1)', tension:0.2 }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } } });
-  mkChart('unitSplitChart', { type:'line', data:{ labels:dailySeries.map(d=>d.day), datasets:[
-    { label:'Unit 1 (MWh)', data:dailySeries.map(d=>d.u1), borderColor:'#7c3aed', backgroundColor:'rgba(124,58,237,0.12)', fill:true, tension:0.25, stack:'g' },
-    { label:'Unit 2 (MWh)', data:dailySeries.map(d=>d.u2), borderColor:'#0ea5e9', backgroundColor:'rgba(14,165,233,0.12)', fill:true, tension:0.25, stack:'g' }
-  ] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } } });
-  mkChart('expVsGenChart', { type:'bar', data:{ labels:dailySeries.map(d=>d.day), datasets:[
-    { type:'bar', label:'Export (MWh)', data:dailySeries.map(d=>d.exp), backgroundColor:'rgba(16,185,129,0.45)', borderColor:'#10b981', borderWidth:1 },
-    { type:'line', label:'Gross Gen (MWh)', data:dailySeries.map(d=>d.gen), borderColor:'#1e40af', backgroundColor:'rgba(30,64,175,0.08)', tension:0.25, yAxisID:'y' }
-  ] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } } });
-  let run=0; const cum = dailySeries.map(d=>{ run += (Number(d.exp)||0); return run; });
-  mkChart('cumExportChart', { type:'line', data:{ labels:dailySeries.map(d=>d.day), datasets:[
-    { label:'Cumulative Export (MWh)', data:cum, borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.12)', fill:true, tension:0.2 }
-  ] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } } });
-  mkChart('targetChart', { type:'bar', data:{ labels:['Contract','Declared AD','Gross Gen','Exported'], datasets:[{ label:'MWh', data:[c.contractMwh,c.declaredMwh,c.totalGenMwh,c.exportedMwh], backgroundColor:['#64748b','#f59e0b','#6366f1','#10b981'] }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{display:false}} } });
-  mkChart('yoyChart', { type:'bar', data:{ labels:['Gross Gen (MWh)','Export (MWh)','Plant Factor %'], datasets:[
-    { label:`${month} ${year}`, data:[c.totalGenMwh, c.exportedMwh, (c.exportedMwh/(PLANT_MW*24*c.actualDays))*100], backgroundColor:'#6366f1' },
-    { label:`${month} ${year-1}`, data:[prevYearRow?.totalGenMwh||0, prevYearRow?.exportedMwh||0, prevYearRow ? ((prevYearRow.exportedMwh/(PLANT_MW*24*prevYearRow.actualDays))*100) : 0], backgroundColor:'#94a3b8' }
-  ] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } } });
-  const fateData = [c.exportedMwh, c.gridFaultMwh, c.line132kvMwh, c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh, c.dispatchMwh, c.lowDischargeMwh, c.stConsMwh].filter(v=>v>0);
-  mkChart('fateChart', { type:'pie', data:{ labels:['Exported','Grid Faults','132kV Line','33kV/Equip','LDC Curtail','Low Discharge','Station Cons'].filter((_,i)=>[c.exportedMwh,c.gridFaultMwh,c.line132kvMwh,c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh,c.dispatchMwh,c.lowDischargeMwh,c.stConsMwh][i]>0), datasets:[{ data:fateData, backgroundColor:['#1e40af','#dc2626','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#f97316'] }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:'right'}} } });
-  const lossByDay = dailySeries.map(d=>{
-    if(!d.engDate) return 0;
-    const o = outagesData.find(x=>x.id===d.engDate);
-    return o ? Number(o.totalEnergyLoss||0) : 0;
+  // Expenses
+  const EXP_CATS=['Petty Cash','Diesel','Petrol','Salary','Vehicle'];
+  let expRows='', expTotal=0;
+  EXP_CATS.forEach((cat,i)=>{
+    const catTotal=dbExpenses.filter(e=>e.category===cat).reduce((s,e)=>s+parseFloat(e.amount||0),0);
+    if(catTotal>0){
+      expTotal+=catTotal;
+      expRows+=`<tr><td class="lft">${i+1}</td><td class="lft">${cat}</td><td>${fmt(catTotal)}</td></tr>`;
+    }
   });
-  mkChart('outageLossChart', { type:'bar', data:{ labels:dailySeries.map(d=>d.day), datasets:[
-    { label:'Outage Loss (MWh)', data:lossByDay, backgroundColor:'rgba(220,38,38,0.35)', borderColor:'#dc2626', borderWidth:1 }
-  ] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } } });
-  mkChart('runtimeChart', { type:'doughnut', data:{ labels:['Unit 1 Hours','Unit 2 Hours'], datasets:[{ data:[c.u1Hrs||0, c.u2Hrs||0], backgroundColor:['#2563eb','#0ea5e9'] }] }, options:{ responsive:true, maintainAspectRatio:true, cutout:'55%', plugins:{ legend:{position:'bottom'} } } });
-  if(dbRainfall.length){ mkChart('rainChart', { type:'bar', data:{ labels:dbRainfall.map(r=>`D${r.day}`), datasets:[{ label:'Powerhouse (mm)', data:dbRainfall.map(r=>parseFloat(r.powerhouse||0)), backgroundColor:'#0ea5e9'},{ label:'Headworks (mm)', data:dbRainfall.map(r=>parseFloat(r.headworks||0)), backgroundColor:'#3b82f6'}] }, options:{ responsive:true, maintainAspectRatio:true } }); }
-  const expMap={}; dbExpenses.forEach(r=>{ let cat=r.category||'Other'; expMap[cat]=(expMap[cat]||0)+parseFloat(r.amount||0); });
-  if(Object.keys(expMap).length) mkChart('expChart', { type:'doughnut', data:{ labels:Object.keys(expMap), datasets:[{ data:Object.values(expMap), backgroundColor:['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#8b5cf6'] }] }, options:{ responsive:true, maintainAspectRatio:true, cutout:'50%' } });
+  if(!expRows) expRows='<tr><td colspan="3" class="lft" style="color:#64748b;font-style:italic;">No site expenses recorded for this period.</td></tr>';
+
+  const hiItems=fmtBullets(document.getElementById('inp-hi').value)||'<li class="doc-li">Routine operations with no significant deviations.</li>';
+  const prItems=fmtBullets(document.getElementById('inp-pr').value)||'<li class="doc-li">No major problems recorded.</li>';
+  const mtItems=fmtBullets(document.getElementById('inp-mt').value)||'<li class="doc-li">Routine scheduled maintenance carried out.</li>';
+  const hseText=document.getElementById('inp-hse').value||'Zero LTI recorded. All safety protocols maintained.';
+
+  return `
+  <div class="cover-page">
+    <div class="cover-logo-band"></div>
+    <div style="margin-top:1rem;">
+      <div class="cover-title">Monthly Operations<br>Report</div>
+      <div class="cover-accent-line"></div>
+      <div class="cover-subtitle">Makari Gad Hydroelectric Project</div>
+      <div style="font-size:9pt;color:#94a3b8;margin-top:0.4rem;font-family:'DM Sans',sans-serif;">Installed Capacity: 10 MW · Karnali Province, Nepal</div>
+    </div>
+    <div class="cover-meta">
+      <div class="cover-meta-row">
+        <div><div class="cover-meta-key">Reporting Period</div><div class="cover-meta-val">${month} ${year} BS</div></div>
+        <div><div class="cover-meta-key">Generation</div><div class="cover-meta-val">${fmt(c.totalGenMwh)} MWh</div></div>
+        <div><div class="cover-meta-key">Plant Factor</div><div class="cover-meta-val">${fmt(pf)}%</div></div>
+      </div>
+      <div class="cover-meta-row" style="margin-top:1rem;">
+        <div><div class="cover-meta-key">Prepared By</div><div class="cover-meta-val">Plant Operations Team</div></div>
+        <div><div class="cover-meta-key">Approved By</div><div class="cover-meta-val">Plant Manager</div></div>
+        <div><div class="cover-meta-key">Prepared On</div><div class="cover-meta-val">${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}</div></div>
+      </div>
+    </div>
+    <div class="cover-footer">CONFIDENTIAL — FOR INTERNAL USE AND AUTHORIZED RECIPIENTS ONLY</div>
+  </div>
+
+  <div class="page-break"></div>
+  <div class="doc-section">
+
+  <div class="doc-h1"><span class="doc-h1-num">01</span> Executive Summary</div>
+  <div class="kpi-summary-grid">
+    <div class="kpi-summary-box"><div class="kpi-summary-val">${fmt(c.totalGenMwh)}</div><div class="kpi-summary-key">Gross Gen (MWh)</div></div>
+    <div class="kpi-summary-box"><div class="kpi-summary-val">${fmt(c.exportedMwh)}</div><div class="kpi-summary-key">Export (MWh)</div></div>
+    <div class="kpi-summary-box"><div class="kpi-summary-val">${fmt(pf)}%</div><div class="kpi-summary-key">Plant Factor</div></div>
+    <div class="kpi-summary-box"><div class="kpi-summary-val">${fmt(avgDaily)}</div><div class="kpi-summary-key">Avg Daily Gen (MWh)</div></div>
+    <div class="kpi-summary-box"><div class="kpi-summary-val">NRs ${fmtI(c.grossInvAmt)}</div><div class="kpi-summary-key">Gross Revenue</div></div>
+    <div class="kpi-summary-box"><div class="kpi-summary-val">NRs ${fmtI(c.netComputed)}</div><div class="kpi-summary-key">Net Receivable</div></div>
+  </div>
+
+  <div class="doc-h2">Key Highlights</div>
+  <ul class="doc-ul">${hiItems}</ul>
+
+  ${yoyHTML}
+
+  <div class="doc-h1"><span class="doc-h1-num">02</span> Generation & Performance</div>
+  <div class="chart-box"><canvas id="masterTrendChart" style="height:280px;width:100%;"></canvas></div>
+  <div class="chart-caption">Figure 1: Daily Generation Profile — Gross vs Export vs Cumulative Export</div>
+
+  <div class="doc-h2">Generation Summary</div>
+  <table class="doc-table">
+    <thead><tr><th class="lft">Metric</th><th>Unit 1</th><th>Unit 2</th><th>Combined</th></tr></thead>
+    <tbody>
+      <tr><td class="lft">Energy Generated</td><td>${fmt(c.u1GenMwh)} MWh</td><td>${fmt(c.u2GenMwh)} MWh</td><td><strong>${fmt(c.totalGenMwh)} MWh</strong></td></tr>
+      <tr><td class="lft">Operating Hours</td><td>${fmt(c.u1Hrs,1)} hrs</td><td>${fmt(c.u2Hrs,1)} hrs</td><td>${fmt(c.u1Hrs+c.u2Hrs,1)} hrs</td></tr>
+      <tr class="total"><td class="lft">Plant Factor</td><td colspan="2">—</td><td>${fmt(pf)}%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="doc-h2">Energy Flow & Losses</div>
+  <table class="doc-table">
+    <thead><tr><th class="lft">Component</th><th>MWh</th><th>% of Gross</th></tr></thead>
+    <tbody>
+      <tr><td class="lft">Gross Generation</td><td>${fmt(c.totalGenMwh)}</td><td>100.00%</td></tr>
+      <tr><td class="lft">Station Consumption</td><td>${fmt(c.stConsMwh)}</td><td>${fmt(c.totalGenMwh>0?c.stConsMwh/c.totalGenMwh*100:0)}%</td></tr>
+      <tr><td class="lft">Transformer Losses</td><td>${fmt(c.transformerLossMwh)}</td><td>${fmt(c.totalGenMwh>0?c.transformerLossMwh/c.totalGenMwh*100:0)}%</td></tr>
+      <tr><td class="lft">Transmission Losses</td><td>${fmt(c.transmissionLossMwh)}</td><td>${fmt(c.totalGenMwh>0?c.transmissionLossMwh/c.totalGenMwh*100:0)}%</td></tr>
+      <tr><td class="lft">Grid Fault Losses</td><td>${fmt(c.gridFaultMwh)}</td><td>${fmt(c.totalGenMwh>0?c.gridFaultMwh/c.totalGenMwh*100:0)}%</td></tr>
+      <tr><td class="lft">132kV Line Outages</td><td>${fmt(c.line132kvMwh)}</td><td>${fmt(c.totalGenMwh>0?c.line132kvMwh/c.totalGenMwh*100:0)}%</td></tr>
+      <tr><td class="lft">Plant FM Losses</td><td>${fmt(c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh)}</td><td>${fmt(c.totalGenMwh>0?(c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh)/c.totalGenMwh*100:0)}%</td></tr>
+      <tr><td class="lft">LDC Dispatch Curtailment</td><td>${fmt(c.dispatchMwh)}</td><td>${fmt(c.totalGenMwh>0?c.dispatchMwh/c.totalGenMwh*100:0)}%</td></tr>
+      <tr class="total"><td class="lft">Net Export to Grid</td><td>${fmt(c.exportedMwh)}</td><td>${fmt(c.totalGenMwh>0?c.exportedMwh/c.totalGenMwh*100:0)}%</td></tr>
+    </tbody>
+  </table>
+
+  <div class="doc-h1"><span class="doc-h1-num">03</span> Hydrology & Environment</div>
+  <div class="chart-box"><canvas id="masterEnvChart" style="height:260px;width:100%;"></canvas></div>
+  <div class="chart-caption">Figure 2: Catchment Precipitation, Intake Water Temperature, and Generation Correlation</div>
+
+  <div class="doc-h1"><span class="doc-h1-num">04</span> Outage & Availability Analysis</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+    <div><div class="chart-box"><canvas id="fateChart" style="height:210px;width:100%;"></canvas></div>
+    <div class="chart-caption">Figure 3: Fate of Generated Energy</div></div>
+    <div><div class="chart-box"><canvas id="stackedOutageChart" style="height:210px;width:100%;"></canvas></div>
+    <div class="chart-caption">Figure 4: Daily Outage Timeline by Cause</div></div>
+  </div>
+
+  <div class="doc-h1"><span class="doc-h1-num">05</span> Financial Performance</div>
+  <table class="doc-table">
+    <thead><tr><th class="lft">Financial Component</th><th>Rate / Basis</th><th>Amount (NRs)</th></tr></thead>
+    <tbody>
+      <tr><td class="lft">Normal Energy Revenue</td><td>${fmt(c.ppaRate,2)} Rs/kWh</td><td>${fmtI(c.grossInvAmt)}</td></tr>
+      <tr><td class="lft">Less: Shortfall Penalty</td><td>—</td><td>(${fmtI(c.initPenalty)})</td></tr>
+      <tr><td class="lft">Less: Import Energy Cost</td><td>${IMPORT_RATE} Rs/kWh</td><td>(${fmtI(c.importNRs)})</td></tr>
+      <tr><td class="lft">Less: Royalty (2%)</td><td>—</td><td>(${fmtI(c.royalty)})</td></tr>
+      <tr class="total"><td class="lft">Net Receivable from NEA</td><td>—</td><td><strong>${fmtI(c.netComputed)}</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="doc-h2">Site Expenses Summary</div>
+  <table class="doc-table">
+    <thead><tr><th class="lft" style="width:2rem;">S.N.</th><th class="lft">Category</th><th>Amount (NRs)</th></tr></thead>
+    <tbody>${expRows}
+    <tr class="total"><td colspan="2" class="lft">Total Site Expenses</td><td>${fmt(expTotal)}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="doc-h1"><span class="doc-h1-num">06</span> Maintenance & Operations</div>
+  <div class="doc-h2">Maintenance Activities Carried Out</div>
+  <ul class="doc-ul">${mtItems}</ul>
+  <div class="doc-h2">Problems & Challenges</div>
+  <ul class="doc-ul">${prItems}</ul>
+
+  <div class="doc-h1"><span class="doc-h1-num">07</span> Health, Safety & Environment</div>
+  <div class="hse-box">
+    <ul class="doc-ul" style="margin:0;">
+      ${fmtBullets(hseText)||`<li class="doc-li" style="color:#166534;">${hseText}</li>`}
+    </ul>
+  </div>
+
+  </div><div class="page-break"></div>
+  <div class="doc-section">
+  <div class="doc-h1"><span class="doc-h1-num">A1</span> Annex: Daily Generation Log</div>
+  <table class="doc-table">
+    <thead><tr><th class="lft">Nepali Date</th><th>English Date</th><th>Unit 1 (MWh)</th><th>Unit 2 (MWh)</th><th>Gross (MWh)</th><th>Export (MWh)</th></tr></thead>
+    <tbody>
+      ${dailySeries.map(d=>`<tr><td class="lft">${d.date}</td><td class="lft" style="font-family:'DM Mono',monospace;font-size:8pt;">${d.engDate}</td><td>${fmt(d.u1)}</td><td>${fmt(d.u2)}</td><td><strong>${fmt(d.gen)}</strong></td><td>${fmt(d.exp)}</td></tr>`).join('')}
+      <tr class="total">
+        <td colspan="2" class="lft">Monthly Total</td>
+        <td>${fmt(dailySeries.reduce((s,d)=>s+d.u1,0))}</td>
+        <td>${fmt(dailySeries.reduce((s,d)=>s+d.u2,0))}</td>
+        <td><strong>${fmt(dailySeries.reduce((s,d)=>s+d.gen,0))}</strong></td>
+        <td>${fmt(dailySeries.reduce((s,d)=>s+d.exp,0))}</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>`;
 }
 
-// UI BINDINGS
+// ── Render Charts ─────────────────────────────────────────────────────────────
+function renderCharts(c){
+  let run=0;
+  const cum=dailySeries.map(d=>{ run+=d.exp||0; return run; });
+  const labels=dailySeries.map(d=>d.day);
+
+  mkChart('masterTrendChart',{
+    type:'bar',
+    data:{ labels, datasets:[
+      {type:'bar',label:'Export (MWh)',data:dailySeries.map(d=>d.exp),backgroundColor:'rgba(16,185,129,0.65)',borderColor:'rgba(16,185,129,0.9)',borderWidth:1,yAxisID:'y'},
+      {type:'line',label:'Gross Gen (MWh)',data:dailySeries.map(d=>d.gen),borderColor:'#1e40af',borderWidth:2,tension:0.25,pointRadius:2,yAxisID:'y'},
+      {type:'line',label:'Cumulative Export',data:cum,borderColor:'#d97706',backgroundColor:'rgba(217,119,6,0.07)',fill:true,tension:0.3,borderWidth:1.5,pointRadius:0,yAxisID:'y1'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:9}}}},
+      scales:{
+        y:{position:'left',title:{display:true,text:'Daily MWh',font:{size:9}}},
+        y1:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'Cumulative MWh',font:{size:9}}}
+      }
+    }
+  });
+
+  const meteoDaily=window.meteoData?.daily||{};
+  const cRain=dailySeries.map(d=>{ const i=meteoDaily.time?.indexOf(d.engDate); return i!==-1&&i!=null?meteoDaily.precipitation_sum[i]:0; });
+  const inTemp=dailySeries.map(d=>{ const h=dbHourly.find(x=>x.date===d.engDate); return h?.t_temp_intake?parseFloat(h.t_temp_intake):null; });
+
+  mkChart('masterEnvChart',{
+    type:'bar',
+    data:{ labels, datasets:[
+      {type:'bar',label:'Precip (mm)',data:cRain,backgroundColor:'rgba(14,165,233,0.45)',yAxisID:'yRain'},
+      {type:'line',label:'Intake Temp (°C)',data:inTemp,borderColor:'#ef4444',borderDash:[4,4],tension:0.25,yAxisID:'yTemp',spanGaps:true,pointRadius:2,borderWidth:1.5},
+      {type:'line',label:'Gross Gen (MWh)',data:dailySeries.map(d=>d.gen),borderColor:'#1e40af',tension:0.25,yAxisID:'yGen',pointRadius:0,borderWidth:2}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:9}}}},
+      scales:{
+        yRain:{position:'left',title:{display:true,text:'Precipitation (mm)',font:{size:9}}},
+        yTemp:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'Temp (°C)',font:{size:9}}},
+        yGen:{display:false}
+      }
+    }
+  });
+
+  const pVals=[c.exportedMwh,c.transformerLossMwh,c.stConsMwh,c.transmissionLossMwh,c.dispatchMwh,c.gridFaultMwh+c.line132kvMwh+c.fm33kvMwh+c.fmPenstockMwh+c.fmEquipMwh];
+  const pLbs=['Dispatched','Trans Loss','Station Cons','Line Loss','LDC','Faults'];
+  mkChart('fateChart',{
+    type:'doughnut',
+    data:{ labels:pLbs.filter((_,i)=>pVals[i]>0), datasets:[{data:pVals.filter(v=>v>0),backgroundColor:['#1e40af','#f59e0b','#78716c','#facc15','#0ea5e9','#dc2626'],hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{position:'right',labels:{font:{size:8}}}}}
+  });
+
+  const oGF=dailySeries.map(d=>outagesData.find(x=>x.id===d.engDate)?.gridFaultMwh||0);
+  const o132=dailySeries.map(d=>outagesData.find(x=>x.id===d.engDate)?.line132kvMwh||0);
+  const oPL=dailySeries.map(d=>{ const o=outagesData.find(x=>x.id===d.engDate); return o?(o.fm33kvMwh+o.fmPenstockMwh+o.fmEquipMwh):0; });
+  mkChart('stackedOutageChart',{
+    type:'bar',
+    data:{ labels, datasets:[
+      {label:'Grid Fault',data:oGF,backgroundColor:'#f59e0b'},
+      {label:'132kV Line',data:o132,backgroundColor:'#ef4444'},
+      {label:'Plant/Equip',data:oPL,backgroundColor:'#8b5cf6'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:9}}}},
+      scales:{x:{stacked:true,ticks:{font:{size:8}}},y:{stacked:true,title:{display:true,text:'MWh Lost',font:{size:9}}}}
+    }
+  });
+}
+
+// ── Generate Report ───────────────────────────────────────────────────────────
+function generateReport(){
+  if(!currentComputed) return toast('Load data first',true);
+  const c=currentComputed;
+  const y=parseInt(document.getElementById('rep-year').value);
+  const m=document.getElementById('rep-month').value;
+
+  setStep(3);
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('report-actions').classList.add('visible');
+
+  const doc=document.getElementById('printable-report');
+  doc.style.display='block';
+  doc.innerHTML=buildReportHTML(c,m,y);
+  doc.classList.add('fade-in');
+
+  setTimeout(()=>renderCharts(c),150);
+  document.getElementById('right-panel').scrollTo({top:0,behavior:'smooth'});
+  toast('Report generated successfully');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
   await initializeApplication(true);
-  const ySel=document.getElementById('rep-year'); const mSel=document.getElementById('rep-month');
-  for(let y=2079; y<=2085; y++) ySel.add(new Option(y,y));
-  ySel.value=new Date().getFullYear()+57;
-  DISPLAY.forEach(m=>mSel.add(new Option(m,m)));
-  mSel.value='Falgun';
+
+  const ySel=document.getElementById('rep-year');
+  const mSel=document.getElementById('rep-month');
+
+  for(let y=2079;y<=2085;y++) ySel.add(new Option(y,y));
+
+  // Default: current Nepali year approximation
+  const now=new Date();
+  const nepalYear=now.getFullYear()+56+(now.getMonth()>=3?1:0);
+  ySel.value=nepalYear;
+
+  // Default to previous Nepali month safely (FIXED)
+  DISPLAY.forEach((m,i)=>mSel.add(new Option(m,CANONICAL[i])));
+  const nepMonth = (now.getMonth() + 8) % 12; 
+  mSel.value = CANONICAL[nepMonth];
+
   document.getElementById('btn-load').addEventListener('click',loadReport);
   document.getElementById('btn-save-notes').addEventListener('click',saveNarratives);
   document.getElementById('btn-generate').addEventListener('click',generateReport);
+  document.getElementById('btn-regen').addEventListener('click',generateReport);
 })();
 </script>
-
-  <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
-
-

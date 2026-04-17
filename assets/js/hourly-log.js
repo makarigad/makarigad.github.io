@@ -879,35 +879,49 @@ document.getElementById('dd-entry-time')?.addEventListener('change', async (e) =
 
     const targetDate = document.getElementById('dd-entry-date').value;
 
-    if (e.target.value === '08:00') {
+  if (e.target.value === '08:00') {
         document.getElementById('section-rainfall').classList.remove('hidden');
         
         // AUTOMATICALLY FETCH EXISTING RAINFALL DATA
         try {
-            const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || '';
-            const nums = nepaliDateStr.match(/\d+/g);
-            
-            if (nums && nums.length >= 3) {
-                const nYear = parseInt(nums[0]);
-                const nMonth = parseInt(nums[1]);
-                const nDay = parseInt(nums[2]);
-                const safeDayStr = String(nDay).padStart(2, '0');
+            const targetDate = document.getElementById('dd-entry-date').value;
+            const { data: calMap } = await supabase.from('calendar_mappings')
+                .select('*').eq('eng_date', targetDate).maybeSingle();
                 
+            let rainId = '';
+            if (calMap) {
+                // Exact database match without leading zeros
+                rainId = `${calMap.nep_year}_${calMap.nep_month}_${parseInt(calMap.nep_day)}`;
+            } else {
+                const fallbackStr = document.getElementById('nepali-date-display')?.innerText || '';
+                const nums = fallbackStr.match(/\d+/g) || [2081, 1, 1];
                 const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-                const monthName = bsMonthNames[nMonth - 1] || '';
-                
-                const rainId = `${nYear}_${monthName}_${safeDayStr}`;
-                const { data: curRain } = await supabase.from('rainfall_data').select('headworks, powerhouse').eq('id', rainId).maybeSingle();
-                
-                if (curRain) {
-                    if (document.getElementById('inp-rain-dam')) document.getElementById('inp-rain-dam').value = curRain.headworks !== null ? curRain.headworks : '';
-                    if (document.getElementById('inp-rain-ph')) document.getElementById('inp-rain-ph').value = curRain.powerhouse !== null ? curRain.powerhouse : '';
-                } else {
-                    if (document.getElementById('inp-rain-dam')) document.getElementById('inp-rain-dam').value = '';
-                    if (document.getElementById('inp-rain-ph')) document.getElementById('inp-rain-ph').value = '';
-                }
+                rainId = `${parseInt(nums[0])}_${bsMonthNames[parseInt(nums[1]) - 1]}_${parseInt(nums[2])}`;
             }
-        } catch (err) { console.error("Error fetching existing rainfall:", err); }
+
+            // Fetch the data including the new rain_events column
+            const { data: curRain } = await supabase.from('rainfall_data').select('headworks, powerhouse, rain_events').eq('id', rainId).maybeSingle();
+            
+            document.getElementById('rain-events-container').innerHTML = ''; // Clear container
+            
+            if (curRain) {
+                if (document.getElementById('inp-rain-dam')) document.getElementById('inp-rain-dam').value = curRain.headworks !== null ? curRain.headworks : '';
+                if (document.getElementById('inp-rain-ph')) document.getElementById('inp-rain-ph').value = curRain.powerhouse !== null ? curRain.powerhouse : '';
+                
+                // Load existing events or add one blank row
+                if (curRain.rain_events && curRain.rain_events.length > 0) {
+                    curRain.rain_events.forEach(ev => window.addRainEventRow(ev));
+                } else {
+                    window.addRainEventRow();
+                }
+            } else {
+                if (document.getElementById('inp-rain-dam')) document.getElementById('inp-rain-dam').value = '';
+                if (document.getElementById('inp-rain-ph')) document.getElementById('inp-rain-ph').value = '';
+                window.addRainEventRow(); // Start with one blank row
+            }
+        } catch (err) { 
+            console.error("Error fetching existing rainfall:", err); 
+        }
 
     } else if (e.target.value === '12:00') {
         document.getElementById('section-noon').classList.remove('hidden');
@@ -1043,6 +1057,73 @@ function addFaultRow() {
     });
 }
 
+// ADD THIS FUNCTION TO HANDLE DYNAMIC RAIN TIME RANGES
+function addRainEventRow(existingData = null) {
+    const container = document.getElementById('rain-events-container');
+    const rowId = 'rain-event-' + Date.now() + Math.random().toString(36).substr(2, 5);
+    
+    let hourOptions = '<option value="">HH</option>';
+    for(let h=0; h<24; h++) {
+        let hr = h.toString().padStart(2, '0');
+        hourOptions += `<option value="${hr}">${hr}</option>`;
+    }
+
+    const html = `
+    <div class="rain-row bg-slate-50 p-3 rounded border border-slate-200 relative flex flex-wrap gap-3 items-end" id="${rowId}">
+        <button type="button" onclick="document.getElementById('${rowId}').remove()" class="absolute top-2 right-2 text-slate-400 hover:text-rose-500 font-bold">&times;</button>
+        
+        <div class="w-full md:w-auto flex-1">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Intensity</label>
+            <select class="r-intensity w-full border p-1.5 rounded text-sm font-bold text-blue-800 outline-none">
+                <option value="Shower">Shower</option>
+                <option value="Rain">Rain</option>
+                <option value="Heavy Rain">Heavy Rain</option>
+            </select>
+        </div>
+        
+        <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1 text-center">Start Time</label>
+            <div class="flex items-center space-x-1">
+                <select class="r-start-h w-14 border p-1.5 rounded text-sm font-bold text-indigo-700 outline-none">${hourOptions}</select>
+                <span class="font-bold text-slate-400">:</span>
+                <input type="number" min="0" max="59" class="r-start-m w-14 border p-1.5 rounded text-sm font-bold text-indigo-700 outline-none text-center" placeholder="MM">
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1 text-center">End Time</label>
+            <div class="flex items-center space-x-1">
+                <select class="r-end-h w-14 border p-1.5 rounded text-sm font-bold text-indigo-700 outline-none">${hourOptions}</select>
+                <span class="font-bold text-slate-400">:</span>
+                <input type="number" min="0" max="59" class="r-end-m w-14 border p-1.5 rounded text-sm font-bold text-indigo-700 outline-none text-center" placeholder="MM">
+            </div>
+        </div>
+    </div>`;
+    
+    container.insertAdjacentHTML('beforeend', html);
+
+    // Pre-fill if editing existing data
+    if (existingData) {
+        const newRow = document.getElementById(rowId);
+        newRow.querySelector('.r-intensity').value = existingData.intensity;
+        if (existingData.start) {
+            newRow.querySelector('.r-start-h').value = existingData.start.split(':')[0];
+            newRow.querySelector('.r-start-m').value = existingData.start.split(':')[1];
+        }
+        if (existingData.end) {
+            newRow.querySelector('.r-end-h').value = existingData.end.split(':')[0];
+            newRow.querySelector('.r-end-m').value = existingData.end.split(':')[1];
+        }
+    }
+}
+
+// Bind the Add Event button
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'btn-add-rain-event') {
+        addRainEventRow();
+    }
+});
+
 const btnAddFault = document.getElementById('btn-add-fault');
 if(btnAddFault) {
     btnAddFault.replaceWith(btnAddFault.cloneNode(true));
@@ -1059,22 +1140,46 @@ if(btnRain) {
         btn.disabled = true;
 
         try {
-            const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
-            const nums = nepaliDateStr.match(/\d+/g) || [2081, 1, 1];
-            const nYear = parseInt(nums[0]);
-            const nMonth = parseInt(nums[1]);
-            const nDay = parseInt(nums[2]);
-            
-            // THE FIX: Secure the leading zero so Daily Master can see it
-            const safeDayStr = String(nDay).padStart(2, '0');
-            
-            const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-            const monthName = bsMonthNames[nMonth - 1] || '';
+            const targetDate = document.getElementById('dd-entry-date').value;
+            const { data: calMap } = await supabase.from('calendar_mappings')
+                .select('*').eq('eng_date', targetDate).maybeSingle();
 
-            const rainId = `${nYear}_${monthName}_${safeDayStr}`;
+            let nYear, monthName, nDay, rainId;
+            
+            if (calMap) {
+                nYear = calMap.nep_year;
+                monthName = calMap.nep_month;
+                nDay = parseInt(calMap.nep_day);
+                rainId = `${nYear}_${monthName}_${nDay}`;
+            } else {
+                const fallbackStr = document.getElementById('nepali-date-display')?.innerText || ''; 
+                const nums = fallbackStr.match(/\d+/g) || [2081, 1, 1];
+                nYear = parseInt(nums[0]);
+                nDay = parseInt(nums[2]);
+                const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+                monthName = bsMonthNames[parseInt(nums[1]) - 1] || '';
+                rainId = `${nYear}_${monthName}_${nDay}`;
+            }
 
             // Fetch existing so we don't accidentally overwrite anything
             const { data: curRain } = await supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle();
+
+            let eventsArray = [];
+            document.querySelectorAll('.rain-row').forEach(row => {
+                const intensity = row.querySelector('.r-intensity').value;
+                const sh = row.querySelector('.r-start-h').value;
+                const sm = row.querySelector('.r-start-m').value || '00';
+                const eh = row.querySelector('.r-end-h').value;
+                const em = row.querySelector('.r-end-m').value || '00';
+                
+                if (sh && eh) {
+                    eventsArray.push({
+                        intensity: intensity,
+                        start: `${sh}:${sm.padStart(2, '0')}`,
+                        end: `${eh}:${em.padStart(2, '0')}`
+                    });
+                }
+            });
 
             const payload = {
                 ...(curRain || {}),
@@ -1084,6 +1189,7 @@ if(btnRain) {
                 day: nDay,
                 headworks: parseFloat(document.getElementById('inp-rain-dam').value) || 0,
                 powerhouse: parseFloat(document.getElementById('inp-rain-ph').value) || 0,
+                rain_events: eventsArray, // --- ADD THIS NEW ARRAY ---
                 operator_email: window.currentUser?.email || null,
                 operator_uid: window.currentUser?.id || null,
                 updated_at: new Date().toISOString()
@@ -1152,7 +1258,7 @@ if(btnNoon) {
             if (!isNaN(rainDam) || !isNaN(rainPh)) {
                 const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', targetDate).maybeSingle();
                 if (cal) {
-                    const rainId = `${cal.nep_year}_${cal.nep_month}_${String(cal.nep_day).padStart(2, '0')}`;
+                    const rainId = `${cal.nep_year}_${cal.nep_month}_${cal.nep_day}`;
                     await supabase.from('rainfall_data').upsert({
                         id: rainId,
                         nepali_year: cal.nep_year,
@@ -1426,10 +1532,22 @@ if(btnLoadSum) {
             btn.innerText = "Loading...";
 
             try {
-                const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
-                const nums = nepaliDateStr.match(/\d+/g) || [2081, 1, 1];
-                const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-                const rainfallId = `${nums[0]}_${bsMonthNames[nums[1] - 1]}_${String(nums[2]).padStart(2, '0')}`;
+                // --- THE FIX: GET THE CORRECT NEPALI DATE FOR THE SELECTED SUMMARY DATE ---
+                const { data: calMap } = await supabase.from('calendar_mappings')
+                    .select('*').eq('eng_date', targetDate).maybeSingle();
+                    
+                let rainfallId = '';
+                if (calMap) {
+                    // Use the database mapping directly to ensure a 100% exact match
+                    rainfallId = `${calMap.nep_year}_${calMap.nep_month}_${parseInt(calMap.nep_day)}`;
+                } else {
+                    // Failsafe fallback
+                    const fallbackStr = document.getElementById('nepali-date-display')?.innerText || '';
+                    const nums = fallbackStr.match(/\d+/g) || [2081, 1, 1];
+                    const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+                    rainfallId = `${parseInt(nums[0])}_${bsMonthNames[parseInt(nums[1]) - 1]}_${parseInt(nums[2])}`;
+                }
+                // --------------------------------------------------------------------------
 
                 const [balRes, rainRes, outRes] = await Promise.all([
                     supabase.from('balanch_readings').select('*').eq('eng_date', targetDate).limit(1).maybeSingle(),
@@ -1453,6 +1571,73 @@ if(btnLoadSum) {
 
                 document.getElementById('sum-rain-dam').innerText = r.headworks ?? '-';
                 document.getElementById('sum-rain-ph').innerText = r.powerhouse ?? '-';
+
+                // --- NEW: RENDER DETAILED RAINFALL EVENTS TABLE ---
+                const rainContainer = document.getElementById('summary-rain-events-container');
+                if (rainContainer) {
+                    if (r.rain_events && r.rain_events.length > 0) {
+                        // Setup trackers for the 3 categories
+                        let rainDetails = {
+                            'Heavy Rain': { times: [], totalMins: 0 },
+                            'Rain': { times: [], totalMins: 0 },
+                            'Shower': { times: [], totalMins: 0 }
+                        };
+
+                        // Process each time range logged by the operator
+                        r.rain_events.forEach(ev => {
+                            if (rainDetails[ev.intensity]) {
+                                rainDetails[ev.intensity].times.push(`${ev.start} to ${ev.end}`);
+                                
+                                // Calculate duration in minutes
+                                let [sh, sm] = ev.start.split(':').map(Number);
+                                let [eh, em] = ev.end.split(':').map(Number);
+                                let sMins = sh * 60 + sm;
+                                let eMins = eh * 60 + em;
+                                if (eMins < sMins) eMins += 24 * 60; // Handle if event crosses midnight
+                                
+                                rainDetails[ev.intensity].totalMins += (eMins - sMins);
+                            }
+                        });
+
+                        // Helper functions for formatting
+                        const formatHrs = (mins) => mins > 0 ? (mins / 60).toFixed(2) : '-';
+                        const formatTimes = (timesArr) => timesArr.length > 0 ? timesArr.join('<br>') : '-';
+
+                        // Build the Excel-style Table
+                        rainContainer.innerHTML = `
+                            <table class="w-full text-center text-xs border-collapse mt-2">
+                                <thead class="bg-blue-50 text-blue-800">
+                                    <tr>
+                                        <th colspan="2" class="p-1.5 border border-blue-200">Heavy Rain (Hrs)</th>
+                                        <th colspan="2" class="p-1.5 border border-blue-200">Rain (Hrs)</th>
+                                        <th colspan="2" class="p-1.5 border border-blue-200">Shower (Hrs)</th>
+                                    </tr>
+                                    <tr class="bg-blue-50/50 text-[10px]">
+                                        <th class="p-1 border border-blue-200">Time</th><th class="p-1 border border-blue-200">Hours</th>
+                                        <th class="p-1 border border-blue-200">Time</th><th class="p-1 border border-blue-200">Hours</th>
+                                        <th class="p-1 border border-blue-200">Time</th><th class="p-1 border border-blue-200">Hours</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white">
+                                    <tr>
+                                        <td class="p-1.5 border border-blue-200 text-slate-600 align-top leading-relaxed">${formatTimes(rainDetails['Heavy Rain'].times)}</td>
+                                        <td class="p-1.5 border border-blue-200 font-bold text-rose-600 align-top bg-rose-50/30">${formatHrs(rainDetails['Heavy Rain'].totalMins)}</td>
+                                        
+                                        <td class="p-1.5 border border-blue-200 text-slate-600 align-top leading-relaxed">${formatTimes(rainDetails['Rain'].times)}</td>
+                                        <td class="p-1.5 border border-blue-200 font-bold text-blue-600 align-top bg-blue-50/30">${formatHrs(rainDetails['Rain'].totalMins)}</td>
+                                        
+                                        <td class="p-1.5 border border-blue-200 text-slate-600 align-top leading-relaxed">${formatTimes(rainDetails['Shower'].times)}</td>
+                                        <td class="p-1.5 border border-blue-200 font-bold text-sky-600 align-top bg-sky-50/30">${formatHrs(rainDetails['Shower'].totalMins)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        `;
+                    } else {
+                        // Fallback if no specific times were added
+                        rainContainer.innerHTML = `<div class="mt-3 p-2 bg-slate-50 text-slate-400 text-center text-xs rounded border border-dashed border-slate-200">No specific time ranges logged today.</div>`;
+                    }
+                }
+                // ---------------------------------------------------
 
                 document.getElementById('sum-out-trips').innerText = o.no_of_trippings ?? '0';
                 document.getElementById('sum-out-grid').innerText = o.energy_loss_line_trip ?? '0';
@@ -2562,6 +2747,57 @@ window.processLegacyImport = async function() {
     };
     reader.readAsArrayBuffer(file);
 }
+
+// ==========================================
+// AUTO-REFRESH SUMMARY TABS ON DATE CHANGE
+// ==========================================
+// 1. Auto-refresh Daily Summary when date picker changes
+const summaryDatePicker = document.getElementById('summary-date-picker');
+if (summaryDatePicker) {
+    summaryDatePicker.addEventListener('change', () => {
+        const btn = document.getElementById('btn-load-summary');
+        if (btn && !btn.disabled) btn.click();
+    });
+}
+
+// 2. Auto-refresh Monthly Tabular when month or year dropdown changes
+const summaryMonthSelect = document.getElementById('summary-month-select');
+const summaryMonthYear = document.getElementById('summary-month-year');
+
+if (summaryMonthSelect) {
+    summaryMonthSelect.addEventListener('change', () => {
+        const btn = document.getElementById('btn-load-summary');
+        if (btn && !btn.disabled) btn.click();
+    });
+}
+
+if (summaryMonthYear) {
+    summaryMonthYear.addEventListener('change', () => {
+        const btn = document.getElementById('btn-load-summary');
+        if (btn && !btn.disabled) btn.click();
+    });
+}
+
+// Add auto-refresh to the main Hourly Log date picker too, just in case!
+const mainDatePicker = document.getElementById('log-date');
+if (mainDatePicker) {
+    mainDatePicker.addEventListener('change', () => {
+        if (typeof window.fetchLogs === 'function') window.fetchLogs();
+    });
+}
+
+// 3. Auto-refresh Daily Data Master (8:00 AM / 12:00 PM) on date change
+const dailyDataDate = document.getElementById('dd-entry-date');
+if (dailyDataDate) {
+    dailyDataDate.addEventListener('change', () => {
+        const timeSelect = document.getElementById('dd-entry-time');
+        // If 08:00 or 12:00 is already selected, force it to re-fetch the data for the new date!
+        if (timeSelect && timeSelect.value !== '') {
+            timeSelect.dispatchEvent(new Event('change'));
+        }
+    });
+}
+
 
 // Start the whole process
 startPage();

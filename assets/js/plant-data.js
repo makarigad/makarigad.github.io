@@ -1,4 +1,4 @@
-import { supabase } from './core-app.js';   // note: we don't need parseToUTCDate here, but showNotification is used
+import { supabase } from './core-app.js';   
 
 // --- Global Variables ---
 let trendChartInstance = null;
@@ -24,7 +24,35 @@ let isLoadingExpenses = false;
 
 const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
 
-// Universal Date Parser to fix Javascript UTC Timezone drift issues from Excel
+// NEW: Store precise calendar mappings
+let calendarMap = {}; 
+
+async function loadCalendarMappings() {
+    try {
+        const { data, error } = await supabase.from('calendar_mappings').select('*');
+        if (error) throw error;
+        if (data) {
+            data.forEach(d => {
+                calendarMap[d.eng_date] = d;
+            });
+        }
+    } catch (e) {
+        console.warn("Failed to load calendar mappings:", e);
+    }
+}
+
+// Global Event Listener for Date Auto-Fill
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'new-date') {
+        const engDate = e.target.value;
+        const nepInput = document.getElementById('new-nepali_date');
+        if (nepInput && calendarMap[engDate]) {
+            nepInput.value = calendarMap[engDate].nep_date_str;
+        }
+    }
+});
+
+// Universal Date Parser
 function parseExcelDate(dv) {
     if (dv == null || dv === '') return null;
     let cd;
@@ -100,11 +128,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// --- Trend Data Handling (deprecated, replaced by updateTrendChart) ---
-async function loadTrendData() {
-    // consolidated into updateTrendChart
-}
-
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         if (e.target.dataset.target === 'trends-tab') {
@@ -142,40 +165,32 @@ document.getElementById('quick-fill-zero')?.addEventListener('click', fillMissin
 document.getElementById('show-both-metrics')?.addEventListener('change', updateRainfallChart);
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialize the Chart Month Dropdown
     const rfChartMonthSelect = document.getElementById('rf-chart-month');
     if (rfChartMonthSelect) {
         rfChartMonthSelect.innerHTML = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
         rfChartMonthSelect.addEventListener('change', updateRainfallChart);
     }
     
-    // 2. Sync Grid Month changes to the Chart Month
     document.getElementById('grid-rf-month')?.addEventListener('change', (e) => {
-        renderRainfallGrid(); // Keep the existing grid update
+        renderRainfallGrid(); 
         if (rfChartMonthSelect) {
             rfChartMonthSelect.value = e.target.value;
             updateRainfallChart();
         }
     });
-
-  
 });
-
 
 function updateRainfallChart() {
     const canvas = document.getElementById('rainfall-chart');
     if (!canvas) return;
-    // Wait until canvas has dimensions
     if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
         setTimeout(updateRainfallChart, 200);
         return;
     }
 
-        try {
+    try {
         const ctx = canvas.getContext('2d');
-
         const monthDropdown = document.getElementById('rf-chart-month');
-        
         const selectedMonth = monthDropdown && monthDropdown.value ? monthDropdown.value : 'Baisakh';
         const selectedMetric = document.getElementById('rf-chart-metric')?.value || 'headworks';
         const showBoth = document.getElementById('show-both-metrics')?.checked || false;
@@ -247,7 +262,7 @@ function updateRainfallChart() {
     } catch (err) { console.error("Chart Error: ", err); }
 }
 
-    function updateMonthlySummary() {
+function updateMonthlySummary() {
     const y = parseInt(document.getElementById('grid-rf-year')?.value);
     const m = document.getElementById('grid-rf-month')?.value;
     if (!y || !m) return;
@@ -305,15 +320,9 @@ function updateRainfallChart() {
     });
 }
 
-// ==========================================
-// THE FIX: Intersection Observer
-// This perfectly tracks when the tab becomes visible on the screen, 
-// bypassing all timeout and click errors.
-// ==========================================
 const rainfallTabObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
-            console.log("Rainfall tab is now visible! Drawing charts...");
             if (typeof updateRainfallChart === 'function') updateRainfallChart();
             if (typeof updateMonthlySummary === 'function') updateMonthlySummary();
         }
@@ -326,7 +335,6 @@ if (rainTabEl) {
     rainfallTabObserver.observe(rainTabEl);
 }
 
-// Helper to calculate the current Nepali Date for defaults
 function getNepDateObj() {
     const d = new Date();
     let y = d.getFullYear() + 56;
@@ -352,7 +360,6 @@ function updateRainfallGridFilters() {
     ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
     mSelect.innerHTML = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
 
-    // SMART DEFAULT: Auto-select the most recent data you have, or the current month
     let defaultYear = nd.year;
     let defaultMonth = nd.month;
     if (allRainfallData.length > 0) {
@@ -368,14 +375,12 @@ function updateRainfallGridFilters() {
 }
 
 function updateRainfallYearsCheckboxes() {
-    
     const container = document.getElementById('rf-year-checkboxes');
     if (!container) return;
     
     const years = [...new Set(allRainfallData.map(d => d.nepali_year))].sort((a, b) => b - a);
     let checkedBoxes = Array.from(container.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
     
-    // Fix: If no years are checked, default to the most recent year
     if (checkedBoxes.length === 0 && years.length > 0) {
         checkedBoxes.push(years[0]);
     }
@@ -391,7 +396,6 @@ function updateRainfallYearsCheckboxes() {
     updateRainfallChart();
 }
 
-// FIX FOR CHART.JS HIDDEN TAB BUG: Forces charts to draw when you click the Rainfall tab
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         if (e.target.dataset.target === 'rainfall-tab') {
@@ -430,14 +434,12 @@ async function loadRainfallData() {
             return map[m.toLowerCase().trim()] ?? 99;
         };
 
-        // FIX: Ensure the absolute newest data is at the very top of the list
         allRainfallData = data.sort((a, b) => 
             b.nepali_year - a.nepali_year || 
             getMonthIdx(b.nepali_month) - getMonthIdx(a.nepali_month) || 
             a.day - b.day
         );
         
-        // Proper execution sequence
         renderRainfallTable();
         updateRainfallGridFilters(); 
         updateRainfallYearsCheckboxes();
@@ -526,9 +528,8 @@ window.editRainfallCell = async function(y, m, d, field, currentVal) {
 
 document.getElementById('grid-rf-year')?.addEventListener('change', () => {
     renderRainfallGrid();
-    updateRainfallChart();  // Sync comparison chart when year changes
+    updateRainfallChart(); 
 });
-// NOTE: grid-rf-month is already handled inside DOMContentLoaded — do not re-add it here
 
 async function fillMissingDaysZero() {
     if (!currentUser) return showNotification("You must be logged in.", true);
@@ -584,7 +585,7 @@ function createRainfallInputRow() {
     const yearOpts = years.map(y => `<option value="${y}">${y}</option>`).join('');
     const monthOpts = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
 
-    return `<tr class="bg-indigo-50/60 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
+    return `<tr class="bg-indigo-50/60 sticky top-[42px] z-20 shadow-sm border-b-2 border-indigo-200">
         <td><select id="new-rf-year" class="input-cell font-bold">${yearOpts}</select></td>
         <td><select id="new-rf-month" class="input-cell font-bold">${monthOpts}</select></td>
         <td><input type="number" id="new-rf-day" min="1" max="32" class="input-cell" placeholder="Day" required /></td>
@@ -640,13 +641,11 @@ async function handleAddOrUpdateRainfall(docId, isUpd = false) {
     if (!currentUser) return showNotification("You must be logged in.", true);
 
     const pre = isUpd ? 'edit-rf-' : 'new-rf-';
-
     let y = isUpd ? docId.split('_')[0] : document.getElementById('new-rf-year')?.value;
     let m = isUpd ? docId.split('_')[1] : document.getElementById('new-rf-month')?.value;
     let d = isUpd ? docId.split('_')[2] : document.getElementById('new-rf-day')?.value;
 
     if (!d || d.trim() === '') {
-        alert("⚠️ Please enter a Day!");
         return showNotification("Day is required", true);
     }
 
@@ -676,7 +675,6 @@ async function handleAddOrUpdateRainfall(docId, isUpd = false) {
             if (document.getElementById('new-rf-powerhouse')) document.getElementById('new-rf-powerhouse').value = '';
         }
     } catch (e) {
-        alert("CRITICAL DATABASE ERROR:\n\n" + e.message); 
         showNotification("Error saving data: " + e.message, true);
     }
 }
@@ -742,7 +740,6 @@ document.getElementById('rf-file-upload')?.addEventListener('change', (ev) => {
 async function processAndUploadRainfall(jd) {
     if (jd.length < 3) return showNotification("File is too small or empty.", true);
 
-    // 1. Locate the "Year" row
     let yearRowIdx = -1;
     for (let i = 0; i < 10; i++) {
         if (jd[i] && jd[i].some(cell => String(cell).toLowerCase().includes('year'))) {
@@ -758,7 +755,6 @@ async function processAndUploadRainfall(jd) {
     const yearCols = []; 
     let currentYearNum = null;
 
-    // 2. Map the transposed columns to specific years
     for (let c = 1; c < headerRow.length; c++) {
         if (yearRow[c]) {
             const yMatch = String(yearRow[c]).match(/\d{4}/);
@@ -782,14 +778,12 @@ async function processAndUploadRainfall(jd) {
     let currentMonth = null;
     const payloadMap = new Map();
     
-    // Internal Helper to secure the month name
     const getMonthName = (m) => {
         if (!m) return null;
         const map = { baisakh: "Baisakh", jestha: "Jestha", ashadh: "Ashadh", ashar: "Ashadh", shrawan: "Shrawan", sawan: "Shrawan", bhadra: "Bhadra", ashoj: "Ashoj", asoj: "Ashoj", kartik: "Kartik", mangsir: "Mangsir", mangshir: "Mangsir", poush: "Poush", magh: "Magh", falgun: "Falgun", fagun: "Falgun", chaitra: "Chaitra", chait: "Chaitra" };
         return map[String(m).toLowerCase().trim()] || null;
     };
 
-    // 3. Scan the grid rows
     for (let r = yearRowIdx + 2; r < jd.length; r++) {
         const row = jd[r];
         if (!row || row.length === 0) continue;
@@ -851,7 +845,7 @@ async function processAndUploadRainfall(jd) {
 }
 
 // =====================================
-// 8. DETAILED SITE EXPENSES (unchanged)
+// 8. DETAILED SITE EXPENSES
 // =====================================
 let allExpensesData = [];
 const expensesContainer = document.getElementById("expenses-tables-container");
@@ -1303,7 +1297,7 @@ async function processAndUploadWorkbookExpenses(workbook) {
 }
 
 // ==========================================
-// 1. POWERHOUSE METERING (unchanged, but added loading flag)
+// 1. POWERHOUSE METERING
 // ==========================================
 const dataBody = document.getElementById("data-body");
 
@@ -1313,7 +1307,7 @@ function createInputRow() {
     const localToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60 * 1000));
     const dateString = localToday.toISOString().split('T')[0];
 
-    return `<tr id="add-new-row" class="bg-indigo-50/60 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
+    return `<tr id="add-new-row" class="bg-indigo-50/60 sticky top-[40px] z-20 shadow-sm border-b-2 border-indigo-200">
         <td><input type="date" id="new-date" class="input-cell" value="${dateString}" required /></td>
         <td><input type="text" id="new-nepali_date" class="input-cell" placeholder="YYYY.MM.DD" /></td>
         <td><input type="number" id="new-unit1_gen" step="any" class="input-cell" /></td>
@@ -1337,8 +1331,9 @@ function createInputRow() {
 function createDisplayRowHtml(d) {
     const canEdit = ['admin'].includes(userRole);
     const docStr = JSON.stringify(d).replace(/'/g, "&apos;");
+    const nepDate = d.nepali_date || calendarMap[d.id]?.nep_date_str || '—';
     return `<td class="font-bold text-slate-900">${d.id}</td>
-        <td class="font-medium text-slate-700">${d.nepali_date || '—'}</td>
+        <td class="font-medium text-slate-700">${nepDate}</td>
         <td class="text-slate-600">${formatNumber(d.unit1_gen)}</td>
         <td class="text-slate-600">${formatNumber(d.unit2_gen)}</td>
         <td class="text-slate-600">${formatNumber(d.unit1_trans)}</td>
@@ -1360,8 +1355,9 @@ function createDisplayRowHtml(d) {
 }
 
 function createEditRowHtml(docData) {
+    const nepDate = docData.nepali_date || calendarMap[docData.id]?.nep_date_str || '';
     return `<td><input type="date" class="input-cell bg-slate-100" value="${docData.id}" disabled /></td>
-        <td><input type="text" id="edit-nepali_date" class="input-cell" value="${docData.nepali_date || ''}" /></td>
+        <td><input type="text" id="edit-nepali_date" class="input-cell" value="${nepDate}" /></td>
         <td><input type="number" id="edit-unit1_gen" step="any" class="input-cell" value="${docData.unit1_gen ?? ''}" /></td>
         <td><input type="number" id="edit-unit2_gen" step="any" class="input-cell" value="${docData.unit2_gen ?? ''}" /></td>
         <td><input type="number" id="edit-unit1_trans" step="any" class="input-cell" value="${docData.unit1_trans ?? ''}" /></td>
@@ -1403,11 +1399,13 @@ async function handleAddOrUpdateEntry(docId, isUpdate = false) {
     const dateVal = isUpdate ? docId : document.getElementById(`${prefix}date`)?.value;
     if (!dateVal) return showNotification("Please select an English date.", true);
 
+    const finalNepDate = document.getElementById(`${prefix}nepali_date`)?.value || calendarMap[dateVal]?.nep_date_str || null;
+
     const data = {
         id: dateVal,
         operator_email: currentUser?.email || '',
         updated_at: new Date().toISOString(),
-        nepali_date: document.getElementById(`${prefix}nepali_date`)?.value || null,
+        nepali_date: finalNepDate,
         unit1_gen: parseFloat(document.getElementById(`${prefix}unit1_gen`)?.value) || null,
         unit2_gen: parseFloat(document.getElementById(`${prefix}unit2_gen`)?.value) || null,
         unit1_trans: parseFloat(document.getElementById(`${prefix}unit1_trans`)?.value) || null,
@@ -1435,7 +1433,6 @@ async function handleAddOrUpdateEntry(docId, isUpdate = false) {
         if (!currentBalanch || currentBalanch.main_import == null) { 
             balanchSync.main_import = data.import_substation; needsSync = true; 
         }
-        // 👉 SYNC NEPALI DATE TO SUBSTATION
         if (data.nepali_date && (!currentBalanch || !currentBalanch.nep_date)) {
             balanchSync.nep_date = data.nepali_date; needsSync = true;
         }
@@ -1481,13 +1478,13 @@ async function loadAndListenData() {
     if (isLoadingData) return;
     isLoadingData = true;
     let data = [], page = 0, more = true;
-    const todayStr = getTodayStr(); // <-- FIX: Calculate today's exact date
+    const todayStr = getTodayStr(); 
 
     while (more) {
         try {
             const { data: chunk, error } = await supabase.from('plant_data')
                 .select('*')
-                .lte('id', todayStr) // <-- FIX: Stop fetching at today's date!
+                .lte('id', todayStr) 
                 .order('id', { ascending: true })
                 .range(page * 1000, (page + 1) * 1000 - 1);
             if (error) throw error;
@@ -1503,13 +1500,85 @@ async function loadAndListenData() {
         renderTable([...allData].reverse());
         populateHistoricalYearsFromAllData();
         setDefaultTrendToLastNepaliMonth();
+        if (typeof populateExportYears === 'function') populateExportYears();
     }
     isLoadingData = false;
 }
 
 // ==========================================
-// 1. POWERHOUSE METERING - UPLOAD FIX (unchanged)
+// 1. POWERHOUSE METERING - EXPORT AND UPLOAD
 // ==========================================
+// Function to populate export years dynamically
+function populateExportYears() {
+    const yearSelect = document.getElementById('export-year-select');
+    if (!yearSelect) return;
+    const yearsSet = new Set();
+    allData.forEach(d => {
+        const nepDate = d.nepali_date || calendarMap[d.id]?.nep_date_str;
+        if (nepDate) {
+            yearsSet.add(nepDate.split('.')[0]);
+        }
+    });
+    const currentSelection = yearSelect.value;
+    yearSelect.innerHTML = '<option value="All">All Years</option>';
+    Array.from(yearsSet).sort((a, b) => b - a).forEach(y => {
+        yearSelect.add(new Option(y, y));
+    });
+    if (Array.from(yearSelect.options).some(opt => opt.value === currentSelection)) {
+        yearSelect.value = currentSelection;
+    }
+}
+
+document.getElementById('download-btn')?.addEventListener('click', () => {
+    const monthFilter = document.getElementById('export-month-select')?.value || 'All';
+    const yearFilter = document.getElementById('export-year-select')?.value || 'All';
+    
+    let filteredData = allData;
+    if (monthFilter !== 'All' || yearFilter !== 'All') {
+        filteredData = allData.filter(d => {
+            const nepDate = d.nepali_date || calendarMap[d.id]?.nep_date_str;
+            if (!nepDate) return false;
+            const parts = nepDate.split('.');
+            if (parts.length === 3) {
+                const yMatch = (yearFilter === 'All' || parts[0] === yearFilter);
+                const mIdx = parseInt(parts[1], 10) - 1;
+                const mMatch = (monthFilter === 'All' || nepaliMonths[mIdx] === monthFilter);
+                return yMatch && mMatch;
+            }
+            return false;
+        });
+    }
+
+    if (filteredData.length === 0) {
+        return showNotification("No data to export for selected filter.", true);
+    }
+
+    const exportData = filteredData.map(d => {
+        const nepDate = d.nepali_date || calendarMap[d.id]?.nep_date_str || '—';
+        return {
+            'English Date': d.id,
+            'Nepali Date': nepDate,
+            'Unit 1 Gen (MWh)': (d.unit1_gen !== null && d.unit1_gen !== undefined) ? d.unit1_gen : null,
+            'Unit 2 Gen (MWh)': (d.unit2_gen !== null && d.unit2_gen !== undefined) ? d.unit2_gen : null,
+            'Unit 1 Trans (MWh)': d.unit1_trans,
+            'Unit 2 Trans (MWh)': d.unit2_trans,
+            'Station Trans (kWh)': d.station_trans,
+            'Import Outgoing (MWh)': d.import_outgoing,
+            'Import Substation (MWh)': d.import_substation,
+            'Export Plant (MWh)': d.export_plant,
+            'Export Substation (MWh)': d.export_substation,
+            'Unit 1 Hrs': d.unit1_counter,
+            'Unit 2 Hrs': d.unit2_counter,
+            'Operator': d.operator_email
+        };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), "Daily Data");
+    const filename = monthFilter === 'All' ? "Daily_Powerhouse_Data.xlsx" : `Daily_Powerhouse_${monthFilter}.xlsx`;
+    XLSX.writeFile(wb, filename);
+});
+
 document.getElementById('daily-upload-btn')?.addEventListener('click', () => {
     document.getElementById('file-upload')?.click();
 });
@@ -1519,7 +1588,6 @@ document.getElementById('file-upload')?.addEventListener('change', (e) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
         try {
-            // raw: true ensures we get pure numbers from Excel, bypassing Javascript's timezone logic
             const workbook = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
             showConfirmation('Confirm Upload', `Upload Powerhouse Daily Data?`, () => processAndUploadData(workbook));
         } catch (err) {
@@ -1536,7 +1604,6 @@ async function processAndUploadData(workbook) {
     let targetSheet = null;
     let headerRowIndex = -1;
 
-    // Smart Scanner: Search for the sheet containing Daily Meter Data
     for (const sheetName of workbook.SheetNames) {
         const jd = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true });
         for (let i = 0; i < Math.min(10, jd.length); i++) {
@@ -1573,7 +1640,7 @@ async function processAndUploadData(workbook) {
     if (colMap.englishDate === -1) colMap.englishDate = 1; 
     if (colMap.nepaliDate === -1) colMap.nepaliDate = 0;
 
-    const payloadMap = new Map(); // Uses Map to PREVENT duplicate date conflicts
+    const payloadMap = new Map(); 
 
     for (let r = headerRowIndex + 1; r < targetSheet.length; r++) {
         const row = targetSheet[r];
@@ -1582,7 +1649,6 @@ async function processAndUploadData(workbook) {
         const dv = row[colMap.englishDate];
         if (dv == null || dv === '') continue;
 
-        // BULLETPROOF DATE PARSER: Completely bypasses Timezone Shifts
         let ds = null;
         if (typeof dv === 'number') {
             const ex = XLSX.SSF.parse_date_code(dv, { date1904: false });
@@ -1591,17 +1657,14 @@ async function processAndUploadData(workbook) {
             }
         } else if (typeof dv === 'string') {
             const cleanStr = dv.trim();
-            // Priority 1: Strict text match for YYYY-MM-DD
             const isoMatch = cleanStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
             if (isoMatch) {
                 ds = `${isoMatch[1]}-${String(isoMatch[2]).padStart(2, '0')}-${String(isoMatch[3]).padStart(2, '0')}`;
             } else {
-                // Priority 2: Strict text match for DD-MM-YYYY
                 const ukMatch = cleanStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
                 if (ukMatch) {
                     ds = `${ukMatch[3]}-${String(ukMatch[2]).padStart(2, '0')}-${String(ukMatch[1]).padStart(2, '0')}`;
                 } else {
-                    // Priority 3: Fallback using LOCAL getters (NOT UTC) to prevent Nepal -1 Day shift
                     const dt = new Date(cleanStr.replace(/-/g, '/'));
                     if (!isNaN(dt.getTime())) {
                         ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
@@ -1612,7 +1675,6 @@ async function processAndUploadData(workbook) {
 
         if (!ds || ds.includes("NaN")) continue;
 
-        // Number parser: strips commas and handles empty dashes safely
         const parseNum = (idx) => {
             if (idx === -1 || row[idx] == null || String(row[idx]).trim() === '' || String(row[idx]).trim() === '-') return null;
             const cleanVal = String(row[idx]).replace(/,/g, '').trim();
@@ -1620,11 +1682,13 @@ async function processAndUploadData(workbook) {
             return isNaN(num) ? null : num;
         };
 
+        const sheetNepDate = row[colMap.nepaliDate] ? String(row[colMap.nepaliDate]).trim() : null;
+        
         payloadMap.set(ds, {
             id: ds,
             operator_email: currentUser?.email || '',
             operator_uid: currentUser?.id || '',
-            nepali_date: row[colMap.nepaliDate] ? String(row[colMap.nepaliDate]).trim() : null,
+            nepali_date: sheetNepDate || calendarMap[ds]?.nep_date_str || null,
             unit1_gen: parseNum(colMap.unit1Gen),
             unit2_gen: parseNum(colMap.unit2Gen),
             unit1_trans: parseNum(colMap.unit1Trans),
@@ -1643,7 +1707,6 @@ async function processAndUploadData(workbook) {
     if (payload.length === 0) return showNotification("No valid rows found to upload.", true);
 
     try {
-        // EXPLICIT CONFLICT RESOLUTION: Ensures existing dates are updated rather than throwing silent errors
         const { error } = await supabase.from('plant_data').upsert(payload, { onConflict: 'id' });
         if (error) throw error;
         showNotification(`Successfully uploaded ${payload.length} rows.`);
@@ -1654,13 +1717,13 @@ async function processAndUploadData(workbook) {
 }
 
 // ==========================================
-// 2. SUBSTATION METERING (BALANCH) – unchanged, added loading flag
+// 2. SUBSTATION METERING (BALANCH) 
 // ==========================================
 const balanchBody = document.getElementById("balanch-body");
 const balanchCols = ['main_import', 'main_export', 'check_import', 'check_export'];
 
 function createBalanchInputRow() {
-    return `<tr class="bg-indigo-50/60 sticky top-0 shadow-sm border-b-2 border-indigo-200 z-10">
+    return `<tr class="bg-indigo-50/60 sticky top-[64px] shadow-sm border-b-2 border-indigo-200 z-10">
         <td class="tight-cell-input"><input type="date" id="new-balanch-date" class="input-cell font-bold" value="${getTodayStr()}" required /><\/td>
         <td class="tight-cell-input"><input type="text" id="new-balanch-nep" class="input-cell" placeholder="YYYY.MM.DD" /><\/td>
         ${balanchCols.map(c => `<td class="tight-cell-input"><input type="number" id="new-balanch-${c}" step="any" class="input-cell font-bold ${c.includes('export') ? 'text-indigo-700' : 'text-emerald-700'}" /><\/td>`).join('')}
@@ -1719,13 +1782,13 @@ async function loadBalanchData() {
     if (isLoadingBalanch) return;
     isLoadingBalanch = true;
     let data = [], page = 0, more = true;
-    const todayStr = getTodayStr(); // <-- FIX
+    const todayStr = getTodayStr(); 
 
     while (more) {
         try {
             const { data: chunk, error } = await supabase.from('balanch_readings')
                 .select('*')
-                .lte('eng_date', todayStr) // <-- FIX
+                .lte('eng_date', todayStr) 
                 .order('eng_date', { ascending: false })
                 .range(page * 1000, (page + 1) * 1000 - 1);
             if (error) throw error;
@@ -1760,22 +1823,20 @@ async function handleAddOrUpdateBalanch(docId, isUpdate = false) {
         const { error: bErr } = await supabase.from('balanch_readings').upsert(payload);
         if (bErr) throw bErr;
 
-        // Prepare the update for the Daily Metering tab (plant_data table)
         const plantSync = { 
             id: targetDate, 
             updated_at: new Date().toISOString(),
-            export_substation: payload.main_export, // Changed from export_plant to export_substation
+            export_substation: payload.main_export, 
             import_substation: payload.main_import, 
             nepali_date: payload.nep_date           
         };
 
-        // EXECUTE SYNC: This sends the data to the Daily Metering master table
         await supabase.from('plant_data').upsert(plantSync, { onConflict: 'id' });
 
         showNotification(`✅ Substation saved & Daily Metering updated!`);
         editingBalanchId = null;
-        loadBalanchData(); // Refreshes Substation Tab
-        loadAndListenData(); // Refreshes Daily Metering Tab
+        loadBalanchData(); 
+        loadAndListenData(); 
     } catch (error) {
         showNotification("Error: " + error.message, true);
     }
@@ -1802,9 +1863,6 @@ balanchBody?.addEventListener('click', e => {
     }
 });
 
-// ==========================================
-// 2. SUBSTATION METERING (BALANCH) - UPLOAD (unchanged)
-// ==========================================
 document.getElementById('balanch-upload-btn')?.addEventListener('click', () => {
     document.getElementById('balanch-file-upload')?.click();
 });
@@ -1815,7 +1873,6 @@ document.getElementById('balanch-file-upload')?.addEventListener('change', (ev) 
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            // raw: true forces exact numeric values, preventing Javascript from changing Excel dates
             const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
             showConfirmation('Confirm Upload', `Scan and upload Substation Data?`, () => processBalanchUpload(workbook));
         } catch (error) {
@@ -1832,15 +1889,13 @@ async function processBalanchUpload(workbook) {
     let targetSheet = null;
     let dataStartRow = -1;
 
-    // 1. SMART SCANNER: Find the correct sheet and the row where data starts
     for (const sheetName of workbook.SheetNames) {
         const jd = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true });
         for(let i=0; i < Math.min(10, jd.length); i++) {
             const rowStr = (jd[i] || []).map(c => String(c||'').toLowerCase()).join('');
-            // Identify the sub-header row
             if(rowStr.includes('nepali') && rowStr.includes('english')) {
                 targetSheet = jd;
-                dataStartRow = i + 1; // Data begins exactly one row below the sub-headers
+                dataStartRow = i + 1; 
                 break;
             }
         }
@@ -1853,19 +1908,15 @@ async function processBalanchUpload(workbook) {
 
     const payloadMap = new Map(); 
     
-    // 2. EXTRACT DATA USING STRICT TEMPLATE INDICES
-    // Col 0: Nepali Date, Col 1: English Date, Col 2: Main Export, Col 3: Main Import, Col 4: Check Export, Col 5: Check Import, Col 6: Remarks
     for(let r = dataStartRow; r < targetSheet.length; r++) {
         const row = targetSheet[r];
         if (!row || row.length === 0) continue;
 
-        // Skip any stray header rows if they bled through
         if (String(row[1]||'').toLowerCase().includes('english') || String(row[2]||'').toLowerCase().includes('export')) continue;
 
         const dv = row[1]; 
         if (dv == null || dv === '') continue;
 
-        // Bulletproof Date Parser to prevent timezone shifts (Nepal +5:45 bug)
         let ds = null;
         if (typeof dv === 'number') {
             const ex = XLSX.SSF.parse_date_code(dv, { date1904: false });
@@ -1874,14 +1925,12 @@ async function processBalanchUpload(workbook) {
             const cleanStr = dv.trim().replace(/\//g, '-');
             const dt = new Date(cleanStr);
             if (!isNaN(dt.getTime())) {
-                // Use UTC to prevent shifting 2023-03-11 backward to 2023-03-10
                 ds = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
             }
         }
 
         if (!ds || ds.includes("NaN")) continue;
 
-        // Bulletproof Number Parser (strips commas, handles empty dashes)
         const safeNum = (val) => {
             if (val == null || val === '' || String(val).trim() === '-') return null;
             const num = parseFloat(String(val).replace(/,/g, '').trim());
@@ -1894,7 +1943,6 @@ async function processBalanchUpload(workbook) {
         const cImp = safeNum(row[5]);
         const rem  = row[6] ? String(row[6]).trim() : null;
 
-        // Only add row if it actually contains numerical data or remarks
         if (mExp !== null || mImp !== null || cExp !== null || cImp !== null || rem !== null) {
             payloadMap.set(ds, {
                 eng_date: ds,
@@ -1916,22 +1964,17 @@ async function processBalanchUpload(workbook) {
     showNotification(`Uploading ${payload.length} rows to database...`);
 
     try {
-        // 1. UPLOAD TO SUBSTATION (BALANCH) TABLE
         const { error: balanchErr } = await supabase.from('balanch_readings').upsert(payload, { onConflict: 'eng_date' });
         if (balanchErr) throw balanchErr;
         
-        // 2. AUTOMATIC "SAFE SYNC" TO DAILY METERING FOR ALL UPLOADED DATES
-        // Get all dates from the upload
         const targetDates = payload.map(p => p.eng_date);
         
-        // Fetch existing daily data for all those dates to prevent erasing existing generator logs
         const { data: existingPlantData } = await supabase.from('plant_data').select('*').in('id', targetDates);
         
-        // Merge the old data with the new substation data
         const plantSyncPayloads = payload.map(row => {
             const existing = existingPlantData?.find(p => p.id === row.eng_date) || {};
             return {
-                ...existing, // Keep all existing data
+                ...existing, 
                 id: row.eng_date,
                 export_plant: row.main_export,
                 import_substation: row.main_import,
@@ -1940,13 +1983,11 @@ async function processBalanchUpload(workbook) {
             };
         });
         
-        // Send the safely merged data to the daily metering table
         const { error: plantErr } = await supabase.from('plant_data').upsert(plantSyncPayloads, { onConflict: 'id' });
         if (plantErr) console.error("Bulk Sync to Daily Metering failed:", plantErr.message);
 
         showNotification(`✅ Success! ${payload.length} records updated & synced to Daily Metering.`);
         
-        // Refresh both tables
         loadBalanchData();
         loadAndListenData();
     } catch (e) {
@@ -1954,10 +1995,8 @@ async function processBalanchUpload(workbook) {
     }
 }
 
-
-
 // =====================================
-// 3. OUTAGES & LOSSES (unchanged, added loading flag)
+// 3. OUTAGES & LOSSES 
 // =====================================
 const outagesBody = document.getElementById("outages-body");
 const outageFields = [
@@ -1975,7 +2014,7 @@ const outageFields = [
 
 function createOutageInputRow() {
     let inputCells = outageFields.map(f => `<td class="tight-cell-input"><input type="${f.type}" id="new-out-${f.key}" step="any" class="input-cell ${f.key === 'total_energy_loss' ? 'font-bold text-red-700' : ''}" /><\/td>`).join('');
-    return `<tr id="add-new-outage-row" class="bg-indigo-50/60 sticky top-0 shadow-sm border-b-2 border-indigo-200 z-10">
+    return `<tr id="add-new-outage-row" class="bg-indigo-50/60 sticky top-[42px] shadow-sm border-b-2 border-indigo-200 z-10">
         <td class="tight-cell-input"><input type="date" id="new-outage-date" class="input-cell font-bold" value="${getTodayStr()}" required /><\/td>
         ${inputCells}
         <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]">${getUserName()}<\/td>
@@ -2030,13 +2069,13 @@ async function loadOutagesData() {
     if (isLoadingOutages) return;
     isLoadingOutages = true;
     let data = [], page = 0, more = true;
-    const todayStr = getTodayStr(); // <-- FIX
+    const todayStr = getTodayStr(); 
 
     while (more) {
         try {
             const { data: chunk, error } = await supabase.from('outages')
                 .select('*')
-                .lte('id', todayStr) // <-- FIX
+                .lte('id', todayStr) 
                 .order('id', { ascending: false })
                 .range(page * 1000, (page + 1) * 1000 - 1);
             if (error) throw error;
@@ -2146,7 +2185,6 @@ document.getElementById('outages-file-upload')?.addEventListener('change', (ev) 
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            // FIX: Removed 'cellDates: true' to stop javascript from shifting timezones backwards
             const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
             showConfirmation('Confirm Upload', `Upload Outages file?`, () => processAndUploadOutages(workbook));
         } catch (err) {
@@ -2178,7 +2216,6 @@ async function processAndUploadOutages(workbook) {
 
     const headers = targetSheet[headerRowIndex].map(h => String(h || '').toLowerCase().trim());
     
-    // FIX: Updated to match your exact Excel headers like "Unit I" and "Unit II"
     const colMap = {
         date: headers.findIndex(h => h.includes('date')),
         nea_curtailed_energy: headers.findIndex(h => h.includes('curtailed')),
@@ -2204,13 +2241,11 @@ async function processAndUploadOutages(workbook) {
         const dv = row[colMap.date];
         if (!dv) continue;
 
-        // FIX: Bulletproof Date Parser that strips away Timezone shifts
         let ds = null;
         if (typeof dv === 'number') {
             const ex = XLSX.SSF.parse_date_code(dv, { date1904: false });
             if (ex) ds = `${ex.y}-${String(ex.m).padStart(2, '0')}-${String(ex.d).padStart(2, '0')}`;
         } else if (dv instanceof Date) {
-            // Extracts exact UTC digits to prevent backward shifting
             ds = `${dv.getUTCFullYear()}-${String(dv.getUTCMonth() + 1).padStart(2, '0')}-${String(dv.getUTCDate()).padStart(2, '0')}`;
         } else if (typeof dv === 'string') {
             const cleanStr = dv.trim().replace(/\//g, '-');
@@ -2247,7 +2282,6 @@ async function processAndUploadOutages(workbook) {
         dd.total_energy_loss = parseNum(colMap.total_energy_loss);
         dd.reason = colMap.reason !== -1 && row[colMap.reason] ? String(row[colMap.reason]).trim() : null;
 
-        // Prevent pushing empty records
         if (dd.nea_curtailed_energy !== null || dd.nea_trip_loss_time_min !== null || dd.reason !== null || dd.loss_time_min !== null || dd.loss_time_u1_min !== null || dd.loss_time_u2_min !== null || dd.energy_loss_line_trip !== null || dd.no_of_trippings !== null) {
             payloadMap.set(ds, dd); 
         }
@@ -2268,7 +2302,7 @@ async function processAndUploadOutages(workbook) {
 }
 
 // =====================================
-// 4. CONTRACT ENERGY (MCE) – unchanged, added loading flag
+// 4. CONTRACT ENERGY (MCE)
 // =====================================
 const mceBody = document.getElementById('mce-body');
 const mceFields = [
@@ -2284,15 +2318,13 @@ function createMCEInputRow() {
     const ys = [-2, -1, 0, 1, 2].map(i => `<option value="${cy + i}">${cy + i}</option>`).join('');
     const ms = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
 
-    // FIX 1: Wrap each input in a <td> tag and add highlights for totals
     const inputs = mceFields.map(f => {
         const isHighlight = f.key.includes('total') || f.key.includes('contract');
         const extraClass = isHighlight ? 'bg-indigo-50 font-bold text-indigo-700' : '';
         return `<td><input type="number" id="new-${f.key}" step="any" class="input-cell ${extraClass}" /></td>`;
     }).join('');
 
-    // FIX 2: Change bg-indigo-50/60 to a solid bg-indigo-50 to stop scroll-bleed
-    return `<tr class="bg-indigo-50 sticky top-0 z-20 shadow-sm border-b-2 border-indigo-200">
+    return `<tr class="bg-indigo-50 sticky top-[42px] z-20 shadow-sm border-b-2 border-indigo-200">
         <td><select id="new-mce-year" class="input-cell font-bold text-indigo-700 bg-white">${ys}</select></td>
         <td><select id="new-mce-month" class="input-cell font-bold text-indigo-700 bg-white">${ms}</select></td>
         ${inputs}
@@ -2317,7 +2349,6 @@ function createMCEDisplayRow(d) {
 }
 
 function createMCEEditRow(d) {
-    // FIX: Wrap edit inputs in <td> tags as well
     const inputs = mceFields.map(f => {
         const isHighlight = f.key.includes('total') || f.key.includes('contract');
         const extraClass = isHighlight ? 'bg-indigo-50 font-bold text-indigo-700' : '';
@@ -2523,7 +2554,7 @@ async function processAndUploadMCE(jd) {
 }
 
 // =====================================
-// 5. TRENDS (unchanged, but we will add timestamp pre‑parsing and downsampling)
+// 5. TRENDS
 // =====================================
 const trendChartOptionsContainer = document.getElementById('trend-chart-options');
 const trendSeries = [
@@ -2542,7 +2573,6 @@ if(trendChartOptionsContainer) {
     trendSeries.forEach((f, idx) => {
         const div = document.createElement('label');
         div.className = 'flex items-center space-x-2 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-full cursor-pointer hover:border-indigo-400 transition';
-        // Default visibility: Active Power and Energy (Energy is automatically included in updateTrendChart)
         const isDefaultChecked = f.key === 'active_power_kw';
         div.innerHTML = `<input type="checkbox" value="${f.key}" class="trend-checkbox w-4 h-4 accent-indigo-600" ${isDefaultChecked ? 'checked' : ''}> <span>${f.name}</span>`;
         trendChartOptionsContainer.appendChild(div);
@@ -2563,7 +2593,6 @@ function syncDatesFromNepaliSelection() {
     const mIndex = nepaliMonths.indexOf(mName) + 1;
     const searchPrefix = `${y}.${String(mIndex).padStart(2, '0')}`;
     
-    // Grabs from allData (which strictly comes from the Generation Summary / plant_data table)
     const matchingRecords = allData.filter(d => d.nepali_date && d.nepali_date.startsWith(searchPrefix));
 
     if (matchingRecords.length > 0) {
@@ -2593,13 +2622,11 @@ document.getElementById('view-trend-btn')?.addEventListener('click', async () =>
         return showNotification("Set dates first.", true);
     }
 
-    // SCADA fetches strictly from Start Date to End Date
     const endDateObject = new Date(e);
     endDateObject.setHours(23, 59, 59);
     const startStr = new Date(s).toISOString();
     const endStr = endDateObject.toISOString();
 
-    // Energy fetches up to End Date + 1 Day to calculate cumulative differences
     const ePlus1Obj = new Date(e);
     ePlus1Obj.setDate(ePlus1Obj.getDate() + 1);
     const ePlus1 = ePlus1Obj.toISOString().split('T')[0];
@@ -2617,7 +2644,6 @@ document.getElementById('view-trend-btn')?.addEventListener('click', async () =>
 
             if (error) throw error;
             if (data && data.length > 0) {
-                // 🔥 OPTIMIZATION: Pre‑parse timestamps as numbers
                 const withMs = data.map(d => ({ ...d, timestamp_ms: new Date(d.timestamp).getTime() }));
                 hData = hData.concat(withMs);
             }
@@ -2633,7 +2659,6 @@ document.getElementById('view-trend-btn')?.addEventListener('click', async () =>
     btn.disabled = false;
 });
 
-// 🔥 OPTIMIZATION: Downsample and use pre‑parsed timestamps
 function updateTrendChart(dailyData, historicalData) {
     const dailyDispatchData = [];
 
@@ -2647,7 +2672,6 @@ function updateTrendChart(dailyData, historicalData) {
             const dispatch = nextDay.export_substation - currentDay.export_substation;
             if (dispatch >= 0) {
                 dailyDispatchData.push({
-                    // CRITICAL FIX: Plot the energy generated on the NEXT day (e.g. Falgun 1's generated energy shows on Falgun 2)
                     x: new Date(`${nextDay.id}T12:00:00`),
                     y: dispatch
                 });
@@ -2681,13 +2705,11 @@ function updateTrendChart(dailyData, historicalData) {
         }
     };
 
-    // 🔥 Downsample historical data if too many points
     let processedData = historicalData;
     const maxPoints = 2000;
     if (processedData.length > maxPoints) {
         const step = Math.ceil(processedData.length / maxPoints);
         processedData = processedData.filter((_, i) => i % step === 0);
-        console.log(`Downsampled historical data from ${historicalData.length} to ${processedData.length} points`);
     }
 
     Array.from(document.querySelectorAll('.trend-checkbox:checked')).forEach((chk, i) => {
@@ -2754,7 +2776,7 @@ document.getElementById('download-trend-btn')?.addEventListener('click', () => {
 });
 
 // =====================================
-// 6. HISTORICAL SCADA with pagination
+// 6. HISTORICAL SCADA 
 // =====================================
 const historicalYearSelect = document.getElementById('historical-year');
 const historicalMonthSelect = document.getElementById('historical-month');
@@ -2764,23 +2786,19 @@ const historicalThead = document.getElementById('historical-thead');
 const historicalTbody = document.getElementById('historical-tbody');
 const historicalDownloadBtn = document.getElementById('historical-download-btn');
 
-// 🔥 Pagination variables
 let fullHistoricalData = [];
 let currentPage = 1;
 const rowsPerPage = 100;
 
 function renderHistoricalPage() {
-    // Show all records (no pagination)
     const pageData = fullHistoricalData;
     const keys = ['waterlevel_cm', 'pressure_mwc', 'active_power_kw', 'voltage_kv', 'reactive_power_kvar', 'u1_spear_pct', 'u1_active_power_kw', 'u2_spear_pct', 'u2_active_power_kw'];
 
-    // Build header (remove stray dot)
-    let headerHtml = `<th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Date</th><th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Time</th>`;
+    let headerHtml = `<tr><th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Date</th><th class="tight-cell text-left font-bold text-gray-600 uppercase border-r border-gray-200">Time</th>`;
     keys.forEach(h => headerHtml += `<th class="tight-cell text-left font-bold text-gray-600 uppercase">${h}</th>`);
     headerHtml += `</tr>`;
     if (historicalThead) historicalThead.innerHTML = headerHtml;
 
-    // Build rows
     const rows = [];
     pageData.forEach(d => {
         let dateStr = '', timeStr = '';
@@ -2789,15 +2807,13 @@ function renderHistoricalPage() {
             dateStr = dateObj.toLocaleDateString('en-GB');
             timeStr = dateObj.toLocaleTimeString('en-GB', { hour12: false });
         }
-        let rowHtml = `<td class="tight-cell text-gray-900 font-bold border-r border-gray-200">${dateStr}</td><td class="tight-cell text-gray-500 border-r border-gray-200">${timeStr}</td>`;
+        let rowHtml = `<tr><td class="tight-cell text-gray-900 font-bold border-r border-gray-200">${dateStr}</td><td class="tight-cell text-gray-500 border-r border-gray-200">${timeStr}</td>`;
         keys.forEach(k => rowHtml += `<td class="tight-cell text-gray-600">${d[k] ?? ''}</td>`);
         rowHtml += `</tr>`;
         rows.push(rowHtml);
     });
 
     if (historicalTbody) historicalTbody.innerHTML = rows.join('');
-
-    // No pagination controls are used, so we skip updating any UI elements
 }
 
 function populateHistoricalYearsFromAllData() {
@@ -2852,20 +2868,16 @@ historicalViewBtn?.addEventListener('click', async () => {
             return;
         }
 
-        // Store the full dataset for pagination
         fullHistoricalData = data;
         currentPage = 1;
         renderHistoricalPage();
         if(historicalStatus) historicalStatus.textContent = `Loaded ${fullHistoricalData.length} records.`;
         historicalDownloadBtn?.classList.remove('hidden');
     } catch (error) {
-    console.error("Supabase query failed:", error);
-    if(historicalStatus) historicalStatus.textContent = `Error: ${error.message || error}`;
-    showNotification(`Error: ${error.message || 'Failed to fetch data'}`, true);
-}
+        showNotification(`Error: ${error.message || 'Failed to fetch data'}`, true);
+    }
 });
 
-// Attach pagination event listeners after DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     const prevBtn = document.getElementById('historical-prev');
     const nextBtn = document.getElementById('historical-next');
@@ -3025,7 +3037,7 @@ function setDefaultTrendToLastNepaliMonth() {
     }
 }
 
-// --- Authentication & Initialization (cleaned up) ---
+// --- Authentication & Initialization ---
 async function initAuth() {
     try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -3047,7 +3059,6 @@ async function initAuth() {
                 userRole = 'admin';
             }
             
-            // Load header once
             try {
                 const headerRes = await fetch('header.html');
                 if (headerRes.ok) {
@@ -3072,23 +3083,18 @@ async function initAuth() {
             }
             
             applyPermissions();
+
+            // Load calendar mapping data immediately upon auth
+            await loadCalendarMappings();
             
-            // --- DATA LOADING FUNCTIONS (called once) ---
+            // --- DATA LOADING FUNCTIONS ---
             loadAndListenData();
             loadBalanchData();
             loadMCEData();
             loadOutagesData();
             loadRainfallData();
             loadExpensesData();
-
-            // Auto-sync trend filters
-            const ySel = document.getElementById('grid-rf-year');
-            const mSel = document.getElementById('grid-rf-month');
-            if (ySel && mSel) {
-                ySel.addEventListener('change', loadTrendData);
-                mSel.addEventListener('change', loadTrendData);
-            }
-            
+                      
         } else {
             window.location.href = "index.html";
         }
@@ -3099,15 +3105,12 @@ async function initAuth() {
 }
 
 function applyPermissions() {
-    // --- 1. NEW: HEADER SECURITY UNLOCK ---
-    // Un-hide the main navigation and profile area since the user is logged in
     document.getElementById('main-nav')?.classList.remove('hidden');
     document.getElementById('main-nav')?.classList.add('flex');
     document.getElementById('login-btn')?.classList.add('hidden');
     document.getElementById('user-profile')?.classList.remove('hidden');
     document.getElementById('user-profile')?.classList.add('flex');
 
-    // Unlock specific header links based on the user's role
     if (userRole === 'admin') {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden'));
         document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden'));
@@ -3115,28 +3118,20 @@ function applyPermissions() {
         document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden'));
     }
 
-    // --- 2. EXISTING LOGIC: BULK UPLOAD BUTTONS ---
-    // ADMIN ONLY: Can see Bulk Uploads
     if (userRole === 'admin') {
         document.querySelectorAll('[id*="-upload-btn"]').forEach(btn => {
             if (btn) btn.classList.remove('role-hidden');
         });
     }
     
-    // EVERYONE: Can Export / Download Data
     document.querySelectorAll('[id*="-download-btn"]').forEach(btn => {
         if (btn) btn.classList.remove('hidden');
     });
 
-    // --- 3. EXISTING LOGIC: SECURE READ-ONLY LOCK ---
-    // (For both Management Staff AND normal users)
     if (userRole !== 'admin' && userRole !== 'operator') {
         const style = document.createElement('style');
         style.innerHTML = `
-            /* Hide the 'Actions' Header Column */
             .col-actions { display: none !important; }
-            
-            /* Find and destroy ANY dynamically loaded Edit/Delete buttons */
             button[onclick*="edit"], button[onclick*="delete"], 
             button[onclick*="Edit"], button[onclick*="Delete"],
             .edit-btn, .delete-btn, .edit-balanch-btn, .delete-balanch-btn,
@@ -3144,8 +3139,6 @@ function applyPermissions() {
             .edit-rf-btn, .delete-rf-btn, .delete-exp-btn { 
                 display: none !important; 
             }
-            
-            /* Freeze all data inputs so they look like flat, unclickable text */
             .table-container input, .table-container select, .table-container textarea {
                 pointer-events: none !important;
                 background-color: transparent !important;
@@ -3159,21 +3152,13 @@ function applyPermissions() {
         document.head.appendChild(style);
     }
 
-    // --- 4. EXISTING LOGIC: OPERATOR RESTRICTION ---
-    // Hide Site Expenses Tab
     if (userRole === 'operator') {
         const expenseTab = document.querySelector('[data-target="expenses-tab"]');
         const expenseSection = document.getElementById('expenses-tab');
         
-        // Hide the clickable tab at the top
         if (expenseTab) expenseTab.style.display = 'none';
-        
-        // Hide the actual content below it just to be safe
         if (expenseSection) expenseSection.style.display = 'none';
     }
 }
-
-// Remove the duplicate header fetch block at the end (the one that starts with `try { const headerRes = await fetch('header.html?v=' + Date.now()); ... }`)
-// It has been removed to prevent redundant loading.
 
 initAuth();

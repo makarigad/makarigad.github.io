@@ -11,12 +11,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>  
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="assets/css/plant-data.css" />
-      
-    
 </head>
 <body class="flex flex-col h-screen text-slate-800 relative bg-slate-100">
 
-        <div id="global-header-container" class="shrink-0 no-print z-50 relative"></div>
+    <div id="global-header-container" class="shrink-0 no-print z-50 relative"></div>
 
     <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 no-print">
         <div class="flex items-center gap-4">
@@ -56,6 +54,24 @@
                     <p class="text-[11px] text-slate-500 font-medium mt-0.5">Log internal generator readings, unit running hours, and transformer data.</p>
                 </div>
                 <div class="flex items-center space-x-2">
+                    <select id="export-year-select" class="input-cell text-sm font-bold text-indigo-700 bg-white py-2 px-3 rounded border-slate-300 shadow-sm cursor-pointer">
+                        <option value="All">All Years</option>
+                    </select>
+                    <select id="export-month-select" class="input-cell text-sm font-bold text-indigo-700 bg-white py-2 px-3 rounded border-slate-300 shadow-sm cursor-pointer">
+                        <option value="All">All Months</option>
+                        <option value="Baisakh">Baisakh</option>
+                        <option value="Jestha">Jestha</option>
+                        <option value="Ashadh">Ashadh</option>
+                        <option value="Shrawan">Shrawan</option>
+                        <option value="Bhadra">Bhadra</option>
+                        <option value="Ashoj">Ashoj</option>
+                        <option value="Kartik">Kartik</option>
+                        <option value="Mangsir">Mangsir</option>
+                        <option value="Poush">Poush</option>
+                        <option value="Magh">Magh</option>
+                        <option value="Falgun">Falgun</option>
+                        <option value="Chaitra">Chaitra</option>
+                    </select>
                     <input type="file" id="file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
                     <button id="daily-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Bulk Upload</button>
                     <button id="download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export Tab</button>
@@ -63,12 +79,12 @@
             </div>
             <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll">
                 <table class="w-full border-collapse">
-                    <thead class="bg-slate-200">
+                    <thead class="bg-slate-200 sticky top-0 z-30 shadow-sm">
                         <tr>
                             <th>English Date</th>
                             <th>Nepali Date</th>
-                            <th>Unit 1 Gen (GWh)</th>
-                            <th>Unit 2 Gen (GWh)</th>
+                            <th>Unit 1 Gen (MWh)</th>
+                            <th>Unit 2 Gen (MWh)</th>
                             <th>Unit 1 Trans (MWh)</th>
                             <th>Unit 2 Trans (MWh)</th>
                             <th>Station Trans (kWh)</th>
@@ -101,7 +117,7 @@
             </div>
             <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll overflow-x-auto">
                 <table class="w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                    <thead class="bg-gray-50 sticky top-0 z-30 shadow-sm">
                         <tr>
                             <th rowspan="2" class="tight-cell text-left font-medium text-gray-500 uppercase border-r border-gray-200">English Date</th>
                             <th rowspan="2" class="tight-cell text-left font-medium text-gray-500 uppercase border-r border-gray-200">Nepali Date</th>
@@ -138,7 +154,7 @@
             </div>
             <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll">
                 <table class="w-full border-collapse">
-                    <thead class="bg-slate-200">
+                    <thead class="bg-slate-200 sticky top-0 z-30 shadow-sm">
                         <tr>
                             <th>Date</th>
                             <th>NEA Curtailed</th>
@@ -174,7 +190,7 @@
             </div>
             <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll">
                 <table class="w-full border-collapse">
-                    <thead class="bg-slate-200">
+                    <thead class="bg-slate-200 sticky top-0 z-30 shadow-sm">
                         <tr>
                             <th>Year</th>
                             <th>Month</th>
@@ -285,7 +301,7 @@
                 <div id="historical-status" class="p-2 text-xs font-bold text-indigo-600 bg-indigo-50 border-b border-indigo-100 text-center shrink-0">Select a timeframe and click Fetch Table</div>
                 <div class="table-container flex-grow custom-scroll">
                     <table class="w-full border-collapse" id="historical-table">
-                        <thead id="historical-thead" class="bg-slate-200"></thead>
+                        <thead id="historical-thead" class="bg-slate-200 sticky top-0 z-30 shadow-sm"></thead>
                         <tbody id="historical-tbody" class="bg-white divide-y divide-slate-200"></tbody>
                     </table>
                 </div>
@@ -383,7 +399,7 @@
 
             <div class="table-container rounded-xl shadow-inner border border-slate-300 flex-grow custom-scroll">
                 <table class="w-full border-collapse">
-                    <thead class="bg-slate-200">
+                    <thead class="bg-slate-200 sticky top-0 z-30 shadow-sm">
                         <tr>
                             <th>Year</th>
                             <th>Month</th>
@@ -455,5 +471,3 @@
   <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
-
-

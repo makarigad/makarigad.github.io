@@ -3,425 +3,446 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>Comprehensive Monthly Report — Makari Gad Hydroelectric Project</title>
+    <title>Monthly Operations Report — Makari Gad HEP</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <style>
-        /* ==========================================================================
-           PROFESSIONAL LIGHT MODE STYLES
-           ========================================================================== */
+        /* ===== DESIGN SYSTEM ===== */
         :root {
-            --primary-blue: #1e40af;
-            --accent-green: #10b981;
-            --accent-orange: #f59e0b;
-            --accent-red: #ef4444;
-            --text-dark: #0f172a;
-            --text-muted: #64748b;
-            --border-light: #e2e8f0;
+            --navy:    #0d1b3e;
+            --blue:    #1e40af;
+            --blue-lt: #3b82f6;
+            --teal:    #0891b2;
+            --green:   #059669;
+            --amber:   #d97706;
+            --red:     #dc2626;
+            --purple:  #7c3aed;
+            --slate:   #64748b;
+            --border:  #e2e8f0;
+            --bg:      #f1f5f9;
         }
 
+        *, *::before, *::after { box-sizing: border-box; }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            color: var(--text-dark);
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--navy);
             margin: 0;
             overflow-x: hidden;
         }
 
-        /* Top Control Bar */
+        /* ===== CONTROL BAR ===== */
         .control-bar {
-            background: white;
-            border-bottom: 2px solid var(--border-light);
-            padding: 1.25rem 2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            background: var(--navy);
+            padding: 1rem 2rem;
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: 0 4px 20px rgba(13,27,62,0.4);
         }
 
         .btn {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            font-size: 0.875rem;
-            font-weight: 700;
+            padding: 0.65rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
             border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-family: 'DM Sans', sans-serif;
         }
-        
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; }
-        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
-        .btn-outline { background: white; border: 2px solid var(--primary-blue); color: var(--primary-blue); }
+        .btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn-primary { background: var(--blue-lt); color: white; }
+        .btn-success { background: var(--green); color: white; }
+        .btn-outline { background: transparent; border: 1.5px solid rgba(255,255,255,0.3); color: white; }
 
         .form-control {
-            padding: 0.75rem 1rem;
-            background: white;
-            border: 2px solid var(--border-light);
-            border-radius: 0.75rem;
+            padding: 0.6rem 0.9rem;
+            background: rgba(255,255,255,0.08);
+            border: 1.5px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
             font-size: 0.875rem;
             font-weight: 600;
             outline: none;
+            color: white;
+            font-family: 'DM Sans', sans-serif;
             transition: all 0.2s;
         }
-        .form-control:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(30,64,175,0.1); }
-        textarea.form-control { resize: vertical; min-height: 80px; }
+        .form-control option { color: var(--navy); background: white; }
+        .form-control:focus { border-color: var(--blue-lt); background: rgba(255,255,255,0.12); }
+        textarea.form-control { resize: vertical; min-height: 90px; color: var(--navy); background: white; border-color: var(--border); }
+        label.field-label { color: rgba(255,255,255,0.6); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 4px; }
 
-        /* Loading States */
-        .spinner {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid var(--primary-blue);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+        /* ===== SETUP PANEL ===== */
+        .setup-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .setup-card label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: block; }
+        .setup-card textarea { color: var(--navy); background: #f8fafc; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; padding: 0.75rem; font-size: 0.875rem; width: 100%; outline: none; resize: vertical; min-height: 90px; transition: border-color 0.2s; }
+        .setup-card textarea:focus { border-color: var(--blue-lt); background: white; }
 
-        /* A4 Document Container */
+        /* ===== SPINNER ===== */
+        .spinner { border: 3px solid rgba(59,130,246,0.2); border-top: 3px solid var(--blue-lt); border-radius: 50%; width: 44px; height: 44px; animation: spin 0.9s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== A4 DOCUMENT ===== */
         .a4-document {
             background: white;
             width: 210mm;
             min-height: 297mm;
             margin: 2rem auto;
-            padding: 20mm;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-            font-family: 'Merriweather', serif;
-        }
-
-        /* Cover Page */
-        .cover-page {
-            min-height: 250mm;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
+            padding: 18mm 20mm;
+            box-shadow: 0 16px 60px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08);
+            font-family: 'DM Sans', sans-serif;
             position: relative;
         }
-        
-        .cover-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 20px;
-            background: linear-gradient(90deg, var(--primary-blue), var(--accent-green));
-        }
-        
-        .cover-title {
-            font-size: 42pt;
-            font-weight: 900;
-            color: var(--primary-blue);
-            text-transform: uppercase;
-            line-height: 1.15;
-            letter-spacing: -1px;
-            margin-bottom: 2rem;
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .cover-subtitle {
-            font-size: 20pt;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 5rem;
-        }
-        
-        .cover-meta {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            width: 75%;
-            margin: 0 auto;
-            text-align: left;
-            border-top: 3px solid var(--border-light);
-            padding-top: 3rem;
-        }
-        
-        .meta-label {
-            font-size: 10pt;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .meta-value {
-            font-size: 16pt;
-            font-weight: 800;
-            color: var(--text-dark);
-            margin-top: 0.5rem;
+
+        /* ===== COVER PAGE ===== */
+        .cover-page {
+            min-height: 255mm;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
         }
 
-        /* Section Headings */
+        .cover-ribbon {
+            height: 8px;
+            background: linear-gradient(90deg, var(--blue) 0%, var(--teal) 50%, var(--green) 100%);
+            border-radius: 4px;
+            margin-bottom: 3rem;
+        }
+
+        .cover-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #eff6ff;
+            color: var(--blue);
+            border: 1.5px solid #bfdbfe;
+            border-radius: 100px;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+        }
+
+        .cover-main-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 38pt;
+            font-weight: 900;
+            color: var(--navy);
+            line-height: 1.1;
+            margin-bottom: 1rem;
+        }
+
+        .cover-sub {
+            font-size: 14pt;
+            color: var(--slate);
+            font-weight: 500;
+            margin-bottom: 4rem;
+        }
+
+        .cover-divider {
+            height: 1px;
+            background: linear-gradient(90deg, var(--border), transparent);
+            margin: 2rem 0;
+        }
+
+        .cover-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .cover-kpi {
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1.5px solid var(--border);
+        }
+        .cover-kpi-num { font-family: 'Playfair Display', serif; font-size: 22pt; font-weight: 900; }
+        .cover-kpi-lbl { font-size: 8pt; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+
+        .cover-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .cover-info-item { padding: 1rem 1.25rem; background: #f8fafc; border-radius: 10px; border-left: 4px solid var(--blue); }
+        .cover-info-label { font-size: 8pt; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: 0.06em; }
+        .cover-info-val { font-size: 13pt; font-weight: 800; color: var(--navy); margin-top: 2px; }
+
+        .cover-footer {
+            margin-top: auto;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        /* ===== TABLE OF CONTENTS ===== */
+        .toc-entry {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px dotted var(--border);
+        }
+        .toc-num { font-family: 'JetBrains Mono', monospace; font-size: 9pt; font-weight: 600; color: var(--blue); min-width: 50px; }
+        .toc-title { font-size: 10.5pt; font-weight: 600; color: var(--navy); flex: 1; }
+        .toc-dots { flex: 1; border-bottom: 2px dotted #cbd5e1; margin: 0 0.5rem; position: relative; top: -3px; }
+
+        /* ===== SECTION HEADINGS ===== */
         .doc-h1 {
-            font-size: 18pt;
+            font-family: 'Playfair Display', serif;
+            font-size: 17pt;
             font-weight: 900;
             color: white;
-            background: linear-gradient(135deg, var(--primary-blue), #3b82f6);
+            background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%);
             padding: 1rem 1.5rem;
             margin: 2rem 0 1.5rem 0;
-            border-radius: 8px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             gap: 1rem;
             page-break-after: avoid;
-            font-family: 'Inter', sans-serif;
         }
-        
+
         .doc-h1-num {
-            background: rgba(255,255,255,0.2);
-            padding: 0.25rem 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9pt;
+            background: rgba(255,255,255,0.15);
+            padding: 0.2rem 0.6rem;
             border-radius: 6px;
-            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.05em;
         }
-        
+
         .doc-h2 {
-            font-size: 13pt;
+            font-size: 12pt;
             font-weight: 700;
-            color: var(--primary-blue);
+            color: var(--blue);
             margin: 2rem 0 1rem 0;
-            border-left: 5px solid var(--accent-green);
-            padding-left: 1rem;
+            border-left: 4px solid var(--teal);
+            padding-left: 0.75rem;
             page-break-after: avoid;
         }
 
         .doc-p {
-            font-size: 11pt;
-            line-height: 1.9;
-            margin-bottom: 1.5rem;
-            text-align: justify;
-            color: var(--text-dark);
-        }
-
-        .doc-ul {
-            list-style: disc;
-            margin-left: 2.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .doc-li {
             font-size: 10.5pt;
-            line-height: 1.8;
-            margin-bottom: 0.75rem;
-            color: var(--text-dark);
+            line-height: 1.85;
+            margin-bottom: 1.25rem;
+            text-align: justify;
+            color: #1e293b;
         }
 
-        /* Tables */
+        .doc-ul { list-style: none; margin: 0 0 1.5rem 0; padding: 0; }
+        .doc-li {
+            font-size: 10pt;
+            line-height: 1.75;
+            margin-bottom: 0.6rem;
+            color: #1e293b;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .doc-li::before { content: '▸'; color: var(--teal); font-size: 9pt; margin-top: 2px; flex-shrink: 0; }
+
+        /* ===== TABLES ===== */
         .doc-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 1.5rem 0;
+            margin: 1.25rem 0;
             font-size: 9.5pt;
-            page-break-inside: auto;
         }
-        
-        .doc-table thead {
-            display: table-header-group;
-        }
-        
-        .doc-table tr {
-            page-break-inside: avoid;
-        }
-        
+
         .doc-table th {
-            background: var(--primary-blue);
+            background: var(--navy);
             color: white;
-            padding: 12px 10px;
+            padding: 10px 9px;
             text-align: center;
             font-weight: 700;
             border: 1px solid #1e3a8a;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 8.5pt;
+            letter-spacing: 0.04em;
+            font-size: 8pt;
         }
-        
+
         .doc-table td {
-            border: 1px solid var(--border-light);
-            padding: 10px;
+            border: 1px solid var(--border);
+            padding: 9px;
             text-align: right;
-            color: var(--text-dark);
+            color: #0f172a;
+            font-size: 9pt;
         }
-        
-        .doc-table td.lft {
-            text-align: left;
-        }
-        
-        .doc-table tbody tr:nth-child(even) td {
-            background: #f8fafc;
-        }
-        
-        .doc-table tr.total td {
-            background: #eff6ff;
-            font-weight: 800;
-            color: var(--primary-blue);
-            border-top: 2px solid var(--primary-blue);
-        }
-        
-        /* Compact Annex Tables */
-        .annex-table { font-size: 7.5pt; margin-top: 0.5rem; }
+
+        .doc-table td.lft { text-align: left; }
+        .doc-table tbody tr:nth-child(even) td { background: #f8fafc; }
+        .doc-table tr.total td { background: #eff6ff; font-weight: 800; color: var(--blue); border-top: 2px solid var(--blue); }
+        .doc-table tr.subtotal td { background: #f0fdf4; font-weight: 700; color: var(--green); font-size: 9.5pt; }
+        .doc-table tr.deduct td { background: #fef2f2; font-weight: 700; color: var(--red); }
+
         .annex-table th { padding: 6px 4px; font-size: 7pt; }
-        .annex-table td { padding: 5px 4px; }
-        .annex-table td.mono { font-family: 'JetBrains Mono', monospace; font-size: 6.5pt; text-align: center; }
+        .annex-table td { padding: 5px 4px; font-size: 8pt; }
 
-        /* KPI Cards */
+        /* ===== KPI CARDS ===== */
+        .kpi-grid { display: grid; gap: 1rem; margin: 1.5rem 0; }
+        .kpi-grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .kpi-grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .kpi-grid-2 { grid-template-columns: repeat(2, 1fr); }
+
         .kpi-card {
-            background: linear-gradient(135deg, #f8fafc 0%, white 100%);
-            border: 2px solid var(--border-light);
+            padding: 1.25rem 1rem;
             border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            transition: all 0.3s;
+            border: 1.5px solid var(--border);
+            background: white;
+            position: relative;
+            overflow: hidden;
         }
-        
-        .kpi-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            border-color: var(--primary-blue);
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
         }
-        
-        .kpi-value {
-            font-size: 2.5rem;
-            font-weight: 900;
-            color: var(--primary-blue);
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .kpi-label {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 0.5rem;
-        }
+        .kpi-card.blue::before { background: var(--blue-lt); }
+        .kpi-card.green::before { background: var(--green); }
+        .kpi-card.amber::before { background: var(--amber); }
+        .kpi-card.red::before { background: var(--red); }
+        .kpi-card.teal::before { background: var(--teal); }
+        .kpi-card.purple::before { background: var(--purple); }
 
-        /* Charts */
+        .kpi-val { font-family: 'Playfair Display', serif; font-size: 22pt; font-weight: 900; }
+        .kpi-val.blue { color: var(--blue-lt); }
+        .kpi-val.green { color: var(--green); }
+        .kpi-val.amber { color: var(--amber); }
+        .kpi-val.red { color: var(--red); }
+        .kpi-val.teal { color: var(--teal); }
+        .kpi-val.purple { color: var(--purple); }
+        .kpi-lbl { font-size: 7.5pt; font-weight: 700; color: var(--slate); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+        .kpi-sub { font-size: 8pt; color: var(--slate); margin-top: 2px; }
+
+        /* ===== CHART WRAPPER ===== */
         .chart-wrapper {
             background: white;
-            border: 2px solid var(--border-light);
+            border: 1.5px solid var(--border);
             border-radius: 12px;
-            padding: 1.5rem;
-            margin: 2rem 0;
+            padding: 1.25rem;
+            margin: 1.5rem 0;
             page-break-inside: avoid;
         }
-        
-        .chart-title {
-            font-size: 12pt;
-            font-weight: 700;
-            color: var(--primary-blue);
-            margin-bottom: 1rem;
-            text-align: center;
-        }
+        .chart-title { font-size: 10pt; font-weight: 700; color: var(--navy); margin-bottom: 1rem; }
+        .chart-caption { font-size: 8pt; color: var(--slate); text-align: center; margin-top: 10px; font-style: italic; }
 
-        /* Highlights & Callouts */
-        .highlight-box {
-            background: #eff6ff;
-            border-left: 5px solid var(--primary-blue);
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            border-radius: 8px;
+        /* ===== CALLOUT BOXES ===== */
+        .callout {
+            padding: 1.25rem 1.5rem;
+            margin: 1.25rem 0;
+            border-radius: 10px;
+            border-left: 5px solid;
+            font-size: 10pt;
         }
-        
-        .highlight-box.success {
-            background: #ecfdf5;
-            border-left-color: var(--accent-green);
-        }
-        
-        .highlight-box.warning {
-            background: #fef3c7;
-            border-left-color: var(--accent-orange);
-        }
-        
-        .highlight-box.danger {
-            background: #fee2e2;
-            border-left-color: var(--accent-red);
-        }
+        .callout.info    { background: #eff6ff; border-color: var(--blue-lt); }
+        .callout.success { background: #ecfdf5; border-color: var(--green); }
+        .callout.warning { background: #fffbeb; border-color: var(--amber); }
+        .callout.danger  { background: #fef2f2; border-color: var(--red); }
 
-        /* Page Break */
-        /* REPLACE .page-break AND ADD .doc-section */
-.page-break { 
-    page-break-before: always !important; 
-    break-before: page !important; 
-    display: block !important; 
-    height: 0;
-    clear: both;
-}
+        .callout-title { font-weight: 700; font-size: 10.5pt; margin-bottom: 0.4rem; }
+        .callout.info .callout-title    { color: var(--blue); }
+        .callout.success .callout-title { color: var(--green); }
+        .callout.warning .callout-title { color: var(--amber); }
+        .callout.danger .callout-title  { color: var(--red); }
 
-.doc-section {
-    page-break-inside: avoid;
-}
+        /* ===== COMPARISON BAR ===== */
+        .progress-bar-wrap { margin: 0.5rem 0 1rem; }
+        .progress-bar-track { height: 10px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+        .progress-label { font-size: 8pt; color: var(--slate); display: flex; justify-content: space-between; margin-bottom: 4px; }
 
-        /* Print Styles */
+        /* ===== UNIT COMPARISON ===== */
+        .unit-card {
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            background: #f8fafc;
+        }
+        .unit-card-title { font-weight: 800; font-size: 11pt; color: var(--navy); margin-bottom: 1rem; }
+
+        /* ===== SIGNATURE BLOCK ===== */
+        .sig-block { border-top: 2px solid var(--border); margin-top: 2rem; padding-top: 2rem; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem; }
+        .sig-line { border-bottom: 1.5px solid var(--navy); height: 40px; margin-bottom: 0.5rem; }
+        .sig-label { font-size: 8.5pt; font-weight: 700; color: var(--navy); text-align: center; }
+        .sig-role { font-size: 7.5pt; color: var(--slate); text-align: center; margin-top: 2px; }
+
+        /* ===== STATUS BADGE ===== */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 7.5pt; font-weight: 700; }
+        .badge.good    { background: #dcfce7; color: #166534; }
+        .badge.warn    { background: #fef3c7; color: #92400e; }
+        .badge.bad     { background: #fee2e2; color: #991b1b; }
+        .badge.neutral { background: #e2e8f0; color: #475569; }
+
+        /* ===== PAGE BREAK ===== */
+        .page-break { page-break-before: always; break-before: page; display: block; height: 0; clear: both; }
+
+        /* ===== YTD SECTION ===== */
+        .ytd-month-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 6px; font-size: 8.5pt; }
+        .ytd-month-name { width: 60px; font-weight: 600; color: var(--navy); }
+        .ytd-bar-track { flex: 1; height: 14px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+        .ytd-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--blue) 0%, var(--teal) 100%); }
+        .ytd-bar-val { width: 60px; text-align: right; font-weight: 700; color: var(--navy); font-size: 8pt; }
+
+        /* ===== PRINT ===== */
         @media print {
-            body {
-                background: white;
-                overflow: visible;
-            }
-            
-            .control-bar,
-            .no-print {
-                display: none !important;
-            }
-            
-            .a4-document {
-                box-shadow: none;
-                margin: 0;
-                width: 100%;
-                padding: 15mm;
-            }
-            
-            /* REPLACE .page-break AND ADD .doc-section */
-.page-break { 
-    page-break-before: always !important; 
-    break-before: page !important; 
-    display: block !important; 
-    height: 0;
-    clear: both;
-}
-
-.doc-section {
-    page-break-inside: avoid;
-}
-            
-            .doc-h1,
-            .doc-h2 {
-                page-break-after: avoid;
-            }
-            
-            .doc-table {
-                page-break-inside: auto;
-            }
-            
-            .doc-table tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-            }
+            body { background: white; }
+            .control-bar, .no-print { display: none !important; }
+            .a4-document { box-shadow: none; margin: 0; width: 100%; padding: 12mm 15mm; }
+            .page-break { page-break-before: always; break-before: page; }
+            @page { margin: 10mm; }
+            .doc-h1 { page-break-after: avoid; }
+            .doc-table tr { page-break-inside: avoid; }
+            .chart-wrapper { page-break-inside: avoid; }
         }
     </style>
 </head>
 <body>
 
+<!-- ===== CONTROL BAR ===== -->
 <div class="control-bar no-print">
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-slate-900">Makari Gad Hydroelectric Project</h1>
-            <p class="text-sm text-slate-600 font-medium mt-1">Comprehensive Automated Monthly Report Generator</p>
+            <div class="flex items-center gap-3">
+                <div style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#0891b2);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-white font-bold text-base leading-tight">Makari Gad Hydroelectric Project</h1>
+                    <p class="text-xs" style="color:rgba(255,255,255,0.5)">Monthly Operations Report Generator · 10 MW · Darchula</p>
+                </div>
+            </div>
         </div>
-        
-        <div class="flex items-center gap-3">
+
+        <div class="flex items-end gap-3 flex-wrap">
             <div>
-                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nepali Year</label>
-                <select id="sel-year" class="form-control w-28">
+                <label class="field-label">Nepali Year</label>
+                <select id="sel-year" class="form-control w-24">
                     <option value="2079">2079</option>
                     <option value="2080">2080</option>
                     <option value="2081">2081</option>
@@ -429,10 +450,9 @@
                     <option value="2083">2083</option>
                 </select>
             </div>
-            
             <div>
-                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Month</label>
-                <select id="sel-month" class="form-control w-36">
+                <label class="field-label">Month</label>
+                <select id="sel-month" class="form-control w-32">
                     <option value="Baisakh">Baisakh</option>
                     <option value="Jestha">Jestha</option>
                     <option value="Ashar">Ashar</option>
@@ -447,100 +467,96 @@
                     <option value="Chaitra">Chaitra</option>
                 </select>
             </div>
-            
-            <div class="flex items-end gap-2">
-                <button id="btn-generate" class="btn btn-primary mt-5">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Generate Report
-                </button>
-                
-                <button id="btn-print" class="btn btn-success mt-5 hidden">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                    </svg>
-                    Print / PDF
-                </button>
-                
-                <a href="energy-summary.html" class="btn btn-outline mt-5">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                    </svg>
-                    Back to Dashboard
-                </a>
+            <button id="btn-generate" class="btn btn-primary">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Generate Report
+            </button>
+            <button id="btn-print" class="btn btn-success hidden">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                Print / Save PDF
+            </button>
+            <a href="energy-summary.html" class="btn btn-outline">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SETUP PANEL ===== -->
+<div id="setup-panel" class="max-w-5xl mx-auto mt-8 mb-10 no-print">
+    <div class="setup-card">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h2 class="text-base font-bold text-slate-800">Report Narratives & Executive Notes</h2>
+                <p class="text-xs text-slate-400 mt-1">Auto-loaded from database for selected period. Edit here before generating.</p>
+            </div>
+            <button id="btn-save-narrative" class="btn btn-primary" style="background:var(--navy);">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                Save to Database
+            </button>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label style="color:var(--blue); font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Key Operational Highlights</label>
+                <textarea id="inp-hi" class="w-full mt-1" style="border:1.5px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.875rem;outline:none;background:#f8fafc;resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;" placeholder="- Achieved 98% plant availability..."></textarea>
+            </div>
+            <div>
+                <label style="color:var(--amber); font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Operational Problems Faced</label>
+                <textarea id="inp-pr" class="w-full mt-1" style="border:1.5px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.875rem;outline:none;background:#f8fafc;resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;" placeholder="- Frequent grid trips from Balanch..."></textarea>
+            </div>
+            <div>
+                <label style="color:var(--green); font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Maintenance Activities</label>
+                <textarea id="inp-mt" class="w-full mt-1" style="border:1.5px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.875rem;outline:none;background:#f8fafc;resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;" placeholder="- Cleaned cooling water strainers..."></textarea>
+            </div>
+            <div>
+                <label style="color:var(--purple); font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Health, Safety & Environment (HSE)</label>
+                <textarea id="inp-hse" class="w-full mt-1" style="border:1.5px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.875rem;outline:none;background:#f8fafc;resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;" placeholder="- Zero LTI recorded..."></textarea>
             </div>
         </div>
     </div>
 </div>
 
-<div id="setup-panel" class="max-w-5xl mx-auto mt-8 mb-12 p-8 bg-white border border-slate-200 rounded-xl shadow-sm no-print">
-    <h2 class="text-lg font-bold text-slate-800 mb-2 border-b pb-2">Report Narratives & Executive Notes</h2>
-    <p class="text-sm text-slate-500 mb-6">These notes automatically load from the database. Edit them here and click Save before generating the report.</p>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-2 text-blue-600">Key Operational Highlights</label>
-            <textarea id="inp-hi" class="form-control w-full" placeholder="- E.g. Achieved 98% plant availability this month..."></textarea>
-        </div>
-        <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-2 text-orange-600">Operational Problems Faced</label>
-            <textarea id="inp-pr" class="form-control w-full" placeholder="- E.g. Frequent grid trips from Balanch Substation..."></textarea>
-        </div>
-        <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-2 text-emerald-600">Maintenance Activities Executed</label>
-            <textarea id="inp-mt" class="form-control w-full" placeholder="- E.g. Cleaned cooling water strainers for Unit 1..."></textarea>
-        </div>
-        <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-2 text-purple-600">Health, Safety & Environment (HSE)</label>
-            <textarea id="inp-hse" class="form-control w-full" placeholder="- E.g. Zero LTI recorded. Standard safety protocols followed..."></textarea>
-        </div>
-    </div>
-    
-    <div class="mt-6 flex justify-end">
-        <button id="btn-save-narrative" class="btn btn-outline">💾 Save Narratives to Database</button>
-    </div>
+<!-- ===== LOADING ===== -->
+<div id="loading-state" class="hidden flex flex-col items-center justify-center py-24 no-print">
+    <div class="spinner mb-5"></div>
+    <p class="text-lg font-bold text-slate-700">Generating comprehensive report…</p>
+    <p class="text-sm text-slate-400 mt-1">Fetching operational data, processing calculations, building annexes</p>
 </div>
 
-<div id="loading-state" class="hidden flex flex-col items-center justify-center py-20">
-    <div class="spinner mb-6"></div>
-    <p class="text-xl font-bold text-slate-700">Generating comprehensive report...</p>
-    <p class="text-sm text-slate-500 mt-2">Fetching data from database and processing calculations</p>
-</div>
-
-<div id="report-container" class="hidden">
-    </div>
+<!-- ===== REPORT OUTPUT ===== -->
+<div id="report-container" class="hidden"></div>
 
 <script type="module">
 import { supabase, initializeApplication } from './assets/js/core-app.js';
 
-// Constants
+// ── Constants ──────────────────────────────────────────────────────────────
 const CANONICAL_MONTHS = ["Baisakh","Jestha","Ashar","Shrawan","Bhadra","Ashoj","Kartik","Mangshir","Poush","Magh","Falgun","Chaitra"];
 const PLANT_CAPACITY_MW = 10;
-const IMPORT_RATE = 10.8;
-const NARRATIVE_TABLE = 'monthly_report_narratives';
+const IMPORT_RATE       = 10.8;
+const NARRATIVE_TABLE   = 'monthly_report_narratives';
 
-// PPA Contract Energy (MWh) by month
 const PPA_CONTRACT = {
-    0: { days: 31, energy: 5454.574 }, 1: { days: 31, energy: 7070.976 },
-    2: { days: 32, energy: 7299.072 }, 3: { days: 31, energy: 7070.976 },
-    4: { days: 31, energy: 7070.976 }, 5: { days: 31, energy: 7070.976 },
-    6: { days: 30, energy: 6697.698 }, 7: { days: 29, energy: 5450.850 },
-    8: { days: 30, energy: 4560.670 }, 9: { days: 29, energy: 3850.343 },
-    10: { days: 30, energy: 4005.746 }, 11: { days: 30, energy: 4153.565 }
+    0:{ days:31, energy:5454.574 }, 1:{ days:31, energy:7070.976 },
+    2:{ days:32, energy:7299.072 }, 3:{ days:31, energy:7070.976 },
+    4:{ days:31, energy:7070.976 }, 5:{ days:31, energy:7070.976 },
+    6:{ days:30, energy:6697.698 }, 7:{ days:29, energy:5450.850 },
+    8:{ days:30, energy:4560.670 }, 9:{ days:29, energy:3850.343 },
+   10:{ days:30, energy:4005.746 },11:{ days:30, energy:4153.565 }
 };
 
-// Utility functions
-const fmt = (v, d = 2) => (v == null || isNaN(v)) ? '0.00' : parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+// ── Helpers ────────────────────────────────────────────────────────────────
+const fmt  = (v, d=2) => (v==null||isNaN(v)) ? '—' : parseFloat(v).toLocaleString('en-US', { minimumFractionDigits:d, maximumFractionDigits:d });
 const fmtI = v => fmt(v, 0);
-const pN = v => { if (v == null || v === '' || v === '-') return 0; const n = parseFloat(String(v).replace(/,/g, '')); return isNaN(n) ? 0 : n; };
+const pN   = v => { if (v==null||v===''||v==='-') return 0; const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; };
+const pct  = (a,b) => b>0 ? fmt(a/b*100) : '0.00';
 
 const cleanDate = s => {
     if (!s) return '';
-    s = String(s).replace(/[\/\-]/g, '.').trim();
+    s = String(s).replace(/[\/\-]/g,'.').trim();
     const p = s.split('.');
-    if (p.length === 3 && p[2].length === 4) return `${p[2]}.${p[1].padStart(2, '0')}.${p[0].padStart(2, '0')}`;
-    if (p.length === 3) return `${p[0]}.${p[1].padStart(2, '0')}.${p[2].padStart(2, '0')}`;
+    if (p.length===3 && p[2].length===4) return `${p[2]}.${p[1].padStart(2,'0')}.${p[0].padStart(2,'0')}`;
+    if (p.length===3) return `${p[0]}.${p[1].padStart(2,'0')}.${p[2].padStart(2,'0')}`;
     return s;
 };
 
@@ -548,827 +564,1031 @@ const getMIdx = m => {
     const l = String(m).toLowerCase();
     const i = CANONICAL_MONTHS.findIndex(x => x.toLowerCase() === l);
     if (i >= 0) return i;
-    const aliases = { ashadh: 2, mangsir: 7, mangshir: 7, falgun: 10, chait: 11, shrawan: 3, ashoj: 5 };
+    const aliases = { ashadh:2, mangsir:7, mangshir:7, falgun:10, chait:11, shrawan:3, ashoj:5 };
     return Object.entries(aliases).find(([k]) => l.includes(k))?.[1] ?? -1;
 };
 
 const formatBullets = text => {
     if (!text || text.trim() === '') return '';
-    return text.split('\n')
-               .filter(line => line.trim().length > 0)
-               .map(line => `<li class="doc-li">${line.replace(/^[-•*]\s*/, '').trim()}</li>`)
-               .join('');
+    return text.split('\n').filter(l=>l.trim().length>0)
+        .map(l=>`<li class="doc-li">${l.replace(/^[-•*]\s*/,'').trim()}</li>`).join('');
 };
 
-// Data storage
-let reportData = {
-    year: null,
-    month: null,
-    monthIndex: null,
-    plantData: [],
-    balanchData: [],
-    contractData: null,
-    outagesData: [],
-    dailySeries: [],
-    metrics: {}
-};
+// ── State ──────────────────────────────────────────────────────────────────
+let R = { year:null, month:null, monthIndex:null, plantData:[], balanchData:[], contractData:null, outagesData:[], dailySeries:[], ytdData:[], metrics:{} };
 
-// Fetch narratives dynamically when month/year changes
+// ── Init ───────────────────────────────────────────────────────────────────
+(async () => {
+    await initializeApplication(true);
+    ['sel-year','sel-month'].forEach(id => document.getElementById(id).addEventListener('change', loadNarratives));
+    await loadNarratives();
+    document.getElementById('btn-generate').addEventListener('click', generateReport);
+    document.getElementById('btn-print').addEventListener('click', () => window.print());
+    document.getElementById('btn-save-narrative').addEventListener('click', saveNarrative);
+})();
+
 async function loadNarratives() {
     const y = document.getElementById('sel-year').value;
     const m = document.getElementById('sel-month').value;
-    const { data } = await supabase.from(NARRATIVE_TABLE).select('*').eq('id', `${y}_${m}`).maybeSingle();
-    
-    document.getElementById('inp-hi').value = data?.key_highlights || '';
-    document.getElementById('inp-pr').value = data?.problems || '';
-    document.getElementById('inp-mt').value = data?.maintenance || '';
-    document.getElementById('inp-hse').value = data?.hse || '';
+    const { data } = await supabase.from(NARRATIVE_TABLE).select('*').eq('id',`${y}_${m}`).maybeSingle();
+    document.getElementById('inp-hi').value  = data?.key_highlights || '';
+    document.getElementById('inp-pr').value  = data?.problems       || '';
+    document.getElementById('inp-mt').value  = data?.maintenance    || '';
+    document.getElementById('inp-hse').value = data?.hse            || '';
 }
 
-// Initialize app
-(async () => {
-    await initializeApplication(true);
-    
-    document.getElementById('sel-year').addEventListener('change', loadNarratives);
-    document.getElementById('sel-month').addEventListener('change', loadNarratives);
-    
-    // Load initial narratives
-    await loadNarratives();
-    
-    document.getElementById('btn-generate').addEventListener('click', generateReport);
-    document.getElementById('btn-print').addEventListener('click', () => window.print());
-})();
-
-// Save Narrative Button Logic
-document.getElementById('btn-save-narrative').addEventListener('click', async () => {
+async function saveNarrative() {
     const y = document.getElementById('sel-year').value;
     const m = document.getElementById('sel-month').value;
     const btn = document.getElementById('btn-save-narrative');
-    btn.innerText = "Saving..."; btn.disabled = true;
-
-    const payload = {
-        id: `${y}_${m}`, nepali_year: y, nepali_month: m,
+    btn.textContent = 'Saving…'; btn.disabled = true;
+    await supabase.from(NARRATIVE_TABLE).upsert({
+        id:`${y}_${m}`, nepali_year:y, nepali_month:m,
         key_highlights: document.getElementById('inp-hi').value,
-        problems: document.getElementById('inp-pr').value,
-        maintenance: document.getElementById('inp-mt').value,
-        hse: document.getElementById('inp-hse').value,
-        updated_at: new Date().toISOString()
-    };
+        problems:       document.getElementById('inp-pr').value,
+        maintenance:    document.getElementById('inp-mt').value,
+        hse:            document.getElementById('inp-hse').value,
+        updated_at:     new Date().toISOString()
+    }, { onConflict:'id' });
+    btn.textContent = '✓ Saved!';
+    setTimeout(() => { btn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg> Save to Database'; btn.disabled = false; }, 2000);
+}
 
-    try {
-        await supabase.from(NARRATIVE_TABLE).upsert(payload, {onConflict: 'id'});
-        btn.innerText = "Saved!";
-        setTimeout(() => { btn.innerText = "💾 Save Narratives to Database"; btn.disabled = false; }, 2000);
-    } catch(e) { 
-        alert("Failed to save."); 
-        btn.innerText = "💾 Save Narratives to Database"; 
-        btn.disabled = false; 
-    }
-});
-
+// ── Generate ───────────────────────────────────────────────────────────────
 async function generateReport() {
-    const year = parseInt(document.getElementById('sel-year').value);
+    const year  = parseInt(document.getElementById('sel-year').value);
     const month = document.getElementById('sel-month').value;
-    const mIdx = getMIdx(month);
-    
-    if (mIdx === -1) {
-        alert('Invalid month selected');
-        return;
-    }
-    
-    reportData.year = year;
-    reportData.month = month;
-    reportData.monthIndex = mIdx;
-    
-    // Hide the input panel and show loading spinner
-    document.getElementById('setup-panel').style.display = 'none'; 
+    const mIdx  = getMIdx(month);
+    if (mIdx === -1) { alert('Invalid month'); return; }
+    R.year = year; R.month = month; R.monthIndex = mIdx;
+
+    document.getElementById('setup-panel').style.display = 'none';
     document.getElementById('loading-state').classList.remove('hidden');
     document.getElementById('report-container').classList.add('hidden');
-    
+
     try {
         await fetchAllData(year, mIdx);
         processMetrics();
-        
-        const reportHTML = buildReportHTML();
-        document.getElementById('report-container').innerHTML = reportHTML;
-        
+        document.getElementById('report-container').innerHTML = `<div class="a4-document">${buildAll()}</div>`;
         setTimeout(renderCharts, 300);
-        
         document.getElementById('loading-state').classList.add('hidden');
         document.getElementById('report-container').classList.remove('hidden');
         document.getElementById('btn-print').classList.remove('hidden');
-        
-        // Create an "Edit Notes" button dynamically next to the Print button
-        if(!document.getElementById('btn-edit-inputs')) {
-            const editBtn = document.createElement('button');
-            editBtn.id = 'btn-edit-inputs';
-            editBtn.className = 'btn btn-outline mt-5 ml-2 no-print';
-            editBtn.innerHTML = '✏️ Edit Notes';
-            editBtn.onclick = () => {
-                document.getElementById('setup-panel').style.display = 'block';
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-            document.getElementById('btn-print').parentNode.insertBefore(editBtn, document.getElementById('btn-print').nextSibling);
+        if (!document.getElementById('btn-edit')) {
+            const e = document.createElement('button');
+            e.id='btn-edit'; e.className='btn btn-outline mt-0 no-print';
+            e.style.cssText='background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.3);color:white;';
+            e.innerHTML='✏️ Edit Notes';
+            e.onclick = () => { document.getElementById('setup-panel').style.display='block'; window.scrollTo({top:0,behavior:'smooth'}); };
+            document.getElementById('btn-print').insertAdjacentElement('afterend', e);
         }
-        
-    } catch (error) {
-        console.error('Report generation error:', error);
-        document.getElementById('loading-state').innerHTML = `
-            <div class="text-red-600 text-center max-w-md">
-                <svg class="w-16 h-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <h3 class="text-xl font-bold mb-2">Report Generation Failed</h3>
-                <p class="text-sm text-slate-600">${error.message}</p>
-                <button onclick="location.reload()" class="btn btn-primary mt-4">Try Again</button>
-            </div>
-        `;
+    } catch (err) {
+        console.error(err);
+        document.getElementById('loading-state').innerHTML = `<div class="text-center text-red-600 max-w-sm"><p class="text-lg font-bold mb-2">Generation Failed</p><p class="text-sm">${err.message}</p><button onclick="location.reload()" class="btn btn-primary mt-4">Reload</button></div>`;
     }
 }
 
+// ── Fetch ──────────────────────────────────────────────────────────────────
 async function fetchAllData(year, mIdx) {
-    const mStr = String(mIdx + 1).padStart(2, '0');
-    
-    // 1. Fetch primary plant data
-    const { data: pData, error: pError } = await supabase
-        .from('plant_data')
-        .select('*')
-        .like('nepali_date', `${year}.${mStr}.%`)
-        .order('id', { ascending: true });
-    
-    if (pError) throw new Error('Failed to fetch plant data: ' + pError.message);
-    reportData.plantData = pData || [];
-    
-    // NEW: Fetch the 1st reading of the NEXT month (for cumulative closing calculation)
-    if (reportData.plantData.length > 0) {
-        const lastIdThisMonth = reportData.plantData[reportData.plantData.length - 1].id;
-        const { data: nextMonthData } = await supabase
-            .from('plant_data')
-            .select('*')
-            .gt('id', lastIdThisMonth)
-            .order('id', { ascending: true })
-            .limit(1);
-            
-        if (nextMonthData && nextMonthData.length > 0) {
-            reportData.plantData.push(nextMonthData[0]); 
+    const mStr = String(mIdx+1).padStart(2,'0');
+
+    const { data:pData, error:pErr } = await supabase.from('plant_data').select('*').like('nepali_date',`${year}.${mStr}.%`).order('id',{ascending:true});
+    if (pErr) throw new Error('plant_data: ' + pErr.message);
+    R.plantData = pData || [];
+
+    if (R.plantData.length > 0) {
+        const last = R.plantData[R.plantData.length-1].id;
+        const { data:nx } = await supabase.from('plant_data').select('*').gt('id',last).order('id',{ascending:true}).limit(1);
+        if (nx?.length) R.plantData.push(nx[0]);
+    }
+
+    const engDates = R.plantData.map(p=>p.id).filter(Boolean);
+
+    if (engDates.length > 0) {
+        const { data:bData } = await supabase.from('balanch_readings').select('*').gte('eng_date',engDates[0]).order('eng_date',{ascending:true}).limit(engDates.length+1);
+        R.balanchData = bData || [];
+    }
+
+    const { data:cData, error:cErr } = await supabase.from('contract_energy').select('*').eq('year',year).eq('month',R.month).maybeSingle();
+    if (cErr && cErr.code !== 'PGRST116') throw new Error('contract_energy: ' + cErr.message);
+    R.contractData = cData;
+
+    if (engDates.length > 0) {
+        const { data:oData } = await supabase.from('outages').select('*').in('id',engDates);
+        R.outagesData = oData || [];
+    }
+
+    // ── YTD data (all previous months this year) ──────────────────────────
+    R.ytdData = [];
+    for (let m = 0; m < mIdx; m++) {
+        const ms = String(m+1).padStart(2,'0');
+        const { data:ytdPlant } = await supabase.from('plant_data').select('export_plant,station_trans').like('nepali_date',`${year}.${ms}.%`).order('id',{ascending:true});
+        const { data:ytdBal } = await supabase.from('balanch_readings').select('main_export,check_export').like('eng_date',`${year}-${ms}-%`).order('eng_date',{ascending:true});
+
+        let exp = 0;
+        if (ytdBal && ytdBal.length >= 2) {
+            const first = ytdBal[0], last = ytdBal[ytdBal.length-1];
+            exp = Math.max(0, pN(last.main_export ?? last.check_export) - pN(first.main_export ?? first.check_export));
         }
-    }
-
-    const engDates = reportData.plantData.map(p => p.id).filter(Boolean);
-
-    // 2. Fetch Balanch Readings (Substation) -> Fetch forwards to get Next Month Day 1
-    if (engDates.length > 0) {
-        const { data: bData } = await supabase
-            .from('balanch_readings')
-            .select('*')
-            .gte('eng_date', engDates[0])
-            .order('eng_date', { ascending: true })
-            .limit(engDates.length + 1);
-            
-        reportData.balanchData = bData || [];
-    }
-        
-    // 3. Fetch Contract Data
-    const { data: cData, error: cError } = await supabase
-        .from('contract_energy')
-        .select('*')
-        .eq('year', year)
-        .eq('month', reportData.month)
-        .maybeSingle();
-    
-    if (cError && cError.code !== 'PGRST116') throw new Error('Failed to fetch contract data: ' + cError.message);
-    reportData.contractData = cData;
-    
-    // 4. Fetch Outages
-    if (engDates.length > 0) {
-        const { data: oData } = await supabase
-            .from('outages')
-            .select('*')
-            .in('id', engDates);
-        reportData.outagesData = oData || [];
+        R.ytdData.push({ monthIdx:m, month:CANONICAL_MONTHS[m], export:exp, contract:PPA_CONTRACT[m].energy });
     }
 }
 
+// ── Process Metrics ────────────────────────────────────────────────────────
 function processMetrics() {
-    const { plantData, balanchData, contractData, outagesData, year, monthIndex } = reportData;
-    
+    const { plantData, balanchData, contractData, outagesData, year, monthIndex } = R;
     const days = PPA_CONTRACT[monthIndex].days;
     const dailySeries = [];
-    
-    let totalGen = 0, totalExp = 0, totalImp = 0, totalStCons = 0;
-    let totalU1Hrs = 0, totalU2Hrs = 0;
-    let peakGen = { day: 0, value: 0 }, lowestGen = { day: 0, value: 999999 };
-    
-    for (let d = 1; d <= days; d++) {
-       const dateStr = `${year}.${String(monthIndex + 1).padStart(2, '0')}.${String(d).padStart(2, '0')}`;
-        const pRow = plantData.find(p => cleanDate(p.nepali_date || p.nep_date) === dateStr);
-        const oRow = outagesData.find(o => o.id === (pRow?.id));
-        
-        let u1Gen = 0, u2Gen = 0, gen = 0, exp = 0, imp = 0, stCons = 0, u1Hrs = 0, u2Hrs = 0;
-        let expS = 0, impS = 0, u1Trans = 0, u2Trans = 0;
-        
+
+    let totalGen=0, totalExp=0, totalImp=0, totalStCons=0;
+    let totalU1Hrs=0, totalU2Hrs=0, totalU1Gen=0, totalU2Gen=0;
+    let peakGen={day:0,value:0}, lowestGen={day:0,value:999999};
+    let zeroGenDays=0;
+
+    for (let d=1; d<=days; d++) {
+        const dateStr=`${year}.${String(monthIndex+1).padStart(2,'0')}.${String(d).padStart(2,'0')}`;
+        const pRow  = plantData.find(p=>cleanDate(p.nepali_date||p.nep_date)===dateStr);
+        const oRow  = outagesData.find(o=>o.id===(pRow?.id));
+
+        let u1Gen=0, u2Gen=0, gen=0, exp=0, imp=0, stCons=0, u1Hrs=0, u2Hrs=0, expS=0, impS=0;
+
         if (pRow) {
-            const pRowIndex = plantData.findIndex(p => p.id === pRow.id);
-            const pNext = pRowIndex < plantData.length - 1 ? plantData[pRowIndex + 1] : null;
-            
-            if (pNext) {
-                // FIXED: U1, U2, Trans, Exp, Imp are MWh -> Removed / 1000
-                u1Gen = Math.max(0, (pN(pNext.unit1_gen) - pN(pRow.unit1_gen)));
-                u2Gen = Math.max(0, (pN(pNext.unit2_gen) - pN(pRow.unit2_gen)));
-                u1Trans = Math.max(0, (pN(pNext.unit1_trans) - pN(pRow.unit1_trans)));
-                u2Trans = Math.max(0, (pN(pNext.unit2_trans) - pN(pRow.unit2_trans)));
-                
-                gen = u1Gen + u2Gen;
-                exp = Math.max(0, (pN(pNext.export_plant) - pN(pRow.export_plant)));
-                imp = Math.max(0, (pN(pNext.import_plant) - pN(pRow.import_plant)));
-                
-                // FIXED: Station consumption kept as / 1000 (assumed kWh)
-                stCons = Math.max(0, (pN(pNext.station_trans) - pN(pRow.station_trans))) / 1000;
-                
-                u1Hrs = Math.max(0, (pN(pNext.unit1_counter) - pN(pRow.unit1_counter))); 
-                u2Hrs = Math.max(0, (pN(pNext.unit2_counter) - pN(pRow.unit2_counter)));
+            const pIdx = plantData.findIndex(p=>p.id===pRow.id);
+            const pNxt = pIdx < plantData.length-1 ? plantData[pIdx+1] : null;
+            if (pNxt) {
+                u1Gen  = Math.max(0, pN(pNxt.unit1_gen)    - pN(pRow.unit1_gen));
+                u2Gen  = Math.max(0, pN(pNxt.unit2_gen)    - pN(pRow.unit2_gen));
+                gen    = u1Gen + u2Gen;
+                exp    = Math.max(0, pN(pNxt.export_plant)  - pN(pRow.export_plant));
+                imp    = Math.max(0, pN(pNxt.import_plant)  - pN(pRow.import_plant));
+                stCons = Math.max(0, pN(pNxt.station_trans) - pN(pRow.station_trans)) / 1000;
+                u1Hrs  = Math.max(0, pN(pNxt.unit1_counter) - pN(pRow.unit1_counter));
+                u2Hrs  = Math.max(0, pN(pNxt.unit2_counter) - pN(pRow.unit2_counter));
             }
-            
-            const bRow = balanchData.find(b => b.eng_date === pRow.id);
+            const bRow = balanchData.find(b=>b.eng_date===pRow.id);
             if (bRow) {
-                const bNext = balanchData.find(b => b.eng_date > bRow.eng_date);
-                if (bNext) {
-                    // FIXED: Balanch meters are MWh -> Removed / 1000
-                    expS = Math.max(0, pN(bNext.main_export ?? bNext.check_export) - pN(bRow.main_export ?? bRow.check_export));
-                    impS = Math.max(0, pN(bNext.main_import ?? bNext.check_import) - pN(bRow.main_import ?? bRow.check_import));
+                const bNxt = balanchData.find(b=>b.eng_date>bRow.eng_date);
+                if (bNxt) {
+                    expS = Math.max(0, pN(bNxt.main_export??bNxt.check_export)  - pN(bRow.main_export??bRow.check_export));
+                    impS = Math.max(0, pN(bNxt.main_import??bNxt.check_import)  - pN(bRow.main_import??bRow.check_import));
                 }
             }
         }
-        
-        totalGen += gen;
-        totalExp += expS; 
-        totalImp += impS;
-        totalStCons += stCons;
-        totalU1Hrs += u1Hrs;
-        totalU2Hrs += u2Hrs;
-        
-        if (gen > peakGen.value) {
-            peakGen = { day: d, value: gen };
-        }
-        if (gen > 0 && gen < lowestGen.value) {
-            lowestGen = { day: d, value: gen };
-        }
-        
-        // Added u1Trans and u2Trans to daily series
-        dailySeries.push({
-            day: d, date: dateStr, engDate: pRow?.id || '',
-            u1Gen, u2Gen, u1Trans, u2Trans, gen, exp, imp, expS, impS, stCons, u1Hrs, u2Hrs,
-            outage: oRow || {}, rawPlant: pRow || {}
-        });
-      }
-    
-    reportData.dailySeries = dailySeries;
-    
-    // Core KPIs
-    const contractEnergy = PPA_CONTRACT[monthIndex].energy;
-    const declaredAD = pN(contractData?.total_ad) || 0;
-    const plantFactor = (totalExp / (PLANT_CAPACITY_MW * 24 * days) * 100);
-    const avgDailyGen = totalGen / days;
-    
-    // RAW DATABASE VALUES: Directly sum the outages table (No division) to match Annex B and correct the MWh display issue.
-    const totalOutageEnergy = outagesData.reduce((sum, o) => sum + pN(o.total_energy_loss), 0);
-    const neaCurtailed = outagesData.reduce((sum, o) => sum + pN(o.nea_curtailed_energy), 0);
-    const totalTrippings = outagesData.reduce((sum, o) => sum + pN(o.no_of_trippings), 0);
-    const gridFault = outagesData.reduce((sum, o) => sum + pN(o.energy_loss_line_trip), 0);
-    const plantFaults = outagesData.reduce((sum, o) => sum + pN(o.energy_loss_other), 0);
-    
-    const totalFaults = gridFault + plantFaults + neaCurtailed;
-    
-    // Financials
-    const ppaRate = calculatePPARate(year, monthIndex);
-    const normalMwh = Math.min(totalExp, declaredAD, contractEnergy);
-    const excessMwh = Math.max(0, totalExp - normalMwh);
-    
-    const normalRevenue = normalMwh * ppaRate * 1000;
-    const excessRevenue = excessMwh * (ppaRate / 2) * 1000;
-    const grossRevenue = normalRevenue + excessRevenue;
-    
-    const penalty = Math.max(0, (0.9 * declaredAD) - totalExp) * 0.10 * ppaRate * 1000;
-    const importCost = totalImp * IMPORT_RATE * 1000;
-    const royalty = grossRevenue * 0.02;
-    const netRevenue = grossRevenue - penalty - importCost - royalty;
-    
-    reportData.metrics = {
-        totalGen, totalExp, totalImp, totalStCons,
-        totalU1Hrs, totalU2Hrs,
-        contractEnergy, declaredAD,
-        plantFactor, avgDailyGen,
-        peakGen, lowestGen,
-        totalOutageEnergy, neaCurtailed, totalTrippings,
-        gridFault, plantFaults, totalFaults,
-        ppaRate, normalRevenue, excessRevenue, grossRevenue,
-        penalty, importCost, royalty, netRevenue,
-        days
+
+        totalGen    += gen;    totalU1Gen += u1Gen; totalU2Gen += u2Gen;
+        totalExp    += expS;   totalImp   += impS;  totalStCons+= stCons;
+        totalU1Hrs  += u1Hrs;  totalU2Hrs += u2Hrs;
+        if (gen > peakGen.value)             peakGen   = {day:d, value:gen};
+        if (gen > 0 && gen < lowestGen.value) lowestGen = {day:d, value:gen};
+        if (gen === 0) zeroGenDays++;
+
+        dailySeries.push({day:d, date:dateStr, engDate:pRow?.id||'', u1Gen, u2Gen, gen, exp, imp, expS, impS, stCons, u1Hrs, u2Hrs, outage:oRow||{}, rawPlant:pRow||{}});
+    }
+    R.dailySeries = dailySeries;
+
+    const contractEnergy  = PPA_CONTRACT[monthIndex].energy;
+    const declaredAD      = pN(contractData?.total_ad) || 0;
+    const plantFactor     = (totalExp / (PLANT_CAPACITY_MW * 24 * days) * 100);
+    const availability    = ((days - zeroGenDays) / days * 100);
+    const avgDailyGen     = totalGen / days;
+    const u1Share         = totalGen > 0 ? totalU1Gen / totalGen * 100 : 0;
+    const u2Share         = totalGen > 0 ? totalU2Gen / totalGen * 100 : 0;
+
+    const totalOutageEnergy = outagesData.reduce((s,o)=>s+pN(o.total_energy_loss),0);
+    const neaCurtailed      = outagesData.reduce((s,o)=>s+pN(o.nea_curtailed_energy),0);
+    const totalTrippings    = outagesData.reduce((s,o)=>s+pN(o.no_of_trippings),0);
+    const gridFault         = outagesData.reduce((s,o)=>s+pN(o.energy_loss_line_trip),0);
+    const plantFaults       = outagesData.reduce((s,o)=>s+pN(o.energy_loss_other),0);
+    const totalFaults       = gridFault + plantFaults + neaCurtailed;
+
+    const ppaRate     = calcPPARate(R.year, monthIndex);
+    const normalMwh   = Math.min(totalExp, declaredAD, contractEnergy);
+    const excessMwh   = Math.max(0, totalExp - normalMwh);
+    const normalRev   = normalMwh   * ppaRate * 1000;
+    const excessRev   = excessMwh   * (ppaRate/2) * 1000;
+    const grossRev    = normalRev + excessRev;
+    const penalty     = Math.max(0,(0.9*declaredAD)-totalExp)*0.10*ppaRate*1000;
+    const importCost  = totalImp * IMPORT_RATE * 1000;
+    const royalty     = grossRev * 0.02;
+    const bayControl  = pN(contractData?.bay_control_nrs);
+    const extraAdj    = pN(contractData?.extra_adjustment_nrs);
+    const netRev      = grossRev - penalty - importCost - royalty - bayControl + extraAdj;
+
+    // YTD totals
+    const ytdExport   = R.ytdData.reduce((s,m)=>s+m.export,0) + totalExp;
+    const ytdContract = R.ytdData.reduce((s,m)=>s+m.contract,0) + contractEnergy;
+
+    R.metrics = {
+        totalGen, totalExp, totalImp, totalStCons, totalU1Gen, totalU2Gen,
+        totalU1Hrs, totalU2Hrs, u1Share, u2Share,
+        contractEnergy, declaredAD, plantFactor, availability, avgDailyGen,
+        peakGen, lowestGen, zeroGenDays, days,
+        totalOutageEnergy, neaCurtailed, totalTrippings, gridFault, plantFaults, totalFaults,
+        ppaRate, normalRev, excessRev, grossRev, penalty, importCost, royalty, bayControl, extraAdj, netRev,
+        ytdExport, ytdContract
     };
 }
 
-function calculatePPARate(year, mIdx) {
-    const escalationYearWet = Math.max(0, year - 2080);
-    const escalationYearDry = Math.max(0, mIdx === 11 ? year - 2079 : year - 2080);
-    const wetRates = [8.4, 8.65, 8.9, 9.16, 9.43, 9.71];
-    const dryRates = [4.8, 4.94, 5.09, 5.24, 5.39, 5.55];
-    return mIdx >= 2 && mIdx <= 11 
-        ? wetRates[Math.min(escalationYearWet, 5)] 
-        : dryRates[Math.min(escalationYearDry, 5)];
+function calcPPARate(year, mIdx) {
+    const ey = Math.max(0, year-2080);
+    const wet=[8.4,8.65,8.9,9.16,9.43,9.71], dry=[4.8,4.94,5.09,5.24,5.39,5.55];
+    return (mIdx>=2 && mIdx<=11) ? wet[Math.min(ey,5)] : dry[Math.min(ey,5)];
 }
 
-function buildReportHTML() {
+// ── Build All HTML ─────────────────────────────────────────────────────────
+function buildAll() {
     return `
-        <div class="a4-document">
-            ${buildCoverPage()}
-            ${buildExecutiveSummary()}
-            ${buildGenerationPerformance()}
-            ${buildOutageAnalysis()}
-            ${buildGridTransmission()}
-            ${buildFinancialSummary()}
-            ${buildMaintenanceLog()}
-            ${buildAnnexDailyGeneration()}
-            ${buildAnnexOutages()}
-        </div>
+        ${buildCover()}
+        ${buildTOC()}
+        ${buildExecutiveSummary()}
+        ${buildGenerationPerformance()}
+        ${buildUnitAnalysis()}
+        ${buildOutageAnalysis()}
+        ${buildGridTransmission()}
+        ${buildYTDSection()}
+        ${buildFinancialSummary()}
+        ${buildMaintenanceLog()}
+        ${buildAnnexDailyGeneration()}
+        ${buildAnnexOutages()}
+        ${buildSignatureBlock()}
     `;
 }
 
-function buildCoverPage() {
-    const { year, month } = reportData;
-    const { totalGen, plantFactor } = reportData.metrics;
-    
+// ── Cover Page ─────────────────────────────────────────────────────────────
+function buildCover() {
+    const { year, month } = R;
+    const { totalGen, totalExp, plantFactor, availability, grossRev } = R.metrics;
+    const pfColor = plantFactor >= 70 ? 'var(--green)' : plantFactor >= 50 ? 'var(--amber)' : 'var(--red)';
+    const avColor = availability >= 90 ? 'var(--green)' : availability >= 75 ? 'var(--amber)' : 'var(--red)';
+
     return `
-        <div class="cover-page">
-            <div class="cover-header"></div>
-            <div class="cover-title">Monthly Progress &<br>Operations Report</div>
-            <div class="cover-subtitle">Makari Gad Hydroelectric Project</div>
-            <div style="font-size:12pt; color:#64748b; font-weight:600; margin-bottom:4rem;">
-                10 MW Installed Capacity | Darchula, Nepal
+    <div class="cover-page">
+        <div class="cover-ribbon"></div>
+        <div class="cover-badge">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            10 MW Hydroelectric Power Plant · Darchula District, Nepal
+        </div>
+        <div class="cover-main-title">Monthly Progress<br>& Operations Report</div>
+        <div class="cover-sub">Makari Gad Hydroelectric Project — ${month} ${year} BS</div>
+
+        <div class="cover-kpi-grid">
+            <div class="cover-kpi">
+                <div class="cover-kpi-num" style="color:var(--blue-lt);">${fmt(totalGen)}</div>
+                <div class="cover-kpi-lbl">Gross Gen (MWh)</div>
             </div>
-            <div class="cover-meta">
-                <div><div class="meta-label">Reporting Period</div><div class="meta-value">${month} ${year} BS</div></div>
-                <div><div class="meta-label">Total Generation</div><div class="meta-value">${fmt(totalGen)} MWh</div></div>
-                <div><div class="meta-label">Plant Factor</div><div class="meta-value">${fmt(plantFactor)}%</div></div>
-                <div><div class="meta-label">Report Status</div><div class="meta-value" style="color:#10b981;">Verified</div></div>
+            <div class="cover-kpi">
+                <div class="cover-kpi-num" style="color:var(--green);">${fmt(totalExp)}</div>
+                <div class="cover-kpi-lbl">Energy Export (MWh)</div>
             </div>
-            <div style="position:absolute; bottom:20mm; left:0; right:0; text-align:center; font-size:9pt; color:#94a3b8;">
-                <p style="margin:0; font-weight:600;">Prepared By: Plant Operations & Maintenance Team</p>
-                <p style="margin:0.5rem 0 0; font-weight:600;">Generated: ${new Date().toLocaleDateString('en-GB')}</p>
+            <div class="cover-kpi">
+                <div class="cover-kpi-num" style="color:${pfColor};">${fmt(plantFactor)}%</div>
+                <div class="cover-kpi-lbl">Plant Factor</div>
+            </div>
+            <div class="cover-kpi">
+                <div class="cover-kpi-num" style="color:${avColor};">${fmt(availability)}%</div>
+                <div class="cover-kpi-lbl">Availability</div>
             </div>
         </div>
-        <div class="page-break"></div>
-    `;
+
+        <div class="cover-divider"></div>
+
+        <div class="cover-info-grid">
+            <div class="cover-info-item">
+                <div class="cover-info-label">Installed Capacity</div>
+                <div class="cover-info-val">10.00 MW</div>
+            </div>
+            <div class="cover-info-item">
+                <div class="cover-info-label">Gross Revenue (Estimated)</div>
+                <div class="cover-info-val">NPR ${fmtI(grossRev)}</div>
+            </div>
+            <div class="cover-info-item">
+                <div class="cover-info-label">PPA Rate Applied</div>
+                <div class="cover-info-val">NPR ${fmt(R.metrics.ppaRate)}/kWh</div>
+            </div>
+            <div class="cover-info-item">
+                <div class="cover-info-label">Report Status</div>
+                <div class="cover-info-val" style="color:var(--green);">✓ Verified</div>
+            </div>
+        </div>
+
+        <div class="cover-footer">
+            <div>
+                <p style="font-size:8pt;font-weight:700;color:var(--navy);">Prepared By: Plant Operations & Maintenance Team</p>
+                <p style="font-size:7.5pt;color:var(--slate);margin-top:2px;">Makari Gad Hydroelectric Project, Darchula, Sudurpashchim Province</p>
+            </div>
+            <div style="text-align:right;">
+                <p style="font-size:8pt;font-weight:700;color:var(--navy);">Generated: ${new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'})}</p>
+                <p style="font-size:7.5pt;color:var(--slate);margin-top:2px;">Document Reference: MGHEP/OPR/${year}/${String(R.monthIndex+1).padStart(2,'0')}</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-break"></div>`;
 }
 
+// ── Table of Contents ──────────────────────────────────────────────────────
+function buildTOC() {
+    const sections = [
+        ['01','Executive Summary', '3'],
+        ['02','Generation & Performance Data', '4'],
+        ['03','Unit-Wise Analysis', '5'],
+        ['04','Outage Analysis & Energy Losses', '6'],
+        ['05','Grid & Transmission Performance', '7'],
+        ['06','Year-to-Date Progress', '8'],
+        ['07','Financial Summary', '9'],
+        ['08','Maintenance & HSE Log', '10'],
+        ['Annex A','Daily Generation & Dispatch Log', '11'],
+        ['Annex B','Outage & Energy Loss Tracker', '13'],
+    ];
+
+    const rows = sections.map(([num, title]) => `
+        <div class="toc-entry">
+            <span class="toc-num">${num}</span>
+            <span class="toc-title">${title}</span>
+            <span class="toc-dots"></span>
+        </div>`).join('');
+
+    return `
+    <div class="doc-h1"><span class="doc-h1-num">TOC</span> TABLE OF CONTENTS</div>
+    <div style="margin:1rem 0 2rem;">${rows}</div>
+    <div class="page-break"></div>`;
+}
+
+// ── Executive Summary ──────────────────────────────────────────────────────
 function buildExecutiveSummary() {
-    const { totalGen, totalExp, plantFactor, totalFaults, grossRevenue, avgDailyGen, totalU1Hrs, totalU2Hrs, peakGen, lowestGen, totalTrippings, neaCurtailed, gridFault, totalOutageEnergy } = reportData.metrics;
-    const { month, year } = reportData;
-    
+    const { totalGen, totalExp, plantFactor, availability, totalFaults, grossRev, avgDailyGen, totalU1Hrs, totalU2Hrs, peakGen, lowestGen, totalTrippings, neaCurtailed, gridFault, totalOutageEnergy, contractEnergy, zeroGenDays, days } = R.metrics;
+    const { month, year } = R;
     const customHighlights = document.getElementById('inp-hi').value;
-    const customProblems = document.getElementById('inp-pr').value;
+    const customProblems   = document.getElementById('inp-pr').value;
+    const contractAch = totalExp / contractEnergy * 100;
 
     return `
-        <div class="doc-h1"><span class="doc-h1-num">01</span> EXECUTIVE SUMMARY</div>
-        <div class="doc-h2">Performance Overview</div>
-        <p class="doc-p">
-            During the month of <strong>${month} ${year}</strong>, Makari Gad Hydroelectric Project operated with a plant factor of <strong>${fmt(plantFactor)}%</strong>. 
-            The plant generated a total of <strong>${fmt(totalGen)} MWh</strong> gross energy and successfully dispatched <strong>${fmt(totalExp)} MWh</strong> to the NEA grid. 
-            Average daily generation stood at <strong>${fmt(avgDailyGen)} MWh/day</strong>. The calculated gross revenue for this period amounts to <strong>NPR ${fmtI(grossRevenue)}</strong>.
-        </p>
-        
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:1rem; margin:2rem 0;">
-            <div class="kpi-card"><div class="kpi-value" style="color:#3b82f6;">${fmt(totalGen)}</div><div class="kpi-label">Gross Gen (MWh)</div></div>
-            <div class="kpi-card"><div class="kpi-value" style="color:#10b981;">${fmt(totalExp)}</div><div class="kpi-label">Energy Export (MWh)</div></div>
-            <div class="kpi-card"><div class="kpi-value" style="color:#f59e0b;">${fmt(plantFactor)}%</div><div class="kpi-label">Plant Factor</div></div>
-            <div class="kpi-card"><div class="kpi-value" style="color:#ef4444;">${fmt(totalFaults)}</div><div class="kpi-label">Total Losses (MWh)</div></div>
+    <div class="doc-h1"><span class="doc-h1-num">01</span> EXECUTIVE SUMMARY</div>
+
+    <div class="doc-h2">Performance Overview</div>
+    <p class="doc-p">
+        During <strong>${month} ${year} BS</strong>, Makari Gad Hydroelectric Project recorded a plant factor of <strong>${fmt(plantFactor)}%</strong> 
+        against an installed capacity of 10 MW. Gross generation totalled <strong>${fmt(totalGen)} MWh</strong>, of which <strong>${fmt(totalExp)} MWh</strong> 
+        was successfully dispatched to the NEA 132kV grid at Balanch Substation. The plant operated for <strong>${days - zeroGenDays} out of ${days} days</strong> 
+        (availability: ${fmt(availability)}%). Average daily generation was <strong>${fmt(avgDailyGen)} MWh/day</strong>. 
+        Estimated gross revenue for the period is <strong>NPR ${fmtI(grossRev)}</strong>.
+    </p>
+
+    <div class="kpi-grid kpi-grid-4">
+        <div class="kpi-card blue">
+            <div class="kpi-val blue">${fmt(totalGen)}</div>
+            <div class="kpi-lbl">Gross Gen (MWh)</div>
+            <div class="kpi-sub">Avg ${fmt(avgDailyGen)} MWh/day</div>
         </div>
-        
-        <div class="doc-h2">Key Performance Highlights</div>
-        <ul class="doc-ul">
-            <li class="doc-li"><strong>Peak Generation Day:</strong> Day ${peakGen.day} with ${fmt(peakGen.value)} MWh</li>
-            <li class="doc-li"><strong>Lowest Generation Day:</strong> Day ${lowestGen.day} with ${fmt(lowestGen.value)} MWh (excluding zero days)</li>
-            <li class="doc-li"><strong>Unit 1 Runtime:</strong> ${fmt(totalU1Hrs, 1)} hours</li>
-            <li class="doc-li"><strong>Unit 2 Runtime:</strong> ${fmt(totalU2Hrs, 1)} hours</li>
-            ${formatBullets(customHighlights)}
-        </ul>
-        
-        <div class="doc-h2">Major Operational Challenges</div>
-        <ul class="doc-ul">
-            <li class="doc-li">Grid instability resulted in ${totalTrippings} tripping events during the month.</li>
-            <li class="doc-li">Total energy loss due to forced outages and grid events: ${fmt(totalOutageEnergy)} MWh.</li>
-            <li class="doc-li">Line tripping and grid fault losses amounted to ${fmt(gridFault)} MWh.</li>
-            <li class="doc-li">NEA curtailed energy amounted to ${fmt(neaCurtailed)} MWh.</li>
-            ${formatBullets(customProblems)}
-        </ul>
-    `;
+        <div class="kpi-card green">
+            <div class="kpi-val green">${fmt(totalExp)}</div>
+            <div class="kpi-lbl">Energy Export (MWh)</div>
+            <div class="kpi-sub">${pct(totalExp,contractEnergy)}% of contract</div>
+        </div>
+        <div class="kpi-card amber">
+            <div class="kpi-val amber">${fmt(plantFactor)}%</div>
+            <div class="kpi-lbl">Plant Factor</div>
+            <div class="kpi-sub">Availability ${fmt(availability)}%</div>
+        </div>
+        <div class="kpi-card red">
+            <div class="kpi-val red">${fmt(totalFaults)}</div>
+            <div class="kpi-lbl">Total Losses (MWh)</div>
+            <div class="kpi-sub">${totalTrippings} grid trips</div>
+        </div>
+    </div>
+
+    <div class="doc-h2">Contract Achievement</div>
+    <div class="progress-bar-wrap">
+        <div class="progress-label"><span>Energy Export vs. Contract (${fmt(totalExp)} / ${fmt(contractEnergy)} MWh)</span><span>${fmt(contractAch)}%</span></div>
+        <div class="progress-bar-track">
+            <div class="progress-bar-fill" style="width:${Math.min(100,contractAch)}%;background:${contractAch>=100?'var(--green)':contractAch>=90?'var(--amber)':'var(--red)'}"></div>
+        </div>
+    </div>
+
+    <div class="doc-h2">Key Performance Highlights</div>
+    <ul class="doc-ul">
+        <li class="doc-li"><strong>Peak Generation Day:</strong> Day ${peakGen.day} — ${fmt(peakGen.value)} MWh</li>
+        <li class="doc-li"><strong>Lowest Generation Day:</strong> Day ${lowestGen.day} — ${fmt(lowestGen.value)} MWh (excl. zero days)</li>
+        <li class="doc-li"><strong>Unit 1 Runtime:</strong> ${fmt(totalU1Hrs,1)} hours this month</li>
+        <li class="doc-li"><strong>Unit 2 Runtime:</strong> ${fmt(totalU2Hrs,1)} hours this month</li>
+        ${formatBullets(customHighlights)}
+    </ul>
+
+    <div class="doc-h2">Major Operational Challenges</div>
+    <ul class="doc-ul">
+        <li class="doc-li">Grid instability caused <strong>${totalTrippings} tripping events</strong> during the reporting period.</li>
+        <li class="doc-li">Total forced outage and grid event energy loss: <strong>${fmt(totalOutageEnergy)} MWh</strong>.</li>
+        <li class="doc-li">Grid fault (line trip) losses: <strong>${fmt(gridFault)} MWh</strong>; NEA curtailment: <strong>${fmt(neaCurtailed)} MWh</strong>.</li>
+        ${formatBullets(customProblems)}
+    </ul>
+    <div class="page-break"></div>`;
 }
 
+// ── Generation Performance ─────────────────────────────────────────────────
 function buildGenerationPerformance() {
-    const { totalGen, totalExp, contractEnergy, declaredAD, avgDailyGen, plantFactor, days } = reportData.metrics;
-    const { year, month } = reportData;
-    const adComplianceGap = declaredAD - totalExp;
-    
+    const { totalGen, totalExp, contractEnergy, declaredAD, avgDailyGen, plantFactor, availability, days, zeroGenDays, peakGen, lowestGen, totalImp, totalStCons } = R.metrics;
+    const { year, month } = R;
+
     return `
-        <div class="page-break"></div>
-        <div class="doc-h1"><span class="doc-h1-num">02</span> GENERATION & PERFORMANCE DATA</div>
-        
-        <div class="doc-h2">Key Metrics Summary</div>
-        <table class="doc-table" style="width:85%; margin:0 auto;">
-            <thead><tr><th class="lft">Performance Indicator</th><th>Value</th><th>Unit</th></tr></thead>
-            <tbody>
-                <tr><td class="lft"><strong>Installed Capacity</strong></td><td>${PLANT_CAPACITY_MW}</td><td>MW</td></tr>
-                <tr><td class="lft"><strong>Operational Days</strong></td><td>${days}</td><td>days</td></tr>
-                <tr><td class="lft"><strong>Monthly Gross Generation</strong></td><td class="text-blue-700 font-bold">${fmt(totalGen)}</td><td>MWh</td></tr>
-                <tr><td class="lft"><strong>Monthly Energy Export</strong></td><td class="text-emerald-700 font-bold">${fmt(totalExp)}</td><td>MWh</td></tr>
-                <tr><td class="lft"><strong>Average Daily Generation</strong></td><td>${fmt(avgDailyGen)}</td><td>MWh/day</td></tr>
-                <tr><td class="lft"><strong>Plant Load Factor (PLF)</strong></td><td class="text-orange-600 font-bold">${fmt(plantFactor)}</td><td>%</td></tr>
-                <tr><td class="lft"><strong>Contract Energy (PPA)</strong></td><td>${fmt(contractEnergy)}</td><td>MWh</td></tr>
-                <tr><td class="lft"><strong>Declared AD</strong></td><td>${fmt(declaredAD)}</td><td>MWh</td></tr>
-                <tr><td class="lft"><strong>Energy vs Contract</strong></td><td class="${totalExp >= contractEnergy ? 'text-emerald-700' : 'text-red-700'} font-bold">${fmt(totalExp - contractEnergy)}</td><td>MWh</td></tr>
-                <tr><td class="lft"><strong>AD Compliance Gap</strong></td><td class="${adComplianceGap <= 0 ? 'text-emerald-700' : 'text-red-700'} font-bold">${fmt(adComplianceGap)}</td><td>MWh</td></tr>
-            </tbody>
-        </table>
-        
-        <div class="doc-h2">Daily Generation Trend</div>
-        <div class="chart-wrapper">
-            <div style="position: relative; height: 300px; width: 100%;"><canvas id="chart-daily-generation"></canvas></div>
-            <p class="chart-caption" style="margin-top:15px;">Figure 1: Daily gross generation and export trend for ${month} ${year}</p>
-        </div>
-        
-        <div class="doc-h2">Cumulative Generation Progress</div>
-        <div class="chart-wrapper">
-            <div style="position: relative; height: 280px; width: 100%;"><canvas id="chart-cumulative"></canvas></div>
-            <p class="chart-caption" style="margin-top:15px;">Figure 2: Cumulative energy generation vs contract energy</p>
-        </div>
-    `;
+    <div class="doc-h1"><span class="doc-h1-num">02</span> GENERATION & PERFORMANCE DATA</div>
+
+    <div class="doc-h2">Key Metrics Summary</div>
+    <table class="doc-table" style="width:88%;margin:0 auto;">
+        <thead><tr><th class="lft" style="width:55%;">Performance Indicator</th><th style="width:25%;">Value</th><th>Unit</th></tr></thead>
+        <tbody>
+            <tr><td class="lft">Installed Capacity</td><td>${PLANT_CAPACITY_MW}</td><td>MW</td></tr>
+            <tr><td class="lft">Reporting Period (Days)</td><td>${days}</td><td>days</td></tr>
+            <tr><td class="lft">Plant Operating Days</td><td>${days - zeroGenDays}</td><td>days</td></tr>
+            <tr><td class="lft">Plant Availability</td><td><strong style="color:var(--green)">${fmt(availability)}</strong></td><td>%</td></tr>
+            <tr><td class="lft"><strong>Monthly Gross Generation</strong></td><td><strong style="color:var(--blue-lt)">${fmt(totalGen)}</strong></td><td>MWh</td></tr>
+            <tr><td class="lft"><strong>Monthly Energy Export (Substation)</strong></td><td><strong style="color:var(--green)">${fmt(totalExp)}</strong></td><td>MWh</td></tr>
+            <tr><td class="lft">Monthly Energy Import</td><td>${fmt(totalImp)}</td><td>MWh</td></tr>
+            <tr><td class="lft">Station Consumption</td><td>${fmt(totalStCons)}</td><td>MWh</td></tr>
+            <tr><td class="lft">Average Daily Generation</td><td>${fmt(avgDailyGen)}</td><td>MWh/day</td></tr>
+            <tr><td class="lft">Peak Generation Day</td><td>Day ${peakGen.day} — ${fmt(peakGen.value)}</td><td>MWh</td></tr>
+            <tr><td class="lft">Lowest Generation Day</td><td>Day ${lowestGen.day} — ${fmt(lowestGen.value)}</td><td>MWh</td></tr>
+            <tr><td class="lft">Plant Load Factor (PLF)</td><td><strong style="color:var(--amber)">${fmt(plantFactor)}</strong></td><td>%</td></tr>
+            <tr><td class="lft">Contract Energy (PPA Target)</td><td>${fmt(contractEnergy)}</td><td>MWh</td></tr>
+            <tr><td class="lft">Declared Availability (AD)</td><td>${fmt(declaredAD)}</td><td>MWh</td></tr>
+            <tr><td class="lft"><strong>Surplus / Deficit vs. Contract</strong></td>
+                <td><strong style="color:${totalExp>=contractEnergy?'var(--green)':'var(--red)'};">${fmt(totalExp-contractEnergy)}</strong></td><td>MWh</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="doc-h2">Daily Generation & Export Trend</div>
+    <div class="chart-wrapper">
+        <div class="chart-title">Daily Gross Generation vs. Substation Export — ${month} ${year} BS</div>
+        <div style="position:relative;height:290px;width:100%;"><canvas id="chart-daily"></canvas></div>
+        <p class="chart-caption">Figure 1: Daily energy generation (MWh) vs. Balanch Substation export. Gaps indicate zero-generation days.</p>
+    </div>
+
+    <div class="doc-h2">Cumulative Export vs. Contract Target</div>
+    <div class="chart-wrapper">
+        <div class="chart-title">Cumulative Energy Export Progress vs. PPA Contract</div>
+        <div style="position:relative;height:260px;width:100%;"><canvas id="chart-cumulative"></canvas></div>
+        <p class="chart-caption">Figure 2: Running cumulative export against the monthly PPA contract energy target of ${fmt(contractEnergy)} MWh.</p>
+    </div>
+    <div class="page-break"></div>`;
 }
 
+// ── Unit Analysis ──────────────────────────────────────────────────────────
+function buildUnitAnalysis() {
+    const { totalU1Gen, totalU2Gen, totalU1Hrs, totalU2Hrs, u1Share, u2Share, totalGen, days, totalU1Hrs: u1h, totalU2Hrs: u2h } = R.metrics;
+    const u1AvgLoad = u1h > 0 ? totalU1Gen / u1h : 0;
+    const u2AvgLoad = u2h > 0 ? totalU2Gen / u2h : 0;
+    const u1Cap = u1AvgLoad / (PLANT_CAPACITY_MW/2) * 100;
+    const u2Cap = u2AvgLoad / (PLANT_CAPACITY_MW/2) * 100;
+
+    return `
+    <div class="doc-h1"><span class="doc-h1-num">03</span> UNIT-WISE ANALYSIS</div>
+
+    <div class="doc-h2">Unit Performance Comparison</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1rem 0 1.5rem;">
+        <div class="unit-card">
+            <div class="unit-card-title" style="color:var(--blue-lt);">⚡ Unit 1</div>
+            <table class="doc-table"><tbody>
+                <tr><td class="lft">Generation</td><td class="text-right font-bold" style="color:var(--blue-lt)">${fmt(totalU1Gen)} MWh</td></tr>
+                <tr><td class="lft">Share of Total</td><td class="text-right font-bold">${fmt(u1Share)}%</td></tr>
+                <tr><td class="lft">Runtime Hours</td><td class="text-right">${fmt(totalU1Hrs,1)} hrs</td></tr>
+                <tr><td class="lft">Avg. Load</td><td class="text-right">${fmt(u1AvgLoad)} MWh/hr</td></tr>
+                <tr><td class="lft">Capacity Utilisation</td><td class="text-right"><span class="badge ${u1Cap>=80?'good':u1Cap>=60?'warn':'bad'}">${fmt(u1Cap)}%</span></td></tr>
+            </tbody></table>
+        </div>
+        <div class="unit-card">
+            <div class="unit-card-title" style="color:var(--teal);">⚡ Unit 2</div>
+            <table class="doc-table"><tbody>
+                <tr><td class="lft">Generation</td><td class="text-right font-bold" style="color:var(--teal)">${fmt(totalU2Gen)} MWh</td></tr>
+                <tr><td class="lft">Share of Total</td><td class="text-right font-bold">${fmt(u2Share)}%</td></tr>
+                <tr><td class="lft">Runtime Hours</td><td class="text-right">${fmt(totalU2Hrs,1)} hrs</td></tr>
+                <tr><td class="lft">Avg. Load</td><td class="text-right">${fmt(u2AvgLoad)} MWh/hr</td></tr>
+                <tr><td class="lft">Capacity Utilisation</td><td class="text-right"><span class="badge ${u2Cap>=80?'good':u2Cap>=60?'warn':'bad'}">${fmt(u2Cap)}%</span></td></tr>
+            </tbody></table>
+        </div>
+    </div>
+
+    <div class="doc-h2">Unit-wise Daily Generation</div>
+    <div class="chart-wrapper">
+        <div class="chart-title">Unit 1 vs. Unit 2 — Daily Generation Comparison</div>
+        <div style="position:relative;height:260px;width:100%;"><canvas id="chart-units"></canvas></div>
+        <p class="chart-caption">Figure 3: Daily MWh contribution from Unit 1 and Unit 2 individually.</p>
+    </div>
+    <div class="page-break"></div>`;
+}
+
+// ── Outage Analysis ────────────────────────────────────────────────────────
 function buildOutageAnalysis() {
-    const { totalFaults, neaCurtailed, totalTrippings, gridFault, plantFaults, totalOutageEnergy } = reportData.metrics;
-    
+    const { totalFaults, neaCurtailed, totalTrippings, gridFault, plantFaults, totalOutageEnergy, totalGen } = R.metrics;
+
     return `
-        <div class="page-break"></div>
-        <div class="doc-h1"><span class="doc-h1-num">03</span> OUTAGE ANALYSIS & ENERGY LOSSES</div>
-        
-        <div class="highlight-box danger">
-            <h3 style="font-size:12pt; font-weight:700; color:#ef4444; margin-bottom:0.5rem;">Critical Outage Summary</h3>
-            <p style="font-size:10pt; margin:0;">Total energy loss due to all outages and external factors: <strong>${fmt(totalOutageEnergy)} MWh</strong></p>
-        </div>
-        
-        <div class="doc-h2">Loss Breakdown by Category</div>
-        <table class="doc-table">
-            <thead>
-                <tr><th class="lft">Loss Category</th><th>Energy Loss (MWh)</th><th>% of Total</th><th>Event Source</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="lft"><strong>Grid Faults (Line Trips)</strong></td>
-                    <td class="text-red-600 font-bold">${fmt(gridFault)}</td>
-                    <td>${totalFaults > 0 ? fmt(gridFault / totalFaults * 100) : '0'}%</td>
-                    <td>NEA External</td>
-                </tr>
-                <tr>
-                    <td class="lft"><strong>Plant / Other Faults</strong></td>
-                    <td class="text-orange-600 font-bold">${fmt(plantFaults)}</td>
-                    <td>${totalFaults > 0 ? fmt(plantFaults / totalFaults * 100) : '0'}%</td>
-                    <td>Internal / Equipment</td>
-                </tr>
-                <tr>
-                    <td class="lft"><strong>NEA Curtailed</strong></td>
-                    <td class="text-purple-600 font-bold">${fmt(neaCurtailed)}</td>
-                    <td>${totalFaults > 0 ? fmt(neaCurtailed / totalFaults * 100) : '0'}%</td>
-                    <td>LDC Instruction</td>
-                </tr>
-                <tr class="total">
-                    <td class="lft"><strong>TOTAL LOSSES</strong></td>
-                    <td class="text-red-700 font-bold">${fmt(totalFaults)}</td>
-                    <td>100%</td>
-                    <td>${totalTrippings} Grid Trips</td>
-                </tr>
-            </tbody>
-        </table>
-        
-        <div class="doc-h2">Energy Fate Distribution</div>
-        <div class="chart-wrapper">
-            <div style="position: relative; height: 320px; max-width: 500px; margin: 0 auto;">
-                <canvas id="chart-energy-fate"></canvas>
-            </div>
-            <p class="chart-caption" style="margin-top:15px;">Figure 3: Distribution of generated energy (Export vs Losses)</p>
-        </div>
-        
-        <div class="doc-h2">Fault Events (Top 5)</div>
-        ${buildTopOutagesTable()}
-    `;
-}
+    <div class="doc-h1"><span class="doc-h1-num">04</span> OUTAGE ANALYSIS & ENERGY LOSSES</div>
 
-function buildTopOutagesTable() {
-    const topOutages = reportData.outagesData
-        .filter(o => pN(o.total_energy_loss) > 0)
-        .sort((a, b) => pN(b.total_energy_loss) - pN(a.total_energy_loss))
-        .slice(0, 5);
-    
-    if (topOutages.length === 0) return '<p class="doc-p italic text-slate-500">No significant fault events recorded.</p>';
-    
-    let html = '<table class="doc-table"><thead><tr><th class="lft w-[15%]">Date</th><th>Loss Time (min)</th><th>Total Loss (MWh)</th><th>Trippings</th><th class="lft w-[45%]">Reason</th></tr></thead><tbody>';
-    topOutages.forEach(o => {
-        html += `
+    <div class="callout danger">
+        <div class="callout-title">Critical Outage Summary</div>
+        Total energy loss due to all outage events and external factors: <strong>${fmt(totalOutageEnergy)} MWh</strong> 
+        (${pct(totalOutageEnergy, totalGen+totalOutageEnergy)}% of potential generation).
+    </div>
+
+    <div class="doc-h2">Loss Breakdown by Category</div>
+    <table class="doc-table">
+        <thead><tr><th class="lft">Loss Category</th><th>Energy Loss (MWh)</th><th>% of Total Losses</th><th>% of Potential Gen</th><th>Event Source</th></tr></thead>
+        <tbody>
             <tr>
-                <td class="lft">${String(o.id || '').split('T')[0]}</td>
-                <td>${pN(o.loss_time_min) || '-'}</td>
-                <td class="text-red-600 font-bold">${fmt(pN(o.total_energy_loss))}</td>
-                <td>${pN(o.no_of_trippings) || '-'}</td>
-                <td class="lft" style="font-size:8.5pt;">${o.reason || o.remarks || 'Not specified'}</td>
+                <td class="lft"><strong>Grid Faults (Line Trips)</strong></td>
+                <td style="color:var(--red);font-weight:700;">${fmt(gridFault)}</td>
+                <td>${pct(gridFault, totalFaults)}%</td>
+                <td>${pct(gridFault, totalGen+totalOutageEnergy)}%</td>
+                <td><span class="badge bad">NEA External</span></td>
             </tr>
-        `;
-    });
-    html += '</tbody></table>';
-    return html;
+            <tr>
+                <td class="lft"><strong>Plant / Equipment Faults</strong></td>
+                <td style="color:var(--amber);font-weight:700;">${fmt(plantFaults)}</td>
+                <td>${pct(plantFaults, totalFaults)}%</td>
+                <td>${pct(plantFaults, totalGen+totalOutageEnergy)}%</td>
+                <td><span class="badge warn">Internal</span></td>
+            </tr>
+            <tr>
+                <td class="lft"><strong>NEA Curtailment (LDC)</strong></td>
+                <td style="color:var(--purple);font-weight:700;">${fmt(neaCurtailed)}</td>
+                <td>${pct(neaCurtailed, totalFaults)}%</td>
+                <td>${pct(neaCurtailed, totalGen+totalOutageEnergy)}%</td>
+                <td><span class="badge neutral">LDC Instruction</span></td>
+            </tr>
+            <tr class="total">
+                <td class="lft"><strong>TOTAL LOSSES</strong></td>
+                <td style="color:var(--red);font-weight:800;">${fmt(totalFaults)}</td>
+                <td>100%</td>
+                <td>${pct(totalFaults, totalGen+totalOutageEnergy)}%</td>
+                <td>${totalTrippings} Grid Trips</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="doc-h2">Energy Fate Distribution</div>
+    <div class="chart-wrapper">
+        <div class="chart-title">Energy Distribution — Export vs. Losses Breakdown</div>
+        <div style="position:relative;height:300px;max-width:480px;margin:0 auto;"><canvas id="chart-fate"></canvas></div>
+        <p class="chart-caption">Figure 4: Proportional energy distribution — Exported to grid vs. various loss categories.</p>
+    </div>
+
+    <div class="doc-h2">Top Outage Events (by Energy Loss)</div>
+    ${buildTopOutages()}
+    <div class="page-break"></div>`;
 }
 
+function buildTopOutages() {
+    const top = R.outagesData.filter(o=>pN(o.total_energy_loss)>0).sort((a,b)=>pN(b.total_energy_loss)-pN(a.total_energy_loss)).slice(0,5);
+    if (!top.length) return '<p class="doc-p" style="font-style:italic;color:var(--slate);">No significant fault events recorded this month.</p>';
+    let rows = top.map(o=>`
+        <tr>
+            <td class="lft" style="font-family:'JetBrains Mono',monospace;font-size:8pt;">${String(o.id||'').split('T')[0]}</td>
+            <td>${pN(o.no_of_trippings)||'—'}</td>
+            <td>${pN(o.loss_time_min)||'—'}</td>
+            <td style="color:var(--red);font-weight:700;">${fmt(pN(o.total_energy_loss))}</td>
+            <td class="lft" style="font-size:8.5pt;">${o.reason||o.remarks||'Not specified'}</td>
+        </tr>`).join('');
+    return `<table class="doc-table"><thead><tr><th class="lft">Date</th><th>Trips</th><th>Loss Time (min)</th><th>Loss (MWh)</th><th class="lft">Reason / Remarks</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── Grid & Transmission ────────────────────────────────────────────────────
 function buildGridTransmission() {
-    const { totalExp, totalImp, neaCurtailed, totalTrippings, gridFault } = reportData.metrics;
-    const gridAvailability = totalExp > 0 ? ((1 - (neaCurtailed / (totalExp + neaCurtailed))) * 100) : 0;
-    
+    const { totalExp, totalImp, neaCurtailed, totalTrippings, gridFault } = R.metrics;
+    const gridAvail = totalExp > 0 ? (1 - neaCurtailed/(totalExp+neaCurtailed))*100 : 0;
+    const isGood = gridAvail >= 95;
+
     return `
-        <div class="page-break"></div>
-        <div class="doc-h1"><span class="doc-h1-num">04</span> GRID & TRANSMISSION PERFORMANCE</div>
-        
-        <div class="doc-h2">Grid Connection Summary</div>
-        <p class="doc-p">
-            The plant maintained connection to the 132kV NEA grid throughout the reporting period. Energy evacuation performance varied due to grid instability and scheduled maintenance activities.
-        </p>
-        
-        <table class="doc-table" style="width:75%; margin:0 auto;">
-            <thead><tr><th class="lft">Grid Performance Metric</th><th>Value</th></tr></thead>
-            <tbody>
-                <tr><td class="lft"><strong>Total Energy Exported to Grid</strong></td><td class="text-emerald-700 font-bold">${fmt(totalExp)} MWh</td></tr>
-                <tr><td class="lft"><strong>Total Energy Imported</strong></td><td>${fmt(totalImp)} MWh</td></tr>
-                <tr><td class="lft"><strong>Grid Availability</strong></td><td class="${gridAvailability >= 95 ? 'text-emerald-700' : 'text-orange-600'} font-bold">${fmt(gridAvailability)}%</td></tr>
-                <tr><td class="lft"><strong>Number of Grid Trips</strong></td><td class="text-red-600 font-bold">${totalTrippings}</td></tr>
-                <tr><td class="lft"><strong>Energy Loss Due to Grid Faults</strong></td><td class="text-red-600 font-bold">${fmt(gridFault)} MWh</td></tr>
-                <tr><td class="lft"><strong>NEA Curtailed Energy</strong></td><td class="text-orange-600 font-bold">${fmt(neaCurtailed)} MWh</td></tr>
-            </tbody>
-        </table>
-        
-        <div class="highlight-box ${gridAvailability >= 95 ? 'success' : 'warning'}">
-            <h3 style="font-size:11pt; font-weight:700; margin-bottom:0.5rem;">Grid Performance Assessment</h3>
-            <p style="font-size:10pt; margin:0;">
-                ${gridAvailability >= 95 
-                    ? 'Grid performance was excellent this month with minimal disruptions and high availability.' 
-                    : 'Grid stability issues significantly impacted energy evacuation. Coordination with NEA is recommended to improve reliability.'}
-            </p>
-        </div>
-    `;
+    <div class="doc-h1"><span class="doc-h1-num">05</span> GRID & TRANSMISSION PERFORMANCE</div>
+
+    <p class="doc-p">
+        The plant maintained connection to the 132kV NEA transmission network via the Balanch Substation throughout the reporting period. 
+        Energy evacuation was managed through the plant's 132kV bay under Load Dispatch Centre (LDC) instructions.
+    </p>
+
+    <table class="doc-table" style="width:80%;margin:0 auto;">
+        <thead><tr><th class="lft" style="width:55%;">Grid Performance Metric</th><th>Value</th><th>Assessment</th></tr></thead>
+        <tbody>
+            <tr><td class="lft"><strong>Total Energy Exported</strong></td><td style="color:var(--green);font-weight:700;">${fmt(totalExp)} MWh</td><td><span class="badge good">On Record</span></td></tr>
+            <tr><td class="lft"><strong>Total Energy Imported</strong></td><td>${fmt(totalImp)} MWh</td><td><span class="badge neutral">Station Use</span></td></tr>
+            <tr><td class="lft"><strong>Grid Availability</strong></td><td style="color:${isGood?'var(--green)':'var(--amber)'};font-weight:700;">${fmt(gridAvail)}%</td><td><span class="badge ${isGood?'good':'warn'}">${isGood?'Acceptable':'Below Target'}</span></td></tr>
+            <tr><td class="lft"><strong>Number of Grid Trips</strong></td><td style="color:var(--red);font-weight:700;">${totalTrippings}</td><td><span class="badge ${totalTrippings===0?'good':totalTrippings<=5?'warn':'bad'}">${totalTrippings===0?'None':'Action Required'}</span></td></tr>
+            <tr><td class="lft"><strong>Energy Lost — Grid Faults</strong></td><td style="color:var(--red);font-weight:700;">${fmt(gridFault)} MWh</td><td><span class="badge bad">NEA Fault</span></td></tr>
+            <tr><td class="lft"><strong>NEA Curtailed Energy</strong></td><td style="color:var(--purple);font-weight:700;">${fmt(neaCurtailed)} MWh</td><td><span class="badge neutral">LDC Order</span></td></tr>
+        </tbody>
+    </table>
+
+    <div class="callout ${isGood?'success':'warning'}" style="margin-top:1.5rem;">
+        <div class="callout-title">Grid Performance Assessment</div>
+        ${isGood
+            ? 'Grid performance was satisfactory this month. Disruptions were minimal and the evacuation line maintained high availability for generation dispatch.'
+            : 'Grid stability issues had a measurable impact on energy evacuation this month. It is recommended to formally record grid trip events and share the outage log with NEA/LDC for reimbursement and reliability improvement discussions.'}
+    </div>
+    <div class="page-break"></div>`;
 }
 
+// ── YTD Section ────────────────────────────────────────────────────────────
+function buildYTDSection() {
+    const { ytdExport, ytdContract, totalExp, contractEnergy } = R.metrics;
+    const { ytdData, month, year, monthIndex } = R;
+    const ytdAch = ytdContract > 0 ? ytdExport/ytdContract*100 : 0;
+    const allMonths = [...ytdData, { monthIdx:monthIndex, month, export:totalExp, contract:contractEnergy }];
+    const maxExp = Math.max(...allMonths.map(m=>m.export), 1);
+
+    const bars = allMonths.map(m => {
+        const pctFill = Math.min(100, m.export/maxExp*100);
+        const ach = m.contract>0 ? m.export/m.contract*100 : 0;
+        const color = ach>=100?'var(--green)':ach>=90?'var(--amber)':'var(--red)';
+        return `
+        <div class="ytd-month-bar">
+            <div class="ytd-month-name">${m.month.substring(0,3)}</div>
+            <div class="ytd-bar-track"><div class="ytd-bar-fill" style="width:${pctFill}%;background:${color};"></div></div>
+            <div class="ytd-bar-val">${fmt(m.export)}</div>
+            <div style="width:40px;text-align:right;font-size:7.5pt;color:${color};font-weight:700;">${fmt(ach,0)}%</div>
+        </div>`;
+    }).join('');
+
+    return `
+    <div class="doc-h1"><span class="doc-h1-num">06</span> YEAR-TO-DATE PROGRESS</div>
+
+    <div class="doc-h2">YTD Energy Export Summary — FY ${year} BS</div>
+
+    <div class="kpi-grid kpi-grid-3" style="margin-bottom:1.5rem;">
+        <div class="kpi-card teal">
+            <div class="kpi-val teal">${fmt(ytdExport)}</div>
+            <div class="kpi-lbl">YTD Export (MWh)</div>
+            <div class="kpi-sub">Through ${month} ${year}</div>
+        </div>
+        <div class="kpi-card blue">
+            <div class="kpi-val blue">${fmt(ytdContract)}</div>
+            <div class="kpi-lbl">YTD Contract Target</div>
+            <div class="kpi-sub">Cumulative PPA obligation</div>
+        </div>
+        <div class="kpi-card ${ytdAch>=100?'green':ytdAch>=90?'amber':'red'}">
+            <div class="kpi-val ${ytdAch>=100?'green':ytdAch>=90?'amber':'red'}">${fmt(ytdAch)}%</div>
+            <div class="kpi-lbl">YTD Achievement</div>
+            <div class="kpi-sub">${ytdExport>=ytdContract?'Surplus: ':'Deficit: '}${fmt(Math.abs(ytdExport-ytdContract))} MWh</div>
+        </div>
+    </div>
+
+    <div class="doc-h2">Month-by-Month Export vs. Contract Achievement</div>
+    <div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin:0.5rem 0 1.5rem;">
+        ${bars}
+        <div style="display:flex;gap:1.5rem;margin-top:1rem;font-size:7.5pt;font-weight:700;color:var(--slate);">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--green);display:inline-block;"></span>≥100% contract</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--amber);display:inline-block;"></span>90–99%</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--red);display:inline-block;"></span>&lt;90%</span>
+        </div>
+    </div>
+
+    <div class="chart-wrapper">
+        <div class="chart-title">YTD Monthly Generation vs. Contract — Bar Chart</div>
+        <div style="position:relative;height:250px;width:100%;"><canvas id="chart-ytd"></canvas></div>
+        <p class="chart-caption">Figure 5: Monthly export (MWh) vs. PPA contract target for each completed month in FY ${year} BS.</p>
+    </div>
+    <div class="page-break"></div>`;
+}
+
+// ── Financial Summary ──────────────────────────────────────────────────────
 function buildFinancialSummary() {
-    const { ppaRate, grossRevenue, penalty, importCost, royalty, netRevenue, normalRevenue, excessRevenue, totalExp, declaredAD, contractEnergy } = reportData.metrics;
-    const { contractData } = reportData;
-    
-    const bayControl = pN(contractData?.bay_control_nrs);
-    const extraAdj = pN(contractData?.extra_adjustment_nrs);
-    
-    return `
-        <div class="page-break"></div>
-        <div class="doc-h1"><span class="doc-h1-num">05</span> FINANCIAL SUMMARY</div>
-        
-        <div class="doc-h2">Revenue Calculation</div>
-        <table class="doc-table">
-            <thead><tr><th class="lft">Revenue Component</th><th>Energy (MWh)</th><th>Rate (NPR/kWh)</th><th>Amount (NPR)</th></tr></thead>
-            <tbody>
-                <tr><td class="lft"><strong>Normal Energy Revenue</strong></td><td>${fmt(Math.min(totalExp, declaredAD, contractEnergy))}</td><td>${fmt(ppaRate)}</td><td class="text-emerald-700 font-bold">${fmtI(normalRevenue)}</td></tr>
-                <tr><td class="lft"><strong>Excess Energy Revenue (50%)</strong></td><td>${fmt(Math.max(0, totalExp - Math.min(totalExp, declaredAD, contractEnergy)))}</td><td>${fmt(ppaRate / 2)}</td><td class="text-blue-700 font-bold">${fmtI(excessRevenue)}</td></tr>
-                <tr class="total"><td class="lft"><strong>TOTAL GROSS REVENUE</strong></td><td>${fmt(totalExp)}</td><td>-</td><td class="text-emerald-800 font-bold text-lg">${fmtI(grossRevenue)}</td></tr>
-            </tbody>
-        </table>
-        
-        <div class="doc-h2">Deductions & Adjustments</div>
-        <table class="doc-table">
-            <thead><tr><th class="lft">Deduction Item</th><th>Amount (NPR)</th></tr></thead>
-            <tbody>
-                <tr><td class="lft"><strong>Availability Declaration Penalty</strong></td><td class="text-red-600 font-bold">${fmtI(penalty)}</td></tr>
-                <tr><td class="lft"><strong>Import Energy Cost</strong></td><td class="text-orange-600 font-bold">${fmtI(importCost)}</td></tr>
-                <tr><td class="lft"><strong>Royalty (2%)</strong></td><td class="text-blue-600 font-bold">${fmtI(royalty)}</td></tr>
-                <tr><td class="lft"><strong>Bay Control Charges</strong></td><td class="text-slate-600 font-bold">${fmtI(bayControl)}</td></tr>
-                <tr><td class="lft"><strong>Extra Adjustments</strong></td><td class="${extraAdj >= 0 ? 'text-emerald-600' : 'text-red-600'} font-bold">${fmtI(extraAdj)}</td></tr>
-                <tr class="total"><td class="lft"><strong>NET RECEIVABLE</strong></td><td class="text-emerald-800 font-bold text-lg">${fmtI(netRevenue + extraAdj - bayControl)}</td></tr>
-            </tbody>
-        </table>
-    `;
-}
-
-function buildMaintenanceLog() {
-    const customMaintenance = document.getElementById('inp-mt').value;
-    const customHse = document.getElementById('inp-hse').value;
+    const { ppaRate, grossRev, penalty, importCost, royalty, netRev, normalRev, excessRev, totalExp, declaredAD, contractEnergy, bayControl, extraAdj } = R.metrics;
+    const { contractData } = R;
+    const deductions = penalty + importCost + royalty + bayControl;
+    const netReceivable = grossRev - deductions + extraAdj;
 
     return `
-        <div class="page-break"></div>
-        <div class="doc-h1"><span class="doc-h1-num">06</span> MAINTENANCE & HSE LOG</div>
-        
-        <div class="doc-h2">Maintenance Activities Executed</div>
-        <ul class="doc-ul">
-            ${formatBullets(customMaintenance) || '<li class="doc-li">Routine scheduled maintenance executed successfully.</li>'}
-        </ul>
-        
-        <div class="doc-h2">Health, Safety & Environment (HSE)</div>
-        <ul class="doc-ul">
-            ${formatBullets(customHse) || '<li class="doc-li">Zero LTI recorded. Standard safety protocols were maintained.</li>'}
-        </ul>
-    `;
-}
+    <div class="doc-h1"><span class="doc-h1-num">07</span> FINANCIAL SUMMARY</div>
 
-function buildAnnexDailyGeneration() {
-    const { dailySeries, metrics } = reportData;
-    
-    // Uses the raw database subtraction logic, printing natively exact MWh 
-    let rows = '';
-    dailySeries.forEach(d => {
-        rows += `
+    <div class="callout info">
+        <div class="callout-title">Financial Note</div>
+        Revenue calculations are based on the PPA rate of <strong>NPR ${fmt(ppaRate)}/kWh</strong> for ${R.month} ${R.year} BS. 
+        Figures are estimates pending formal NEA billing. Actual invoice may vary due to metering adjustments.
+    </div>
+
+    <div class="doc-h2">Revenue Calculation</div>
+    <table class="doc-table">
+        <thead><tr><th class="lft">Revenue Component</th><th>Energy (MWh)</th><th>Rate (NPR/kWh)</th><th>Amount (NPR)</th></tr></thead>
+        <tbody>
             <tr>
-                <td class="lft">${d.date}</td>
-                <td>${fmt(d.u1Gen)}</td>
-                <td>${fmt(d.u2Gen)}</td>
-                <td class="font-bold bg-slate-50 text-indigo-700">${fmt(d.gen)}</td>
-                <td>${fmt(d.exp)}</td>
-                <td>${fmt(d.imp)}</td>
-                <td class="font-bold bg-slate-50 text-emerald-700">${fmt(d.expS)}</td>
-                <td>${fmt(d.impS)}</td>
-                <td>${fmt(d.stCons)}</td>
-                <td>${fmt(d.u1Hrs, 1)}</td>
-                <td>${fmt(d.u2Hrs, 1)}</td>
+                <td class="lft"><strong>Normal Energy Revenue</strong><br><small style="color:var(--slate);">Min(Export, AD, Contract)</small></td>
+                <td>${fmt(Math.min(totalExp, declaredAD, contractEnergy))}</td>
+                <td>${fmt(ppaRate)}</td>
+                <td style="color:var(--green);font-weight:700;">${fmtI(normalRev)}</td>
             </tr>
-        `;
-    });
-    
-    return `
-        <div class="page-break"></div>
-        <div class="doc-h1" style="background:linear-gradient(135deg,#475569,#64748b);">
-            <span class="doc-h1-num">ANNEX A</span> DAILY GENERATION & DISPATCH LOG
-        </div>
-        <p class="doc-p">
-            Detailed daily records showing true generated, exported, and imported energy (MWh) alongside unit running hours. All values represent 12:00 PM to 12:00 PM calculation logic.
-        </p>
-        
-        <table class="doc-table annex-table">
-            <thead>
-                <tr>
-                    <th class="lft" rowspan="2">Nepali Date</th>
-                    <th colspan="3" class="bg-indigo-900 text-white border-indigo-800">Generation (MWh)</th>
-                    <th colspan="2" class="bg-blue-900 text-white border-blue-800">Plant Export/Import (MWh)</th>
-                    <th colspan="2" class="bg-emerald-900 text-white border-emerald-800">Substation Transfer (MWh)</th>
-                    <th rowspan="2" class="bg-slate-700 text-white">Stn Cons<br>(MWh)</th>
-                    <th colspan="2" class="bg-slate-800 text-white border-slate-700">Unit Runtime (Hrs)</th>
-                </tr>
-                <tr>
-                    <th class="bg-indigo-800 text-white">Unit 1</th><th class="bg-indigo-800 text-white">Unit 2</th><th class="bg-indigo-700 text-white">Gross Total</th>
-                    <th class="bg-blue-800 text-white">Export</th><th class="bg-blue-800 text-white">Import</th>
-                    <th class="bg-emerald-800 text-white">Main Exp</th><th class="bg-emerald-800 text-white">Main Imp</th>
-                    <th class="bg-slate-700 text-white">U1 Hrs</th><th class="bg-slate-700 text-white">U2 Hrs</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rows}
-                <tr class="total">
-                    <td class="lft"><strong>MONTHLY TOTAL</strong></td>
-                    <td class="font-bold">${fmt(dailySeries.reduce((s, d) => s + d.u1Gen, 0))}</td>
-                    <td class="font-bold">${fmt(dailySeries.reduce((s, d) => s + d.u2Gen, 0))}</td>
-                    <td class="font-bold text-indigo-800 text-[10pt]">${fmt(metrics.totalGen)}</td>
-                    <td class="font-bold">${fmt(dailySeries.reduce((s, d) => s + d.exp, 0))}</td>
-                    <td class="font-bold">${fmt(dailySeries.reduce((s, d) => s + d.imp, 0))}</td>
-                    <td class="font-bold text-emerald-800 text-[10pt]">${fmt(metrics.totalExp)}</td>
-                    <td class="font-bold">${fmt(metrics.totalImp)}</td>
-                    <td class="font-bold">${fmt(metrics.totalStCons)}</td>
-                    <td class="font-bold">${fmt(metrics.totalU1Hrs, 1)}</td>
-                    <td class="font-bold">${fmt(metrics.totalU2Hrs, 1)}</td>
-                </tr>
-            </tbody>
-        </table>
-    `;
+            <tr>
+                <td class="lft"><strong>Excess Energy Revenue</strong><br><small style="color:var(--slate);">At 50% rate — export above normal</small></td>
+                <td>${fmt(Math.max(0, totalExp - Math.min(totalExp, declaredAD, contractEnergy)))}</td>
+                <td>${fmt(ppaRate/2)}</td>
+                <td style="color:var(--blue-lt);font-weight:700;">${fmtI(excessRev)}</td>
+            </tr>
+            <tr class="subtotal"><td class="lft"><strong>GROSS REVENUE</strong></td><td>${fmt(totalExp)}</td><td>—</td><td>${fmtI(grossRev)}</td></tr>
+        </tbody>
+    </table>
+
+    <div class="doc-h2">Deductions & Adjustments</div>
+    <table class="doc-table">
+        <thead><tr><th class="lft">Deduction Item</th><th>Basis</th><th>Amount (NPR)</th></tr></thead>
+        <tbody>
+            <tr class="deduct"><td class="lft"><strong>AD Penalty</strong><br><small>If export &lt; 90% of AD</small></td><td>10% PPA rate on shortfall</td><td>${fmtI(penalty)}</td></tr>
+            <tr class="deduct"><td class="lft"><strong>Import Energy Cost</strong></td><td>${fmt(R.metrics.totalImp)} MWh × NPR ${IMPORT_RATE}/kWh</td><td>${fmtI(importCost)}</td></tr>
+            <tr class="deduct"><td class="lft"><strong>Royalty (2% of Gross Revenue)</strong></td><td>2% × NPR ${fmtI(grossRev)}</td><td>${fmtI(royalty)}</td></tr>
+            <tr class="deduct"><td class="lft"><strong>Bay Control Charges</strong></td><td>NEA Levy</td><td>${fmtI(bayControl)}</td></tr>
+            <tr style="background:#f0fdf4;"><td class="lft" style="color:var(--green);font-weight:700;"><strong>Extra Adjustment</strong></td><td style="color:var(--green);">PPA Reconciliation</td><td style="color:var(--green);font-weight:700;">${fmtI(extraAdj)}</td></tr>
+            <tr class="total"><td class="lft"><strong>NET RECEIVABLE AMOUNT</strong></td><td>—</td><td style="font-size:12pt;">${fmtI(netReceivable)}</td></tr>
+        </tbody>
+    </table>
+
+    <div class="doc-h2">Revenue Waterfall Summary</div>
+    <div class="chart-wrapper">
+        <div class="chart-title">Revenue Components — Visual Breakdown</div>
+        <div style="position:relative;height:220px;max-width:600px;margin:0 auto;"><canvas id="chart-revenue"></canvas></div>
+        <p class="chart-caption">Figure 6: Revenue composition showing gross, deductions, and net receivable (NPR).</p>
+    </div>
+    <div class="page-break"></div>`;
 }
 
-function buildAnnexOutages() {
-    const { dailySeries } = reportData;
-    
-    let rows = '';
-    dailySeries.forEach(d => {
-        const o = d.outage; 
-        if(!o || (!o.id && pN(o.total_energy_loss) === 0 && pN(o.nea_curtailed_energy) === 0)) return;
-        
-        rows += `
+// ── Maintenance & HSE ──────────────────────────────────────────────────────
+function buildMaintenanceLog() {
+    const customMaint = document.getElementById('inp-mt').value;
+    const customHse   = document.getElementById('inp-hse').value;
+
+    return `
+    <div class="doc-h1"><span class="doc-h1-num">08</span> MAINTENANCE & HSE LOG</div>
+
+    <div class="doc-h2">Maintenance Activities Executed</div>
+    <ul class="doc-ul">
+        ${formatBullets(customMaint) || '<li class="doc-li">Routine scheduled maintenance executed as per O&M plan. No major corrective maintenance required.</li>'}
+    </ul>
+
+    <div class="doc-h2">Health, Safety & Environment (HSE)</div>
+    <ul class="doc-ul">
+        ${formatBullets(customHse) || '<li class="doc-li">Zero Lost Time Incidents (LTI) recorded during the reporting period. All standard safety protocols and NEA safety regulations were strictly observed.</li>'}
+    </ul>
+
+    <div class="doc-h2">HSE Statistics</div>
+    <table class="doc-table" style="width:70%;margin:0 auto;">
+        <thead><tr><th class="lft">HSE Indicator</th><th>Count</th><th>Status</th></tr></thead>
+        <tbody>
+            <tr><td class="lft">Lost Time Incidents (LTI)</td><td>0</td><td><span class="badge good">✓ Zero</span></td></tr>
+            <tr><td class="lft">Near-Miss Reports Filed</td><td>—</td><td><span class="badge neutral">Update Reqd.</span></td></tr>
+            <tr><td class="lft">Safety Drills Conducted</td><td>—</td><td><span class="badge neutral">Update Reqd.</span></td></tr>
+            <tr><td class="lft">Environmental Compliance</td><td>—</td><td><span class="badge good">Compliant</span></td></tr>
+        </tbody>
+    </table>
+    <div class="page-break"></div>`;
+}
+
+// ── Annex A ────────────────────────────────────────────────────────────────
+function buildAnnexDailyGeneration() {
+    const { dailySeries, metrics } = R;
+
+    const rows = dailySeries.map(d => `
+        <tr>
+            <td class="lft" style="font-family:'JetBrains Mono',monospace;font-size:7.5pt;">${d.date}</td>
+            <td>${fmt(d.u1Gen)}</td><td>${fmt(d.u2Gen)}</td>
+            <td style="font-weight:700;color:#4338ca;">${fmt(d.gen)}</td>
+            <td>${fmt(d.exp)}</td><td>${fmt(d.imp)}</td>
+            <td style="font-weight:700;color:var(--green);">${fmt(d.expS)}</td><td>${fmt(d.impS)}</td>
+            <td>${fmt(d.stCons)}</td>
+            <td>${fmt(d.u1Hrs,1)}</td><td>${fmt(d.u2Hrs,1)}</td>
+        </tr>`).join('');
+
+    return `
+    <div class="doc-h1" style="background:linear-gradient(135deg,#1e293b,#475569);">
+        <span class="doc-h1-num">ANNEX A</span> DAILY GENERATION & DISPATCH LOG
+    </div>
+    <p class="doc-p">Detailed daily records of generated, exported, and imported energy (MWh) alongside unit running hours. Values represent 12:00 PM–to–12:00 PM daily calculation logic per MGHEP metering convention.</p>
+    <table class="doc-table annex-table">
+        <thead>
             <tr>
-                <td class="lft mono">${String(o.id||d.engDate||'').split('T')[0]}</td>
+                <th class="lft" rowspan="2">Nepali Date</th>
+                <th colspan="3" style="background:#312e81;">Generation (MWh)</th>
+                <th colspan="2" style="background:#1e3a8a;">Plant Meter</th>
+                <th colspan="2" style="background:#14532d;">Substation</th>
+                <th rowspan="2" style="background:#374151;">Stn Cons</th>
+                <th colspan="2" style="background:#1e293b;">Runtime (Hrs)</th>
+            </tr>
+            <tr>
+                <th style="background:#3730a3;">U1</th><th style="background:#3730a3;">U2</th><th style="background:#4338ca;">Gross</th>
+                <th style="background:#1d4ed8;">Export</th><th style="background:#1d4ed8;">Import</th>
+                <th style="background:#166534;">Main Exp</th><th style="background:#166534;">Main Imp</th>
+                <th style="background:#1e293b;">U1</th><th style="background:#1e293b;">U2</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rows}
+            <tr class="total">
+                <td class="lft"><strong>MONTHLY TOTAL</strong></td>
+                <td>${fmt(dailySeries.reduce((s,d)=>s+d.u1Gen,0))}</td>
+                <td>${fmt(dailySeries.reduce((s,d)=>s+d.u2Gen,0))}</td>
+                <td style="color:#4338ca;font-weight:800;">${fmt(metrics.totalGen)}</td>
+                <td>${fmt(dailySeries.reduce((s,d)=>s+d.exp,0))}</td>
+                <td>${fmt(dailySeries.reduce((s,d)=>s+d.imp,0))}</td>
+                <td style="color:var(--green);font-weight:800;">${fmt(metrics.totalExp)}</td>
+                <td>${fmt(metrics.totalImp)}</td>
+                <td>${fmt(metrics.totalStCons)}</td>
+                <td>${fmt(metrics.totalU1Hrs,1)}</td>
+                <td>${fmt(metrics.totalU2Hrs,1)}</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="page-break"></div>`;
+}
+
+// ── Annex B ────────────────────────────────────────────────────────────────
+function buildAnnexOutages() {
+    const { dailySeries } = R;
+
+    const filteredRows = dailySeries.filter(d => {
+        const o = d.outage;
+        return o && (o.id || pN(o.total_energy_loss)>0 || pN(o.nea_curtailed_energy)>0);
+    });
+
+    let rows = '';
+    if (filteredRows.length === 0) {
+        rows = '<tr><td colspan="9" style="text-align:center;font-style:italic;color:var(--slate);padding:1rem;">No significant outage events recorded for this month.</td></tr>';
+    } else {
+        rows = filteredRows.map(d => {
+            const o = d.outage;
+            return `<tr>
+                <td class="lft" style="font-family:'JetBrains Mono',monospace;font-size:7pt;">${String(o.id||d.engDate||'').split('T')[0]}</td>
                 <td>${fmt(pN(o.nea_curtailed_energy))}</td>
-                <td>${pN(o.nea_trip_loss_time_min) || '-'}</td>
-                <td>${pN(o.no_of_trippings) || '-'}</td>
-                <td class="font-bold bg-slate-50">${pN(o.loss_time_min) || '-'}</td>
+                <td>${pN(o.nea_trip_loss_time_min)||'—'}</td>
+                <td>${pN(o.no_of_trippings)||'—'}</td>
+                <td style="font-weight:700;">${pN(o.loss_time_min)||'—'}</td>
                 <td>${fmt(pN(o.energy_loss_line_trip))}</td>
                 <td>${fmt(pN(o.energy_loss_other))}</td>
-                <td class="font-bold text-red-600 bg-slate-50">${fmt(pN(o.total_energy_loss))}</td>
-                <td class="lft text-[6pt] leading-tight">${o.reason || o.remarks || '-'}</td>
-            </tr>
-        `;
-    });
-    
-    if (!rows) rows = '<tr><td colspan="9" class="text-center italic text-slate-500 py-4">No significant outage events recorded for this month.</td></tr>';
-    
+                <td style="font-weight:700;color:var(--red);">${fmt(pN(o.total_energy_loss))}</td>
+                <td class="lft" style="font-size:7pt;line-height:1.4;">${o.reason||o.remarks||'—'}</td>
+            </tr>`;
+        }).join('');
+    }
+
     return `
-        <div class="page-break"></div>
-        <div class="doc-h1" style="background:linear-gradient(135deg,#475569,#64748b);">
-            <span class="doc-h1-num">ANNEX B</span> OUTAGE & ENERGY LOSS TRACKER
+    <div class="doc-h1" style="background:linear-gradient(135deg,#1e293b,#475569);">
+        <span class="doc-h1-num">ANNEX B</span> OUTAGE & ENERGY LOSS TRACKER
+    </div>
+    <p class="doc-p">Comprehensive daily log of outage events, tripping incidents, and energy loss data recorded in the plant SCADA outages database. Values exactly match the Section 04 outage analysis.</p>
+    <table class="doc-table annex-table">
+        <thead><tr>
+            <th class="lft" style="width:12%;">Date</th>
+            <th>NEA Curtailed (MWh)</th>
+            <th>Line Trip Time (Min)</th>
+            <th>No. Trips</th>
+            <th>Total Loss Time (Min)</th>
+            <th>Line Trip Loss (MWh)</th>
+            <th>Other Loss (MWh)</th>
+            <th style="width:10%;">Total Loss (MWh)</th>
+            <th class="lft" style="width:30%;">Reason / Remarks</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+    </table>
+    <div class="page-break"></div>`;
+}
+
+// ── Signature Block ────────────────────────────────────────────────────────
+function buildSignatureBlock() {
+    return `
+    <div class="doc-h1" style="background:linear-gradient(135deg,#1e293b,#475569);">
+        <span class="doc-h1-num">CERT</span> REPORT CERTIFICATION & APPROVAL
+    </div>
+
+    <div class="callout info">
+        <div class="callout-title">Certification Statement</div>
+        This report has been prepared from data recorded in the Plant Management System and SCADA database of Makari Gad Hydroelectric Project. 
+        The data has been reviewed and is certified to be accurate to the best of our knowledge. This report is intended for internal management and regulatory submission purposes.
+    </div>
+
+    <div class="sig-block">
+        <div>
+            <div class="sig-line"></div>
+            <div class="sig-label">Plant Operation Incharge</div>
+            <div class="sig-role">Date: _______________</div>
         </div>
-        <p class="doc-p">Comprehensive log of outage events, tripping incidents, and exact energy loss data recorded in the SCADA outages database. Data matches visual summaries precisely.</p>
-        
-        <table class="doc-table annex-table">
-            <thead>
-                <tr>
-                    <th class="lft w-[12%]">Eng Date</th>
-                    <th>NEA Curtailed<br>(MWh)</th>
-                    <th>Line Trip<br>(Min)</th>
-                    <th>No. Trips</th>
-                    <th>Total Loss<br>Time (Min)</th>
-                    <th>Line Trip<br>Loss (MWh)</th>
-                    <th>Other<br>Loss (MWh)</th>
-                    <th class="w-[10%]">Total Energy<br>Loss (MWh)</th>
-                    <th class="lft w-[35%]">Reason / Remarks</th>
-                </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
-    `;
+        <div>
+            <div class="sig-line"></div>
+            <div class="sig-label">Project Manager / Site Engineer</div>
+            <div class="sig-role">Date: _______________</div>
+        </div>
+        <div>
+            <div class="sig-line"></div>
+            <div class="sig-label">General Manager / Director</div>
+            <div class="sig-role">Date: _______________</div>
+        </div>
+    </div>
+
+    <div style="margin-top:2.5rem;padding:1rem 1.5rem;background:#f8fafc;border-radius:10px;border:1.5px solid var(--border);text-align:center;">
+        <p style="font-size:8pt;color:var(--slate);margin:0;">
+            <strong>Makari Gad Hydroelectric Project</strong> | 10 MW | Darchula District, Sudurpashchim Province, Nepal<br>
+            Document Ref: MGHEP/OPR/${R.year}/${String(R.monthIndex+1).padStart(2,'0')} | Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}
+        </p>
+    </div>`;
 }
 
+// ── Render Charts ──────────────────────────────────────────────────────────
 function renderCharts() {
-    const { dailySeries, metrics } = reportData;
-    
-    // CHART 1
-    const ctx1 = document.getElementById('chart-daily-generation');
-    if (ctx1) {
-        new Chart(ctx1, {
-            type: 'line',
-            data: {
-                labels: dailySeries.map(d => `Day ${d.day}`),
-                datasets: [
-                    { label: 'Gross Gen (MWh)', data: dailySeries.map(d => d.gen), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.3, borderWidth: 3 },
-                    { label: 'Substation Export (MWh)', data: dailySeries.map(d => d.expS), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.3, borderWidth: 3 }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10, weight: 'bold' } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Energy (MWh)', font: { weight: 'bold' } } } } }
-        });
-    }
-    
-    // CHART 2
-    let cumulative = 0;
-    const cumulativeData = dailySeries.map(d => { cumulative += d.expS; return cumulative; });
+    const { dailySeries, metrics, ytdData, monthIndex, month } = R;
+    const allYTD = [...ytdData, { monthIdx:monthIndex, month, export:metrics.totalExp, contract:metrics.contractEnergy }];
+
+    const chartDefaults = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:9,weight:'bold'}, padding:12 } } } };
+
+    // Chart 1 — Daily Gen vs Export
+    const ctx1 = document.getElementById('chart-daily');
+    if (ctx1) new Chart(ctx1, {
+        type:'line',
+        data:{
+            labels: dailySeries.map(d=>`D${d.day}`),
+            datasets:[
+                { label:'Gross Gen (MWh)', data:dailySeries.map(d=>d.gen), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.08)', fill:true, tension:0.35, borderWidth:2.5, pointRadius:2 },
+                { label:'Substation Export (MWh)', data:dailySeries.map(d=>d.expS), borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.08)', fill:true, tension:0.35, borderWidth:2.5, pointRadius:2 }
+            ]
+        },
+        options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:7}} } } }
+    });
+
+    // Chart 2 — Cumulative
+    let cumul = 0;
+    const cumulData = dailySeries.map(d => { cumul += d.expS; return cumul; });
     const ctx2 = document.getElementById('chart-cumulative');
-    if (ctx2) {
-        new Chart(ctx2, {
-            type: 'line',
-            data: {
-                labels: dailySeries.map(d => `Day ${d.day}`),
-                datasets: [
-                    { label: 'Cumulative Export (MWh)', data: cumulativeData, borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.1)', fill: true, tension: 0.1, borderWidth: 3 },
-                    { label: 'Contract Energy Target (MWh)', data: Array(dailySeries.length).fill(metrics.contractEnergy), borderColor: '#ef4444', borderDash: [10, 5], borderWidth: 2, pointRadius: 0 }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10, weight: 'bold' } } } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Energy (MWh)', font: { weight: 'bold' } } } } }
-        });
-    }
-    
-    // CHART 3 (Pie Chart synced strictly to Outages data)
-    const ctx3 = document.getElementById('chart-energy-fate');
-    if (ctx3) {
-        new Chart(ctx3, {
-            type: 'pie',
-            data: {
-                labels: ['Energy Export', 'Grid Faults (Line Trips)', 'Plant / Other Faults', 'NEA Curtailed'],
-                datasets: [{
-                    data: [metrics.totalExp, metrics.gridFault, metrics.plantFaults, metrics.neaCurtailed],
-                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#8b5cf6']
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: {
-                            font: { size: 9, weight: 'bold' },
-                            generateLabels: (chart) => {
-                                const data = chart.data;
-                                return data.labels.map((label, i) => {
-                                    const value = data.datasets[0].data[i];
-                                    return { text: `${label}: ${fmt(value)} MWh`, fillStyle: data.datasets[0].backgroundColor[i], hidden: value === 0, index: i };
-                                }).filter(item => !item.hidden);
-                            }
-                        }
-                    }
-                }
+    if (ctx2) new Chart(ctx2, {
+        type:'line',
+        data:{
+            labels: dailySeries.map(d=>`D${d.day}`),
+            datasets:[
+                { label:'Cumulative Export', data:cumulData, borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,0.1)', fill:true, tension:0.1, borderWidth:3, pointRadius:0 },
+                { label:`Contract Target (${fmt(metrics.contractEnergy)} MWh)`, data:Array(dailySeries.length).fill(metrics.contractEnergy), borderColor:'#dc2626', borderDash:[8,4], borderWidth:2, pointRadius:0, fill:false }
+            ]
+        },
+        options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:7}} } } }
+    });
+
+    // Chart 3 — Unit comparison
+    const ctx3 = document.getElementById('chart-units');
+    if (ctx3) new Chart(ctx3, {
+        type:'bar',
+        data:{
+            labels: dailySeries.map(d=>`D${d.day}`),
+            datasets:[
+                { label:'Unit 1', data:dailySeries.map(d=>d.u1Gen), backgroundColor:'rgba(59,130,246,0.7)', borderColor:'#3b82f6', borderWidth:1, borderRadius:2 },
+                { label:'Unit 2', data:dailySeries.map(d=>d.u2Gen), backgroundColor:'rgba(8,145,178,0.7)', borderColor:'#0891b2', borderWidth:1, borderRadius:2 }
+            ]
+        },
+        options:{ ...chartDefaults, scales:{ x:{ stacked:false, ticks:{font:{size:7}} }, y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} } } }
+    });
+
+    // Chart 4 — Energy Fate Donut
+    const ctx4 = document.getElementById('chart-fate');
+    if (ctx4) new Chart(ctx4, {
+        type:'doughnut',
+        data:{
+            labels:['Energy Export','Grid Faults','Plant Faults','NEA Curtailed'],
+            datasets:[{ data:[metrics.totalExp,metrics.gridFault,metrics.plantFaults,metrics.neaCurtailed], backgroundColor:['#059669','#dc2626','#d97706','#7c3aed'], borderWidth:2, hoverOffset:8 }]
+        },
+        options:{
+            ...chartDefaults,
+            plugins:{
+                legend:{ position:'right', labels:{ font:{size:9,weight:'bold'}, generateLabels:(c)=>{
+                    return c.data.labels.map((l,i)=>({
+                        text:`${l}: ${fmt(c.data.datasets[0].data[i])} MWh`,
+                        fillStyle:c.data.datasets[0].backgroundColor[i],
+                        hidden:c.data.datasets[0].data[i]===0, index:i
+                    })).filter(x=>!x.hidden);
+                } } }
             }
-        });
-    }
+        }
+    });
+
+    // Chart 5 — YTD Bar
+    const ctx5 = document.getElementById('chart-ytd');
+    if (ctx5) new Chart(ctx5, {
+        type:'bar',
+        data:{
+            labels: allYTD.map(m=>m.month.substring(0,3)),
+            datasets:[
+                { label:'Actual Export (MWh)', data:allYTD.map(m=>m.export), backgroundColor:allYTD.map(m=>m.export>=m.contract?'rgba(5,150,105,0.75)':m.export>=m.contract*0.9?'rgba(217,119,6,0.75)':'rgba(220,38,38,0.75)'), borderRadius:4, borderSkipped:false },
+                { label:'Contract Target (MWh)', data:allYTD.map(m=>m.contract), type:'line', borderColor:'#1e40af', borderDash:[6,3], borderWidth:2, pointRadius:3, fill:false }
+            ]
+        },
+        options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:8}} } } }
+    });
+
+    // Chart 6 — Revenue bar
+    const ctx6 = document.getElementById('chart-revenue');
+    if (ctx6) new Chart(ctx6, {
+        type:'bar',
+        data:{
+            labels:['Gross Revenue','AD Penalty','Import Cost','Royalty','Bay Control','Net Receivable'],
+            datasets:[{
+                label:'NPR',
+                data:[metrics.grossRev, -metrics.penalty, -metrics.importCost, -metrics.royalty, -metrics.bayControl, metrics.netRev+metrics.extraAdj-metrics.bayControl],
+                backgroundColor:['rgba(5,150,105,0.8)','rgba(220,38,38,0.7)','rgba(217,119,6,0.7)','rgba(99,102,241,0.7)','rgba(100,116,139,0.7)','rgba(8,145,178,0.85)'],
+                borderRadius:5, borderSkipped:false
+            }]
+        },
+        options:{
+            ...chartDefaults,
+            plugins:{ legend:{display:false} },
+            scales:{ y:{ title:{display:true,text:'NPR',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:8}} } }
+        }
+    });
 }
-
 </script>
-
 </body>
 </html>

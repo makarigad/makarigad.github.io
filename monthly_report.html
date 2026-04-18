@@ -7,6 +7,8 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- FIX #5: Removed unused html2pdf.js import (saves ~500KB network load) -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <style>
@@ -59,7 +61,7 @@
             font-family: 'DM Sans', sans-serif;
         }
         .btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
         .btn-primary { background: var(--blue-lt); color: white; }
         .btn-success { background: var(--green); color: white; }
         .btn-outline { background: transparent; border: 1.5px solid rgba(255,255,255,0.3); color: white; }
@@ -397,8 +399,10 @@
         .badge.bad     { background: #fee2e2; color: #991b1b; }
         .badge.neutral { background: #e2e8f0; color: #475569; }
 
-        /* ===== PAGE BREAK ===== */
+        /* ===== PAGE BREAK & PDF OPTIMIZATION ===== */
         .page-break { page-break-before: always; break-before: page; display: block; height: 0; clear: both; }
+        .doc-table tr, .chart-wrapper, .kpi-grid, .callout, .unit-card { page-break-inside: avoid; break-inside: avoid; }
+        .a4-document { overflow-x: hidden; }
 
         /* ===== YTD SECTION ===== */
         .ytd-month-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 6px; font-size: 8.5pt; }
@@ -409,20 +413,39 @@
 
         /* ===== PRINT ===== */
         @media print {
-            body { background: white; }
-            .control-bar, .no-print { display: none !important; }
-            .a4-document { box-shadow: none; margin: 0; width: 100%; padding: 12mm 15mm; }
-            .page-break { page-break-before: always; break-before: page; }
-            @page { margin: 10mm; }
-            .doc-h1 { page-break-after: avoid; }
-            .doc-table tr { page-break-inside: avoid; }
-            .chart-wrapper { page-break-inside: avoid; }
+            @page { size: A4 portrait; margin: 12mm 15mm; }
+            body { 
+                background: white !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            .control-bar, #setup-panel, .no-print, #loading-state { display: none !important; }
+            .a4-document { 
+                box-shadow: none !important; 
+                margin: 0 !important; 
+                width: 100% !important; 
+                padding: 0 !important;
+            }
+            .page-break { page-break-before: always !important; break-before: page !important; }
+            .doc-table tr, .chart-wrapper, .kpi-card, .callout, .unit-card, .progress-bar-wrap, .sig-block { 
+                page-break-inside: avoid !important; 
+                break-inside: avoid !important; 
+            }
+            .doc-h1, .doc-h2 { 
+                page-break-after: avoid !important; 
+                break-after: avoid !important; 
+            }
+            /* FIX #1: Ensure canvas-replaced images fill their containers properly */
+            .chart-wrapper img {
+                width: 100% !important;
+                max-width: 100% !important;
+                display: block !important;
+            }
         }
     </style>
 </head>
 <body>
 
-<!-- ===== CONTROL BAR ===== -->
 <div class="control-bar no-print">
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -483,13 +506,12 @@
     </div>
 </div>
 
-<!-- ===== SETUP PANEL ===== -->
 <div id="setup-panel" class="max-w-5xl mx-auto mt-8 mb-10 no-print">
     <div class="setup-card">
         <div class="flex items-center justify-between mb-5">
             <div>
                 <h2 class="text-base font-bold text-slate-800">Report Narratives & Executive Notes</h2>
-                <p class="text-xs text-slate-400 mt-1">Auto-loaded from database for selected period. Edit here before generating.</p>
+                <p class="text-xs text-slate-400 mt-1">Leave empty to auto-generate based on operational data, or manually edit below.</p>
             </div>
             <button id="btn-save-narrative" class="btn btn-primary" style="background:var(--navy);">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
@@ -499,11 +521,11 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label style="color:var(--blue); font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Key Operational Highlights</label>
-                <textarea id="inp-hi" class="w-full mt-1" style="border:1.5px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.875rem;outline:none;background:#f8fafc;resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;" placeholder="- Achieved 98% plant availability..."></textarea>
+                <textarea id="inp-hi" class="w-full mt-1" style="border:1.5px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.875rem;outline:none;background:#f8fafc;resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;" placeholder="Leave empty for smart auto-generation..."></textarea>
             </div>
             <div>
                 <label style="color:var(--amber); font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Operational Problems Faced</label>
-                <textarea id="inp-pr" class="w-full mt-1" style="border:1.5px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.875rem;outline:none;background:#f8fafc;resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;" placeholder="- Frequent grid trips from Balanch..."></textarea>
+                <textarea id="inp-pr" class="w-full mt-1" style="border:1.5px solid var(--border);border-radius:8px;padding:0.75rem;font-size:0.875rem;outline:none;background:#f8fafc;resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;" placeholder="Leave empty for smart auto-generation..."></textarea>
             </div>
             <div>
                 <label style="color:var(--green); font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Maintenance Activities</label>
@@ -517,14 +539,12 @@
     </div>
 </div>
 
-<!-- ===== LOADING ===== -->
 <div id="loading-state" class="hidden flex flex-col items-center justify-center py-24 no-print">
     <div class="spinner mb-5"></div>
     <p class="text-lg font-bold text-slate-700">Generating comprehensive report…</p>
-    <p class="text-sm text-slate-400 mt-1">Fetching operational data, processing calculations, building annexes</p>
+    <p class="text-sm text-slate-400 mt-1">Fetching operational data, historical weather, calculations, and building annexes</p>
 </div>
 
-<!-- ===== REPORT OUTPUT ===== -->
 <div id="report-container" class="hidden"></div>
 
 <script type="module">
@@ -544,6 +564,9 @@ const PPA_CONTRACT = {
     8:{ days:30, energy:4560.670 }, 9:{ days:29, energy:3850.343 },
    10:{ days:30, energy:4005.746 },11:{ days:30, energy:4153.565 }
 };
+
+// ── FIX #2: Global chart instance registry for proper cleanup ──────────────
+let chartInstances = [];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt  = (v, d=2) => (v==null||isNaN(v)) ? '—' : parseFloat(v).toLocaleString('en-US', { minimumFractionDigits:d, maximumFractionDigits:d });
@@ -568,14 +591,18 @@ const getMIdx = m => {
     return Object.entries(aliases).find(([k]) => l.includes(k))?.[1] ?? -1;
 };
 
+// FIX #6: Improved formatBullets — strips more bullet styles, handles null safely
 const formatBullets = text => {
-    if (!text || text.trim() === '') return '';
-    return text.split('\n').filter(l=>l.trim().length>0)
-        .map(l=>`<li class="doc-li">${l.replace(/^[-•*]\s*/,'').trim()}</li>`).join('');
+    if (!text?.trim()) return '';
+    return text.split('\n')
+        .map(l => l.replace(/^[-•*▸]\s*/,'').trim())
+        .filter(l => l.length > 0)
+        .map(l => `<li class="doc-li">${l}</li>`)
+        .join('');
 };
 
 // ── State ──────────────────────────────────────────────────────────────────
-let R = { year:null, month:null, monthIndex:null, plantData:[], balanchData:[], contractData:null, outagesData:[], dailySeries:[], ytdData:[], metrics:{} };
+let R = { year:null, month:null, monthIndex:null, plantData:[], balanchData:[], contractData:null, outagesData:[], hourlyData:[], dailySeries:[], ytdData:[], weatherData:null, historicalData:[], rainfallData:[], dieselLiters:0, nextMonthAD:0, metrics:{}, reconciliationNotes:[] };
 
 // ── Init ───────────────────────────────────────────────────────────────────
 (async () => {
@@ -583,7 +610,48 @@ let R = { year:null, month:null, monthIndex:null, plantData:[], balanchData:[], 
     ['sel-year','sel-month'].forEach(id => document.getElementById(id).addEventListener('change', loadNarratives));
     await loadNarratives();
     document.getElementById('btn-generate').addEventListener('click', generateReport);
-    document.getElementById('btn-print').addEventListener('click', () => window.print());
+
+    // ── FIX #1: Print button — canvas → img snapshot before printing ────────
+    document.getElementById('btn-print').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-print');
+        btn.disabled = true;
+        btn.textContent = '⏳ Preparing PDF…';
+
+        // Step 1: Snapshot all Chart.js <canvas> elements into static <img> tags
+        const replacements = [];
+        document.querySelectorAll('#report-container canvas').forEach(canvas => {
+            try {
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL('image/png', 1.0);
+                img.style.cssText = `width:100%;height:${canvas.offsetHeight}px;display:block;object-fit:contain;`;
+                canvas.parentNode.insertBefore(img, canvas);
+                canvas.style.display = 'none';
+                replacements.push({ canvas, img });
+            } catch(e) {
+                console.warn('Canvas snapshot failed for:', canvas.id, e);
+            }
+        });
+
+        // Step 2: Brief delay to allow images to render, then open print dialog
+        await new Promise(r => setTimeout(r, 200));
+
+        const originalTitle = document.title;
+        document.title = `MGHEP_Operations_Report_${R.month}_${R.year}`;
+        window.print();
+        document.title = originalTitle;
+
+        // Step 3: Restore canvas elements after print dialog closes
+        // (window.print() is synchronous on most browsers, so a small timeout is sufficient)
+        setTimeout(() => {
+            replacements.forEach(({ canvas, img }) => {
+                canvas.style.display = '';
+                img.remove();
+            });
+            btn.disabled = false;
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg> Print / Save PDF`;
+        }, 2500);
+    });
+
     document.getElementById('btn-save-narrative').addEventListener('click', saveNarrative);
 })();
 
@@ -620,15 +688,29 @@ async function generateReport() {
     const month = document.getElementById('sel-month').value;
     const mIdx  = getMIdx(month);
     if (mIdx === -1) { alert('Invalid month'); return; }
-    R.year = year; R.month = month; R.monthIndex = mIdx;
+
+    // FIX #4: Fully reset state on each run to prevent stale data bleed-through
+    R = {
+        year, month, monthIndex: mIdx,
+        plantData:[], balanchData:[], contractData:null, outagesData:[],
+        hourlyData:[], dailySeries:[], ytdData:[], weatherData:null,
+        historicalData:[], rainfallData:[], dieselLiters:0, nextMonthAD:0,
+        metrics:{}, reconciliationNotes:[]
+    };
 
     document.getElementById('setup-panel').style.display = 'none';
     document.getElementById('loading-state').classList.remove('hidden');
     document.getElementById('report-container').classList.add('hidden');
 
+    // FIX #2: Destroy all previous Chart.js instances before regenerating
+    chartInstances.forEach(c => { try { c.destroy(); } catch(e) {} });
+    chartInstances = [];
+
     try {
         await fetchAllData(year, mIdx);
         processMetrics();
+        generateSmartSummary();
+        
         document.getElementById('report-container').innerHTML = `<div class="a4-document">${buildAll()}</div>`;
         setTimeout(renderCharts, 300);
         document.getElementById('loading-state').classList.add('hidden');
@@ -652,6 +734,7 @@ async function generateReport() {
 async function fetchAllData(year, mIdx) {
     const mStr = String(mIdx+1).padStart(2,'0');
 
+    // 1. Plant Data
     const { data:pData, error:pErr } = await supabase.from('plant_data').select('*').like('nepali_date',`${year}.${mStr}.%`).order('id',{ascending:true});
     if (pErr) throw new Error('plant_data: ' + pErr.message);
     R.plantData = pData || [];
@@ -667,23 +750,70 @@ async function fetchAllData(year, mIdx) {
     if (engDates.length > 0) {
         const { data:bData } = await supabase.from('balanch_readings').select('*').gte('eng_date',engDates[0]).order('eng_date',{ascending:true}).limit(engDates.length+1);
         R.balanchData = bData || [];
+        
+        const { data:oData } = await supabase.from('outages').select('*').in('id',engDates);
+        R.outagesData = oData || [];
+
+        const { data:hData } = await supabase.from('hourly_logs').select('log_date,log_time,e_out_mw,e_out_cos,t_temp_out,t_temp_in,t_temp_intake').in('log_date',engDates);
+        R.hourlyData = hData || [];
+
+        // Weather from Open-Meteo
+        try {
+            const res = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=29.744&longitude=80.964&elevation=4200&start_date=${engDates[0]}&end_date=${engDates[engDates.length-1]}&daily=temperature_2m_mean,precipitation_sum&timezone=Asia%2FKathmandu`);
+            const wData = await res.json();
+            R.weatherData = wData.daily || null;
+        } catch(e) { console.warn("Weather fetch failed", e); }
+
+        // FIX #5: historicalData pagination with infinite-loop safeguard
+        let histData = [];
+        const endObj = new Date(engDates[engDates.length-1]); endObj.setHours(23, 59, 59, 999);
+        const startIso = new Date(engDates[0]).toISOString();
+        const endIso   = endObj.toISOString();
+        let page = 0, more = true;
+        const MAX_PAGES = 50; // ~50,000 row safety cap
+        while(more && page < MAX_PAGES) {
+            const { data, error } = await supabase.from('historical_data')
+                .select('timestamp, active_power_kw')
+                .gte('timestamp', startIso).lte('timestamp', endIso)
+                .order('timestamp').range(page*1000, (page+1)*1000 - 1);
+            if (error) break;
+            if (data && data.length > 0) histData = histData.concat(data);
+            more = (data && data.length === 1000);
+            page++;
+        }
+        R.historicalData = histData;
     }
 
+    // 2. Contracts & Look-ahead
     const { data:cData, error:cErr } = await supabase.from('contract_energy').select('*').eq('year',year).eq('month',R.month).maybeSingle();
     if (cErr && cErr.code !== 'PGRST116') throw new Error('contract_energy: ' + cErr.message);
     R.contractData = cData;
 
-    if (engDates.length > 0) {
-        const { data:oData } = await supabase.from('outages').select('*').in('id',engDates);
-        R.outagesData = oData || [];
-    }
+    let nxY = year, nxM = mIdx + 1;
+    if(nxM > 11) { nxM = 0; nxY++; }
+    const nxMonthStr = CANONICAL_MONTHS[nxM];
+    const { data:nxC } = await supabase.from('contract_energy').select('total_ad').eq('year',nxY).eq('month',nxMonthStr).maybeSingle();
+    R.nextMonthAD = nxC ? pN(nxC.total_ad) : 0;
 
-    // ── YTD data (all previous months this year) ──────────────────────────
+    // 3. Diesel Inventory
+    const { data:expData } = await supabase.from('site_expense_items').select('quantity').eq('nepali_year',year).eq('nepali_month',R.month).eq('category','Diesel');
+    R.dieselLiters = expData ? expData.reduce((s,x)=>s+pN(x.quantity),0) : 0;
+
+    // 4. YTD data
+    // FIX #3: YTD balanch query uses explicit date range instead of LIKE to avoid year cross-contamination
     R.ytdData = [];
     for (let m = 0; m < mIdx; m++) {
         const ms = String(m+1).padStart(2,'0');
-        const { data:ytdPlant } = await supabase.from('plant_data').select('export_plant,station_trans').like('nepali_date',`${year}.${ms}.%`).order('id',{ascending:true});
-        const { data:ytdBal } = await supabase.from('balanch_readings').select('main_export,check_export').like('eng_date',`${year}-${ms}-%`).order('eng_date',{ascending:true});
+        const { data:ytdPlant } = await supabase.from('plant_data')
+            .select('export_plant,station_trans')
+            .like('nepali_date',`${year}.${ms}.%`)
+            .order('id',{ascending:true});
+
+        const { data:ytdBal } = await supabase.from('balanch_readings')
+            .select('main_export,check_export')
+            .gte('nep_date',`${year}.${ms}.01`)
+            .lte('nep_date',`${year}.${ms}.32`)
+            .order('nep_date',{ascending:true});
 
         let exp = 0;
         if (ytdBal && ytdBal.length >= 2) {
@@ -692,11 +822,44 @@ async function fetchAllData(year, mIdx) {
         }
         R.ytdData.push({ monthIdx:m, month:CANONICAL_MONTHS[m], export:exp, contract:PPA_CONTRACT[m].energy });
     }
+
+    // 5. Local rainfall & temperature data
+    const { data: rainData } = await supabase.from('rainfall_data')
+        .select('*')
+        .eq('nepali_year', year)
+        .eq('nepali_month', R.month);
+    R.rainfallData = rainData || [];
+}
+
+// ── Smart Generation ───────────────────────────────────────────────────────
+function generateSmartSummary() {
+    const { totalGen, availability, peakMW, peakDate, peakTime, pf, totalTrippings, gridFault, neaCurtailed } = R.metrics;
+    
+    if(!document.getElementById('inp-hi').value.trim()) {
+        let hi = [];
+        hi.push(`Achieved a gross generation of ${fmt(totalGen)} MWh with a plant availability of ${fmt(availability)}%.`);
+        if(peakMW > 0) hi.push(`Hit a peak instantaneous load of ${fmt(peakMW)} MW on ${peakDate} at ${peakTime}.`);
+        if(R.weatherData && R.weatherData.precipitation_sum) {
+            const maxRain = Math.max(...R.weatherData.precipitation_sum);
+            if(maxRain > 0) hi.push(`Maximum daily rainfall in the catchment was ${maxRain} mm, correlating with generation patterns.`);
+        }
+        if(pf > 0) hi.push(`Maintained an excellent average power factor (cos φ) of ${fmt(pf, 3)} during generation hours.`);
+        document.getElementById('inp-hi').value = hi.map(x=>`- ${x}`).join('\n');
+    }
+    
+    if(!document.getElementById('inp-pr').value.trim()) {
+        let pr = [];
+        if(totalTrippings > 0) pr.push(`Grid instability caused ${totalTrippings} tripping events, resulting in ${fmt(gridFault)} MWh of energy loss.`);
+        if(R.dieselLiters > 0) pr.push(`Consumed ${fmt(R.dieselLiters)} liters of site diesel to run backup systems during forced grid outages.`);
+        if(neaCurtailed > 0) pr.push(`LDC instructed curtailment led to a generation loss of ${fmt(neaCurtailed)} MWh.`);
+        if(pr.length === 0) pr.push(`No significant forced outages or major operational issues recorded this month.`);
+        document.getElementById('inp-pr').value = pr.map(x=>`- ${x}`).join('\n');
+    }
 }
 
 // ── Process Metrics ────────────────────────────────────────────────────────
 function processMetrics() {
-    const { plantData, balanchData, contractData, outagesData, year, monthIndex } = R;
+    const { plantData, balanchData, contractData, outagesData, hourlyData, weatherData, year, monthIndex } = R;
     const days = PPA_CONTRACT[monthIndex].days;
     const dailySeries = [];
 
@@ -704,13 +867,39 @@ function processMetrics() {
     let totalU1Hrs=0, totalU2Hrs=0, totalU1Gen=0, totalU2Gen=0;
     let peakGen={day:0,value:0}, lowestGen={day:0,value:999999};
     let zeroGenDays=0;
+    let totalPlantExp = 0;
+
+    let peakMW = 0, peakDate = '', peakTime = '', sumPF = 0, countPF = 0;
+    hourlyData.forEach(h => {
+        const mw = pN(h.e_out_mw);
+        if(mw > peakMW) { peakMW = mw; peakDate = h.log_date; peakTime = h.log_time; }
+        const currentPF = pN(h.e_out_cos); 
+        if(currentPF > 0) { sumPF += currentPF; countPF++; }
+    });
+    const avgPF = countPF > 0 ? sumPF / countPF : 0;
 
     for (let d=1; d<=days; d++) {
         const dateStr=`${year}.${String(monthIndex+1).padStart(2,'0')}.${String(d).padStart(2,'0')}`;
         const pRow  = plantData.find(p=>cleanDate(p.nepali_date||p.nep_date)===dateStr);
         const oRow  = outagesData.find(o=>o.id===(pRow?.id));
-
-        let u1Gen=0, u2Gen=0, gen=0, exp=0, imp=0, stCons=0, u1Hrs=0, u2Hrs=0, expS=0, impS=0;
+        const rRow  = R.rainfallData.find(r=>parseInt(r.day) === d); 
+        
+        let u1Gen=0, u2Gen=0, gen=0, exp=0, imp=0, stCons=0, u1Hrs=0, u2Hrs=0, expS=0, impS=0, wR=0, wT=0;
+        
+        let pRain = rRow && rRow.powerhouse != null && rRow.powerhouse !== '' ? rRow.powerhouse : '—';
+        let hRain = rRow && rRow.headworks  != null && rRow.headworks  !== '' ? rRow.headworks  : '—';
+        
+        let pTempOut = '—', pTempIn = '—', hTemp = '—';
+        if (pRow) {
+            const dayLogs = hourlyData.filter(h => h.log_date === pRow.id);
+            const calcAvg = (key) => {
+                const vals = dayLogs.map(h => parseFloat(h[key])).filter(v => !isNaN(v));
+                return vals.length ? fmt(vals.reduce((a,b)=>a+b,0)/vals.length, 1) : '—';
+            };
+            pTempOut = calcAvg('t_temp_out');
+            pTempIn  = calcAvg('t_temp_in');
+            hTemp    = calcAvg('t_temp_intake');
+        }
 
         if (pRow) {
             const pIdx = plantData.findIndex(p=>p.id===pRow.id);
@@ -729,70 +918,117 @@ function processMetrics() {
             if (bRow) {
                 const bNxt = balanchData.find(b=>b.eng_date>bRow.eng_date);
                 if (bNxt) {
-                    expS = Math.max(0, pN(bNxt.main_export??bNxt.check_export)  - pN(bRow.main_export??bRow.check_export));
-                    impS = Math.max(0, pN(bNxt.main_import??bNxt.check_import)  - pN(bRow.main_import??bRow.check_import));
+                    expS = Math.max(0, pN(bNxt.main_export??bNxt.check_export) - pN(bRow.main_export??bRow.check_export));
+                    impS = Math.max(0, pN(bNxt.main_import??bNxt.check_import) - pN(bRow.main_import??bRow.check_import));
+                }
+            }
+            if(weatherData && weatherData.time) {
+                const wIdx = weatherData.time.indexOf(pRow.id);
+                if(wIdx >= 0) { 
+                    wR = weatherData.precipitation_sum[wIdx]||0; 
+                    wT = weatherData.temperature_2m_mean[wIdx]||0; 
                 }
             }
         }
 
         totalGen    += gen;    totalU1Gen += u1Gen; totalU2Gen += u2Gen;
         totalExp    += expS;   totalImp   += impS;  totalStCons+= stCons;
+        totalPlantExp += exp;
         totalU1Hrs  += u1Hrs;  totalU2Hrs += u2Hrs;
-        if (gen > peakGen.value)             peakGen   = {day:d, value:gen};
+        if (gen > peakGen.value)              peakGen   = {day:d, value:gen};
         if (gen > 0 && gen < lowestGen.value) lowestGen = {day:d, value:gen};
         if (gen === 0) zeroGenDays++;
 
-        dailySeries.push({day:d, date:dateStr, engDate:pRow?.id||'', u1Gen, u2Gen, gen, exp, imp, expS, impS, stCons, u1Hrs, u2Hrs, outage:oRow||{}, rawPlant:pRow||{}});
+        dailySeries.push({day:d, date:dateStr, engDate:pRow?.id||'', u1Gen, u2Gen, gen, exp, imp, expS, impS, stCons, u1Hrs, u2Hrs, rain:wR, temp:wT, pRain, hRain, pTempOut, pTempIn, hTemp, outage:oRow||{}, rawPlant:pRow||{}});
     }
+
     R.dailySeries = dailySeries;
 
-    const contractEnergy  = PPA_CONTRACT[monthIndex].energy;
-    const declaredAD      = pN(contractData?.total_ad) || 0;
-    const plantFactor     = (totalExp / (PLANT_CAPACITY_MW * 24 * days) * 100);
-    const availability    = ((days - zeroGenDays) / days * 100);
-    const avgDailyGen     = totalGen / days;
-    const u1Share         = totalGen > 0 ? totalU1Gen / totalGen * 100 : 0;
-    const u2Share         = totalGen > 0 ? totalU2Gen / totalGen * 100 : 0;
+    // ── Reconciliation ─────────────────────────────────────────────────────
+    let recNotes = [];
+    let offGen = totalGen, offExp = totalExp, offImp = totalImp, offStCons = totalStCons;
+    if (plantData.length > days) {
+        const firstP = plantData[0], lastP = plantData[plantData.length - 1];
+        if (firstP && lastP && firstP.id !== lastP.id) {
+            offGen    = Math.max(0, (pN(lastP.unit1_gen)+pN(lastP.unit2_gen)) - (pN(firstP.unit1_gen)+pN(firstP.unit2_gen)));
+            offStCons = Math.max(0, (pN(lastP.station_trans) - pN(firstP.station_trans))/1000);
+            const bFirst = balanchData.find(b=>b.eng_date===firstP.id);
+            const bLast  = balanchData.find(b=>b.eng_date===lastP.id);
+            if(bFirst && bLast) {
+                offExp = Math.max(0, pN(bLast.main_export??bLast.check_export) - pN(bFirst.main_export??bFirst.check_export));
+                offImp = Math.max(0, pN(bLast.main_import??bLast.check_import) - pN(bFirst.main_import??bFirst.check_import));
+            }
+        }
+    }
+    if (Math.abs(offExp - totalExp) > 1) {
+        recNotes.push(`Export Energy synced to Master Meter diff (${fmt(offExp)} MWh) instead of raw daily sum (${fmt(totalExp)} MWh).`);
+    }
+    totalGen = offGen; totalExp = offExp; totalImp = offImp; totalStCons = offStCons;
 
-    const totalOutageEnergy = outagesData.reduce((s,o)=>s+pN(o.total_energy_loss),0);
-    const neaCurtailed      = outagesData.reduce((s,o)=>s+pN(o.nea_curtailed_energy),0);
-    const totalTrippings    = outagesData.reduce((s,o)=>s+pN(o.no_of_trippings),0);
-    const gridFault         = outagesData.reduce((s,o)=>s+pN(o.energy_loss_line_trip),0);
-    const plantFaults       = outagesData.reduce((s,o)=>s+pN(o.energy_loss_other),0);
-    const totalFaults       = gridFault + plantFaults + neaCurtailed;
+    let scadaGrid      = outagesData.reduce((s,o)=>s+pN(o.energy_loss_line_trip),0);
+    let scadaPlant     = outagesData.reduce((s,o)=>s+pN(o.energy_loss_other),0);
+    let scadaCurtailed = outagesData.reduce((s,o)=>s+pN(o.nea_curtailed_energy),0);
+    const totalTrippings = outagesData.reduce((s,o)=>s+pN(o.no_of_trippings),0);
 
-    const ppaRate     = calcPPARate(R.year, monthIndex);
-    const normalMwh   = Math.min(totalExp, declaredAD, contractEnergy);
-    const excessMwh   = Math.max(0, totalExp - normalMwh);
-    const normalRev   = normalMwh   * ppaRate * 1000;
-    const excessRev   = excessMwh   * (ppaRate/2) * 1000;
-    const grossRev    = normalRev + excessRev;
-    const penalty     = Math.max(0,(0.9*declaredAD)-totalExp)*0.10*ppaRate*1000;
-    const importCost  = totalImp * IMPORT_RATE * 1000;
-    const royalty     = grossRev * 0.02;
-    const bayControl  = pN(contractData?.bay_control_nrs);
-    const extraAdj    = pN(contractData?.extra_adjustment_nrs);
-    const netRev      = grossRev - penalty - importCost - royalty - bayControl + extraAdj;
+    let gridFault = scadaGrid, plantFaults = scadaPlant, neaCurtailed = scadaCurtailed;
+    if (contractData && (contractData.forced_outage_mwh != null || contractData.dispatch_mwh != null)) {
+        const offGrid      = pN(contractData.grid_fault_mwh) + pN(contractData.line_132kv_mwh);
+        const offPlant     = pN(contractData.fm_33kv_mwh) + pN(contractData.fm_penstock_mwh) + pN(contractData.fm_equipment_mwh);
+        const offCurtailed = pN(contractData.dispatch_mwh);
+        if (Math.abs(offGrid - scadaGrid) > 0.1)           recNotes.push(`Grid Faults adjusted to official Ops record: ${fmt(offGrid)} MWh (was ${fmt(scadaGrid)} MWh).`);
+        if (Math.abs(offPlant - scadaPlant) > 0.1)         recNotes.push(`Plant Faults adjusted to official Ops record: ${fmt(offPlant)} MWh (was ${fmt(scadaPlant)} MWh).`);
+        if (Math.abs(offCurtailed - scadaCurtailed) > 0.1) recNotes.push(`NEA Curtailment adjusted to official Ops record: ${fmt(offCurtailed)} MWh (was ${fmt(scadaCurtailed)} MWh).`);
+        gridFault = offGrid; plantFaults = offPlant; neaCurtailed = offCurtailed;
+    }
+    R.reconciliationNotes = recNotes;
 
-    // YTD totals
+    const totalFaults        = gridFault + plantFaults + neaCurtailed;
+    const totalOutageEnergy  = totalFaults;
+    const transformerLoss    = Math.max(0, totalGen - totalPlantExp - totalStCons);
+    const transmissionLoss   = Math.max(0, totalPlantExp - totalExp);
+    const otherLosses        = gridFault + plantFaults;
+
+    const contractEnergy = PPA_CONTRACT[monthIndex].energy;
+    const declaredAD     = pN(contractData?.total_ad) || 0;
+    const plantFactor    = (totalExp / (PLANT_CAPACITY_MW * 24 * days) * 100);
+    const availability   = ((days - zeroGenDays) / days * 100);
+    const avgDailyGen    = totalGen / days;
+    const u1Share        = totalGen > 0 ? totalU1Gen / totalGen * 100 : 0;
+    const u2Share        = totalGen > 0 ? totalU2Gen / totalGen * 100 : 0;
+
+    const ppaRate    = calcPPARate(R.year, monthIndex);
+    const normalMwh  = Math.min(totalExp, declaredAD, contractEnergy);
+    const excessMwh  = Math.max(0, totalExp - normalMwh);
+    const normalRev  = normalMwh  * ppaRate * 1000;
+    const excessRev  = excessMwh  * (ppaRate/2) * 1000;
+    const grossRev   = normalRev + excessRev;
+    const penalty    = Math.max(0,(0.9*declaredAD)-totalExp)*0.10*ppaRate*1000;
+    const importCost = totalImp * IMPORT_RATE * 1000;
+    const royalty    = grossRev * 0.02;
+    const bayControl = pN(contractData?.bay_control_nrs);
+    const extraAdj   = pN(contractData?.extra_adjustment_nrs);
+    const netRev     = grossRev - penalty - importCost - royalty - bayControl + extraAdj;
+
     const ytdExport   = R.ytdData.reduce((s,m)=>s+m.export,0) + totalExp;
     const ytdContract = R.ytdData.reduce((s,m)=>s+m.contract,0) + contractEnergy;
 
     R.metrics = {
-        totalGen, totalExp, totalImp, totalStCons, totalU1Gen, totalU2Gen,
-        totalU1Hrs, totalU2Hrs, u1Share, u2Share,
+        totalGen, totalExp, totalImp, totalStCons, totalU1Gen, totalU2Gen, totalPlantExp,
+        totalU1Hrs, totalU2Hrs, u1Share, u2Share, pf: avgPF, peakMW, peakDate, peakTime,
         contractEnergy, declaredAD, plantFactor, availability, avgDailyGen,
-        peakGen, lowestGen, zeroGenDays, days,
+        peakGen, lowestGen, zeroGenDays, days, transformerLoss, transmissionLoss, otherLosses,
         totalOutageEnergy, neaCurtailed, totalTrippings, gridFault, plantFaults, totalFaults,
         ppaRate, normalRev, excessRev, grossRev, penalty, importCost, royalty, bayControl, extraAdj, netRev,
         ytdExport, ytdContract
     };
 }
 
-function calcPPARate(year, mIdx) {
-    const ey = Math.max(0, year-2080);
-    const wet=[8.4,8.65,8.9,9.16,9.43,9.71], dry=[4.8,4.94,5.09,5.24,5.39,5.55];
-    return (mIdx>=2 && mIdx<=11) ? wet[Math.min(ey,5)] : dry[Math.min(ey,5)];
+function calcPPARate(y, mIdx) {
+    const escWet = Math.max(0, y - 2080);
+    const escDry = Math.max(0, mIdx === 11 ? y - 2079 : y - 2080);
+    const wR = [8.4, 8.65, 8.9, 9.16, 9.43, 9.71];
+    const rR = [4.8, 4.94, 5.09, 5.24, 5.39, 5.55];
+    return mIdx >= 8 ? wR[Math.min(escDry, 5)] : rR[Math.min(escWet, 5)];
 }
 
 // ── Build All HTML ─────────────────────────────────────────────────────────
@@ -802,14 +1038,17 @@ function buildAll() {
         ${buildTOC()}
         ${buildExecutiveSummary()}
         ${buildGenerationPerformance()}
+        ${buildHydrology()}
         ${buildUnitAnalysis()}
         ${buildOutageAnalysis()}
         ${buildGridTransmission()}
         ${buildYTDSection()}
         ${buildFinancialSummary()}
         ${buildMaintenanceLog()}
+        ${buildNextMonth()}
         ${buildAnnexDailyGeneration()}
         ${buildAnnexOutages()}
+        ${buildAnnexHydrology()}
         ${buildSignatureBlock()}
     `;
 }
@@ -890,23 +1129,24 @@ function buildTOC() {
     const sections = [
         ['01','Executive Summary', '3'],
         ['02','Generation & Performance Data', '4'],
-        ['03','Unit-Wise Analysis', '5'],
-        ['04','Outage Analysis & Energy Losses', '6'],
-        ['05','Grid & Transmission Performance', '7'],
-        ['06','Year-to-Date Progress', '8'],
-        ['07','Financial Summary', '9'],
-        ['08','Maintenance & HSE Log', '10'],
-        ['Annex A','Daily Generation & Dispatch Log', '11'],
-        ['Annex B','Outage & Energy Loss Tracker', '13'],
+        ['03','Hydrology & Weather Impact', '5'],
+        ['04','Unit-Wise Analysis', '6'],
+        ['05','Outage Analysis & Energy Losses', '7'],
+        ['06','Grid & Transmission Performance', '8'],
+        ['07','Year-to-Date Progress', '9'],
+        ['08','Financial Summary', '10'],
+        ['09','Maintenance & HSE Log', '11'],
+        ['10','Next Month Look-Ahead', '12'],
+        ['Annex A','Daily Generation & Dispatch Log', '13'],
+        ['Annex B','Outage & Energy Loss Tracker', '14'],
+        ['Annex C','Hydrology & Weather Records', '15']
     ];
-
     const rows = sections.map(([num, title]) => `
         <div class="toc-entry">
             <span class="toc-num">${num}</span>
             <span class="toc-title">${title}</span>
             <span class="toc-dots"></span>
         </div>`).join('');
-
     return `
     <div class="doc-h1"><span class="doc-h1-num">TOC</span> TABLE OF CONTENTS</div>
     <div style="margin:1rem 0 2rem;">${rows}</div>
@@ -915,15 +1155,25 @@ function buildTOC() {
 
 // ── Executive Summary ──────────────────────────────────────────────────────
 function buildExecutiveSummary() {
-    const { totalGen, totalExp, plantFactor, availability, totalFaults, grossRev, avgDailyGen, totalU1Hrs, totalU2Hrs, peakGen, lowestGen, totalTrippings, neaCurtailed, gridFault, totalOutageEnergy, contractEnergy, zeroGenDays, days } = R.metrics;
+    const { totalGen, totalExp, plantFactor, availability, totalFaults, grossRev, avgDailyGen, totalU1Hrs, totalU2Hrs, peakGen, lowestGen, totalTrippings, neaCurtailed, gridFault, totalOutageEnergy, contractEnergy, declaredAD, zeroGenDays, days } = R.metrics;
     const { month, year } = R;
     const customHighlights = document.getElementById('inp-hi').value;
     const customProblems   = document.getElementById('inp-pr').value;
-    const contractAch = totalExp / contractEnergy * 100;
+    const contractAch = contractEnergy > 0 ? (totalExp / contractEnergy * 100) : 0;
+    const adAch       = declaredAD > 0 ? (totalExp / declaredAD * 100) : 0;
+    const adColor     = adAch >= 90 ? 'var(--green)' : 'var(--red)';
+
+    const notesHtml = R.reconciliationNotes && R.reconciliationNotes.length > 0
+        ? `<div class="callout warning">
+               <div class="callout-title">Data Reconciliation Applied</div>
+               <p style="font-size:9pt;margin-bottom:8px;">The raw daily SCADA logs have been corrected to match the finalized data in the Energy Summary & Ops module:</p>
+               <ul class="doc-ul" style="margin-bottom:0;">`
+               + R.reconciliationNotes.map(n => `<li class="doc-li" style="font-size:9pt;margin-bottom:3px;">${n}</li>`).join('')
+               + `</ul></div>` : '';
 
     return `
     <div class="doc-h1"><span class="doc-h1-num">01</span> EXECUTIVE SUMMARY</div>
-
+    ${notesHtml}
     <div class="doc-h2">Performance Overview</div>
     <p class="doc-p">
         During <strong>${month} ${year} BS</strong>, Makari Gad Hydroelectric Project recorded a plant factor of <strong>${fmt(plantFactor)}%</strong> 
@@ -934,39 +1184,28 @@ function buildExecutiveSummary() {
     </p>
 
     <div class="kpi-grid kpi-grid-4">
-        <div class="kpi-card blue">
-            <div class="kpi-val blue">${fmt(totalGen)}</div>
-            <div class="kpi-lbl">Gross Gen (MWh)</div>
-            <div class="kpi-sub">Avg ${fmt(avgDailyGen)} MWh/day</div>
-        </div>
-        <div class="kpi-card green">
-            <div class="kpi-val green">${fmt(totalExp)}</div>
-            <div class="kpi-lbl">Energy Export (MWh)</div>
-            <div class="kpi-sub">${pct(totalExp,contractEnergy)}% of contract</div>
-        </div>
-        <div class="kpi-card amber">
-            <div class="kpi-val amber">${fmt(plantFactor)}%</div>
-            <div class="kpi-lbl">Plant Factor</div>
-            <div class="kpi-sub">Availability ${fmt(availability)}%</div>
-        </div>
-        <div class="kpi-card red">
-            <div class="kpi-val red">${fmt(totalFaults)}</div>
-            <div class="kpi-lbl">Total Losses (MWh)</div>
-            <div class="kpi-sub">${totalTrippings} grid trips</div>
-        </div>
+        <div class="kpi-card blue"><div class="kpi-val blue">${fmt(totalGen)}</div><div class="kpi-lbl">Gross Gen (MWh)</div><div class="kpi-sub">Avg ${fmt(avgDailyGen)} MWh/day</div></div>
+        <div class="kpi-card green"><div class="kpi-val green">${fmt(totalExp)}</div><div class="kpi-lbl">Energy Export (MWh)</div><div class="kpi-sub">${pct(totalExp,contractEnergy)}% of contract</div></div>
+        <div class="kpi-card amber"><div class="kpi-val amber">${fmt(plantFactor)}%</div><div class="kpi-lbl">Plant Factor</div><div class="kpi-sub">Availability ${fmt(availability)}%</div></div>
+        <div class="kpi-card red"><div class="kpi-val red">${fmt(totalFaults)}</div><div class="kpi-lbl">Total Losses (MWh)</div><div class="kpi-sub">${totalTrippings} grid trips</div></div>
     </div>
 
-    <div class="doc-h2">Contract Achievement</div>
+    <div class="doc-h2">Contract & AD Achievement</div>
     <div class="progress-bar-wrap">
-        <div class="progress-label"><span>Energy Export vs. Contract (${fmt(totalExp)} / ${fmt(contractEnergy)} MWh)</span><span>${fmt(contractAch)}%</span></div>
-        <div class="progress-bar-track">
-            <div class="progress-bar-fill" style="width:${Math.min(100,contractAch)}%;background:${contractAch>=100?'var(--green)':contractAch>=90?'var(--amber)':'var(--red)'}"></div>
+        <div class="progress-label"><span>Energy Export vs. PPA Contract Target (${fmt(totalExp)} / ${fmt(contractEnergy)} MWh)</span><span>${fmt(contractAch)}%</span></div>
+        <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${Math.min(100,contractAch)}%;background:${contractAch>=100?'var(--green)':contractAch>=90?'var(--amber)':'var(--red)'}"></div></div>
+    </div>
+    <div class="progress-bar-wrap" style="margin-top:1rem;">
+        <div class="progress-label">
+            <span>Energy Export vs. Declared AD (${fmt(totalExp)} / ${fmt(declaredAD)} MWh)</span>
+            <span style="color:${adColor};font-weight:bold;">${fmt(adAch)}% ${adAch >= 90 ? '(No Penalty)' : '(Penalty Zone)'}</span>
         </div>
+        <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${Math.min(100,adAch)}%;background:${adColor}"></div></div>
     </div>
 
     <div class="doc-h2">Key Performance Highlights</div>
     <ul class="doc-ul">
-        <li class="doc-li"><strong>Peak Generation Day:</strong> Day ${peakGen.day} — ${fmt(peakGen.value)} MWh</li>
+        <li class="doc-li"><strong>Peak Daily Generation:</strong> Day ${peakGen.day} — ${fmt(peakGen.value)} MWh</li>
         <li class="doc-li"><strong>Lowest Generation Day:</strong> Day ${lowestGen.day} — ${fmt(lowestGen.value)} MWh (excl. zero days)</li>
         <li class="doc-li"><strong>Unit 1 Runtime:</strong> ${fmt(totalU1Hrs,1)} hours this month</li>
         <li class="doc-li"><strong>Unit 2 Runtime:</strong> ${fmt(totalU2Hrs,1)} hours this month</li>
@@ -985,9 +1224,8 @@ function buildExecutiveSummary() {
 
 // ── Generation Performance ─────────────────────────────────────────────────
 function buildGenerationPerformance() {
-    const { totalGen, totalExp, contractEnergy, declaredAD, avgDailyGen, plantFactor, availability, days, zeroGenDays, peakGen, lowestGen, totalImp, totalStCons } = R.metrics;
+    const { totalGen, totalExp, contractEnergy, declaredAD, avgDailyGen, plantFactor, availability, days, zeroGenDays, peakGen, lowestGen, totalImp, totalStCons, peakMW, peakTime, pf } = R.metrics;
     const { year, month } = R;
-
     return `
     <div class="doc-h1"><span class="doc-h1-num">02</span> GENERATION & PERFORMANCE DATA</div>
 
@@ -1004,6 +1242,8 @@ function buildGenerationPerformance() {
             <tr><td class="lft">Monthly Energy Import</td><td>${fmt(totalImp)}</td><td>MWh</td></tr>
             <tr><td class="lft">Station Consumption</td><td>${fmt(totalStCons)}</td><td>MWh</td></tr>
             <tr><td class="lft">Average Daily Generation</td><td>${fmt(avgDailyGen)}</td><td>MWh/day</td></tr>
+            <tr style="background:#f8fafc;"><td class="lft" style="color:var(--blue-lt);font-weight:bold;">Peak Instantaneous Load</td><td style="color:var(--blue-lt);font-weight:bold;">${fmt(peakMW)}</td><td style="font-size:7.5pt;">MW @ ${peakTime||'N/A'}</td></tr>
+            <tr><td class="lft">Average Power Factor (cos φ)</td><td>${fmt(pf, 3)}</td><td>—</td></tr>
             <tr><td class="lft">Peak Generation Day</td><td>Day ${peakGen.day} — ${fmt(peakGen.value)}</td><td>MWh</td></tr>
             <tr><td class="lft">Lowest Generation Day</td><td>Day ${lowestGen.day} — ${fmt(lowestGen.value)}</td><td>MWh</td></tr>
             <tr><td class="lft">Plant Load Factor (PLF)</td><td><strong style="color:var(--amber)">${fmt(plantFactor)}</strong></td><td>%</td></tr>
@@ -1028,20 +1268,42 @@ function buildGenerationPerformance() {
         <div style="position:relative;height:260px;width:100%;"><canvas id="chart-cumulative"></canvas></div>
         <p class="chart-caption">Figure 2: Running cumulative export against the monthly PPA contract energy target of ${fmt(contractEnergy)} MWh.</p>
     </div>
+
+    <div class="doc-h2">SCADA Active Power & Dispatch Trend</div>
+    <div class="chart-wrapper">
+        <div class="chart-title">Daily Dispatch vs. Instantaneous Active Power</div>
+        <div style="position:relative;height:350px;width:100%;"><canvas id="chart-trend"></canvas></div>
+        <p class="chart-caption">Figure 3: Correlating daily dispatched energy (MWh) with high-resolution SCADA Active Power (kW) telemetry.</p>
+    </div>
+    <div class="page-break"></div>`;
+}
+
+// ── Hydrology ──────────────────────────────────────────────────────────────
+function buildHydrology() {
+    return `
+    <div class="doc-h1"><span class="doc-h1-num">03</span> HYDROLOGY & WEATHER IMPACT</div>
+    <p class="doc-p">
+        This section correlates power plant generation with meteorological data extracted for the Makari Gad catchment area (Darchula). 
+        Data is sourced automatically via the Open-Meteo archive to analyze how snowmelt (indicated by mean temperature) and rainfall affect river discharge and load potential.
+    </p>
+    <div class="chart-wrapper">
+        <div class="chart-title">Daily Generation vs. Catchment Temperature & Rainfall</div>
+        <div style="position:relative;height:300px;width:100%;"><canvas id="chart-weather"></canvas></div>
+        <p class="chart-caption">Figure 4: Correlating generation (MWh) against catchment precipitation (mm) and daily mean temperature (°C).</p>
+    </div>
     <div class="page-break"></div>`;
 }
 
 // ── Unit Analysis ──────────────────────────────────────────────────────────
 function buildUnitAnalysis() {
-    const { totalU1Gen, totalU2Gen, totalU1Hrs, totalU2Hrs, u1Share, u2Share, totalGen, days, totalU1Hrs: u1h, totalU2Hrs: u2h } = R.metrics;
-    const u1AvgLoad = u1h > 0 ? totalU1Gen / u1h : 0;
-    const u2AvgLoad = u2h > 0 ? totalU2Gen / u2h : 0;
+    const { totalU1Gen, totalU2Gen, totalU1Hrs, totalU2Hrs, u1Share, u2Share, totalGen } = R.metrics;
+    const u1AvgLoad = totalU1Hrs > 0 ? totalU1Gen / totalU1Hrs : 0;
+    const u2AvgLoad = totalU2Hrs > 0 ? totalU2Gen / totalU2Hrs : 0;
     const u1Cap = u1AvgLoad / (PLANT_CAPACITY_MW/2) * 100;
     const u2Cap = u2AvgLoad / (PLANT_CAPACITY_MW/2) * 100;
 
     return `
-    <div class="doc-h1"><span class="doc-h1-num">03</span> UNIT-WISE ANALYSIS</div>
-
+    <div class="doc-h1"><span class="doc-h1-num">04</span> UNIT-WISE ANALYSIS</div>
     <div class="doc-h2">Unit Performance Comparison</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1rem 0 1.5rem;">
         <div class="unit-card">
@@ -1065,12 +1327,11 @@ function buildUnitAnalysis() {
             </tbody></table>
         </div>
     </div>
-
     <div class="doc-h2">Unit-wise Daily Generation</div>
     <div class="chart-wrapper">
         <div class="chart-title">Unit 1 vs. Unit 2 — Daily Generation Comparison</div>
         <div style="position:relative;height:260px;width:100%;"><canvas id="chart-units"></canvas></div>
-        <p class="chart-caption">Figure 3: Daily MWh contribution from Unit 1 and Unit 2 individually.</p>
+        <p class="chart-caption">Figure 5: Daily MWh contribution from Unit 1 and Unit 2 individually.</p>
     </div>
     <div class="page-break"></div>`;
 }
@@ -1078,16 +1339,19 @@ function buildUnitAnalysis() {
 // ── Outage Analysis ────────────────────────────────────────────────────────
 function buildOutageAnalysis() {
     const { totalFaults, neaCurtailed, totalTrippings, gridFault, plantFaults, totalOutageEnergy, totalGen } = R.metrics;
-
     return `
-    <div class="doc-h1"><span class="doc-h1-num">04</span> OUTAGE ANALYSIS & ENERGY LOSSES</div>
-
+    <div class="doc-h1"><span class="doc-h1-num">05</span> OUTAGE ANALYSIS & ENERGY LOSSES</div>
     <div class="callout danger">
         <div class="callout-title">Critical Outage Summary</div>
         Total energy loss due to all outage events and external factors: <strong>${fmt(totalOutageEnergy)} MWh</strong> 
         (${pct(totalOutageEnergy, totalGen+totalOutageEnergy)}% of potential generation).
     </div>
-
+    ${R.dieselLiters > 0 ? `
+    <div class="callout warning">
+        <div class="callout-title">Diesel Inventory Impact</div>
+        During this month, the plant experienced <strong>${totalTrippings} grid trips</strong> causing <strong>${fmt(gridFault)} MWh</strong> of lost generation. 
+        Consequently, <strong>${fmt(R.dieselLiters)} Liters of Diesel</strong> were consumed from site inventory to run backup power systems during these external outages.
+    </div>` : ''}
     <div class="doc-h2">Loss Breakdown by Category</div>
     <table class="doc-table">
         <thead><tr><th class="lft">Loss Category</th><th>Energy Loss (MWh)</th><th>% of Total Losses</th><th>% of Potential Gen</th><th>Event Source</th></tr></thead>
@@ -1122,14 +1386,12 @@ function buildOutageAnalysis() {
             </tr>
         </tbody>
     </table>
-
     <div class="doc-h2">Energy Fate Distribution</div>
     <div class="chart-wrapper">
         <div class="chart-title">Energy Distribution — Export vs. Losses Breakdown</div>
         <div style="position:relative;height:300px;max-width:480px;margin:0 auto;"><canvas id="chart-fate"></canvas></div>
-        <p class="chart-caption">Figure 4: Proportional energy distribution — Exported to grid vs. various loss categories.</p>
+        <p class="chart-caption">Figure 6: Proportional energy distribution — Exported to grid vs. various loss categories.</p>
     </div>
-
     <div class="doc-h2">Top Outage Events (by Energy Loss)</div>
     ${buildTopOutages()}
     <div class="page-break"></div>`;
@@ -1138,7 +1400,7 @@ function buildOutageAnalysis() {
 function buildTopOutages() {
     const top = R.outagesData.filter(o=>pN(o.total_energy_loss)>0).sort((a,b)=>pN(b.total_energy_loss)-pN(a.total_energy_loss)).slice(0,5);
     if (!top.length) return '<p class="doc-p" style="font-style:italic;color:var(--slate);">No significant fault events recorded this month.</p>';
-    let rows = top.map(o=>`
+    const rows = top.map(o=>`
         <tr>
             <td class="lft" style="font-family:'JetBrains Mono',monospace;font-size:8pt;">${String(o.id||'').split('T')[0]}</td>
             <td>${pN(o.no_of_trippings)||'—'}</td>
@@ -1154,15 +1416,12 @@ function buildGridTransmission() {
     const { totalExp, totalImp, neaCurtailed, totalTrippings, gridFault } = R.metrics;
     const gridAvail = totalExp > 0 ? (1 - neaCurtailed/(totalExp+neaCurtailed))*100 : 0;
     const isGood = gridAvail >= 95;
-
     return `
-    <div class="doc-h1"><span class="doc-h1-num">05</span> GRID & TRANSMISSION PERFORMANCE</div>
-
+    <div class="doc-h1"><span class="doc-h1-num">06</span> GRID & TRANSMISSION PERFORMANCE</div>
     <p class="doc-p">
         The plant maintained connection to the 132kV NEA transmission network via the Balanch Substation throughout the reporting period. 
         Energy evacuation was managed through the plant's 132kV bay under Load Dispatch Centre (LDC) instructions.
     </p>
-
     <table class="doc-table" style="width:80%;margin:0 auto;">
         <thead><tr><th class="lft" style="width:55%;">Grid Performance Metric</th><th>Value</th><th>Assessment</th></tr></thead>
         <tbody>
@@ -1174,7 +1433,6 @@ function buildGridTransmission() {
             <tr><td class="lft"><strong>NEA Curtailed Energy</strong></td><td style="color:var(--purple);font-weight:700;">${fmt(neaCurtailed)} MWh</td><td><span class="badge neutral">LDC Order</span></td></tr>
         </tbody>
     </table>
-
     <div class="callout ${isGood?'success':'warning'}" style="margin-top:1.5rem;">
         <div class="callout-title">Grid Performance Assessment</div>
         ${isGood
@@ -1206,28 +1464,17 @@ function buildYTDSection() {
     }).join('');
 
     return `
-    <div class="doc-h1"><span class="doc-h1-num">06</span> YEAR-TO-DATE PROGRESS</div>
-
+    <div class="doc-h1"><span class="doc-h1-num">07</span> YEAR-TO-DATE PROGRESS</div>
     <div class="doc-h2">YTD Energy Export Summary — FY ${year} BS</div>
-
     <div class="kpi-grid kpi-grid-3" style="margin-bottom:1.5rem;">
-        <div class="kpi-card teal">
-            <div class="kpi-val teal">${fmt(ytdExport)}</div>
-            <div class="kpi-lbl">YTD Export (MWh)</div>
-            <div class="kpi-sub">Through ${month} ${year}</div>
-        </div>
-        <div class="kpi-card blue">
-            <div class="kpi-val blue">${fmt(ytdContract)}</div>
-            <div class="kpi-lbl">YTD Contract Target</div>
-            <div class="kpi-sub">Cumulative PPA obligation</div>
-        </div>
+        <div class="kpi-card teal"><div class="kpi-val teal">${fmt(ytdExport)}</div><div class="kpi-lbl">YTD Export (MWh)</div><div class="kpi-sub">Through ${month} ${year}</div></div>
+        <div class="kpi-card blue"><div class="kpi-val blue">${fmt(ytdContract)}</div><div class="kpi-lbl">YTD Contract Target</div><div class="kpi-sub">Cumulative PPA obligation</div></div>
         <div class="kpi-card ${ytdAch>=100?'green':ytdAch>=90?'amber':'red'}">
             <div class="kpi-val ${ytdAch>=100?'green':ytdAch>=90?'amber':'red'}">${fmt(ytdAch)}%</div>
             <div class="kpi-lbl">YTD Achievement</div>
             <div class="kpi-sub">${ytdExport>=ytdContract?'Surplus: ':'Deficit: '}${fmt(Math.abs(ytdExport-ytdContract))} MWh</div>
         </div>
     </div>
-
     <div class="doc-h2">Month-by-Month Export vs. Contract Achievement</div>
     <div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin:0.5rem 0 1.5rem;">
         ${bars}
@@ -1237,11 +1484,10 @@ function buildYTDSection() {
             <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:var(--red);display:inline-block;"></span>&lt;90%</span>
         </div>
     </div>
-
     <div class="chart-wrapper">
         <div class="chart-title">YTD Monthly Generation vs. Contract — Bar Chart</div>
         <div style="position:relative;height:250px;width:100%;"><canvas id="chart-ytd"></canvas></div>
-        <p class="chart-caption">Figure 5: Monthly export (MWh) vs. PPA contract target for each completed month in FY ${year} BS.</p>
+        <p class="chart-caption">Figure 7: Monthly export (MWh) vs. PPA contract target for each completed month in FY ${year} BS.</p>
     </div>
     <div class="page-break"></div>`;
 }
@@ -1249,19 +1495,14 @@ function buildYTDSection() {
 // ── Financial Summary ──────────────────────────────────────────────────────
 function buildFinancialSummary() {
     const { ppaRate, grossRev, penalty, importCost, royalty, netRev, normalRev, excessRev, totalExp, declaredAD, contractEnergy, bayControl, extraAdj } = R.metrics;
-    const { contractData } = R;
-    const deductions = penalty + importCost + royalty + bayControl;
-    const netReceivable = grossRev - deductions + extraAdj;
-
+    const netReceivable = grossRev - (penalty + importCost + royalty + bayControl) + extraAdj;
     return `
-    <div class="doc-h1"><span class="doc-h1-num">07</span> FINANCIAL SUMMARY</div>
-
+    <div class="doc-h1"><span class="doc-h1-num">08</span> FINANCIAL SUMMARY</div>
     <div class="callout info">
         <div class="callout-title">Financial Note</div>
         Revenue calculations are based on the PPA rate of <strong>NPR ${fmt(ppaRate)}/kWh</strong> for ${R.month} ${R.year} BS. 
         Figures are estimates pending formal NEA billing. Actual invoice may vary due to metering adjustments.
     </div>
-
     <div class="doc-h2">Revenue Calculation</div>
     <table class="doc-table">
         <thead><tr><th class="lft">Revenue Component</th><th>Energy (MWh)</th><th>Rate (NPR/kWh)</th><th>Amount (NPR)</th></tr></thead>
@@ -1281,7 +1522,6 @@ function buildFinancialSummary() {
             <tr class="subtotal"><td class="lft"><strong>GROSS REVENUE</strong></td><td>${fmt(totalExp)}</td><td>—</td><td>${fmtI(grossRev)}</td></tr>
         </tbody>
     </table>
-
     <div class="doc-h2">Deductions & Adjustments</div>
     <table class="doc-table">
         <thead><tr><th class="lft">Deduction Item</th><th>Basis</th><th>Amount (NPR)</th></tr></thead>
@@ -1294,12 +1534,11 @@ function buildFinancialSummary() {
             <tr class="total"><td class="lft"><strong>NET RECEIVABLE AMOUNT</strong></td><td>—</td><td style="font-size:12pt;">${fmtI(netReceivable)}</td></tr>
         </tbody>
     </table>
-
     <div class="doc-h2">Revenue Waterfall Summary</div>
     <div class="chart-wrapper">
         <div class="chart-title">Revenue Components — Visual Breakdown</div>
         <div style="position:relative;height:220px;max-width:600px;margin:0 auto;"><canvas id="chart-revenue"></canvas></div>
-        <p class="chart-caption">Figure 6: Revenue composition showing gross, deductions, and net receivable (NPR).</p>
+        <p class="chart-caption">Figure 8: Revenue composition showing gross, deductions, and net receivable (NPR).</p>
     </div>
     <div class="page-break"></div>`;
 }
@@ -1308,20 +1547,16 @@ function buildFinancialSummary() {
 function buildMaintenanceLog() {
     const customMaint = document.getElementById('inp-mt').value;
     const customHse   = document.getElementById('inp-hse').value;
-
     return `
-    <div class="doc-h1"><span class="doc-h1-num">08</span> MAINTENANCE & HSE LOG</div>
-
+    <div class="doc-h1"><span class="doc-h1-num">09</span> MAINTENANCE & HSE LOG</div>
     <div class="doc-h2">Maintenance Activities Executed</div>
     <ul class="doc-ul">
         ${formatBullets(customMaint) || '<li class="doc-li">Routine scheduled maintenance executed as per O&M plan. No major corrective maintenance required.</li>'}
     </ul>
-
     <div class="doc-h2">Health, Safety & Environment (HSE)</div>
     <ul class="doc-ul">
         ${formatBullets(customHse) || '<li class="doc-li">Zero Lost Time Incidents (LTI) recorded during the reporting period. All standard safety protocols and NEA safety regulations were strictly observed.</li>'}
     </ul>
-
     <div class="doc-h2">HSE Statistics</div>
     <table class="doc-table" style="width:70%;margin:0 auto;">
         <thead><tr><th class="lft">HSE Indicator</th><th>Count</th><th>Status</th></tr></thead>
@@ -1335,10 +1570,31 @@ function buildMaintenanceLog() {
     <div class="page-break"></div>`;
 }
 
+// ── Next Month Look-Ahead ──────────────────────────────────────────────────
+function buildNextMonth() {
+    let nxM = R.monthIndex + 1, nxY = R.year;
+    if(nxM > 11) { nxM = 0; nxY++; }
+    return `
+    <div class="doc-h1" style="background:var(--slate);"><span class="doc-h1-num">10</span> NEXT MONTH LOOK-AHEAD</div>
+    <p class="doc-p">Projected targets and declarations for the upcoming reporting period: <strong>${CANONICAL_MONTHS[nxM]} ${nxY} BS</strong>.</p>
+    <div class="kpi-grid kpi-grid-2">
+        <div class="kpi-card teal">
+            <div class="kpi-lbl">Upcoming Contract Target</div>
+            <div class="kpi-val">${fmt(PPA_CONTRACT[nxM].energy)} MWh</div>
+            <div class="kpi-sub">Target for ${CANONICAL_MONTHS[nxM]}</div>
+        </div>
+        <div class="kpi-card blue">
+            <div class="kpi-lbl">Declared Availability (AD)</div>
+            <div class="kpi-val">${fmt(R.nextMonthAD)} MWh</div>
+            <div class="kpi-sub">Submitted to LDC</div>
+        </div>
+    </div>
+    <div class="page-break"></div>`;
+}
+
 // ── Annex A ────────────────────────────────────────────────────────────────
 function buildAnnexDailyGeneration() {
     const { dailySeries, metrics } = R;
-
     const rows = dailySeries.map(d => `
         <tr>
             <td class="lft" style="font-family:'JetBrains Mono',monospace;font-size:7.5pt;">${d.date}</td>
@@ -1395,7 +1651,6 @@ function buildAnnexDailyGeneration() {
 // ── Annex B ────────────────────────────────────────────────────────────────
 function buildAnnexOutages() {
     const { dailySeries } = R;
-
     const filteredRows = dailySeries.filter(d => {
         const o = d.outage;
         return o && (o.id || pN(o.total_energy_loss)>0 || pN(o.nea_curtailed_energy)>0);
@@ -1425,7 +1680,7 @@ function buildAnnexOutages() {
     <div class="doc-h1" style="background:linear-gradient(135deg,#1e293b,#475569);">
         <span class="doc-h1-num">ANNEX B</span> OUTAGE & ENERGY LOSS TRACKER
     </div>
-    <p class="doc-p">Comprehensive daily log of outage events, tripping incidents, and energy loss data recorded in the plant SCADA outages database. Values exactly match the Section 04 outage analysis.</p>
+    <p class="doc-p">Comprehensive daily log of outage events, tripping incidents, and energy loss data recorded in the plant SCADA outages database. Values exactly match the Section 05 outage analysis.</p>
     <table class="doc-table annex-table">
         <thead><tr>
             <th class="lft" style="width:12%;">Date</th>
@@ -1443,37 +1698,63 @@ function buildAnnexOutages() {
     <div class="page-break"></div>`;
 }
 
+// ── Annex C: Hydrology ─────────────────────────────────────────────────────
+function buildAnnexHydrology() {
+    const rows = R.dailySeries.map(d => `
+        <tr>
+            <td class="text-center font-bold" style="padding:8px;border-bottom:1px solid var(--border);">Day ${d.day}</td>
+            <td class="text-center" style="color:var(--amber);font-weight:700;border-bottom:1px solid var(--border);background:rgba(217,119,6,0.05);">${d.temp !== 0 && d.temp !== '—' ? d.temp : '—'}</td>
+            <td class="text-center" style="color:var(--amber);border-bottom:1px solid var(--border);">${d.pTempOut}</td>
+            <td class="text-center" style="color:var(--amber);border-bottom:1px solid var(--border);">${d.pTempIn}</td>
+            <td class="text-center" style="color:var(--amber);border-bottom:1px solid var(--border);">${d.hTemp}</td>
+            <td class="text-center" style="color:var(--blue-lt);font-weight:700;border-bottom:1px solid var(--border);background:rgba(59,130,246,0.05);">${d.rain !== 0 && d.rain !== '—' ? d.rain : '—'}</td>
+            <td class="text-center" style="color:var(--blue-lt);border-bottom:1px solid var(--border);">${d.pRain}</td>
+            <td class="text-center" style="color:var(--blue-lt);border-bottom:1px solid var(--border);">${d.hRain}</td>
+        </tr>`).join('');
+
+    return `
+    <div class="doc-h1" style="background:linear-gradient(135deg,#1e293b,#475569);">
+        <span class="doc-h1-num">ANNEX C</span> HYDROLOGY & WEATHER RECORDS
+    </div>
+    <p class="doc-p">Comprehensive daily log of Temperature and Rainfall. Catchment data is sourced via Open-Meteo API (4200m AMSL). Site rainfall is measured manually, while site temperatures are calculated as daily averages directly from SCADA hourly logs.</p>
+    <table class="doc-table annex-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width:8%;">Day</th>
+                <th colspan="4" style="background:#b45309;border-left:2px solid white;">Daily Mean Temperature (°C)</th>
+                <th colspan="3" style="background:#1d4ed8;border-left:2px solid white;">Precipitation / Rainfall (mm)</th>
+            </tr>
+            <tr>
+                <th style="background:#d97706;border-left:2px solid white;">Catchment</th>
+                <th style="background:#d97706;">PH (Out)</th>
+                <th style="background:#d97706;">PH (In)</th>
+                <th style="background:#d97706;">Intake</th>
+                <th style="background:#2563eb;border-left:2px solid white;">Catchment</th>
+                <th style="background:#2563eb;">Powerhouse</th>
+                <th style="background:#2563eb;">Intake</th>
+            </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+    </table>
+    <div class="page-break"></div>`;
+}
+
 // ── Signature Block ────────────────────────────────────────────────────────
 function buildSignatureBlock() {
     return `
     <div class="doc-h1" style="background:linear-gradient(135deg,#1e293b,#475569);">
         <span class="doc-h1-num">CERT</span> REPORT CERTIFICATION & APPROVAL
     </div>
-
     <div class="callout info">
         <div class="callout-title">Certification Statement</div>
         This report has been prepared from data recorded in the Plant Management System and SCADA database of Makari Gad Hydroelectric Project. 
         The data has been reviewed and is certified to be accurate to the best of our knowledge. This report is intended for internal management and regulatory submission purposes.
     </div>
-
     <div class="sig-block">
-        <div>
-            <div class="sig-line"></div>
-            <div class="sig-label">Plant Operation Incharge</div>
-            <div class="sig-role">Date: _______________</div>
-        </div>
-        <div>
-            <div class="sig-line"></div>
-            <div class="sig-label">Project Manager / Site Engineer</div>
-            <div class="sig-role">Date: _______________</div>
-        </div>
-        <div>
-            <div class="sig-line"></div>
-            <div class="sig-label">General Manager / Director</div>
-            <div class="sig-role">Date: _______________</div>
-        </div>
+        <div><div class="sig-line"></div><div class="sig-label">Plant Operation Incharge</div><div class="sig-role">Date: _______________</div></div>
+        <div><div class="sig-line"></div><div class="sig-label">Project Manager / Site Engineer</div><div class="sig-role">Date: _______________</div></div>
+        <div><div class="sig-line"></div><div class="sig-label">General Manager / Director</div><div class="sig-role">Date: _______________</div></div>
     </div>
-
     <div style="margin-top:2.5rem;padding:1rem 1.5rem;background:#f8fafc;border-radius:10px;border:1.5px solid var(--border);text-align:center;">
         <p style="font-size:8pt;color:var(--slate);margin:0;">
             <strong>Makari Gad Hydroelectric Project</strong> | 10 MW | Darchula District, Sudurpashchim Province, Nepal<br>
@@ -1483,111 +1764,211 @@ function buildSignatureBlock() {
 }
 
 // ── Render Charts ──────────────────────────────────────────────────────────
+// FIX #2: Every new Chart(...) is pushed to chartInstances for cleanup on next run
 function renderCharts() {
     const { dailySeries, metrics, ytdData, monthIndex, month } = R;
     const allYTD = [...ytdData, { monthIdx:monthIndex, month, export:metrics.totalExp, contract:metrics.contractEnergy }];
-
-    const chartDefaults = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:9,weight:'bold'}, padding:12 } } } };
+    const chartDefaults = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position:'bottom', labels: { font:{size:9,weight:'bold'}, padding:12 } } }
+    };
 
     // Chart 1 — Daily Gen vs Export
     const ctx1 = document.getElementById('chart-daily');
-    if (ctx1) new Chart(ctx1, {
-        type:'line',
-        data:{
-            labels: dailySeries.map(d=>`D${d.day}`),
-            datasets:[
-                { label:'Gross Gen (MWh)', data:dailySeries.map(d=>d.gen), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.08)', fill:true, tension:0.35, borderWidth:2.5, pointRadius:2 },
-                { label:'Substation Export (MWh)', data:dailySeries.map(d=>d.expS), borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.08)', fill:true, tension:0.35, borderWidth:2.5, pointRadius:2 }
-            ]
-        },
-        options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:7}} } } }
-    });
+    if (ctx1) {
+        const c = new Chart(ctx1, {
+            type:'line',
+            data:{
+                labels: dailySeries.map(d=>`D${d.day}`),
+                datasets:[
+                    { label:'Gross Gen (MWh)', data:dailySeries.map(d=>d.gen), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.08)', fill:true, tension:0.35, borderWidth:2.5, pointRadius:2 },
+                    { label:'Substation Export (MWh)', data:dailySeries.map(d=>d.expS), borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.08)', fill:true, tension:0.35, borderWidth:2.5, pointRadius:2 }
+                ]
+            },
+            options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:7}} } } }
+        });
+        chartInstances.push(c);
+    }
 
-    // Chart 2 — Cumulative
+    // Chart 2 — Cumulative Export vs Contract & AD
     let cumul = 0;
     const cumulData = dailySeries.map(d => { cumul += d.expS; return cumul; });
     const ctx2 = document.getElementById('chart-cumulative');
-    if (ctx2) new Chart(ctx2, {
-        type:'line',
-        data:{
-            labels: dailySeries.map(d=>`D${d.day}`),
-            datasets:[
-                { label:'Cumulative Export', data:cumulData, borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,0.1)', fill:true, tension:0.1, borderWidth:3, pointRadius:0 },
-                { label:`Contract Target (${fmt(metrics.contractEnergy)} MWh)`, data:Array(dailySeries.length).fill(metrics.contractEnergy), borderColor:'#dc2626', borderDash:[8,4], borderWidth:2, pointRadius:0, fill:false }
-            ]
-        },
-        options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:7}} } } }
-    });
+    if (ctx2) {
+        const c = new Chart(ctx2, {
+            type:'line',
+            data:{
+                labels: dailySeries.map(d=>`D${d.day}`),
+                datasets:[
+                    { label:'Cumulative Export', data:cumulData, borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,0.1)', fill:true, tension:0.1, borderWidth:3, pointRadius:0 },
+                    { label:`Contract Target (${fmt(metrics.contractEnergy)} MWh)`, data:Array(dailySeries.length).fill(metrics.contractEnergy), borderColor:'#dc2626', borderDash:[8,4], borderWidth:2, pointRadius:0, fill:false },
+                    { label:`Declared AD (${fmt(metrics.declaredAD)} MWh)`, data:Array(dailySeries.length).fill(metrics.declaredAD), borderColor:'#d97706', borderDash:[4,4], borderWidth:2, pointRadius:0, fill:false }
+                ]
+            },
+            options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:7}} } } }
+        });
+        chartInstances.push(c);
+    }
 
-    // Chart 3 — Unit comparison
-    const ctx3 = document.getElementById('chart-units');
-    if (ctx3) new Chart(ctx3, {
-        type:'bar',
-        data:{
-            labels: dailySeries.map(d=>`D${d.day}`),
-            datasets:[
-                { label:'Unit 1', data:dailySeries.map(d=>d.u1Gen), backgroundColor:'rgba(59,130,246,0.7)', borderColor:'#3b82f6', borderWidth:1, borderRadius:2 },
-                { label:'Unit 2', data:dailySeries.map(d=>d.u2Gen), backgroundColor:'rgba(8,145,178,0.7)', borderColor:'#0891b2', borderWidth:1, borderRadius:2 }
-            ]
-        },
-        options:{ ...chartDefaults, scales:{ x:{ stacked:false, ticks:{font:{size:7}} }, y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} } } }
-    });
-
-    // Chart 4 — Energy Fate Donut
-    const ctx4 = document.getElementById('chart-fate');
-    if (ctx4) new Chart(ctx4, {
-        type:'doughnut',
-        data:{
-            labels:['Energy Export','Grid Faults','Plant Faults','NEA Curtailed'],
-            datasets:[{ data:[metrics.totalExp,metrics.gridFault,metrics.plantFaults,metrics.neaCurtailed], backgroundColor:['#059669','#dc2626','#d97706','#7c3aed'], borderWidth:2, hoverOffset:8 }]
-        },
-        options:{
-            ...chartDefaults,
-            plugins:{
-                legend:{ position:'right', labels:{ font:{size:9,weight:'bold'}, generateLabels:(c)=>{
-                    return c.data.labels.map((l,i)=>({
-                        text:`${l}: ${fmt(c.data.datasets[0].data[i])} MWh`,
-                        fillStyle:c.data.datasets[0].backgroundColor[i],
-                        hidden:c.data.datasets[0].data[i]===0, index:i
-                    })).filter(x=>!x.hidden);
-                } } }
+    // Chart 3 — Weather & Generation Overlay
+    const ctxW = document.getElementById('chart-weather');
+    if (ctxW) {
+        const c = new Chart(ctxW, {
+            type:'line',
+            data:{
+                labels: dailySeries.map(d=>`D${d.day}`),
+                datasets:[
+                    { label:'Generation (MWh)', data:dailySeries.map(d=>d.gen), yAxisID:'y', borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)', fill:true, tension:0.3, borderWidth:2 },
+                    { label:'Catchment Rain (mm)', data:dailySeries.map(d=>d.rain==='—'?0:d.rain), type:'bar', yAxisID:'y1', backgroundColor:'rgba(8,145,178,0.4)', borderRadius:2 },
+                    { label:'Catchment Temp (°C)', data:dailySeries.map(d=>d.temp==='—'?null:d.temp), yAxisID:'y2', borderColor:'#d97706', borderDash:[5,5], pointRadius:0, borderWidth:2, fill:false, tension:0.2 },
+                    { label:'PH Out Temp (°C)', data:dailySeries.map(d=>d.pTempOut==='—'?null:parseFloat(d.pTempOut)), yAxisID:'y2', borderColor:'#ef4444', pointRadius:2, borderWidth:2, fill:false, tension:0.2 },
+                    { label:'PH In Temp (°C)', data:dailySeries.map(d=>d.pTempIn==='—'?null:parseFloat(d.pTempIn)), yAxisID:'y2', borderColor:'#8b5cf6', pointRadius:2, borderWidth:2, fill:false, tension:0.2 },
+                    { label:'Intake Temp (°C)', data:dailySeries.map(d=>d.hTemp==='—'?null:parseFloat(d.hTemp)), yAxisID:'y2', borderColor:'#10b981', pointRadius:2, borderWidth:2, fill:false, tension:0.2 }
+                ]
+            },
+            options:{
+                ...chartDefaults,
+                scales:{
+                    y:  { position:'left',  title:{display:true,text:'Generation (MWh)',font:{size:9,weight:'bold'}} },
+                    y1: { position:'right', title:{display:true,text:'Rainfall (mm)',color:'#0891b2',font:{size:9,weight:'bold'}}, ticks:{color:'#0891b2'}, grid:{display:false} },
+                    y2: { display:true, position:'right', title:{display:true,text:'Temperature (°C)',color:'#d97706',font:{size:9,weight:'bold'}}, ticks:{color:'#d97706'}, grid:{display:false} }
+                }
             }
-        }
-    });
+        });
+        chartInstances.push(c);
+    }
 
-    // Chart 5 — YTD Bar
-    const ctx5 = document.getElementById('chart-ytd');
-    if (ctx5) new Chart(ctx5, {
-        type:'bar',
-        data:{
-            labels: allYTD.map(m=>m.month.substring(0,3)),
-            datasets:[
-                { label:'Actual Export (MWh)', data:allYTD.map(m=>m.export), backgroundColor:allYTD.map(m=>m.export>=m.contract?'rgba(5,150,105,0.75)':m.export>=m.contract*0.9?'rgba(217,119,6,0.75)':'rgba(220,38,38,0.75)'), borderRadius:4, borderSkipped:false },
-                { label:'Contract Target (MWh)', data:allYTD.map(m=>m.contract), type:'line', borderColor:'#1e40af', borderDash:[6,3], borderWidth:2, pointRadius:3, fill:false }
-            ]
-        },
-        options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:8}} } } }
-    });
+    // Chart 4 — Unit comparison
+    const ctx3 = document.getElementById('chart-units');
+    if (ctx3) {
+        const c = new Chart(ctx3, {
+            type:'bar',
+            data:{
+                labels: dailySeries.map(d=>`D${d.day}`),
+                datasets:[
+                    { label:'Unit 1', data:dailySeries.map(d=>d.u1Gen), backgroundColor:'rgba(59,130,246,0.7)', borderColor:'#3b82f6', borderWidth:1, borderRadius:2 },
+                    { label:'Unit 2', data:dailySeries.map(d=>d.u2Gen), backgroundColor:'rgba(8,145,178,0.7)', borderColor:'#0891b2', borderWidth:1, borderRadius:2 }
+                ]
+            },
+            options:{ ...chartDefaults, scales:{ x:{ stacked:false, ticks:{font:{size:7}} }, y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} } } }
+        });
+        chartInstances.push(c);
+    }
 
-    // Chart 6 — Revenue bar
-    const ctx6 = document.getElementById('chart-revenue');
-    if (ctx6) new Chart(ctx6, {
-        type:'bar',
-        data:{
-            labels:['Gross Revenue','AD Penalty','Import Cost','Royalty','Bay Control','Net Receivable'],
-            datasets:[{
-                label:'NPR',
-                data:[metrics.grossRev, -metrics.penalty, -metrics.importCost, -metrics.royalty, -metrics.bayControl, metrics.netRev+metrics.extraAdj-metrics.bayControl],
-                backgroundColor:['rgba(5,150,105,0.8)','rgba(220,38,38,0.7)','rgba(217,119,6,0.7)','rgba(99,102,241,0.7)','rgba(100,116,139,0.7)','rgba(8,145,178,0.85)'],
-                borderRadius:5, borderSkipped:false
+    // Chart 5 — Energy Fate Donut
+    const ctx4 = document.getElementById('chart-fate');
+    if (ctx4) {
+        const rawValues = [
+            Math.max(0, metrics.totalExp),
+            Math.max(0, metrics.transformerLoss),
+            Math.max(0, metrics.totalStCons),
+            Math.max(0, metrics.transmissionLoss),
+            Math.max(0, metrics.neaCurtailed),
+            Math.max(0, metrics.otherLosses)
+        ];
+        const c = new Chart(ctx4, {
+            type:'doughnut',
+            data:{
+                labels:['Dispatched','Transformer Loss','Station Consumption','Transmission Loss','NEA Curtailed','Other Losses'],
+                datasets:[{ data:rawValues, backgroundColor:['#1e40af','#f59e0b','#a16207','#facc15','#0ea5e9','#10b981'], borderWidth:2, hoverOffset:8 }]
+            },
+            options:{
+                ...chartDefaults,
+                cutout:'58%',
+                plugins:{
+                    legend:{ position:'right', labels:{ font:{size:9,weight:'bold'}, generateLabels:(c)=>{
+                        return c.data.labels.map((l,i)=>({
+                            text:`${l}: ${fmt(c.data.datasets[0].data[i])} MWh`,
+                            fillStyle:c.data.datasets[0].backgroundColor[i],
+                            hidden:c.data.datasets[0].data[i]===0, index:i
+                        })).filter(x=>!x.hidden);
+                    }}}
+                }
+            },
+            plugins:[{
+                id:'centerText',
+                afterDraw(chart) {
+                    const { ctx:cx, chartArea:{left,right,top,bottom} } = chart;
+                    const centerX = (left+right)/2, centerY = (top+bottom)/2;
+                    cx.save(); cx.textAlign='center'; cx.textBaseline='middle';
+                    cx.font='bold 11px DM Sans,sans-serif'; cx.fillStyle='#64748b';
+                    cx.fillText('Monthly', centerX, centerY-12);
+                    cx.font='bold 13px DM Sans,sans-serif'; cx.fillStyle='#1e40af';
+                    cx.fillText(fmt(metrics.totalGen,1)+' MWh', centerX, centerY+6);
+                    cx.font='9px DM Sans,sans-serif'; cx.fillStyle='#94a3b8';
+                    cx.fillText('Total Generated', centerX, centerY+22);
+                    cx.restore();
+                }
             }]
-        },
-        options:{
-            ...chartDefaults,
-            plugins:{ legend:{display:false} },
-            scales:{ y:{ title:{display:true,text:'NPR',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:8}} } }
-        }
-    });
+        });
+        chartInstances.push(c);
+    }
+
+    // Chart 6 — SCADA Active Power Trend
+    const ctxTrend = document.getElementById('chart-trend');
+    if (ctxTrend && R.historicalData.length > 0) {
+        const dispatchData = dailySeries.filter(d=>d.expS>0&&d.engDate).map(d=>({ x:new Date(d.engDate+'T12:00:00'), y:d.expS }));
+        const powerData    = R.historicalData.map(d=>({ x:d.timestamp, y:d.active_power_kw }));
+        const c = new Chart(ctxTrend, {
+            data:{
+                datasets:[
+                    { label:'Daily Dispatch (MWh)', data:dispatchData, type:'bar', backgroundColor:'rgba(79,70,229,0.5)', borderColor:'#4f46e5', borderWidth:1, yAxisID:'y-energy', order:2 },
+                    { label:'Active Power (kW)', data:powerData, type:'line', borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.1)', borderWidth:2, tension:0.2, pointRadius:0, fill:false, yAxisID:'y-power', order:1 }
+                ]
+            },
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                interaction:{ mode:'index', intersect:false },
+                scales:{
+                    x:{ type:'time', time:{ unit:'day', displayFormats:{ day:'MMM d' } }, grid:{display:false}, ticks:{font:{size:9}} },
+                    'y-energy':{ type:'linear', position:'left', beginAtZero:true, title:{display:true,text:'Daily Dispatch (MWh)',color:'#4f46e5',font:{weight:'bold',size:10}}, ticks:{color:'#4f46e5',font:{size:9}}, grid:{color:'rgba(79,70,229,0.08)'} },
+                    'y-power':{ type:'linear', position:'right', min:0, max:11000, title:{display:true,text:'Active Power (kW)',color:'#ef4444',font:{weight:'bold',size:10}}, ticks:{color:'#ef4444',font:{size:9}}, grid:{drawOnChartArea:false} }
+                },
+                plugins:{ legend:{ position:'bottom', labels:{font:{size:9,weight:'bold'}} } }
+            }
+        });
+        chartInstances.push(c);
+    }
+
+    // Chart 7 — YTD Bar
+    const ctx5 = document.getElementById('chart-ytd');
+    if (ctx5) {
+        const c = new Chart(ctx5, {
+            type:'bar',
+            data:{
+                labels: allYTD.map(m=>m.month.substring(0,3)),
+                datasets:[
+                    { label:'Actual Export (MWh)', data:allYTD.map(m=>m.export), backgroundColor:allYTD.map(m=>m.export>=m.contract?'rgba(5,150,105,0.75)':m.export>=m.contract*0.9?'rgba(217,119,6,0.75)':'rgba(220,38,38,0.75)'), borderRadius:4, borderSkipped:false },
+                    { label:'Contract Target (MWh)', data:allYTD.map(m=>m.contract), type:'line', borderColor:'#1e40af', borderDash:[6,3], borderWidth:2, pointRadius:3, fill:false }
+                ]
+            },
+            options:{ ...chartDefaults, scales:{ y:{ beginAtZero:true, title:{display:true,text:'MWh',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:8}} } } }
+        });
+        chartInstances.push(c);
+    }
+
+    // Chart 8 — Revenue Waterfall
+    const ctx6 = document.getElementById('chart-revenue');
+    if (ctx6) {
+        const c = new Chart(ctx6, {
+            type:'bar',
+            data:{
+                labels:['Gross Revenue','AD Penalty','Import Cost','Royalty','Bay Control','Net Receivable'],
+                datasets:[{
+                    label:'NPR',
+                    data:[metrics.grossRev, -metrics.penalty, -metrics.importCost, -metrics.royalty, -metrics.bayControl, metrics.netRev+metrics.extraAdj-metrics.bayControl],
+                    backgroundColor:['rgba(5,150,105,0.8)','rgba(220,38,38,0.7)','rgba(217,119,6,0.7)','rgba(99,102,241,0.7)','rgba(100,116,139,0.7)','rgba(8,145,178,0.85)'],
+                    borderRadius:5, borderSkipped:false
+                }]
+            },
+            options:{
+                ...chartDefaults,
+                plugins:{ legend:{display:false} },
+                scales:{ y:{ title:{display:true,text:'NPR',font:{size:9,weight:'bold'}} }, x:{ ticks:{font:{size:8}} } }
+            }
+        });
+        chartInstances.push(c);
+    }
 }
 </script>
 </body>

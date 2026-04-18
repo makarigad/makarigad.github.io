@@ -809,11 +809,12 @@ startPage();
                 if(!data || data.length < 1000) oMore = false; else oPage++;
             }
             outagesData = oData.map(d => ({
-                id: String(d.id||d.date||d.eng_date).split('T')[0],
-                totalEnergyLoss: parseFloat(d.total_energy_loss)||0, lossTimeMin: parseFloat(d.loss_time_min)||0, 
-                lossU1Min: parseFloat(d.loss_time_u1_min)||0, lossU2Min: parseFloat(d.loss_time_u2_min)||0,
-                reason: d.reason || d.remarks || ''
-            }));
+                id: String(d.id||d.date||d.eng_date).split('T')[0],
+                totalEnergyLoss: parseFloat(d.total_energy_loss)||0, lossTimeMin: parseFloat(d.loss_time_min)||0, 
+                lossU1Min: parseFloat(d.loss_time_u1_min)||0, lossU2Min: parseFloat(d.loss_time_u2_min)||0,
+                neaTripLossMin: parseFloat(d.nea_trip_loss_time_min)||0, // <-- Added this line
+                reason: d.reason || d.remarks || ''
+            }));
             
            // 1. Find the exact Maximum Year and Month that has actual powerhouse data
             let maxNepYear = 2079;
@@ -906,9 +907,20 @@ startPage();
         reconBody.innerHTML = ""; opsBody.innerHTML = "";
 
         const bMap = {}; balanchData.forEach(r => { if (r.eng_date) bMap[r.eng_date] = r; });
-        const pMap = {}; plantData.forEach(r => { if (r.nepali_date) pMap[cleanDate(r.nepali_date)] = r; });
+        const pMap = {}; plantData.forEach(r => { if (r.nepali_date) pMap[cleanDate(r.nepali_date)] = r; });
 
-        window.combinedData.sort((a,b) => Number(b.year) - Number(a.year) || getMIdx(b.month) - getMIdx(a.month));
+        // NEW: Create a lookup dictionary for Outage Dates -> Nepali FY grouping
+        const dateToNepMap = {};
+        plantData.forEach(p => {
+            if(p.nepali_date) {
+                const parts = cleanDate(p.nepali_date).split('.');
+                if(parts.length >= 2) {
+                    dateToNepMap[p.id] = { year: parseInt(parts[0], 10), mIdx: parseInt(parts[1], 10) - 1 };
+                }
+            }
+        });
+
+        window.combinedData.sort((a,b) => Number(b.year) - Number(a.year) || getMIdx(b.month) - getMIdx(a.month));
 
         window.combinedData.forEach(row => {
             const mIdx = getMIdx(row.month); if (mIdx === -1) return;
@@ -954,19 +966,64 @@ startPage();
             const fm33kv = Number(row.fm_33kv_mwh || 0); const fmPenstock = Number(row.fm_penstock_mwh || 0); const fmEquip = Number(row.fm_equipment_mwh || 0);
             const dispatchRedMwh = Number(row.dispatch_mwh || 0);
             
-            let totalPlantFm = fm33kv + fmPenstock + fmEquip;
-            if (totalPlantFm === 0 && row.forced_outage_mwh) totalPlantFm = Number(row.forced_outage_mwh);
-            
-            const knownExternalLosses = dispatchRedMwh + gridFaultMwh + line132kvMwh + totalPlantFm;
-            const actualGen = totalGen > 0 ? totalGen : exported;
-            const lowDischargeMwh = Math.max(0, newContract - actualGen - knownExternalLosses);
-            const totalExternalLosses = lowDischargeMwh + knownExternalLosses;
-            
-            const initialInvoicePenalty = Math.max(0, (0.9 * declaredAd) - exported) * 0.10 * ppaRate * 1000;
-            const deemedEnergy = exported + knownExternalLosses;
-            const trueShortfall = Math.max(0, (0.9 * declaredAd) - deemedEnergy);
-            const nonRefPenNRs = trueShortfall * 0.10 * ppaRate * 1000;
-            const refPenNRs = Math.max(0, initialInvoicePenalty - nonRefPenNRs);
+let totalPlantFm = fm33kv + fmPenstock + fmEquip;
+            if (totalPlantFm === 0 && row.forced_outage_mwh) totalPlantFm = Number(row.forced_outage_mwh);
+            
+            // Placeholder for when you add True Force Majeure to the database
+            const trueForceMajeureMwh = Number(row.true_force_majeure_mwh || 0);
+
+            // 1. Determine Fiscal Year (FY starts Month Index 3 / Shrawan)
+            const currentFY = mIdx >= 3 ? y : y - 1;
+
+            // 2. Tally actual NEA fault MINUTES from outagesData
+            let fyNeaMinsBeforeThisMonth = 0;
+            let neaMinsThisMonth = 0;
+
+            outagesData.forEach(outage => {
+                const nepInfo = dateToNepMap[outage.id];
+                if (!nepInfo) return;
+
+                const oFY = nepInfo.mIdx >= 3 ? nepInfo.year : nepInfo.year - 1;
+                
+                if (oFY === currentFY) {
+                    const isBefore = (nepInfo.year < y) || (nepInfo.year === y && nepInfo.mIdx < mIdx);
+                    const isDuring = (nepInfo.year === y && nepInfo.mIdx === mIdx);
+
+                    if (isBefore) fyNeaMinsBeforeThisMonth += outage.neaTripLossMin;
+                    else if (isDuring) neaMinsThisMonth += outage.neaTripLossMin;
+                }
+            });
+
+            // 3. Apply the 72-Hour Waiver Threshold (4320 minutes)
+            const THRESHOLD_MINS = 4320;
+            const neaFaultsMwhThisMonth = gridFaultMwh + line132kvMwh;
+            let waivableNeaFaultsMwh = 0;
+
+            if (fyNeaMinsBeforeThisMonth >= THRESHOLD_MINS) {
+                // Threshold already crossed in previous months. Waive 100% of this month's NEA MWh.
+                waivableNeaFaultsMwh = neaFaultsMwhThisMonth;
+            } else if ((fyNeaMinsBeforeThisMonth + neaMinsThisMonth) > THRESHOLD_MINS) {
+                // Threshold crossed DURING this month - calculate proportional MWh to waive
+                const waivableMins = (fyNeaMinsBeforeThisMonth + neaMinsThisMonth) - THRESHOLD_MINS;
+                const waiveRatio = neaMinsThisMonth > 0 ? (waivableMins / neaMinsThisMonth) : 0;
+                waivableNeaFaultsMwh = neaFaultsMwhThisMonth * waiveRatio;
+            }
+
+            // 4. Low Discharge Tracking
+            const allCombinedLosses = neaFaultsMwhThisMonth + dispatchRedMwh + totalPlantFm + trueForceMajeureMwh;
+            const actualGen = totalGen > 0 ? totalGen : exported;
+            const lowDischargeMwh = Math.max(0, newContract - actualGen - allCombinedLosses);
+            const totalExternalLosses = lowDischargeMwh + allCombinedLosses;
+
+            // 5. Calculate Deemed Energy & True Penalties
+            const initialInvoicePenalty = Math.max(0, (0.9 * declaredAd) - exported) * 0.10 * ppaRate * 1000;
+            
+            // Deemed Energy = Exported + Dispatch (always exempt) + Waived NEA Faults + True Force Majeure
+            const deemedEnergyForPenalty = exported + dispatchRedMwh + waivableNeaFaultsMwh + trueForceMajeureMwh; 
+            const trueShortfall = Math.max(0, (0.9 * declaredAd) - deemedEnergyForPenalty);
+            
+            const nonRefPenNRs = trueShortfall * 0.10 * ppaRate * 1000;
+            const refPenNRs = Math.max(0, initialInvoicePenalty - nonRefPenNRs);
             
             const excessRate = Math.floor((ppaRate / 2) * 100) / 100;
             const normalMwh = Math.min(exported, declaredAd, newContract);

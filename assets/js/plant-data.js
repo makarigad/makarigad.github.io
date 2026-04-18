@@ -1,4 +1,5 @@
 import { supabase } from './core-app.js';   
+import { loadRainfallData, initRainfallEvents } from './rainfall.js';
 
 // --- Global Variables ---
 let trendChartInstance = null;
@@ -22,10 +23,16 @@ let isLoadingMCE = false;
 let isLoadingRainfall = false;
 let isLoadingExpenses = false;
 
-const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+export const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+
+// Add getters to securely export changing live variables
+export const getCurrentUser = () => currentUser;
+export const getUserRole = () => userRole;
+export const getUserName = () => currentUser ? currentUser.email.split('@')[0] : '';
+
 
 // NEW: Store precise calendar mappings
-let calendarMap = {}; 
+export let calendarMap = {};
 
 async function loadCalendarMappings() {
     try {
@@ -72,7 +79,19 @@ function parseExcelDate(dv) {
 const notificationModal = document.getElementById('notification-modal');
 const notificationMessage = document.getElementById('notification-message');
 
-function showNotification(msg, isError = false) {
+export function getNepDateObj() {
+    const d = new Date();
+    let y = d.getFullYear() + 56;
+    const m = d.getMonth(); 
+    const date = d.getDate();
+    if (m > 3 || (m === 3 && date > 13)) y += 1;
+    const engToNepMap = [9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8];
+    let nepMonthIdx = engToNepMap[m];
+    if (date > 14) nepMonthIdx = (nepMonthIdx + 1) % 12;
+    return { year: y, month: nepaliMonths[nepMonthIdx] };
+}
+
+export function showNotification(msg, isError = false) {
     if(!notificationModal || !notificationMessage) return;
     notificationMessage.textContent = msg;
     notificationModal.classList.remove('opacity-0', '-translate-y-4');
@@ -90,7 +109,7 @@ const confirmMessage = document.getElementById('confirm-message');
 const confirmActionBtn = document.getElementById('confirm-action-btn');
 const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
 
-function showConfirmation(title, message, onConfirm) {
+export function showConfirmation(title, message, onConfirm) {
     if(!confirmModalBackdrop) return;
     confirmTitle.textContent = title;
     confirmMessage.textContent = message;
@@ -139,7 +158,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-function formatNumber(num, decimals = 3) {
+export function formatNumber(num, decimals = 3) {
     if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) return '';
     const factor = Math.pow(10, decimals);
     return Math.round(num * factor) / factor;
@@ -148,700 +167,6 @@ function formatNumber(num, decimals = 3) {
 function getTodayStr() {
     const d = new Date();
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-}
-
-const getUserName = () => currentUser ? currentUser.email.split('@')[0] : '';
-
-// =====================================
-// 7. RAINFALL & FLOW DATA
-// =====================================
-let allRainfallData = [];
-let editingRainfallId = null;
-const rainfallBody = document.getElementById("rainfall-body");
-let rainfallChartInstance = null;
-let cumulativeChartInstance = null;
-
-document.getElementById('quick-fill-zero')?.addEventListener('click', fillMissingDaysZero);
-document.getElementById('show-both-metrics')?.addEventListener('change', updateRainfallChart);
-
-document.addEventListener('DOMContentLoaded', () => {
-    const rfChartMonthSelect = document.getElementById('rf-chart-month');
-    if (rfChartMonthSelect) {
-        rfChartMonthSelect.innerHTML = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
-        rfChartMonthSelect.addEventListener('change', updateRainfallChart);
-    }
-    
-    document.getElementById('grid-rf-month')?.addEventListener('change', (e) => {
-        renderRainfallGrid(); 
-        if (rfChartMonthSelect) {
-            rfChartMonthSelect.value = e.target.value;
-            updateRainfallChart();
-        }
-    });
-});
-
-function updateRainfallChart() {
-    const canvas = document.getElementById('rainfall-chart');
-    if (!canvas) return;
-    if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
-        setTimeout(updateRainfallChart, 200);
-        return;
-    }
-
-    try {
-        const ctx = canvas.getContext('2d');
-        const monthDropdown = document.getElementById('rf-chart-month');
-        const selectedMonth = monthDropdown && monthDropdown.value ? monthDropdown.value : 'Baisakh';
-        const selectedMetric = document.getElementById('rf-chart-metric')?.value || 'headworks';
-        const showBoth = document.getElementById('show-both-metrics')?.checked || false;
-        
-        const checkboxes = document.querySelectorAll('.rf-year-cb:checked');
-        const selectedYears = Array.from(checkboxes).map(cb => parseInt(cb.value));
-
-        const datasets = [];
-        const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6', '#EC4899'];
-        const labels = Array.from({length: 32}, (_, i) => i + 1);
-
-        selectedYears.forEach((year, idx) => {
-            const yearData = allRainfallData.filter(d => 
-                parseInt(d.nepali_year) === year && 
-                String(d.nepali_month).trim().toLowerCase() === String(selectedMonth).trim().toLowerCase()
-            );
-
-            if (showBoth) {
-                const headData = labels.map(day => {
-                    const rec = yearData.find(d => parseInt(d.day) === day);
-                    return rec && rec.headworks !== null ? parseFloat(rec.headworks) : null;
-                });
-                const damData = labels.map(day => {
-                    const rec = yearData.find(d => parseInt(d.day) === day);
-                    return rec && rec.powerhouse !== null ? parseFloat(rec.powerhouse) : null;
-                });
-                datasets.push({
-                    label: `${year} - Headworks`, data: headData,
-                    borderColor: colors[idx % colors.length], backgroundColor: colors[idx % colors.length],
-                    borderWidth: 2, tension: 0.3, spanGaps: true, yAxisID: 'y-headworks'
-                });
-                datasets.push({
-                    label: `${year} - Dam`, data: damData,
-                    borderColor: colors[(idx+1) % colors.length], backgroundColor: colors[(idx+1) % colors.length],
-                    borderWidth: 2, tension: 0.3, spanGaps: true, yAxisID: 'y-dam'
-                });
-            } else {
-                const dataPoints = labels.map(day => {
-                    const rec = yearData.find(d => parseInt(d.day) === day);
-                    return rec && rec[selectedMetric] !== null ? parseFloat(rec[selectedMetric]) : null;
-                });
-                datasets.push({
-                    label: `${year} - ${selectedMetric === 'headworks' ? 'Headworks' : 'Dam'}`, data: dataPoints,
-                    borderColor: colors[idx % colors.length], backgroundColor: colors[idx % colors.length],
-                    borderWidth: 2, tension: 0.3, spanGaps: true, yAxisID: 'y'
-                });
-            }
-        });
-
-        const config = {
-            type: 'line', data: { labels, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                scales: { x: { title: { display: true, text: 'Day of the Month', font: { weight: 'bold' } }, grid: { display: false } } }
-            }
-        };
-
-        if (showBoth) {
-            config.options.scales['y-headworks'] = { type: 'linear', position: 'left', title: { display: true, text: 'Headworks (mm)', color: '#4F46E5' } };
-            config.options.scales['y-dam'] = { type: 'linear', position: 'right', title: { display: true, text: 'Dam (mm)', color: '#10B981' }, grid: { drawOnChartArea: false } };
-        } else {
-            config.options.scales.y = { type: 'linear', position: 'left', title: { display: true, text: selectedMetric === 'headworks' ? 'Headworks (mm)' : 'Dam (mm)', font: { weight: 'bold' } }, beginAtZero: true };
-        }
-
-        if (rainfallChartInstance) rainfallChartInstance.destroy();
-        rainfallChartInstance = new Chart(ctx, config);
-
-    } catch (err) { console.error("Chart Error: ", err); }
-}
-
-function updateMonthlySummary() {
-    const y = parseInt(document.getElementById('grid-rf-year')?.value);
-    const m = document.getElementById('grid-rf-month')?.value;
-    if (!y || !m) return;
-
-    const monthData = allRainfallData.filter(d => d.nepali_year === y && d.nepali_month === m);
-    
-    let sumHead = 0, sumDam = 0, rainy = 0;
-    monthData.forEach(d => {
-        if (d.headworks) sumHead += d.headworks;
-        if (d.powerhouse) sumDam += d.powerhouse;
-        if ((d.headworks && d.headworks > 0) || (d.powerhouse && d.powerhouse > 0)) rainy++;
-    });
-
-    const days = monthData.length;
-    const avgHead = days ? sumHead / days : 0;
-
-    if(document.getElementById('sum-headworks')) document.getElementById('sum-headworks').textContent = sumHead.toFixed(1);
-    if(document.getElementById('sum-dam')) document.getElementById('sum-dam').textContent = sumDam.toFixed(1);
-    if(document.getElementById('avg-headworks')) document.getElementById('avg-headworks').textContent = avgHead.toFixed(1);
-    if(document.getElementById('rainy-days')) document.getElementById('rainy-days').textContent = rainy;
-
-    const canvas = document.getElementById('cumulative-rainfall-chart');
-    if (!canvas || canvas.parentElement.clientWidth === 0) return;
-
-    const ctx = canvas.getContext('2d');
-    const sorted = [...monthData].sort((a, b) => a.day - b.day);
-    const cumulativeHead = [];
-    const cumulativeDam = [];
-    let runningHead = 0, runningDam = 0;
-    const labels = sorted.map(d => d.day);
-
-    sorted.forEach(d => {
-        runningHead += d.headworks || 0;
-        runningDam += d.powerhouse || 0;
-        cumulativeHead.push(runningHead);
-        cumulativeDam.push(runningDam);
-    });
-
-    if (cumulativeChartInstance) cumulativeChartInstance.destroy();
-    
-    cumulativeChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                { label: 'Cumulative Headworks (mm)', data: cumulativeHead, borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.2 },
-                { label: 'Cumulative Dam (mm)', data: cumulativeDam, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.2 }
-            ]
-        },
-        options: { 
-            responsive: true, maintainAspectRatio: false, 
-            plugins: { tooltip: { mode: 'index', intersect: false } }, 
-            scales: { y: { beginAtZero: true, title: { display: true, text: 'Cumulative Rainfall (mm)' } } } 
-        }
-    });
-}
-
-const rainfallTabObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            if (typeof updateRainfallChart === 'function') updateRainfallChart();
-            if (typeof updateMonthlySummary === 'function') updateMonthlySummary();
-        }
-        updateRainfallChart();
-    });
-});
-
-const rainTabEl = document.getElementById('rainfall-tab');
-if (rainTabEl) {
-    rainfallTabObserver.observe(rainTabEl);
-}
-
-function getNepDateObj() {
-    const d = new Date();
-    let y = d.getFullYear() + 56;
-    const m = d.getMonth(); 
-    const date = d.getDate();
-    if (m > 3 || (m === 3 && date > 13)) y += 1;
-    const engToNepMap = [9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8];
-    let nepMonthIdx = engToNepMap[m];
-    if (date > 14) nepMonthIdx = (nepMonthIdx + 1) % 12;
-    return { year: y, month: nepaliMonths[nepMonthIdx] };
-}
-
-function updateRainfallGridFilters() {
-    const ySelect = document.getElementById('grid-rf-year');
-    const mSelect = document.getElementById('grid-rf-month');
-    const chartMonthSelect = document.getElementById('rf-chart-month');
-    if(!ySelect || !mSelect) return;
-
-    const years = [...new Set(allRainfallData.map(d => d.nepali_year))].sort((a,b) => b-a);
-    const nd = getNepDateObj();
-    if(!years.includes(nd.year)) years.unshift(nd.year);
-
-    ySelect.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
-    mSelect.innerHTML = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
-
-    let defaultYear = nd.year;
-    let defaultMonth = nd.month;
-    if (allRainfallData.length > 0) {
-        defaultYear = allRainfallData[0].nepali_year;
-        defaultMonth = allRainfallData[0].nepali_month;
-    }
-
-    ySelect.value = defaultYear;
-    mSelect.value = defaultMonth;
-    if (chartMonthSelect) chartMonthSelect.value = defaultMonth;
-
-    renderRainfallGrid();
-}
-
-function updateRainfallYearsCheckboxes() {
-    const container = document.getElementById('rf-year-checkboxes');
-    if (!container) return;
-    
-    const years = [...new Set(allRainfallData.map(d => d.nepali_year))].sort((a, b) => b - a);
-    let checkedBoxes = Array.from(container.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
-    
-    if (checkedBoxes.length === 0 && years.length > 0) {
-        checkedBoxes.push(years[0]);
-    }
-    
-    container.innerHTML = years.map(y => `
-        <label class="flex items-center space-x-1 text-sm font-semibold text-slate-700 cursor-pointer hover:text-indigo-600 transition">
-            <input type="checkbox" value="${y}" class="rf-year-cb w-4 h-4 accent-indigo-600" ${checkedBoxes.includes(y) ? 'checked' : ''}>
-            <span>${y}</span>
-        </label>
-    `).join('');
-    
-    container.querySelectorAll('.rf-year-cb').forEach(cb => cb.addEventListener('change', updateRainfallChart));
-    updateRainfallChart();
-}
-
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        if (e.target.dataset.target === 'rainfall-tab') {
-            setTimeout(() => {
-                if (typeof updateRainfallChart === 'function') updateRainfallChart();
-                if (typeof updateMonthlySummary === 'function') updateMonthlySummary();
-            }, 100);
-        }
-    });
-});
-
-async function loadRainfallData() {
-    if (isLoadingRainfall) return;
-    isLoadingRainfall = true;
-    let data = [], page = 0, more = true;
-    
-    while (more) {
-        const { data: chunk, error } = await supabase.from('rainfall_data')
-            .select('*')
-            .order('nepali_year', { ascending: false })
-            .order('day', { ascending: true })
-            .range(page * 1000, (page + 1) * 1000 - 1);
-            
-        if (error) {
-            console.warn("Error fetching rainfall:", error);
-            break;
-        }
-        if (chunk && chunk.length > 0) data = data.concat(chunk);
-        if (!chunk || chunk.length < 1000) more = false; else page++;
-    }
-    
-    if (data) {
-        const getMonthIdx = (m) => {
-            if (!m) return 99;
-            const map = { baisakh: 0, jestha: 1, ashadh: 2, ashar: 2, shrawan: 3, sawan: 3, bhadra: 4, ashoj: 5, asoj: 5, kartik: 6, mangsir: 7, mangshir: 7, poush: 8, magh: 9, falgun: 10, fagun: 10, chaitra: 11, chait: 11 };
-            return map[m.toLowerCase().trim()] ?? 99;
-        };
-
-        allRainfallData = data.sort((a, b) => 
-            b.nepali_year - a.nepali_year || 
-            getMonthIdx(b.nepali_month) - getMonthIdx(a.nepali_month) || 
-            a.day - b.day
-        );
-        
-        renderRainfallTable();
-        updateRainfallGridFilters(); 
-        updateRainfallYearsCheckboxes();
-    }
-    isLoadingRainfall = false;
-}
-
-function renderRainfallGrid() {
-    const y = parseInt(document.getElementById('grid-rf-year')?.value);
-    const m = document.getElementById('grid-rf-month')?.value;
-    const gridTable = document.getElementById('rainfall-grid-table');
-    if(!gridTable || !y || !m) return;
-
-    const monthData = allRainfallData.filter(d => d.nepali_year === y && d.nepali_month === m);
-    let maxDay = 32; 
-
-    let trDay = `<tr class="bg-slate-100"><th class="p-2 border font-bold text-left sticky left-0 bg-slate-100 min-w-[100px] z-10">Day</th>`;
-    let trDam = `<tr><th class="p-2 border font-bold text-left sticky left-0 bg-white shadow-[1px_0_0_#e2e8f0] z-10">Dam</th>`;
-    let trHead = `<tr><th class="p-2 border font-bold text-left sticky left-0 bg-white shadow-[1px_0_0_#e2e8f0] z-10">Headworks</th>`;
-
-    let sumDam = 0;
-    let sumHead = 0;
-
-    const getCellColor = (val) => {
-        if (val === '' || val === null) return '';
-        const v = parseFloat(val);
-        if (v === 0) return 'bg-slate-50 text-slate-400';
-        if (v > 0 && v <= 5) return 'bg-green-100 text-green-800';
-        if (v > 5 && v <= 20) return 'bg-green-200 text-green-900';
-        if (v > 20) return 'bg-green-300 text-green-900 font-bold';
-        return '';
-    };
-
-    for(let i=1; i<=maxDay; i++) {
-        const rec = monthData.find(d => d.day === i);
-        const damVal = rec && rec.powerhouse !== null ? rec.powerhouse : '';
-        const headVal = rec && rec.headworks !== null ? rec.headworks : '';
-
-        if(damVal !== '') sumDam += parseFloat(damVal);
-        if(headVal !== '') sumHead += parseFloat(headVal);
-
-        trDay += `<th class="p-2 border font-semibold text-slate-600 min-w-[50px]">${i}</th>`;
-        trDam += `<td class="p-2 border ${getCellColor(damVal)} cursor-pointer hover:bg-indigo-50" onclick="editRainfallCell('${y}','${m}',${i},'powerhouse',${damVal || 0})">${damVal}</td>`;
-        trHead += `<td class="p-2 border ${getCellColor(headVal)} cursor-pointer hover:bg-indigo-50" onclick="editRainfallCell('${y}','${m}',${i},'headworks',${headVal || 0})">${headVal}</td>`;
-    }
-
-    trDay += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800 min-w-[60px]">Total</th>`;
-    trDam += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800">${formatNumber(sumDam,2) || 0}</th>`;
-    trHead += `<th class="p-2 border font-bold bg-indigo-50 text-indigo-800">${formatNumber(sumHead,2) || 0}</th>`;
-
-    gridTable.innerHTML = `<tbody>${trDay}${trDam}${trHead}</tbody>`;
-    
-    if (typeof updateMonthlySummary === 'function') {
-        updateMonthlySummary();
-    }
-}
-
-window.editRainfallCell = async function(y, m, d, field, currentVal) {
-    if (userRole === 'normal') return;
-    const newVal = prompt(`Enter new value for Day ${d} (${field}):`, currentVal);
-    if (newVal === null) return;
-    
-    const floatVal = parseFloat(newVal);
-    if (isNaN(floatVal)) return showNotification("Invalid number", true);
-
-    const id = `${y}_${m}_${String(d).padStart(2, '0')}`;
-    const payload = {
-        id: id,
-        nepali_year: parseInt(y),
-        nepali_month: m,
-        day: d,
-        [field]: floatVal,
-        operator_email: currentUser?.email || '',
-        updated_at: new Date().toISOString()
-    };
-
-    try {
-        const { error } = await supabase.from('rainfall_data').upsert(payload);
-        if (error) throw error;
-        showNotification("Data updated!");
-        loadRainfallData();
-    } catch (e) {
-        showNotification("Error: " + e.message, true);
-    }
-};
-
-document.getElementById('grid-rf-year')?.addEventListener('change', () => {
-    renderRainfallGrid();
-    updateRainfallChart(); 
-});
-
-async function fillMissingDaysZero() {
-    if (!currentUser) return showNotification("You must be logged in.", true);
-    
-    const y = parseInt(document.getElementById('grid-rf-year')?.value);
-    const m = document.getElementById('grid-rf-month')?.value;
-    if (!y || !m) return;
-
-    const monthData = allRainfallData.filter(d => d.nepali_year === y && d.nepali_month === m);
-    const daysPresent = new Set(monthData.map(d => d.day));
-    
-    const monthDays = { Baisakh:31, Jestha:31, Ashadh:32, Shrawan:31, Bhadra:31, Ashoj:31, Kartik:30, Mangsir:30, Poush:29, Magh:30, Falgun:30, Chaitra:30 };
-    const daysInMonth = monthDays[m] || 30;
-    
-    const updates = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-        if (!daysPresent.has(d)) {
-            updates.push({
-                id: `${y}_${m}_${d}`,
-                nepali_year: y,
-                nepali_month: m,
-                day: d,
-                headworks: 0,
-                powerhouse: 0,
-                operator_email: currentUser?.email || '',
-                operator_uid: currentUser?.id || '',
-                updated_at: new Date().toISOString()
-            });
-        }
-    }
-
-    if (updates.length === 0) {
-        alert('No missing days to fill. Month is complete!');
-        return;
-    }
-
-    if (confirm(`Fill ${updates.length} missing days in ${m} ${y} with zero?`)) {
-        try {
-            const { error } = await supabase.from('rainfall_data').upsert(updates);
-            if (error) throw error;
-            showNotification(`Filled ${updates.length} days with zero.`);
-            loadRainfallData();
-        } catch (e) {
-            showNotification('Error: ' + e.message, true);
-        }
-    }
-}
-
-function createRainfallInputRow() {
-    if (['staff', 'normal'].includes(userRole)) return '';
-    const currentYear = new Date().getFullYear() + 57;
-    const years = Array.from({length: 5}, (_, i) => currentYear - 2 + i);
-    const yearOpts = years.map(y => `<option value="${y}">${y}</option>`).join('');
-    const monthOpts = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
-
-    return `<tr class="bg-indigo-50/60 sticky top-[42px] z-20 shadow-sm border-b-2 border-indigo-200">
-        <td><select id="new-rf-year" class="input-cell font-bold">${yearOpts}</select></td>
-        <td><select id="new-rf-month" class="input-cell font-bold">${monthOpts}</select></td>
-        <td><input type="number" id="new-rf-day" min="1" max="32" class="input-cell" placeholder="Day" required /></td>
-        <td><input type="number" id="new-rf-headworks" step="any" class="input-cell" /></td>
-        <td><input type="number" id="new-rf-powerhouse" step="any" class="input-cell" /></td>
-        <td class="truncate-text text-xs text-slate-500">${getUserName()}</td>
-        <td class="col-actions"><button id="add-rf-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save</button></td>
-    </tr>`;
-}
-
-function createRainfallDisplayRow(d) {
-    const canEdit = ['admin'].includes(userRole);
-    const docStr = JSON.stringify(d).replace(/'/g, "&apos;");
-    return `<td class="font-bold text-slate-900">${d.nepali_year}</td>
-        <td class="font-medium text-slate-700">${d.nepali_month}</td>
-        <td class="text-slate-600">${d.day}</td>
-        <td class="text-slate-600">${formatNumber(d.headworks)}</td>
-        <td class="text-slate-600">${formatNumber(d.powerhouse)}</td>
-        <td class="truncate-text text-xs text-slate-500">${(d.operator_email || '').split('@')[0]}</td>
-        <td class="col-actions space-x-2 whitespace-nowrap ${canEdit ? '' : 'hidden'}">
-            <button class="edit-rf-btn text-indigo-600 font-bold hover:underline" data-doc='${docStr}'>Edit</button>
-            ${userRole === 'admin' ? `<button class="delete-rf-btn text-red-600 font-bold hover:underline" data-id="${d.id}">Del</button>` : ''}
-        </td>`;
-}
-
-function createRainfallEditRow(d) {
-    return `<td><input class="input-cell bg-slate-100" value="${d.nepali_year}" disabled></td>
-        <td><input class="input-cell bg-slate-100" value="${d.nepali_month}" disabled></td>
-        <td><input class="input-cell bg-slate-100" value="${d.day}" disabled></td>
-        <td><input type="number" id="edit-rf-headworks" step="any" class="input-cell" value="${d.headworks ?? ''}" /></td>
-        <td><input type="number" id="edit-rf-powerhouse" step="any" class="input-cell" value="${d.powerhouse ?? ''}" /></td>
-        <td class="truncate-text text-xs text-slate-500">${getUserName()}</td>
-        <td class="flex space-x-2">
-            <button class="update-rf-btn bg-emerald-600 text-white font-bold py-1 px-3 rounded hover:bg-emerald-700" data-id="${d.id}">Save</button>
-            <button class="cancel-rf-btn bg-slate-200 text-slate-700 font-bold py-1 px-3 rounded hover:bg-slate-300">X</button>
-        </td>`;
-}
-
-function renderRainfallTable() {
-    if(!rainfallBody) return;
-    rainfallBody.innerHTML = '';
-    if (!['staff', 'normal'].includes(userRole)) rainfallBody.innerHTML = createRainfallInputRow();
-
-    allRainfallData.forEach(d => {
-        const row = document.createElement('tr');
-        row.innerHTML = d.id === editingRainfallId ? createRainfallEditRow(d) : createRainfallDisplayRow(d);
-        row.className = d.id === editingRainfallId ? 'bg-indigo-50' : 'hover:bg-slate-50';
-        rainfallBody.appendChild(row);
-    });
-}
-
-async function handleAddOrUpdateRainfall(docId, isUpd = false) {
-    if (!currentUser) return showNotification("You must be logged in.", true);
-
-    const pre = isUpd ? 'edit-rf-' : 'new-rf-';
-    let y = isUpd ? docId.split('_')[0] : document.getElementById('new-rf-year')?.value;
-    let m = isUpd ? docId.split('_')[1] : document.getElementById('new-rf-month')?.value;
-    let d = isUpd ? docId.split('_')[2] : document.getElementById('new-rf-day')?.value;
-
-    if (!d || d.trim() === '') {
-        return showNotification("Day is required", true);
-    }
-
-    const payload = {
-        id: `${y}_${m}_${d}`,
-        nepali_year: parseInt(y),
-        nepali_month: m,
-        day: parseInt(d),
-        headworks: parseFloat(document.getElementById(`${pre}headworks`)?.value) || null,
-        powerhouse: parseFloat(document.getElementById(`${pre}powerhouse`)?.value) || null,
-        operator_email: currentUser?.email || '',
-        operator_uid: currentUser?.id || '',
-        updated_at: new Date().toISOString()
-    };
-
-    try {
-        const { error } = await supabase.from('rainfall_data').upsert(payload);
-        if (error) throw error; 
-
-        showNotification("✅ Rainfall data saved!");
-        editingRainfallId = null;
-        loadRainfallData();
-        
-        if (!isUpd) {
-            if (document.getElementById('new-rf-day')) document.getElementById('new-rf-day').value = '';
-            if (document.getElementById('new-rf-headworks')) document.getElementById('new-rf-headworks').value = '';
-            if (document.getElementById('new-rf-powerhouse')) document.getElementById('new-rf-powerhouse').value = '';
-        }
-    } catch (e) {
-        showNotification("Error saving data: " + e.message, true);
-    }
-}
-
-rainfallBody?.addEventListener('click', (e) => {
-    if (e.target.id === 'add-rf-btn' || e.target.closest('#add-rf-btn')) {
-        handleAddOrUpdateRainfall(null, false);
-    } 
-    else if (e.target.classList.contains('edit-rf-btn')) {
-        editingRainfallId = JSON.parse(e.target.dataset.doc).id;
-        renderRainfallTable();
-    } 
-    else if (e.target.classList.contains('update-rf-btn')) {
-        handleAddOrUpdateRainfall(e.target.dataset.id, true);
-    } 
-    else if (e.target.classList.contains('cancel-rf-btn')) {
-        editingRainfallId = null;
-        renderRainfallTable();
-    } 
-    else if (e.target.classList.contains('delete-rf-btn')) {
-        showConfirmation('Confirm', `Delete this record?`, async () => {
-            const { error } = await supabase.from('rainfall_data').delete().eq('id', e.target.dataset.id);
-            if (error) {
-                alert("Delete Error: " + error.message);
-            } else {
-                showNotification("Deleted");
-                loadRainfallData();
-            }
-        });
-    }
-});
-
-document.getElementById('rf-download-btn')?.addEventListener('click', () => {
-    const exportData = allRainfallData.map(d => ({
-        'Year': d.nepali_year, 'Month': d.nepali_month, 'Day': d.day,
-        'Headworks': d.headworks, 'Dam': d.powerhouse, 'Operator': d.operator_email
-    }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(exportData), "Rainfall");
-    XLSX.writeFile(wb, "Rainfall_Data.xlsx");
-});
-
-document.getElementById('rf-upload-btn')?.addEventListener('click', () => document.getElementById('rf-file-upload')?.click());
-
-document.getElementById('rf-file-upload')?.addEventListener('change', (ev) => {
-    const file = ev.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
-            const jd = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-            if (jd.length === 0) return showNotification("File is empty", true);
-            showConfirmation('Confirm', `Upload file?`, () => processAndUploadRainfall(jd));
-        } catch (err) {
-            showNotification("File error", true);
-        }
-    };
-    reader.readAsArrayBuffer(file);
-    ev.target.value = '';
-});
-
-async function processAndUploadRainfall(jd) {
-    if (jd.length < 3) return showNotification("File is too small or empty.", true);
-
-    let yearRowIdx = -1;
-    for (let i = 0; i < 10; i++) {
-        if (jd[i] && jd[i].some(cell => String(cell).toLowerCase().includes('year'))) {
-            yearRowIdx = i;
-            break;
-        }
-    }
-
-    if (yearRowIdx === -1) return showNotification("Could not find the 'Year' header row.", true);
-
-    const yearRow = jd[yearRowIdx];
-    const headerRow = jd[yearRowIdx + 1];
-    const yearCols = []; 
-    let currentYearNum = null;
-
-    for (let c = 1; c < headerRow.length; c++) {
-        if (yearRow[c]) {
-            const yMatch = String(yearRow[c]).match(/\d{4}/);
-            if (yMatch) currentYearNum = parseInt(yMatch[0]);
-        }
-
-        const hText = String(headerRow[c] || '').toLowerCase();
-        if (currentYearNum && (hText.includes('head') || hText.includes('power') || hText.includes('dam'))) {
-            let existing = yearCols.find(yc => yc.year === currentYearNum);
-            if (!existing) {
-                existing = { year: currentYearNum, headCol: -1, powCol: -1 };
-                yearCols.push(existing);
-            }
-            if (hText.includes('head')) existing.headCol = c;
-            if (hText.includes('power') || hText.includes('dam')) existing.powCol = c;
-        }
-    }
-
-    if (yearCols.length === 0) return showNotification("Could not detect any years/columns in the header.", true);
-
-    let currentMonth = null;
-    const payloadMap = new Map();
-    
-    const getMonthName = (m) => {
-        if (!m) return null;
-        const map = { baisakh: "Baisakh", jestha: "Jestha", ashadh: "Ashadh", ashar: "Ashadh", shrawan: "Shrawan", sawan: "Shrawan", bhadra: "Bhadra", ashoj: "Ashoj", asoj: "Ashoj", kartik: "Kartik", mangsir: "Mangsir", mangshir: "Mangsir", poush: "Poush", magh: "Magh", falgun: "Falgun", fagun: "Falgun", chaitra: "Chaitra", chait: "Chaitra" };
-        return map[String(m).toLowerCase().trim()] || null;
-    };
-
-    for (let r = yearRowIdx + 2; r < jd.length; r++) {
-        const row = jd[r];
-        if (!row || row.length === 0) continue;
-
-        const mVal = String(row[0] || '').trim();
-        if (mVal && isNaN(parseInt(mVal))) { 
-            const parsedM = getMonthName(mVal);
-            if (parsedM) currentMonth = parsedM;
-        }
-
-        const dVal = parseInt(row[1]);
-        if (!currentMonth || isNaN(dVal)) continue;
-
-        yearCols.forEach(yc => {
-            let headVal = null;
-            let powVal = null;
-
-            if (yc.headCol !== -1 && row[yc.headCol] != null && String(row[yc.headCol]).trim() !== '') {
-                headVal = parseFloat(row[yc.headCol]);
-            }
-            if (yc.powCol !== -1 && row[yc.powCol] != null && String(row[yc.powCol]).trim() !== '') {
-                powVal = parseFloat(row[yc.powCol]);
-            }
-
-            if ((headVal !== null && !isNaN(headVal)) || (powVal !== null && !isNaN(powVal))) {
-                const safeDayStr = String(dVal).padStart(2, '0');
-                const ds = `${yc.year}_${currentMonth}_${safeDayStr}`;
-                payloadMap.set(ds, {
-                    id: ds,
-                    nepali_year: yc.year,
-                    nepali_month: currentMonth,
-                    day: dVal,
-                    headworks: headVal !== null && !isNaN(headVal) ? headVal : 0, 
-                    powerhouse: powVal !== null && !isNaN(powVal) ? powVal : 0,
-                    operator_email: window.currentUser?.email || '',
-                    operator_uid: window.currentUser?.id || '',
-                    updated_at: new Date().toISOString()
-                });
-            }
-        });
-    }
-
-    const payload = Array.from(payloadMap.values());
-    if (!payload.length) return showNotification("No valid rainfall data found to upload.", true);
-
-    showNotification(`Found ${payload.length} records. Uploading...`);
-
-    try {
-        for (let i = 0; i < payload.length; i += 500) {
-            const chunk = payload.slice(i, i + 500);
-            const { error } = await supabase.from('rainfall_data').upsert(chunk);
-            if (error) throw error;
-        }
-        showNotification(`✅ Successfully uploaded ${payload.length} rows of data!`);
-        loadRainfallData();
-    } catch (e) {
-        showNotification("Upload Error: " + e.message, true);
-    }
 }
 
 // =====================================
@@ -3060,7 +2385,7 @@ async function initAuth() {
             }
             
             try {
-                const headerRes = await fetch('header.html');
+                const headerRes = await fetch('components/header.html'); // <-- CHANGED THIS LINE
                 if (headerRes.ok) {
                    const globalHeader = document.getElementById('global-header-container') || document.getElementById('global-header');
                     if(globalHeader) globalHeader.innerHTML = await headerRes.text();
@@ -3092,7 +2417,7 @@ async function initAuth() {
             loadBalanchData();
             loadMCEData();
             loadOutagesData();
-            loadRainfallData();
+            loadRainfallData(); // This is now triggering from rainfall.js!
             loadExpensesData();
                       
         } else {

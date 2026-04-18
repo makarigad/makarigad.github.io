@@ -1,636 +1,713 @@
 import { supabase } from './core-app.js';
-import { 
-    showNotification, 
+import {
+    showNotification,
     showConfirmation,
-    nepaliMonths, 
-    getNepDateObj, 
-    getCurrentUser, 
+    nepaliMonths,
+    getNepDateObj,
+    getCurrentUser,
     getUserRole,
-    calendarMap 
+    calendarMap
 } from './plant-data.js';
 
-let allRainfallData = [];
-let allHourlyLogs = [];
-let apiWeatherData = {};
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
+const INTAKE      = { lat: 29.7891, lon: 80.8700, elev: 2387 };
+const POWERHOUSE  = { lat: 29.8009, lon: 80.8430, elev: 1463 };
+const CATCHMENT   = { lat: 29.7397, lon: 80.9700, elev: 4200 };
+
+const MONTH_DAYS = {
+    Baisakh: 31, Jestha: 31, Ashadh: 32, Shrawan: 31,
+    Bhadra:  31, Ashoj:  31, Kartik: 30, Mangsir: 30,
+    Poush:   29, Magh:   30, Falgun: 30, Chaitra: 30
+};
+
+// Fuzzy name → canonical month name
+const MONTH_ALIASES = new Map([
+    ['bais', 'Baisakh'], ['baish', 'Baisakh'],
+    ['jesh', 'Jestha'],  ['jest',  'Jestha'],
+    ['ashad', 'Ashadh'], ['ashar', 'Ashadh'],
+    ['shraw', 'Shrawan'], ['sawan', 'Shrawan'],
+    ['bhad',  'Bhadra'],
+    ['asho',  'Ashoj'],  ['asoj',  'Ashoj'], ['ashwin', 'Ashoj'],
+    ['kart',  'Kartik'],
+    ['mangs', 'Mangsir'], ['mangsh', 'Mangsir'],
+    ['pous',  'Poush'],
+    ['magh',  'Magh'],
+    ['falg',  'Falgun'],  ['fagun', 'Falgun'],
+    ['chai',  'Chaitra'],
+]);
+
+// Excel import: field positions relative to the "Day" column
+const IMPORT_FIELDS = [
+    { offset: 1, key: 'heavy_rain_time', type: 'string' },
+    { offset: 3, key: 'normal_rain_time', type: 'string' },
+    { offset: 5, key: 'shower_rain_time', type: 'string' },
+    { offset: 7, key: 'powerhouse',       type: 'number' },
+    { offset: 8, key: 'headworks',        type: 'number' },
+];
+
+// ─────────────────────────────────────────────
+// Module state
+// ─────────────────────────────────────────────
+let rainfallIndex   = new Map();   // id → record, replaces allRainfallData array
+let allHourlyLogs   = [];
+let apiWeatherData  = {};
 let rainChartInstance = null;
 let tempChartInstance = null;
 let isLoadingRainfall = false;
 
-// Exact Makari Gad Coordinates & Elevations for Accurate Lapse Rates!
-const INTAKE_LAT = 29.7891; const INTAKE_LON = 80.8700; const INTAKE_ELEV = 2387;
-const POWERHOUSE_LAT = 29.8009; const POWERHOUSE_LON = 80.8430; const POWERHOUSE_ELEV = 1463;
-const CATCHMENT_LAT = 29.7397; const CATCHMENT_LON = 80.9700; const CATCHMENT_ELEV = 4200;
+// ─────────────────────────────────────────────
+// Date helpers
+// ─────────────────────────────────────────────
 
-document.addEventListener('click', (e) => {
-    if (e.target.closest('#rf-download-btn')) generateExactExcelExport();
-    
-    if (e.target.closest('#rf-upload-btn')) {
-        let fileInput = document.getElementById('rf-file-upload');
-        if (!fileInput) {
-            fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.id = 'rf-file-upload';
-            fileInput.accept = '.xlsx, .xls, .csv';
-            fileInput.style.display = 'none';
-            document.body.appendChild(fileInput);
-        }
-        fileInput.click(); 
+/**
+ * Approximate English date for a Nepali year/month/day.
+ * Used only when the calendarMap has no entry.
+ */
+function getFallbackEngDate(y, m, d) {
+    const monthOffsets = [13, 14, 15, 16, 17, 17, 18, 16, 14, 13, 12, 14];
+    const startYear = y - 57;
+    const monthIdx  = nepaliMonths.indexOf(m);
+    const date = new Date(startYear, 3 + monthIdx, (monthOffsets[monthIdx] ?? 14) + (d - 1));
+    return date.toISOString().split('T')[0];
+}
+
+/**
+ * Returns the English date string for a Nepali date, preferring the calendarMap.
+ * @param {number} y  Nepali year
+ * @param {string} m  Nepali month name
+ * @param {number} d  Nepali day
+ */
+function getEngDate(y, m, d) {
+    const mIdx = nepaliMonths.indexOf(m) + 1;
+    const nepStr = `${y}.${String(mIdx).padStart(2, '0')}.${String(d).padStart(2, '0')}`;
+
+    if (calendarMap && Object.keys(calendarMap).length > 0) {
+        const match = Object.keys(calendarMap).find(k => calendarMap[k].nep_date_str === nepStr);
+        if (match) return match;
     }
+    return getFallbackEngDate(y, m, d);
+}
 
-    if (e.target.closest('#sync-api-btn')) syncFullYearApiData();
+/**
+ * Applies the 24-hour offset: returns the English date for the *previous* calendar day.
+ * This aligns the API precipitation window (00:00–24:00 UTC-1) to the Nepali logging day.
+ */
+function getPrevDay(engDateStr) {
+    const d = new Date(engDateStr);
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+}
+
+// ─────────────────────────────────────────────
+// DOM helpers
+// ─────────────────────────────────────────────
+function getEl(id) { return document.getElementById(id); }
+
+function getSelectedYear()  { return parseInt(getEl('grid-rf-year')?.value); }
+function getSelectedMonth() { return getEl('grid-rf-month')?.value; }
+
+// ─────────────────────────────────────────────
+// Event wiring
+// ─────────────────────────────────────────────
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#rf-download-btn'))  generateExactExcelExport();
+    if (e.target.closest('#rf-upload-btn'))    triggerFileUpload();
+    if (e.target.closest('#sync-api-btn'))     syncFullYearApiData();
 });
 
 document.addEventListener('change', (e) => {
-    if (e.target.id === 'rf-file-upload') handleFileUpload(e);
+    if (e.target.id === 'rf-file-upload')                   handleFileUpload(e);
     if (e.target.id === 'grid-rf-year' || e.target.id === 'grid-rf-month') refreshDashboard();
 });
+
+function triggerFileUpload() {
+    let input = getEl('rf-file-upload');
+    if (!input) {
+        input = Object.assign(document.createElement('input'), {
+            type: 'file', id: 'rf-file-upload', accept: '.xlsx,.xls,.csv'
+        });
+        input.style.display = 'none';
+        document.body.appendChild(input);
+    }
+    input.click();
+}
 
 function handleFileUpload(ev) {
     const file = ev.target.files[0];
     if (!file) return;
-    
-    showNotification("Reading Excel File...", false);
-    
+    showNotification('Reading file…', false);
+
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
-            const jd = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-            if (jd.length === 0) return showNotification("File is empty", true);
-            
-            processAndUploadRainfall(jd);
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+            if (!rows.length) return showNotification('File is empty', true);
+            processAndUploadRainfall(rows);
         } catch (err) {
-            showNotification("File parsing error: " + err.message, true);
+            showNotification('File parsing error: ' + err.message, true);
         }
     };
     reader.readAsArrayBuffer(file);
-    ev.target.value = ''; 
+    ev.target.value = '';
 }
 
-export function initRainfallEvents() { }
+// ─────────────────────────────────────────────
+// Public API
+// ─────────────────────────────────────────────
+export function initRainfallEvents() { /* event wiring is done at module load */ }
 
 export async function loadRainfallData() {
     updateRainfallGridFilters();
     await refreshDashboard();
 }
 
+// ─────────────────────────────────────────────
+// Filter initialisation
+// ─────────────────────────────────────────────
 function updateRainfallGridFilters() {
-    const ySelect = document.getElementById('grid-rf-year');
-    const mSelect = document.getElementById('grid-rf-month');
-    if(!ySelect || !mSelect) return;
+    const ySelect = getEl('grid-rf-year');
+    const mSelect = getEl('grid-rf-month');
+    if (!ySelect || !mSelect || ySelect.options.length) return;
 
-    const currentNepYear = getNepDateObj().year;
-    
-    if (ySelect.options.length === 0) {
-        ySelect.innerHTML = '';
-        for (let y = currentNepYear + 1; y >= 2079; y--) ySelect.add(new Option(y, y));
-        mSelect.innerHTML = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
-        ySelect.value = currentNepYear;
-        mSelect.value = getNepDateObj().month;
-    }
+    const { year, month } = getNepDateObj();
+    ySelect.innerHTML = Array.from(
+        { length: year + 2 - 2079 },
+        (_, i) => `<option value="${year + 1 - i}">${year + 1 - i}</option>`
+    ).join('');
+    mSelect.innerHTML = nepaliMonths.map(m => `<option value="${m}">${m}</option>`).join('');
+    ySelect.value = year;
+    mSelect.value = month;
 }
 
+// ─────────────────────────────────────────────
+// Dashboard orchestration
+// ─────────────────────────────────────────────
 async function refreshDashboard() {
-    if(isLoadingRainfall) return;
+    if (isLoadingRainfall) return;
     isLoadingRainfall = true;
     try {
         await loadMonthlyData();
         renderMonthlyGrid();
         renderCharts();
-    } catch (error) {
-        console.error("Dashboard Load Error:", error);
+    } catch (err) {
+        console.error('Dashboard load error:', err);
+        showNotification('Failed to load dashboard: ' + err.message, true);
     } finally {
-        isLoadingRainfall = false; 
+        isLoadingRainfall = false;
     }
 }
 
-function getFallbackEngDate(y, m, d) {
-    const monthOffsets = [13, 14, 15, 16, 17, 17, 18, 16, 14, 13, 12, 14]; 
-    const startYear = y - 57;
-    const monthIdx = nepaliMonths.indexOf(m);
-    let dateObj = new Date(startYear, 3 + monthIdx, monthOffsets[monthIdx] || 14);
-    dateObj.setDate(dateObj.getDate() + (d - 1));
-    return dateObj.toISOString().split('T')[0];
-}
-
-// 24-HOUR OFFSET HELPER: Returns the English Date for the PREVIOUS day
-function getApiTargetDate(engDateStr) {
-    const d = new Date(engDateStr);
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
-}
-
+// ─────────────────────────────────────────────
+// Data loading
+// ─────────────────────────────────────────────
 async function loadMonthlyData() {
-    const y = parseInt(document.getElementById('grid-rf-year')?.value);
-    const m = document.getElementById('grid-rf-month')?.value;
+    const y = getSelectedYear();
+    const m = getSelectedMonth();
     if (!y || !m) return;
+
     const mIdx = nepaliMonths.indexOf(m) + 1;
 
-    const { data: rainData } = await supabase.from('rainfall_data')
-        .select('*').eq('nepali_year', y).eq('nepali_month', m);
-    allRainfallData = rainData || [];
+    const [{ data: rainData }, { data: hourData }] = await Promise.all([
+        supabase.from('rainfall_data').select('*').eq('nepali_year', y).eq('nepali_month', m),
+        supabase.from('hourly_logs')
+            .select('nepali_date, t_temp_out, t_temp_in, t_temp_intake')
+            .like('nepali_date', `${y}.${String(mIdx).padStart(2, '0')}%`)
+    ]);
 
-    const { data: hourData } = await supabase.from('hourly_logs')
-        .select('nepali_date, t_temp_out, t_temp_in, t_temp_intake')
-        .like('nepali_date', `${y}.${String(mIdx).padStart(2,'0')}%`);
-    allHourlyLogs = hourData || [];
+    // Index rainfall records by day for O(1) lookups
+    rainfallIndex = new Map((rainData ?? []).map(r => [r.day, r]));
+    allHourlyLogs = hourData ?? [];
 
-    let startEngDate = getFallbackEngDate(y, m, 1);
-    let endEngDate = getFallbackEngDate(y, m, 32);
-
-    if (calendarMap && Object.keys(calendarMap).length > 0) {
-        let datesFound = Object.keys(calendarMap).filter(k => {
-            if (!calendarMap[k].nep_date_str) return false;
-            const parts = calendarMap[k].nep_date_str.split('.');
-            return parseInt(parts[0]) === y && parseInt(parts[1]) === mIdx;
-        });
-        if (datesFound.length > 0) {
-            startEngDate = datesFound.sort()[0];
-            endEngDate = datesFound.sort()[datesFound.length - 1];
-        }
-    }
-
-    // Because of the 24h offset, we need to fetch starting 1 day earlier!
-    const apiStart = getApiTargetDate(startEngDate);
-    await fetchOpenMeteoData(apiStart, endEngDate);
+    // Determine English date window for API fetch
+    const firstEngDate = getEngDate(y, m, 1);
+    const lastEngDate  = getEngDate(y, m, MONTH_DAYS[m] ?? 30);
+    await fetchOpenMeteoData(getPrevDay(firstEngDate), lastEngDate);
 }
 
-// Fetches data using Exact Elevations to fix the Catchment Temperature!
+// ─────────────────────────────────────────────
+// Open-Meteo fetch
+// ─────────────────────────────────────────────
 async function fetchOpenMeteoData(startStr, endStr) {
-    apiWeatherData = {}; 
+    apiWeatherData = {};
     try {
-        const sDate = new Date(startStr);
-        const eDate = new Date(endStr);
-        const today = new Date();
-        
-        const maxForecastDate = new Date();
-        maxForecastDate.setDate(today.getDate() + 14); 
+        const today   = new Date();
+        const sDate   = new Date(startStr);
+        const eDate   = new Date(endStr);
+        const maxDate = new Date(today);
+        maxDate.setDate(today.getDate() + 14);
 
-        if (sDate > maxForecastDate) return; 
+        if (sDate > maxDate) return;
+        const safeEnd = eDate > maxDate ? maxDate.toISOString().split('T')[0] : endStr;
 
-        let safeEndStr = endStr;
-        if (eDate > maxForecastDate) safeEndStr = maxForecastDate.toISOString().split('T')[0];
+        const daysAgo = (today - sDate) / 864e5;
+        const base = daysAgo > 80
+            ? 'https://archive-api.open-meteo.com/v1/archive'
+            : 'https://api.open-meteo.com/v1/forecast';
 
-        const daysAgo = (today - sDate) / (1000 * 60 * 60 * 24);
-        const baseUrl = daysAgo > 80 ? 'https://archive-api.open-meteo.com/v1/archive' : 'https://api.open-meteo.com/v1/forecast';
-        
-        // Added &elevation= parameter to force adiabatic cooling at 4200m
-        const url = `${baseUrl}?latitude=${INTAKE_LAT},${POWERHOUSE_LAT},${CATCHMENT_LAT}&longitude=${INTAKE_LON},${POWERHOUSE_LON},${CATCHMENT_LON}&elevation=${INTAKE_ELEV},${POWERHOUSE_ELEV},${CATCHMENT_ELEV}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&start_date=${startStr}&end_date=${safeEndStr}&timezone=auto`;
-        
+        const lats = `${INTAKE.lat},${POWERHOUSE.lat},${CATCHMENT.lat}`;
+        const lons = `${INTAKE.lon},${POWERHOUSE.lon},${CATCHMENT.lon}`;
+        const elevs = `${INTAKE.elev},${POWERHOUSE.elev},${CATCHMENT.elev}`;
+        const url = `${base}?latitude=${lats}&longitude=${lons}&elevation=${elevs}` +
+            `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum` +
+            `&start_date=${startStr}&end_date=${safeEnd}&timezone=auto`;
+
         const res = await fetch(url);
-        if (!res.ok) return; 
-        
-        const json = await res.json();
-        if (Array.isArray(json) && json.length === 3) {
-            const intakeApi = json[0].daily;
-            const phApi = json[1].daily;
-            const catchApi = json[2].daily;
+        if (!res.ok) return;
 
-            intakeApi.time.forEach((t, i) => {
-                apiWeatherData[t] = {
-                    in_precip: intakeApi.precipitation_sum[i],
-                    in_temp: ((intakeApi.temperature_2m_max[i] + intakeApi.temperature_2m_min[i]) / 2).toFixed(1),
-                    ph_precip: phApi.precipitation_sum[i],
-                    ph_temp: ((phApi.temperature_2m_max[i] + phApi.temperature_2m_min[i]) / 2).toFixed(1),
-                    cat_precip: catchApi.precipitation_sum[i],
-                    cat_temp: ((catchApi.temperature_2m_max[i] + catchApi.temperature_2m_min[i]) / 2).toFixed(1)
-                };
-            });
-        }
-    } catch (e) {
-        console.warn("Satellite fetch bypassed.");
+        const json = await res.json();
+        if (!Array.isArray(json) || json.length < 3) return;
+
+        const [intakeApi, phApi, catchApi] = json.map(j => j.daily);
+        const avgTemp = (api, i) =>
+            ((api.temperature_2m_max[i] + api.temperature_2m_min[i]) / 2).toFixed(1);
+
+        intakeApi.time.forEach((t, i) => {
+            apiWeatherData[t] = {
+                in_precip:  intakeApi.precipitation_sum[i],
+                in_temp:    avgTemp(intakeApi, i),
+                ph_precip:  phApi.precipitation_sum[i],
+                ph_temp:    avgTemp(phApi, i),
+                cat_precip: catchApi.precipitation_sum[i],
+                cat_temp:   avgTemp(catchApi, i),
+            };
+        });
+    } catch {
+        console.warn('Open-Meteo fetch skipped.');
     }
 }
 
-// --- NEW: BULK YEAR SYNC FOR API DATA ---
-async function syncFullYearApiData() {
-    const y = parseInt(document.getElementById('grid-rf-year')?.value);
-    if (!y) return showNotification("Select a year first.", true);
+// ─────────────────────────────────────────────
+// Resolve a value: prefer DB-saved API column, fall back to live fetch
+// ─────────────────────────────────────────────
+function resolveApiValue(dbVal, liveVal) {
+    return dbVal != null ? dbVal : (liveVal ?? '-');
+}
 
-    if (!confirm(`This will download and save Open-Meteo satellite data for the entire year of ${y}. Proceed?`)) return;
+/**
+ * Build the combined API data object for a single day,
+ * merging saved DB columns with live-fetched values.
+ */
+function getDayApiData(rec, engDate) {
+    const live = apiWeatherData[getPrevDay(engDate)] ?? {};
+    return {
+        catPrecip: resolveApiValue(rec?.api_cat_precip, live.cat_precip),
+        catTemp:   resolveApiValue(rec?.api_cat_temp,   live.cat_temp),
+        inPrecip:  resolveApiValue(rec?.api_in_precip,  live.in_precip),
+        inTemp:    resolveApiValue(rec?.api_in_temp,    live.in_temp),
+        phPrecip:  resolveApiValue(rec?.api_ph_precip,  live.ph_precip),
+        phTemp:    resolveApiValue(rec?.api_ph_temp,    live.ph_temp),
+    };
+}
 
-    showNotification(`Fetching 365 days of Satellite Data for ${y}...`, false);
+/**
+ * Average a temperature field from hourly logs for one day.
+ * Returns '-' when no logs exist.
+ */
+function avgHourlyTemp(nepDateStr, field) {
+    const logs = allHourlyLogs.filter(l => l.nepali_date === nepDateStr && l[field] != null);
+    if (!logs.length) return '-';
+    return (logs.reduce((s, l) => s + l[field], 0) / logs.length).toFixed(1);
+}
 
-    // Get DB records so we don't erase manual logs
-    const { data: existingYearData } = await supabase.from('rainfall_data').select('*').eq('nepali_year', y);
-    const existingData = existingYearData || [];
+// ─────────────────────────────────────────────
+// Grid rendering
+// ─────────────────────────────────────────────
+const GRID_THEAD = `
+<thead class="bg-slate-200 sticky top-0 z-40 shadow-sm">
+    <tr>
+        <th rowspan="2" class="p-2 border font-black text-slate-700 bg-slate-200 z-50 left-0 sticky outline outline-1 outline-slate-300">Day</th>
+        <th colspan="3" class="p-2 border font-bold text-indigo-900 bg-indigo-100">Physical Rain Log (Time)</th>
+        <th colspan="2" class="p-2 border font-bold text-amber-900 bg-amber-100">Catchment (4200m API)</th>
+        <th colspan="4" class="p-2 border font-bold text-emerald-900 bg-emerald-100">Intake / Headworks</th>
+        <th colspan="5" class="p-2 border font-bold text-sky-900 bg-sky-100">Powerhouse</th>
+    </tr>
+    <tr class="sticky top-[35px] z-40">
+        <th class="p-2 border font-semibold text-slate-600 bg-indigo-50 w-24">Heavy</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-indigo-50 w-24">Normal</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-indigo-50 w-24">Shower</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-amber-50 text-[10px]">Precip Pred.</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-amber-50 text-[10px]">Temp Pred.</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-emerald-50 text-[10px]">Rain Meas.</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-emerald-50 text-[10px]">Rain Pred.</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-emerald-50 text-[10px]">Temp Meas.</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-emerald-50 text-[10px]">Temp Pred.</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Rain Meas.</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Rain Pred.</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Temp IN</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Temp OUT</th>
+        <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Temp Pred.</th>
+    </tr>
+</thead>`;
 
-    // Calculate absolute start and end of the Nepali Year in English dates
-    let startEng = getFallbackEngDate(y, nepaliMonths[0], 1);
-    let endEng = getFallbackEngDate(y, nepaliMonths[11], 30);
-    
-    if (calendarMap && Object.keys(calendarMap).length > 0) {
-        const dates = Object.keys(calendarMap).filter(k => calendarMap[k].nep_date_str && calendarMap[k].nep_date_str.startsWith(`${y}.`));
-        if (dates.length > 0) {
-            startEng = dates.sort()[0];
-            endEng = dates.sort()[dates.length - 1];
-        }
-    }
+function formatTimeCell(txt) {
+    if (!txt) return '<span class="text-slate-300">-</span>';
+    return txt.split(',')
+        .map(t => `<div class="bg-white border border-slate-200 rounded px-1 my-0.5 text-[10px] text-slate-700 w-full">${t.trim()}</div>`)
+        .join('');
+}
 
-    // Offset the fetch by -1 day
-    await fetchOpenMeteoData(getApiTargetDate(startEng), endEng);
+function measCell(val, colorClass, y, m, day, field) {
+    const display = val ?? '-';
+    const hasData = val != null && val > 0;
+    return `<td class="p-2 border cursor-pointer hover:bg-${colorClass}-50 font-bold ${hasData ? `text-${colorClass}-700 bg-${colorClass}-50` : 'text-slate-400'}"
+               onclick="editRainfallNumberCell('${y}','${m}',${day},'${field}',${val ?? 0})">${display}</td>`;
+}
 
-    const payloadMap = new Map();
+function buildDayRow(y, m, day) {
+    const rec  = rainfallIndex.get(day) ?? {};
+    const mIdx = nepaliMonths.indexOf(m) + 1;
+    const nepDateStr = `${y}.${String(mIdx).padStart(2, '0')}.${String(day).padStart(2, '0')}`;
+    const engDate    = getEngDate(y, m, day);
+    const api        = getDayApiData(rec, engDate);
 
-    // Loop through all 12 months and their days
-    nepaliMonths.forEach((m, mIdx) => {
-        const monthDays = { Baisakh:31, Jestha:31, Ashadh:32, Shrawan:31, Bhadra:31, Ashoj:31, Kartik:30, Mangsir:30, Poush:29, Magh:30, Falgun:30, Chaitra:30 };
-        const maxDay = monthDays[m] || 30;
+    const avgIn  = avgHourlyTemp(nepDateStr, 't_temp_in');
+    const avgOut = avgHourlyTemp(nepDateStr, 't_temp_out');
+    const avgInt = avgHourlyTemp(nepDateStr, 't_temp_intake');
 
-        for (let day = 1; day <= maxDay; day++) {
-            let engDate = getFallbackEngDate(y, m, day);
-            if (calendarMap && Object.keys(calendarMap).length > 0) {
-                const mapped = Object.keys(calendarMap).find(k => calendarMap[k].nep_date_str === `${y}.${String(mIdx+1).padStart(2,'0')}.${String(day).padStart(2,'0')}`);
-                if (mapped) engDate = mapped;
-            }
-
-            // Apply the -1 offset to grab the previous 24h of rain/temp
-            const targetApiDate = getApiTargetDate(engDate);
-            const api = apiWeatherData[targetApiDate];
-            if (!api) continue;
-
-            const id = `${y}_${m}_${String(day).padStart(2,'0')}`;
-            const existingRow = existingData.find(d => d.id === id) || {};
-
-            payloadMap.set(id, {
-                ...existingRow, 
-                id: id,
-                nepali_year: y,
-                nepali_month: m,
-                day: day,
-                api_cat_precip: api.cat_precip !== '-' ? parseFloat(api.cat_precip) : null,
-                api_cat_temp: api.cat_temp !== '-' ? parseFloat(api.cat_temp) : null,
-                api_in_precip: api.in_precip !== '-' ? parseFloat(api.in_precip) : null,
-                api_ph_precip: api.ph_precip !== '-' ? parseFloat(api.ph_precip) : null,
-                // Add the two new Temp columns
-                api_in_temp: api.in_temp !== '-' ? parseFloat(api.in_temp) : null,
-                api_ph_temp: api.ph_temp !== '-' ? parseFloat(api.ph_temp) : null,
-                operator_email: getCurrentUser()?.email || '',
-                updated_at: new Date().toISOString()
-            });
-        }
-    });
-
-    const payload = Array.from(payloadMap.values());
-    if (payload.length === 0) return showNotification("No API data retrieved. Check date limits.", true);
-
-    showNotification(`Saving ${payload.length} days to Supabase...`, false);
-
-    try {
-        for(let i = 0; i < payload.length; i += 500) {
-            const chunk = payload.slice(i, i + 500);
-            const { error } = await supabase.from('rainfall_data').upsert(chunk);
-            if (error) throw error;
-        }
-        showNotification(`✅ Successfully backed up entire ${y} API data!`);
-        refreshDashboard();
-    } catch (e) {
-        showNotification("Error saving API data: " + e.message, true);
-    }
+    return `
+    <tr class="hover:bg-slate-50 transition">
+        <td class="p-2 border font-bold text-slate-600 bg-slate-50 z-30 left-0 sticky outline outline-1 outline-slate-200">${day}</td>
+        <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top"
+            onclick="editRainfallTextCell('${y}','${m}',${day},'heavy_rain_time','${rec.heavy_rain_time ?? ''}')">${formatTimeCell(rec.heavy_rain_time)}</td>
+        <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top"
+            onclick="editRainfallTextCell('${y}','${m}',${day},'normal_rain_time','${rec.normal_rain_time ?? ''}')">${formatTimeCell(rec.normal_rain_time)}</td>
+        <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top"
+            onclick="editRainfallTextCell('${y}','${m}',${day},'shower_rain_time','${rec.shower_rain_time ?? ''}')">${formatTimeCell(rec.shower_rain_time)}</td>
+        <td class="p-2 border text-amber-700 font-bold bg-amber-50/40">${api.catPrecip}</td>
+        <td class="p-2 border text-amber-700 font-bold bg-amber-50/40">${api.catTemp}</td>
+        ${measCell(rec.headworks, 'indigo', y, m, day, 'headworks')}
+        <td class="p-2 border text-emerald-700 font-bold bg-emerald-50/40">${api.inPrecip}</td>
+        <td class="p-2 border text-emerald-700 font-medium">${avgInt}</td>
+        <td class="p-2 border text-emerald-700 font-bold bg-emerald-50/40">${api.inTemp}</td>
+        ${measCell(rec.powerhouse, 'emerald', y, m, day, 'powerhouse')}
+        <td class="p-2 border text-sky-700 font-bold bg-sky-50/40">${api.phPrecip}</td>
+        <td class="p-2 border text-sky-700 font-medium">${avgIn}</td>
+        <td class="p-2 border text-sky-700 font-medium">${avgOut}</td>
+        <td class="p-2 border text-sky-700 font-bold bg-sky-50/40">${api.phTemp}</td>
+    </tr>`;
 }
 
 function renderMonthlyGrid() {
-    const y = parseInt(document.getElementById('grid-rf-year')?.value);
-    const m = document.getElementById('grid-rf-month')?.value;
-    const gridTable = document.getElementById('rainfall-grid-table');
-    if(!gridTable || !y || !m) return;
+    const y = getSelectedYear();
+    const m = getSelectedMonth();
+    const gridTable = getEl('rainfall-grid-table');
+    if (!gridTable || !y || !m) return;
 
-    const monthDays = { Baisakh:31, Jestha:31, Ashadh:32, Shrawan:31, Bhadra:31, Ashoj:31, Kartik:30, Mangsir:30, Poush:29, Magh:30, Falgun:30, Chaitra:30 };
-    const maxDay = monthDays[m] || 32;
-    const mIdx = nepaliMonths.indexOf(m) + 1;
-
-    // Added the new Temp Pred columns
-    let thead = `
-        <thead class="bg-slate-200 sticky top-0 z-40 shadow-sm">
-            <tr>
-                <th rowspan="2" class="p-2 border font-black text-slate-700 bg-slate-200 z-50 left-0 sticky outline outline-1 outline-slate-300">Day</th>
-                <th colspan="3" class="p-2 border font-bold text-indigo-900 bg-indigo-100">Physical Rain Log (Time)</th>
-                <th colspan="2" class="p-2 border font-bold text-amber-900 bg-amber-100">Catchment (4200m API)</th>
-                <th colspan="4" class="p-2 border font-bold text-emerald-900 bg-emerald-100">Intake / Headworks</th>
-                <th colspan="5" class="p-2 border font-bold text-sky-900 bg-sky-100">Powerhouse / Dam</th>
-            </tr>
-            <tr class="sticky top-[35px] z-40">
-                <th class="p-2 border font-semibold text-slate-600 bg-indigo-50 w-24">Heavy</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-indigo-50 w-24">Normal</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-indigo-50 w-24">Shower</th>
-
-                <th class="p-2 border font-semibold text-slate-600 bg-amber-50 text-[10px]">Precip Pred.</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-amber-50 text-[10px]">Temp Pred.</th>
-
-                <th class="p-2 border font-semibold text-slate-600 bg-emerald-50 text-[10px]">Rain Meas.</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-emerald-50 text-[10px]">Rain Pred.</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-emerald-50 text-[10px]">Temp Meas.</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-emerald-50 text-[10px]">Temp Pred.</th>
-
-                <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Rain Meas.</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Rain Pred.</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Temp IN</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Temp OUT</th>
-                <th class="p-2 border font-semibold text-slate-600 bg-sky-50 text-[10px]">Temp Pred.</th>
-            </tr>
-        </thead>`;
-
-    let tbodyStr = '';
-    const formatTimeText = (txt) => txt ? txt.split(',').map(t => `<div class="bg-white border border-slate-200 rounded px-1 my-0.5 text-[10px] text-slate-700 w-full">${t.trim()}</div>`).join('') : '<span class="text-slate-300">-</span>';
-
-    for(let day=1; day<=maxDay; day++) {
-        const rec = allRainfallData.find(d => d.day === day) || {};
-        
-        let engDate = getFallbackEngDate(y, m, day);
-        let nepDateStrSearch = null;
-        if (calendarMap && Object.keys(calendarMap).length > 0) {
-            const mapped = Object.keys(calendarMap).find(k => calendarMap[k].nep_date_str === `${y}.${String(mIdx).padStart(2,'0')}.${String(day).padStart(2,'0')}`);
-            if (mapped) {
-                engDate = mapped;
-                nepDateStrSearch = calendarMap[mapped].nep_date_str;
-            }
-        }
-        
-        const searchDateStr = nepDateStrSearch || `${y}.${String(mIdx).padStart(2,'0')}.${String(day).padStart(2,'0')}`;
-        
-        // 24H OFFSET LOGIC: Pull the API prediction from Day - 1 !
-        const targetApiDate = getApiTargetDate(engDate);
-        const api = apiWeatherData[targetApiDate] || { in_precip: '-', in_temp: '-', ph_precip: '-', ph_temp: '-', cat_precip: '-', cat_temp: '-' };
-
-        // Prefer Database API values if saved, otherwise live fetch
-        const dbCatPrecip = rec.api_cat_precip != null ? rec.api_cat_precip : api.cat_precip;
-        const dbCatTemp = rec.api_cat_temp != null ? rec.api_cat_temp : api.cat_temp;
-        const dbInPrecip = rec.api_in_precip != null ? rec.api_in_precip : api.in_precip;
-        const dbPhPrecip = rec.api_ph_precip != null ? rec.api_ph_precip : api.ph_precip;
-        const dbInTemp = rec.api_in_temp != null ? rec.api_in_temp : api.in_temp;
-        const dbPhTemp = rec.api_ph_temp != null ? rec.api_ph_temp : api.ph_temp;
-
-        const dayLogs = allHourlyLogs.filter(l => l.nepali_date === searchDateStr);
-        let tIn=0, tOut=0, tInt=0, count=0;
-        dayLogs.forEach(l => { if(l.t_temp_in != null) { tIn+=l.t_temp_in; tOut+=l.t_temp_out; tInt+=l.t_temp_intake; count++; }});
-        
-        const avgIn = count ? (tIn/count).toFixed(1) : '-';
-        const avgOut = count ? (tOut/count).toFixed(1) : '-';
-        const avgInt = count ? (tInt/count).toFixed(1) : '-';
-
-        const hw_val = rec.headworks != null ? rec.headworks : '-';
-        const dam_val = rec.powerhouse != null ? rec.powerhouse : '-';
-
-        tbodyStr += `
-            <tr class="hover:bg-slate-50 transition">
-                <td class="p-2 border font-bold text-slate-600 bg-slate-50 z-30 left-0 sticky outline outline-1 outline-slate-200">${day}</td>
-                <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top" onclick="editRainfallTextCell('${y}','${m}',${day},'heavy_rain_time','${rec.heavy_rain_time || ''}')">${formatTimeText(rec.heavy_rain_time)}</td>
-                <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top" onclick="editRainfallTextCell('${y}','${m}',${day},'normal_rain_time','${rec.normal_rain_time || ''}')">${formatTimeText(rec.normal_rain_time)}</td>
-                <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top" onclick="editRainfallTextCell('${y}','${m}',${day},'shower_rain_time','${rec.shower_rain_time || ''}')">${formatTimeText(rec.shower_rain_time)}</td>
-                
-                <td class="p-2 border text-amber-700 font-bold bg-amber-50/40">${dbCatPrecip}</td>
-                <td class="p-2 border text-amber-700 font-bold bg-amber-50/40">${dbCatTemp}</td>
-                
-                <td class="p-2 border cursor-pointer hover:bg-emerald-50 font-bold ${hw_val !== '-' && hw_val > 0 ? 'text-indigo-700 bg-indigo-50' : 'text-slate-400'}" onclick="editRainfallNumberCell('${y}','${m}',${day},'headworks',${rec.headworks || 0})">${hw_val}</td>
-                <td class="p-2 border text-emerald-700 font-bold bg-emerald-50/40">${dbInPrecip}</td>
-                <td class="p-2 border text-emerald-700 font-medium">${avgInt}</td>
-                <td class="p-2 border text-emerald-700 font-bold bg-emerald-50/40">${dbInTemp}</td>
-                
-                <td class="p-2 border cursor-pointer hover:bg-sky-50 font-bold ${dam_val !== '-' && dam_val > 0 ? 'text-emerald-700 bg-emerald-50' : 'text-slate-400'}" onclick="editRainfallNumberCell('${y}','${m}',${day},'powerhouse',${rec.powerhouse || 0})">${dam_val}</td>
-                <td class="p-2 border text-sky-700 font-bold bg-sky-50/40">${dbPhPrecip}</td>
-                <td class="p-2 border text-sky-700 font-medium">${avgIn}</td>
-                <td class="p-2 border text-sky-700 font-medium">${avgOut}</td>
-                <td class="p-2 border text-sky-700 font-bold bg-sky-50/40">${dbPhTemp}</td>
-            </tr>`;
-    }
-
-    gridTable.innerHTML = `${thead}<tbody>${tbodyStr}</tbody>`;
+    const maxDay = MONTH_DAYS[m] ?? 32;
+    const rows = Array.from({ length: maxDay }, (_, i) => buildDayRow(y, m, i + 1)).join('');
+    gridTable.innerHTML = `${GRID_THEAD}<tbody>${rows}</tbody>`;
 }
 
+// ─────────────────────────────────────────────
+// Charts
+// ─────────────────────────────────────────────
 function renderCharts() {
-    const y = parseInt(document.getElementById('grid-rf-year')?.value);
-    const m = document.getElementById('grid-rf-month')?.value;
-    const mIdx = nepaliMonths.indexOf(m) + 1;
+    const y = getSelectedYear();
+    const m = getSelectedMonth();
+    if (!y || !m) return;
 
-    const labels = Array.from({length: 31}, (_, i) => i + 1);
-    const chartData = { rIntakeM: [], rIntakeP: [], rDamM: [], rDamP: [], tIn: [], tOut: [], tCatch: [] };
+    const mIdx   = nepaliMonths.indexOf(m) + 1;
+    const labels = Array.from({ length: 31 }, (_, i) => i + 1);
+
+    const series = { rIntakeM: [], rIntakeP: [], rDamM: [], rDamP: [], tIn: [], tOut: [], tCatch: [] };
 
     labels.forEach(day => {
-        const rec = allRainfallData.find(d => d.day === day) || {};
-        chartData.rIntakeM.push(rec.headworks != null ? rec.headworks : 0);
-        chartData.rDamM.push(rec.powerhouse != null ? rec.powerhouse : 0);
+        const rec        = rainfallIndex.get(day) ?? {};
+        const engDate    = getEngDate(y, m, day);
+        const api        = getDayApiData(rec, engDate);
+        const nepDateStr = `${y}.${String(mIdx).padStart(2, '0')}.${String(day).padStart(2, '0')}`;
 
-        let engDate = getFallbackEngDate(y, m, day);
-        if (calendarMap && Object.keys(calendarMap).length > 0) {
-            const mapped = Object.keys(calendarMap).find(k => calendarMap[k].nep_date_str === `${y}.${String(mIdx).padStart(2,'0')}.${String(day).padStart(2,'0')}`);
-            if (mapped) engDate = mapped;
-        }
+        series.rIntakeM.push(rec.headworks  ?? 0);
+        series.rDamM.push(rec.powerhouse ?? 0);
+        series.rIntakeP.push(toFloat(api.inPrecip));
+        series.rDamP.push(toFloat(api.phPrecip));
+        series.tCatch.push(toFloat(api.catTemp, null));
 
-        const api = apiWeatherData[getApiTargetDate(engDate)] || {};
-        const pIn = rec.api_in_precip != null ? rec.api_in_precip : api.in_precip;
-        const pPh = rec.api_ph_precip != null ? rec.api_ph_precip : api.ph_precip;
-        const tCat = rec.api_cat_temp != null ? rec.api_cat_temp : api.cat_temp;
-
-        chartData.rIntakeP.push(pIn && pIn !== '-' ? parseFloat(pIn) : 0);
-        chartData.rDamP.push(pPh && pPh !== '-' ? parseFloat(pPh) : 0);
-        chartData.tCatch.push(tCat && tCat !== '-' ? parseFloat(tCat) : null);
-
-        const searchDateStr = `${y}.${String(mIdx).padStart(2,'0')}.${String(day).padStart(2,'0')}`;
-        const dLogs = allHourlyLogs.filter(l => l.nepali_date === searchDateStr);
-        let tI=0, tO=0, c=0;
-        dLogs.forEach(l => { if(l.t_temp_in != null){ tI+=l.t_temp_in; tO+=l.t_temp_out; c++; } });
-        chartData.tIn.push(c ? tI/c : null);
-        chartData.tOut.push(c ? tO/c : null);
+        const avgIn  = avgHourlyTemp(nepDateStr, 't_temp_in');
+        const avgOut = avgHourlyTemp(nepDateStr, 't_temp_out');
+        series.tIn.push(avgIn  === '-' ? null : parseFloat(avgIn));
+        series.tOut.push(avgOut === '-' ? null : parseFloat(avgOut));
     });
 
-    if (rainChartInstance) rainChartInstance.destroy();
-    rainChartInstance = new Chart(document.getElementById('rainfall-trend-chart').getContext('2d'), {
+    rainChartInstance?.destroy();
+    rainChartInstance = new Chart(getEl('rainfall-trend-chart').getContext('2d'), {
         type: 'bar',
         data: {
             labels,
             datasets: [
-                { label: 'Intake (Meas)', data: chartData.rIntakeM, backgroundColor: '#10B981', stack: 'Stack 0' },
-                { label: 'Intake (Pred, -24h)', data: chartData.rIntakeP, backgroundColor: '#A7F3D0', stack: 'Stack 0' },
-                { label: 'Dam (Meas)', data: chartData.rDamM, backgroundColor: '#3B82F6', stack: 'Stack 1' },
-                { label: 'Dam (Pred, -24h)', data: chartData.rDamP, backgroundColor: '#BFDBFE', stack: 'Stack 1' }
+                { label: 'Intake (Meas)',      data: series.rIntakeM, backgroundColor: '#10B981', stack: 'Stack 0' },
+                { label: 'Intake (Pred, -24h)', data: series.rIntakeP, backgroundColor: '#A7F3D0', stack: 'Stack 0' },
+                { label: 'Powerhouse (Meas)',          data: series.rDamM,    backgroundColor: '#3B82F6', stack: 'Stack 1' },
+                { label: 'Powerhouse (Pred, -24h)',    data: series.rDamP,    backgroundColor: '#BFDBFE', stack: 'Stack 1' },
             ]
         },
         options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index' } }
     });
 
-    if (tempChartInstance) tempChartInstance.destroy();
-    tempChartInstance = new Chart(document.getElementById('temp-trend-chart').getContext('2d'), {
+    tempChartInstance?.destroy();
+    tempChartInstance = new Chart(getEl('temp-trend-chart').getContext('2d'), {
         type: 'line',
         data: {
             labels,
             datasets: [
-                { label: 'Room IN', data: chartData.tIn, borderColor: '#F59E0B', tension: 0.3, spanGaps: true },
-                { label: 'Room OUT', data: chartData.tOut, borderColor: '#EF4444', tension: 0.3, spanGaps: true },
-                { label: 'Catchment (Pred)', data: chartData.tCatch, borderColor: '#6366F1', borderDash: [5,5], tension: 0.3, spanGaps: true }
+                { label: 'Room IN',         data: series.tIn,     borderColor: '#F59E0B', tension: 0.3, spanGaps: true },
+                { label: 'Room OUT',        data: series.tOut,    borderColor: '#EF4444', tension: 0.3, spanGaps: true },
+                { label: 'Catchment (Pred)', data: series.tCatch, borderColor: '#6366F1', borderDash: [5, 5], tension: 0.3, spanGaps: true },
             ]
         },
         options: { responsive: true, maintainAspectRatio: false }
     });
 }
 
-function getStandardMonth(mStr) {
-    if (!mStr) return null;
-    const norm = mStr.toLowerCase().replace(/[^a-z]/g, '');
-    if (norm.includes('bais') || norm.includes('baish')) return 'Baisakh';
-    if (norm.includes('jesh') || norm.includes('jest')) return 'Jestha';
-    if (norm.includes('ashad') || norm.includes('ashar')) return 'Ashadh';
-    if (norm.includes('shraw') || norm.includes('sawan')) return 'Shrawan';
-    if (norm.includes('bhad')) return 'Bhadra';
-    if (norm.includes('asho') || norm.includes('asoj') || norm.includes('ashwin')) return 'Ashoj';
-    if (norm.includes('kart')) return 'Kartik';
-    if (norm.includes('mangs') || norm.includes('mangsh')) return 'Mangsir';
-    if (norm.includes('pous')) return 'Poush';
-    if (norm.includes('magh')) return 'Magh';
-    if (norm.includes('falg') || norm.includes('fagun')) return 'Falgun';
-    if (norm.includes('chai')) return 'Chaitra';
+function toFloat(val, fallback = 0) {
+    const n = parseFloat(val);
+    return isNaN(n) ? fallback : n;
+}
+
+// ─────────────────────────────────────────────
+// Month name normaliser
+// ─────────────────────────────────────────────
+function getStandardMonth(rawStr) {
+    if (!rawStr) return null;
+    const norm = rawStr.toLowerCase().replace(/[^a-z]/g, '');
+    for (const [alias, canonical] of MONTH_ALIASES) {
+        if (norm.includes(alias)) return canonical;
+    }
     return null;
 }
 
-// --- MULTI-MONTH VERTICAL SCANNER ---
-async function processAndUploadRainfall(jd) {
-    let currentYear = parseInt(document.getElementById('grid-rf-year')?.value);
-    let currentMonth = document.getElementById('grid-rf-month')?.value;
-    let dayColIdx = -1;
+// ─────────────────────────────────────────────
+// Bulk year API sync
+// ─────────────────────────────────────────────
+async function syncFullYearApiData() {
+    const y = getSelectedYear();
+    if (!y) return showNotification('Select a year first.', true);
 
-    showNotification("Fetching existing database context to protect data...", false);
-    const { data: existingYearData } = await supabase.from('rainfall_data').select('*').eq('nepali_year', currentYear);
-    const existingData = existingYearData || [];
-    
-    const payloadMap = new Map();
+    const confirmed = await showConfirmation(
+        `Download and save Open-Meteo satellite data for the entire year of ${y}?`
+    );
+    if (!confirmed) return;
 
-    for(let i = 0; i < jd.length; i++) {
-        const row = jd[i];
-        if(!row) continue;
+    showNotification(`Fetching satellite data for ${y}…`, false);
 
-        const rowStr = row.join(' ').toLowerCase();
+    const { data: existing } = await supabase.from('rainfall_data').select('*').eq('nepali_year', y);
+    const existingIndex = new Map((existing ?? []).map(r => [r.id, r]));
 
-        if (rowStr.includes('year')) {
-            const yrMatch = rowStr.match(/\d{4}/);
-            if (yrMatch) currentYear = parseInt(yrMatch[0]);
+    const firstEngDate = getEngDate(y, nepaliMonths[0], 1);
+    const lastEngDate  = getEngDate(y, nepaliMonths[11], 30);
+    await fetchOpenMeteoData(getPrevDay(firstEngDate), lastEngDate);
+
+    const payload = [];
+    nepaliMonths.forEach((m, mIdx) => {
+        const maxDay = MONTH_DAYS[m] ?? 30;
+        for (let day = 1; day <= maxDay; day++) {
+            const engDate = getEngDate(y, m, day);
+            const api     = apiWeatherData[getPrevDay(engDate)];
+            if (!api) continue;
+
+            const id  = buildId(y, m, day);
+            const rec = existingIndex.get(id) ?? {};
+            payload.push({
+                ...rec,
+                id,
+                nepali_year:    y,
+                nepali_month:   m,
+                day,
+                api_cat_precip: toFloat(api.cat_precip, null),
+                api_cat_temp:   toFloat(api.cat_temp,   null),
+                api_in_precip:  toFloat(api.in_precip,  null),
+                api_in_temp:    toFloat(api.in_temp,    null),
+                api_ph_precip:  toFloat(api.ph_precip,  null),
+                api_ph_temp:    toFloat(api.ph_temp,    null),
+                operator_email: getCurrentUser()?.email ?? '',
+                updated_at:     new Date().toISOString(),
+            });
         }
-        if (rowStr.includes('month')) {
-            const parsed = getStandardMonth(rowStr);
-            if (parsed) currentMonth = parsed; 
-        }
+    });
 
-        let dIdx = row.findIndex(c => String(c).trim().toLowerCase() === 'day');
-        if (dIdx !== -1) {
-            dayColIdx = dIdx;
-            continue; 
-        }
+    if (!payload.length) return showNotification('No API data retrieved. Check date limits.', true);
 
-        if(dayColIdx !== -1 && currentYear && currentMonth) {
-            let dayVal = parseInt(row[dayColIdx]);
-            if(!isNaN(dayVal) && dayVal >= 1 && dayVal <= 32) {
-                
-                const heavyTime = row[dayColIdx + 1] ? String(row[dayColIdx + 1]).trim() : null;
-                const normTime  = row[dayColIdx + 3] ? String(row[dayColIdx + 3]).trim() : null;
-                const showerTime= row[dayColIdx + 5] ? String(row[dayColIdx + 5]).trim() : null;
-                const ph = row[dayColIdx + 7] != null && String(row[dayColIdx + 7]).trim() !== '' ? parseFloat(row[dayColIdx + 7]) : null;
-                const intake = row[dayColIdx + 8] != null && String(row[dayColIdx + 8]).trim() !== '' ? parseFloat(row[dayColIdx + 8]) : null;
-
-                if (heavyTime || normTime || showerTime || (ph !== null && !isNaN(ph)) || (intake !== null && !isNaN(intake))) {
-                    const id = `${currentYear}_${currentMonth}_${String(dayVal).padStart(2,'0')}`;
-                    const existingRow = existingData.find(d => d.id === id) || {};
-
-                    payloadMap.set(id, {
-                        ...existingRow,
-                        id: id,
-                        nepali_year: currentYear,
-                        nepali_month: currentMonth,
-                        day: dayVal,
-                        heavy_rain_time: heavyTime,
-                        normal_rain_time: normTime,
-                        shower_rain_time: showerTime,
-                        powerhouse: ph !== null && !isNaN(ph) ? ph : 0,
-                        headworks: intake !== null && !isNaN(intake) ? intake : 0,
-                        operator_email: getCurrentUser()?.email || '',
-                        updated_at: new Date().toISOString()
-                    });
-                }
-            }
-        }
-    }
-
-    const payload = Array.from(payloadMap.values());
-    if (!payload.length) return showNotification("Import Error: No valid data found in rows.", true);
-
-    showNotification(`Uploading ${payload.length} rows across multiple months...`, false);
-
+    showNotification(`Saving ${payload.length} days to database…`, false);
     try {
-        for(let i = 0; i < payload.length; i += 500) {
-            const chunk = payload.slice(i, i + 500);
-            const { error } = await supabase.from('rainfall_data').upsert(chunk);
-            if (error) throw error;
-        }
-        
-        showNotification(`✅ Successfully uploaded ${payload.length} records!`);
+        await upsertInChunks(payload);
+        showNotification(`✅ Synced full ${y} satellite data (${payload.length} days).`);
         refreshDashboard();
-    } catch (e) {
-        showNotification("Upload Error: " + e.message, true);
+    } catch (err) {
+        showNotification('Save error: ' + err.message, true);
     }
 }
 
-// Remains perfectly aligned with your uploaded template format
-function generateExactExcelExport() {
-    try {
-        const y = parseInt(document.getElementById('grid-rf-year')?.value);
-        const m = document.getElementById('grid-rf-month')?.value;
-        if (!y || !m) return showNotification("Select a year and month first.", true);
+// ─────────────────────────────────────────────
+// Excel import
+// ─────────────────────────────────────────────
+async function processAndUploadRainfall(jd) {
+    let currentYear  = getSelectedYear();
+    let currentMonth = getSelectedMonth();
+    let dayColIdx    = -1;
 
-        const ws_data = [
-            ["MAKARI GAD HYDROELECTRIC PROJECT"],
-            ["Daily Rainfall Measurement "],
-            [`Year : ${y}`],
-            [`Month : ${m}`],
-            ["Location : Power house and Intake"],
-            ["Day", "Heavy Rain (Hrs)", "", "Rain (Hrs)", "", "Shower (Hrs)", "", "Rainfall (mm)"],
-            ["", "Time", "Hours", "Time", "Hours", "Time", "Hours", "Power house", "Intake"]
-        ];
-        
-        for (let day = 1; day <= 32; day++) {
-            const rec = allRainfallData.find(d => d.day === day);
-            if(rec || day <= 31) {
-                ws_data.push([
-                    day,
-                    rec?.heavy_rain_time || "", "", 
-                    rec?.normal_rain_time || "", "",
-                    rec?.shower_rain_time || "", "",
-                    rec?.powerhouse ?? "", 
-                    rec?.headworks ?? ""
-                ]);
-            }
+    showNotification('Fetching existing records…', false);
+    const { data: existing } = await supabase.from('rainfall_data').select('*').eq('nepali_year', currentYear);
+    const existingIndex = new Map((existing ?? []).map(r => [r.id, r]));
+    const payloadMap    = new Map();
+
+    for (const row of jd) {
+        if (!row) continue;
+        const rowStr = row.join(' ').toLowerCase();
+
+        // Detect year/month headers
+        const yrMatch = rowStr.includes('year') && rowStr.match(/\d{4}/);
+        if (yrMatch) currentYear = parseInt(yrMatch[0]);
+
+        if (rowStr.includes('month')) {
+            const parsed = getStandardMonth(rowStr);
+            if (parsed) currentMonth = parsed;
         }
 
+        // Detect column header row
+        const dIdx = row.findIndex(c => String(c).trim().toLowerCase() === 'day');
+        if (dIdx !== -1) { dayColIdx = dIdx; continue; }
+
+        if (dayColIdx === -1 || !currentYear || !currentMonth) continue;
+
+        const dayVal = parseInt(row[dayColIdx]);
+        if (isNaN(dayVal) || dayVal < 1 || dayVal > 32) continue;
+
+        const fields = {};
+        for (const { offset, key, type } of IMPORT_FIELDS) {
+            const raw = row[dayColIdx + offset];
+            if (raw == null || String(raw).trim() === '') continue;
+            fields[key] = type === 'number' ? parseFloat(raw) : String(raw).trim();
+        }
+
+        const hasContent = Object.keys(fields).some(k =>
+            fields[k] != null && fields[k] !== '' && !isNaN(Number(fields[k]) || 1)
+        );
+        if (!hasContent) continue;
+
+        const id  = buildId(currentYear, currentMonth, dayVal);
+        const rec = existingIndex.get(id) ?? {};
+        payloadMap.set(id, {
+            ...rec,
+            id,
+            nepali_year:    currentYear,
+            nepali_month:   currentMonth,
+            day:            dayVal,
+            powerhouse:     fields.powerhouse   ?? 0,
+            headworks:      fields.headworks     ?? 0,
+            heavy_rain_time: fields.heavy_rain_time ?? null,
+            normal_rain_time: fields.normal_rain_time ?? null,
+            shower_rain_time: fields.shower_rain_time ?? null,
+            operator_email: getCurrentUser()?.email ?? '',
+            updated_at:     new Date().toISOString(),
+        });
+    }
+
+    const payload = [...payloadMap.values()];
+    if (!payload.length) return showNotification('Import error: no valid rows found.', true);
+
+    showNotification(`Uploading ${payload.length} records…`, false);
+    try {
+        await upsertInChunks(payload);
+        showNotification(`✅ Imported ${payload.length} records.`);
+        refreshDashboard();
+    } catch (err) {
+        showNotification('Upload error: ' + err.message, true);
+    }
+}
+
+// ─────────────────────────────────────────────
+// Excel export
+// ─────────────────────────────────────────────
+function generateExactExcelExport() {
+    const y = getSelectedYear();
+    const m = getSelectedMonth();
+    if (!y || !m) return showNotification('Select a year and month first.', true);
+
+    try {
+        const header = [
+            ['MAKARI GAD HYDROELECTRIC PROJECT'],
+            ['Daily Rainfall Measurement'],
+            [`Year : ${y}`],
+            [`Month : ${m}`],
+            ['Location : Power house and Intake'],
+            ['Day', 'Heavy Rain (Hrs)', '', 'Rain (Hrs)', '', 'Shower (Hrs)', '', 'Rainfall (mm)'],
+            ['',    'Time', 'Hours', 'Time', 'Hours', 'Time', 'Hours', 'Power house', 'Intake'],
+        ];
+
+        const maxDay = MONTH_DAYS[m] ?? 31;
+        const rows = Array.from({ length: maxDay }, (_, i) => {
+            const day = i + 1;
+            const rec = rainfallIndex.get(day) ?? {};
+            return [
+                day,
+                rec.heavy_rain_time  ?? '', '',
+                rec.normal_rain_time ?? '', '',
+                rec.shower_rain_time ?? '', '',
+                rec.powerhouse ?? '',
+                rec.headworks  ?? '',
+            ];
+        });
+
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        ws['!cols'] = [{wch: 6}, {wch: 20}, {wch: 8}, {wch: 20}, {wch: 8}, {wch: 20}, {wch: 8}, {wch: 15}, {wch: 15}];
+        const ws = XLSX.utils.aoa_to_sheet([...header, ...rows]);
+        ws['!cols'] = [6, 20, 8, 20, 8, 20, 8, 15, 15].map(wch => ({ wch }));
         XLSX.utils.book_append_sheet(wb, ws, `Rainfall_${m}_${y}`);
         XLSX.writeFile(wb, `Daily_Rainfall_${m}_${y}.xlsx`);
     } catch (err) {
-        showNotification("Export Error: " + err.message, true);
+        showNotification('Export error: ' + err.message, true);
     }
 }
 
-window.editRainfallTextCell = async function(y, m, d, field, currentVal) {
+// ─────────────────────────────────────────────
+// Cell editing (called from inline onclick)
+// ─────────────────────────────────────────────
+window.editRainfallTextCell = async function (y, m, d, field, currentVal) {
     if (getUserRole() === 'normal') return;
-    const newVal = prompt(`Enter times (Separate with comma, e.g., "01:00-03:00"):`, currentVal === 'undefined' ? '' : currentVal);
+    const newVal = prompt('Enter times (comma-separated, e.g. "01:00-03:00, 14:30-15:00"):', currentVal === 'undefined' ? '' : currentVal);
     if (newVal !== null) saveCellData(y, m, d, field, newVal.trim() || null);
 };
 
-window.editRainfallNumberCell = async function(y, m, d, field, currentVal) {
+window.editRainfallNumberCell = async function (y, m, d, field, currentVal) {
     if (getUserRole() === 'normal') return;
     const newVal = prompt(`Enter measured amount (mm) for Day ${d}:`, currentVal);
     if (newVal === null) return;
     const floatVal = parseFloat(newVal);
-    if (newVal.trim() !== '' && isNaN(floatVal)) return showNotification("Invalid number", true);
+    if (newVal.trim() !== '' && isNaN(floatVal)) return showNotification('Invalid number', true);
     saveCellData(y, m, d, field, isNaN(floatVal) ? null : floatVal);
 };
 
 async function saveCellData(y, m, d, field, value) {
     const payload = {
-        id: `${y}_${m}_${String(d).padStart(2, '0')}`,
-        nepali_year: parseInt(y), nepali_month: m, day: parseInt(d),
-        [field]: value,
-        operator_email: getCurrentUser()?.email || '', updated_at: new Date().toISOString()
+        id:             buildId(y, m, d),
+        nepali_year:    parseInt(y),
+        nepali_month:   m,
+        day:            parseInt(d),
+        [field]:        value,
+        operator_email: getCurrentUser()?.email ?? '',
+        updated_at:     new Date().toISOString(),
     };
     try {
-        await supabase.from('rainfall_data').upsert(payload);
+        const { error } = await supabase.from('rainfall_data').upsert(payload);
+        if (error) throw error;
         await refreshDashboard();
-    } catch (e) { showNotification("Error: " + e.message, true); }
+    } catch (err) {
+        showNotification('Save error: ' + err.message, true);
+    }
+}
+
+// ─────────────────────────────────────────────
+// Shared utilities
+// ─────────────────────────────────────────────
+function buildId(y, m, d) {
+    return `${y}_${m}_${String(d).padStart(2, '0')}`;
+}
+
+async function upsertInChunks(rows, chunkSize = 500) {
+    for (let i = 0; i < rows.length; i += chunkSize) {
+        const { error } = await supabase.from('rainfall_data').upsert(rows.slice(i, i + chunkSize));
+        if (error) throw error;
+    }
 }

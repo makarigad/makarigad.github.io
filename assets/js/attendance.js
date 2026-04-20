@@ -2,7 +2,7 @@ import { supabase, initializeApplication, showNotification } from './core-app.js
 
 /**
  * ATTENDANCE MODULE - MAKARI GAD
- * Handles Geofencing, 8-hour shift tracking, and offline sync.
+ * Handles POLYGON Geofencing, shift tracking, Monthly Views, and Admin Controls.
  */
 
 let currentUser = null;
@@ -11,7 +11,7 @@ let userProfile = null;
 let workZones = [];
 let todayLogs = [];
 
-const GEOFENCE_STORAGE_KEY = 'makarigad_work_zones';
+const GEOFENCE_STORAGE_KEY = 'makarigad_polygon_zones';
 const LOGS_STORAGE_KEY = 'makarigad_attendance_logs';
 
 export async function initAttendance() {
@@ -21,89 +21,165 @@ export async function initAttendance() {
     currentUser = sd.user;
     userRole = sd.role;
 
-    // Load static data
     await loadWorkZones();
     await fetchUserProfile();
     await loadTodayLogs();
 
-    // Bind UI events
-    bindAttendanceUI();
-    
-    // Start live status update
+    bindDatabaseUI();
+        
     updateLiveStatus();
-    setInterval(updateLiveStatus, 30000); // Update every 30s
+    setInterval(updateLiveStatus, 30000);
 
-    // Admin/Staff specific initializations
     if (userRole === 'admin' || userRole === 'staff') {
         initAdminFeatures();
     }
 }
 
 function initAdminFeatures() {
-    // Tab switching for admin
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-            btn.classList.add('active');
-            const target = document.getElementById(btn.dataset.tab);
-            if (target) target.classList.remove('hidden');
-            
-            if (btn.dataset.tab === 'tab-zones') {
-                setTimeout(initMap, 100);
-            }
-        });
-    });
-
+    // Zone Map Buttons
     const saveZoneBtn = document.getElementById('save-zone-btn');
     if (saveZoneBtn) saveZoneBtn.addEventListener('click', saveWorkZone);
+    
+    const clearShapeBtn = document.getElementById('clear-shape-btn');
+    if (clearShapeBtn) clearShapeBtn.addEventListener('click', clearDrawing);
+
+    // Admin Control Buttons
+    const adminLoadBtn = document.getElementById('admin-load-btn');
+    if (adminLoadBtn) adminLoadBtn.addEventListener('click', loadAdminAttendance);
+    
+    const adminExportBtn = document.getElementById('admin-export-btn');
+    if (adminExportBtn) adminExportBtn.addEventListener('click', exportAdminCSV);
+
+    // Populate the Employee Dropdown
+    populateEmployeeDropdown();
 }
 
-// Map variables
-let map, currentMarker, currentCircle;
-let selectedLat = null, selectedLng = null;
+// ── INSTANT UI BINDINGS (Tabs) ──
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.section-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.section-tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => {
+                c.classList.remove('active');
+                c.classList.add('hidden');
+            });
+            
+            btn.classList.add('active');
+            const targetId = btn.dataset.tab;
+            const target = document.getElementById(targetId);
+            
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('active');
+            }
+            
+            if (targetId === 'tab-zones') setTimeout(initMap, 100);
+        });
+    });
+});
+
+function bindDatabaseUI() {
+    const inBtn = document.getElementById('btn-check-in');
+    const outBtn = document.getElementById('btn-check-out');
+    if (inBtn) inBtn.addEventListener('click', () => handleAttendance('IN'));
+    if (outBtn) outBtn.addEventListener('click', () => handleAttendance('OUT'));
+
+    const loadAttBtn = document.getElementById('load-att-btn');
+    if (loadAttBtn) loadAttBtn.addEventListener('click', loadMonthlyAttendance);
+}
+
+// ── POLYGON GEOFENCING MAP LOGIC ──
+let map;
+let currentPolygonPoints = [];
+let currentPolygonLayer = null;
+let currentPointMarkers = [];
 
 function initMap() {
-    if (map) {
-        map.invalidateSize();
-        return;
-    }
+    if (map) { map.invalidateSize(); return; }
     
-    // Default coordinate: Baitadi / Makari Gad general area
-    map = L.map('geofence-map').setView([29.74, 80.65], 13); 
+    // Default to Makari Gad Area
+    map = L.map('geofence-map').setView([29.74, 80.65], 14); 
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19, attribution: '© OpenStreetMap'
     }).addTo(map);
 
+    // Click to add points to the custom polygon
     map.on('click', function(e) {
-        selectedLat = e.latlng.lat;
-        selectedLng = e.latlng.lng;
-        const radius = parseInt(document.getElementById('zone-radius').value) || 500;
-
-        if (currentMarker) map.removeLayer(currentMarker);
-        if (currentCircle) map.removeLayer(currentCircle);
-
-        currentMarker = L.marker([selectedLat, selectedLng]).addTo(map);
-        currentCircle = L.circle([selectedLat, selectedLng], {
-            color: '#4f46e5', fillColor: '#4f46e5', fillOpacity: 0.2, radius: radius
+        currentPolygonPoints.push({ lat: e.latlng.lat, lng: e.latlng.lng });
+        
+        let dot = L.circleMarker([e.latlng.lat, e.latlng.lng], {
+            radius: 4, color: '#4f46e5', fillColor: '#ffffff', fillOpacity: 1, weight: 2
         }).addTo(map);
+        currentPointMarkers.push(dot);
+        
+        if (currentPolygonLayer) map.removeLayer(currentPolygonLayer);
+        
+        if (currentPolygonPoints.length > 1) {
+            currentPolygonLayer = L.polygon(currentPolygonPoints, {
+                color: '#4f46e5', fillColor: '#4f46e5', fillOpacity: 0.3, weight: 2
+            }).addTo(map);
+        }
     });
 
-    // Load existing zones onto map
+    // Render existing polygon zones
     workZones.forEach(zone => {
-        L.circle([zone.latitude, zone.longitude], {
-            color: '#10b981', fillColor: '#10b981', fillOpacity: 0.1, radius: zone.radius_meters
-        }).addTo(map).bindPopup(`<b>${zone.zone_name}</b><br>Radius: ${zone.radius_meters}m`);
+        if (zone.coordinates && zone.coordinates.length >= 3) {
+            const polygon = L.polygon(zone.coordinates, {
+                color: '#10b981', fillColor: '#10b981', fillOpacity: 0.2, weight: 2
+            }).addTo(map);
+            
+            polygon.bindTooltip(
+                `<span class="font-bold text-xs text-emerald-800 tracking-wider uppercase">${zone.zone_name}</span>`, 
+                {
+                    permanent: true, 
+                    direction: 'center',
+                    className: 'bg-white/90 backdrop-blur-sm border border-emerald-200 shadow-sm rounded px-2 py-1'
+                }
+            ).openTooltip();
+        }
     });
+
+        // Drop a pulsing blue dot exactly where your device thinks you are
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            L.circleMarker([lat, lng], {
+                radius: 8, color: '#ffffff', fillColor: '#3b82f6', fillOpacity: 1, weight: 3
+            }).addTo(map).bindTooltip(
+                `<span class="font-bold text-blue-700">Your Current GPS Location</span>`, 
+                { permanent: true, direction: 'top', className: 'bg-white/90 border border-blue-200' }
+            );
+            
+            // Auto-pan the map to your actual location
+            map.setView([lat, lng], 15);
+        });
+    }
+
+}
+
+function clearDrawing() {
+    currentPolygonPoints = [];
+    if (currentPolygonLayer && map) {
+        map.removeLayer(currentPolygonLayer);
+        currentPolygonLayer = null;
+    }
+    if (currentPointMarkers.length > 0) {
+        currentPointMarkers.forEach(marker => map.removeLayer(marker));
+        currentPointMarkers = [];
+    }
 }
 
 async function saveWorkZone() {
     const name = document.getElementById('zone-name').value.trim();
-    const radius = parseInt(document.getElementById('zone-radius').value);
     
-    if (!name || !selectedLat || !selectedLng) {
-        showNotification('Please enter a name and click map to set location', true);
+    if (!name) {
+        showNotification('Please enter a Zone Name first.', true);
+        return;
+    }
+    if (currentPolygonPoints.length < 3) {
+        showNotification('Please click at least 3 points on the map to draw a shape.', true);
         return;
     }
     
@@ -112,20 +188,175 @@ async function saveWorkZone() {
     btn.textContent = 'Saving...'; btn.disabled = true;
 
     try {
+        const referenceLat = currentPolygonPoints[0].lat;
+        const referenceLng = currentPolygonPoints[0].lng;
+
         const { error } = await supabase.from('work_zones').insert({
-            zone_name: name, latitude: selectedLat, longitude: selectedLng, radius_meters: radius || 500
+            zone_name: name,
+            coordinates: currentPolygonPoints,
+            latitude: referenceLat,
+            longitude: referenceLng,
+            radius_meters: 0
         });
+        
         if (error) throw error;
+        
         showNotification(`✅ Zone '${name}' saved successfully!`);
         document.getElementById('zone-name').value = '';
+        clearDrawing();
         await loadWorkZones();
-        initMap(); // Refresh map
-    } catch (e) { showNotification('Error saving zone: ' + e.message, true); }
-    finally {
+        
+        if(map) {
+            map.eachLayer((layer) => { 
+                if (layer instanceof L.Polygon || layer instanceof L.CircleMarker || layer instanceof L.Tooltip) map.removeLayer(layer); 
+            });
+            initMap();
+        }
+    } catch (e) { 
+        showNotification('Error saving zone: ' + e.message, true); 
+    } finally {
         btn.textContent = originalText; btn.disabled = false;
     }
 }
 
+// ── POINT-IN-POLYGON (RAY-CASTING ALGORITHM) ──
+function isPointInPolygon(lat, lng, polygon) {
+    if (!polygon || polygon.length < 3) return false;
+    
+    let x = lng, y = lat;
+    let inside = false;
+    
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        let xi = polygon[i].lng, yi = polygon[i].lat;
+        let xj = polygon[j].lng, yj = polygon[j].lat;
+
+        let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+function getDistanceToCentroid(lat, lng, polygon) {
+    if (!polygon || polygon.length === 0) return null;
+    let centerLat = 0, centerLng = 0;
+    polygon.forEach(p => { centerLat += p.lat; centerLng += p.lng; });
+    centerLat /= polygon.length; centerLng /= polygon.length;
+    
+    const R = 6371e3; 
+    const f1 = lat * Math.PI/180;
+    const f2 = centerLat * Math.PI/180;
+    const df = (centerLat-lat) * Math.PI/180;
+    const dl = (centerLng-lng) * Math.PI/180;
+    const a = Math.sin(df/2) * Math.sin(df/2) + Math.cos(f1) * Math.cos(f2) * Math.sin(dl/2) * Math.sin(dl/2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
+}
+
+function updateLiveStatus() {
+    const statusText = document.getElementById('geofence-status-text');
+    const statusIcon = document.getElementById('geofence-status-icon');
+    
+    if (!statusText || !navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(pos => {
+       const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        let inZone = false;
+        let activeZone = null;
+
+        workZones.forEach(zone => {
+            if (isPointInPolygon(lat, lng, zone.coordinates)) {
+                inZone = true;
+                activeZone = zone;
+            }
+        });
+
+        if (inZone) {
+            statusText.textContent = `Inside ${activeZone.zone_name}`;
+            statusText.className = 'text-[10px] font-bold text-emerald-600 uppercase tracking-wider';
+            statusIcon.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+        } else {
+            statusText.textContent = 'Outside Work Zone';
+            statusText.className = 'text-[10px] font-bold text-rose-500 uppercase tracking-wider';
+            statusIcon.className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+        }
+    }, () => {
+        statusText.textContent = 'GPS Disabled';
+        statusIcon.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
+    });
+}
+
+async function handleAttendance(type) {
+    const btn = document.getElementById(`btn-check-${type.toLowerCase()}`);
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></span> <span class="text-sm">Locating...</span>`;
+
+    try {
+        const pos = await getCurrentPosition();
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        
+        let nearestZone = null;
+        let minDistance = Infinity;
+        let isValid = false;
+
+        workZones.forEach(zone => {
+            if (isPointInPolygon(lat, lng, zone.coordinates)) {
+                isValid = true;
+                nearestZone = zone;
+                minDistance = 0; 
+            } else if (!isValid) {
+                let dist = getDistanceToCentroid(lat, lng, zone.coordinates);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestZone = zone;
+                }
+            }
+        });
+
+        const log = {
+            email: currentUser.email,
+            date: new Date().toISOString().split('T')[0],
+            timestamp: new Date().toISOString(),
+            type: type,
+            lat: lat,
+            lng: lng,
+            zone_id: nearestZone ? nearestZone.id : null,
+            zone_name: nearestZone ? nearestZone.zone_name : 'Unknown',
+            is_valid: isValid,
+            distance: minDistance === Infinity ? null : Math.round(minDistance)
+        };
+
+        if (navigator.onLine) {
+            const { error } = await supabase.from('attendance_logs').insert([log]);
+            if (error) throw error;
+            showNotification(`✅ ${type === 'IN' ? 'Checked In' : 'Checked Out'} at ${log.zone_name}`);
+        } else {
+            const queue = JSON.parse(localStorage.getItem('makarigad_sync_queue')) || [];
+            queue.push({ table: 'attendance_logs', data: log });
+            localStorage.setItem('makarigad_sync_queue', JSON.stringify(queue));
+            showNotification(`Saved offline. Will sync when online.`);
+        }
+
+        await loadTodayLogs();
+    } catch (e) {
+        showNotification("Attendance failed: " + e.message, true);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+function getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject(new Error("Geolocation not supported."));
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+        });
+    });
+}
+
+// ── DATA LOADING & UI RENDER ──
 async function fetchUserProfile() {
     try {
         const { data } = await supabase.from('user_roles').select('*').eq('email', currentUser.email).maybeSingle();
@@ -183,14 +414,17 @@ function renderLogs() {
     }
 
     list.innerHTML = todayLogs.map(log => `
-        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
             <div>
-                <span class="text-[10px] font-black uppercase tracking-widest ${log.type === 'IN' ? 'text-emerald-600' : 'text-amber-600'}">${log.type === 'IN' ? 'Check In' : 'Check Out'}</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider ${log.type === 'IN' ? 'text-emerald-600' : 'text-amber-600'}">${log.type === 'IN' ? 'Check In' : 'Check Out'}</span>
                 <div class="text-xs font-bold text-slate-700">${new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
             </div>
             <div class="text-right">
-                <div class="text-[10px] text-slate-400 font-medium">${log.zone_name || 'Unknown Location'}</div>
-                <div class="text-[9px] ${log.is_valid ? 'text-emerald-500' : 'text-rose-500'} font-bold">${log.is_valid ? '✓ Verified Location' : '⚠ Outside Geofence'}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">${log.zone_name || 'Unknown Location'}</div>
+                <div class="text-[9px] flex items-center justify-end gap-1 ${log.is_valid ? 'text-emerald-500' : 'text-rose-500'} font-bold">
+                    <span>${log.is_valid ? '●' : '⚠'}</span>
+                    ${log.is_valid ? 'Verified Location' : 'Outside Geofence'}
+                </div>
             </div>
         </div>
     `).join('');
@@ -215,10 +449,7 @@ function calculateShiftDuration() {
         }
     });
 
-    // If still checked in, calculate up to now
-    if (lastIn) {
-        totalMs += (new Date().getTime() - lastIn);
-    }
+    if (lastIn) totalMs += (new Date().getTime() - lastIn);
 
     const totalHours = totalMs / (1000 * 60 * 60);
     durationEl.textContent = `${totalHours.toFixed(2)} hrs`;
@@ -229,143 +460,247 @@ function calculateShiftDuration() {
 
     if (totalHours >= 8) {
         statusEl.textContent = 'Shift Completed';
-        statusEl.className = 'badge bg-emerald-100 text-emerald-700 border border-emerald-200';
+        statusEl.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 z-10';
         if (progressBar) progressBar.className = 'bg-emerald-500 h-full transition-all duration-500';
     } else {
         statusEl.textContent = `${(8 - totalHours).toFixed(1)} hrs left`;
-        statusEl.className = 'badge bg-amber-100 text-amber-700 border border-amber-200';
+        statusEl.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-700 z-10';
         if (progressBar) progressBar.className = 'bg-indigo-600 h-full transition-all duration-500';
     }
 }
 
-function bindAttendanceUI() {
-    const inBtn = document.getElementById('btn-check-in');
-    const outBtn = document.getElementById('btn-check-out');
+// ── MONTHLY VIEW LOGIC ──
 
-    if (inBtn) inBtn.addEventListener('click', () => handleAttendance('IN'));
-    if (outBtn) outBtn.addEventListener('click', () => handleAttendance('OUT'));
-}
+async function loadMonthlyAttendance() {
+    const tbody = document.getElementById('att-table-body');
+    const year = document.getElementById('att-nep-year')?.value;
+    const monthName = document.getElementById('att-nep-month')?.value;
+    
+    if (!tbody || !year || !monthName) return;
 
-async function handleAttendance(type) {
-    const btn = document.getElementById(`btn-check-${type.toLowerCase()}`);
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = `<span class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></span> Locating...`;
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-indigo-600 py-8 font-bold animate-pulse">Loading records...</td></tr>';
 
     try {
-        const pos = await getCurrentPosition();
-        const { lat, lng } = pos.coords;
+        // 1. Get English dates for this Nepali month from the database
+        const { data: calData, error: calErr } = await supabase
+            .from('calendar_mappings')
+            .select('eng_date')
+            .eq('nep_year', year)
+            .eq('nep_month', monthName)
+            .order('eng_date', { ascending: true });
+
+        if (calErr) throw calErr;
         
-        // Find if user is in any work zone
-        let nearestZone = null;
-        let minDistance = Infinity;
-        let isValid = false;
-
-        workZones.forEach(zone => {
-            const dist = getDistance(lat, lng, zone.latitude, zone.longitude);
-            if (dist < minDistance) {
-                minDistance = dist;
-                nearestZone = zone;
-            }
-            if (dist <= zone.radius_meters) {
-                isValid = true;
-            }
-        });
-
-        const log = {
-            email: currentUser.email,
-            date: new Date().toISOString().split('T')[0],
-            timestamp: new Date().toISOString(),
-            type: type,
-            lat: lat,
-            lng: lng,
-            zone_id: nearestZone ? nearestZone.id : null,
-            zone_name: nearestZone ? nearestZone.zone_name : 'Unknown',
-            is_valid: isValid,
-            distance: minDistance === Infinity ? null : Math.round(minDistance)
-        };
-
-        if (navigator.onLine) {
-            const { error } = await supabase.from('attendance_logs').insert([log]);
-            if (error) throw error;
-            showNotification(`✅ ${type === 'IN' ? 'Checked In' : 'Checked Out'} at ${log.zone_name}`);
-        } else {
-            // Store locally for sync
-            const queue = JSON.parse(localStorage.getItem('makarigad_sync_queue')) || [];
-            queue.push({ table: 'attendance_logs', data: log });
-            localStorage.setItem('makarigad_sync_queue', JSON.stringify(queue));
-            showNotification(`Saved offline. Will sync when online.`);
+        if (!calData || calData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-amber-500 py-8 font-bold">No calendar mapping found for ${monthName} ${year}.</td></tr>`;
+            return;
         }
 
-        await loadTodayLogs();
-    } catch (e) {
-        showNotification("Attendance failed: " + e.message, true);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+        const startDate = calData[0].eng_date;
+        const endDate = calData[calData.length - 1].eng_date;
+
+        // 2. Fetch the user's attendance logs for that date range
+        const { data, error } = await supabase
+            .from('attendance_logs')
+            .select('*')
+            .eq('email', currentUser.email) // ONLY fetch the logged-in user's records
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('timestamp', { ascending: true });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 py-8 italic text-sm">No attendance records found for this month.</td></tr>';
+            return;
+        }
+
+        // 3. Group the records by day
+        const groupedByDay = {};
+        data.forEach(log => {
+            if (!groupedByDay[log.date]) groupedByDay[log.date] = [];
+            groupedByDay[log.date].push(log);
+        });
+
+        tbody.innerHTML = '';
+        
+        // 4. Render the table rows
+        Object.keys(groupedByDay).sort((a, b) => new Date(b) - new Date(a)).forEach(date => {
+            const logs = groupedByDay[date];
+            const ins = logs.filter(l => l.type === 'IN');
+            const outs = logs.filter(l => l.type === 'OUT');
+            const firstIn = ins.length > 0 ? new Date(ins[0].timestamp) : null;
+            const lastOut = outs.length > 0 ? new Date(outs[outs.length - 1].timestamp) : null;
+
+            let hours = 0;
+            if (firstIn && lastOut) hours = (lastOut - firstIn) / (1000 * 60 * 60);
+
+            const formatTime = (d) => d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+            const primaryZone = logs[0].zone_name || 'Unknown';
+            const allValid = logs.every(l => l.is_valid);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="font-bold text-slate-700">${date}</td>
+                <td class="text-emerald-600 font-semibold">${formatTime(firstIn)}</td>
+                <td class="text-amber-600 font-semibold">${formatTime(lastOut)}</td>
+                <td class="font-bold ${hours >= 8 ? 'text-indigo-600' : 'text-slate-600'}">${hours > 0 ? hours.toFixed(2) + 'h' : '—'}</td>
+                <td>
+                    <div class="flex items-center gap-1.5 text-xs font-semibold">
+                        <span class="${allValid ? 'text-emerald-500' : 'text-rose-500'}">●</span> 
+                        <span class="text-slate-600">${primaryZone}</span>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error("Monthly load error:", err);
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-rose-500 py-8 font-bold">Error loading records. Check connection.</td></tr>';
     }
 }
 
-function getCurrentPosition() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) return reject(new Error("Geolocation not supported"));
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        });
-    });
-}
+// ── ADMIN CONTROL PANEL LOGIC ──
+let currentAdminData = [];
 
-function getDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // metres
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
-
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-    return R * c; // in metres
-}
-
-function updateLiveStatus() {
-    const statusText = document.getElementById('geofence-status-text');
-    const statusIcon = document.getElementById('geofence-status-icon');
+async function populateEmployeeDropdown() {
+    const select = document.getElementById('admin-emp-select');
+    if (!select) return;
     
-    if (!statusText || !navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(pos => {
-        const { lat, lng } = pos.coords;
-        let inZone = false;
-        let activeZone = null;
-
-        workZones.forEach(zone => {
-            if (getDistance(lat, lng, zone.latitude, zone.longitude) <= zone.radius_meters) {
-                inZone = true;
-                activeZone = zone;
-            }
+    try {
+        const { data, error } = await supabase
+            .from('user_roles')
+            .select('email, full_name')
+            .order('full_name', { ascending: true });
+            
+        if (error) throw error;
+        
+        data.forEach(user => {
+            const opt = document.createElement('option');
+            opt.value = user.email;
+            opt.textContent = user.full_name ? `${user.full_name} (${user.email})` : user.email;
+            select.appendChild(opt);
         });
+    } catch (err) {
+        console.warn("Could not load employees for admin dropdown", err);
+    }
+}
 
-        if (inZone) {
-            statusText.textContent = `Inside ${activeZone.zone_name}`;
-            statusText.className = 'text-[10px] font-black text-emerald-600 uppercase tracking-widest';
-            statusIcon.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
-        } else {
-            statusText.textContent = 'Outside Work Zone';
-            statusText.className = 'text-[10px] font-black text-rose-500 uppercase tracking-widest';
-            statusIcon.className = 'w-2 h-2 rounded-full bg-rose-500';
+async function loadAdminAttendance() {
+    const tbody = document.getElementById('admin-table-body');
+    const year = document.getElementById('admin-nep-year').value;
+    
+    // 👉 FIX: Get the actual name (e.g., "Falgun") instead of the number ("11")
+    const monthSelect = document.getElementById('admin-nep-month');
+    const monthName = monthSelect.options[monthSelect.selectedIndex].text; 
+    
+    const selectedEmail = document.getElementById('admin-emp-select').value;
+
+    if (!tbody || !year || !monthName) return;
+
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-indigo-600 py-8 font-bold animate-pulse">Loading records...</td></tr>';
+
+    try {
+        // Search using the monthName ("Falgun")
+        const { data: calData, error: calErr } = await supabase
+            .from('calendar_mappings')
+            .select('eng_date')
+            .eq('nep_year', year)
+            .eq('nep_month', monthName) 
+            .order('eng_date', { ascending: true });
+
+        if (calErr) throw calErr;
+        
+        // If still empty, it means nepali-calendar.html really hasn't been saved yet
+        if (!calData || calData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-amber-500 py-8 font-bold">No calendar mapping found for ${monthName} ${year}. Please go to the Calendar Setup page and save this month.</td></tr>`;
+            return;
         }
-    }, () => {
-        statusText.textContent = 'GPS Disabled';
-        statusIcon.className = 'w-2 h-2 rounded-full bg-slate-400';
-    });
+
+        const startDate = calData[0].eng_date;
+        const endDate = calData[calData.length - 1].eng_date;
+
+        let query = supabase
+            .from('attendance_logs')
+            .select('*')
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('timestamp', { ascending: false });
+
+        if (selectedEmail) {
+            query = query.eq('email', selectedEmail);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        currentAdminData = data || [];
+
+        if (currentAdminData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-400 py-8 italic text-sm">No records found for this criteria.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = currentAdminData.map(log => {
+            const timeStr = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const typeClass = log.type === 'IN' ? 'text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded' : 'text-amber-600 bg-amber-50 px-2 py-0.5 rounded';
+            const validClass = log.is_valid ? 'text-emerald-500' : 'text-rose-500';
+            
+            return `
+                <tr>
+                    <td class="font-bold text-slate-700">${log.date}</td>
+                    <td class="text-slate-600 font-semibold">${log.email}</td>
+                    <td><span class="font-bold text-[10px] uppercase tracking-wider ${typeClass}">${log.type}</span></td>
+                    <td class="font-semibold text-slate-700">${timeStr}</td>
+                    <td class="text-slate-600 text-xs font-medium">${log.zone_name}</td>
+                    <td class="font-bold text-xs ${validClass} flex items-center gap-1">
+                        <span>${log.is_valid ? '● Valid' : '⚠ Out of Bounds'}</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error("Admin load error:", err);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-rose-500 py-8 font-bold">Error loading records.</td></tr>';
+    }
 }
 
-// Auto-init if on attendance page
-if (window.location.pathname.includes('attendance.html')) {
-    initAttendance();
+function exportAdminCSV() {
+    if (!currentAdminData || currentAdminData.length === 0) {
+        showNotification('No data to export. Please load data first.', true);
+        return;
+    }
+
+    const headers = ['English Date', 'Email', 'Type', 'Timestamp', 'Zone Name', 'Is Valid'];
+    const csvRows = [headers.join(',')];
+
+    currentAdminData.forEach(log => {
+        const row = [
+            log.date,
+            log.email,
+            log.type,
+            log.timestamp,
+            `"${log.zone_name}"`, 
+            log.is_valid
+        ];
+        csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    
+    const nepYear = document.getElementById('admin-nep-year').value;
+    const nepMonth = document.getElementById('admin-nep-month').value;
+    
+    link.setAttribute('download', `makari_attendance_${nepYear}_${nepMonth}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
+
+if (window.location.pathname.includes('attendance.html')) initAttendance();

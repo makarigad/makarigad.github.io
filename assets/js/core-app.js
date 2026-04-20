@@ -82,7 +82,6 @@ export async function fetchWithTimeout(promise, ms = 8000, retries = 1) {
             clearTimeout(timeoutId);
             lastError = err;
             if (attempt < retries) {
-                // Exponential back-off: 500 ms, 1000 ms, …
                 await new Promise(res => setTimeout(res, 500 * Math.pow(2, attempt)));
             }
         }
@@ -214,24 +213,13 @@ function activateUserUI() {
 
     if (logoutBtn) {
         logoutBtn.classList.remove('hidden');
-        logoutBtn.onclick = async () => {
-            if (!navigator.onLine) {
-                showNotification('You must be online to sign out safely.', true);
-                return;
-            }
-            logoutBtn.textContent = 'Signing out…';
-            logoutBtn.disabled = true;
-            await supabase.auth.signOut();
-            localStorage.removeItem(ROLE_CACHE_KEY);
-            window.location.replace('index.html');
-        };
+        // The click event listener is now handled in the global listener at the bottom
     }
 
     if (headerEmail && currentUser?.email) {
         const displayName = currentUser.email.split('@')[0];
         headerEmail.classList.remove('hidden');
         headerEmail.classList.add('flex');
-        // Update the <span> inside the button
         const span = headerEmail.querySelector('span');
         if (span) span.textContent = displayName;
         else headerEmail.childNodes[headerEmail.childNodes.length - 1].textContent = displayName;
@@ -273,7 +261,6 @@ function handleUnauthenticated(requireAuth) {
         };
     }
 
-    // Redirect only if truly requiring auth and not already on index/signin
     const path = window.location.pathname;
     const onPublicPage = path.endsWith('index.html') || path.endsWith('signin.html') || path === '/';
     if (requireAuth && !onPublicPage) {
@@ -285,7 +272,6 @@ function handleUnauthenticated(requireAuth) {
 // Apply role-based element visibility
 // ============================================================
 function applyRoleBasedUI() {
-    // Hide all role-gated elements first
     document.querySelectorAll('.admin-only, .staff-only').forEach(el => el.classList.add('role-hidden'));
 
     if (userRole === 'admin') {
@@ -336,7 +322,6 @@ function queueForSync(tableName, payload) {
     const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]');
     const items = Array.isArray(payload) ? payload : [payload];
 
-    // Tag items without a real id so they don't overwrite each other
     items.forEach(item => {
         if (!item.id) item.__local_id = `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     });
@@ -353,7 +338,6 @@ export async function processSyncQueue() {
     const queue = JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]');
     if (!queue.length) return;
 
-    // Build a map keyed by "table|id" → keep only the most recent entry
     const latestMap = new Map();
     for (const task of queue) {
         for (const item of task.data) {
@@ -365,7 +349,6 @@ export async function processSyncQueue() {
         }
     }
 
-    // Group deduplicated items by table
     const grouped = {};
     for (const { table, data } of latestMap.values()) {
         (grouped[table] ??= []).push(data);
@@ -384,7 +367,6 @@ export async function processSyncQueue() {
         }
     }
 
-    // Re-queue only items for tables that failed
     const remaining = failedTables.size
         ? queue.filter(t => failedTables.has(t.table))
         : [];
@@ -395,6 +377,101 @@ export async function processSyncQueue() {
         console.info('[processSyncQueue] ✅ All offline data synced successfully.');
     }
 }
+
+// ── SILENT AUTO ATTENDANCE (IN / OUT) ──
+export async function performAutoAttendance(userEmail, actionType) {
+    try {
+        const pos = await new Promise((resolve, reject) => {
+            if (!navigator.geolocation) return reject("Geolocation not supported");
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+            });
+        });
+        const { lat, lng } = pos.coords;
+
+        const { data: zones } = await supabase.from('work_zones').select('*');
+
+        let nearestZone = null;
+        let minDistance = Infinity;
+        let isValid = false;
+
+        const isPointInPolygon = (plat, plng, polygon) => {
+            if (!polygon || polygon.length < 3) return false;
+            let x = plng, y = plat, inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                let xi = polygon[i].lng, yi = polygon[i].lat;
+                let xj = polygon[j].lng, yj = polygon[j].lat;
+                let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        };
+
+        const getDist = (plat, plng, polygon) => {
+            if (!polygon || polygon.length === 0) return Infinity;
+            let cLat = 0, cLng = 0;
+            polygon.forEach(p => { cLat += p.lat; cLng += p.lng; });
+            cLat /= polygon.length; cLng /= polygon.length;
+            const R = 6371e3; 
+            const f1 = plat * Math.PI/180, f2 = cLat * Math.PI/180;
+            const a = Math.sin((f2-f1)/2)**2 + Math.cos(f1) * Math.cos(f2) * Math.sin(((cLng-plng)*Math.PI/180)/2)**2;
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        };
+
+        if (zones) {
+            zones.forEach(zone => {
+                if (isPointInPolygon(lat, lng, zone.coordinates)) {
+                    isValid = true; nearestZone = zone; minDistance = 0;
+                } else if (!isValid) {
+                    let dist = getDist(lat, lng, zone.coordinates);
+                    if (dist < minDistance) { minDistance = dist; nearestZone = zone; }
+                }
+            });
+        }
+
+        const log = {
+            email: userEmail,
+            date: new Date().toISOString().split('T')[0],
+            timestamp: new Date().toISOString(),
+            type: actionType, 
+            lat: lat,
+            lng: lng,
+            zone_id: nearestZone ? nearestZone.id : null,
+            zone_name: nearestZone ? nearestZone.zone_name : 'Unknown',
+            is_valid: isValid,
+            distance: minDistance === Infinity ? null : Math.round(minDistance)
+        };
+
+        await supabase.from('attendance_logs').insert([log]);
+    } catch (err) {
+        console.warn(`Auto Check-${actionType} failed silently:`, err.message);
+    }
+}
+
+// ── GLOBAL LOGOUT LISTENER ──
+// This uses event delegation so it works even after the header is injected
+document.addEventListener('click', async (e) => {
+    const logoutBtn = e.target.closest('#logout-btn');
+    if (!logoutBtn) return;
+
+    e.preventDefault();
+    
+    // 1. Grab user before logging out
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+        logoutBtn.textContent = 'Checking out...';
+        logoutBtn.disabled = true;
+        
+        // 2. Auto Check-Out
+        await performAutoAttendance(user.email, 'OUT');
+    }
+
+    // 3. Log out of Supabase and refresh
+    await supabase.auth.signOut();
+    localStorage.removeItem(ROLE_CACHE_KEY);
+    window.location.href = 'index.html';
+});
 
 // ============================================================
 // Periodic sync every 15 seconds when online

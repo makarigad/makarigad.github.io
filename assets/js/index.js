@@ -1,4 +1,4 @@
-import { supabase, initializeApplication, showNotification, fetchWithTimeout } from './core-app.js';
+import { supabase, initializeApplication, showNotification, fetchWithTimeout, performAutoAttendance } from './core-app.js';
 
 window.currentUserEmail = null;
 window.userRole = 'normal';
@@ -137,6 +137,13 @@ document.getElementById('login-form')?.addEventListener('submit', async (e) => {
         spinner?.classList.add('hidden');
         if (submitBtn) submitBtn.disabled = false;
     } else {
+        // Change text so they know it's loading their location
+        if (btnText) btnText.textContent = 'Checking location...';
+
+        // 👉 TRIGGER AUTO CHECK-IN HERE (Wait for it to finish) 👈
+        await performAutoAttendance(email, 'IN');
+
+        // Now reload the page to apply the login session
         if (btnText) btnText.textContent = 'Redirecting…';
         window.location.reload();
     }
@@ -228,7 +235,6 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
 });
 
 
-// ── Dashboard data loader ──
 // ── Dashboard data loader ──
 async function loadDashboardData() {
     try {
@@ -352,7 +358,6 @@ async function loadDashboardData() {
     }
 }
 
-// ── NEW: NOON TO NOON LOGIC ──
 // ── NOON TO NOON LOGIC ──
 async function fetchNoonToNoonData() {
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));

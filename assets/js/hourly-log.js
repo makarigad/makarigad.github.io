@@ -3047,5 +3047,41 @@ window.deleteSingleFaultEvent = async function(rowId, faultIndex) {
     }
 };
 
+// ── TOGGLE TRANSFORMER SECTION ON EVEN HOURS ──
+document.addEventListener('DOMContentLoaded', () => {
+    const timeSelect = document.getElementById('log-time');
+    const transformerSection = document.getElementById('transformer-section-wrapper');
+
+    function toggleTransformerVisibility() {
+        if (!timeSelect || !transformerSection) return;
+        
+        // Extract the hour (e.g., "02:00:00" becomes 2)
+        const timeValue = timeSelect.value; 
+        const hour = parseInt(timeValue.split(':')[0], 10);
+        
+        // Check if the hour is an even number
+        if (hour % 2 === 0) {
+            // Show section for 0:00, 2:00, 4:00, etc.
+            transformerSection.style.display = 'block';
+        } else {
+            // Hide section for 1:00, 3:00, 5:00, etc.
+            transformerSection.style.display = 'none';
+            
+            // Safety measure: Clear the inputs inside this section when hidden
+            // so we don't accidentally save dirty data to the database on odd hours
+            const inputs = transformerSection.querySelectorAll('input');
+            inputs.forEach(input => input.value = '');
+        }
+    }
+
+    // Listen for changes when the operator selects a new time
+    if (timeSelect) {
+        timeSelect.addEventListener('change', toggleTransformerVisibility);
+        
+        // Run once immediately on page load to set the correct initial state
+        toggleTransformerVisibility();
+    }
+});
+
 // Load thresholds after page starts
 setTimeout(loadThresholds, 1500);

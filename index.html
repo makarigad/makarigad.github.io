@@ -5,212 +5,216 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Command Center | Makari Gad 10MW</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./assets/css/index.css">
+  <style>
+    body { 
+        font-family: 'Plus Jakarta Sans', sans-serif; 
+    }
+    .glass-card {
+        background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 100%);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    }
+    .text-gradient {
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    /* Hide scrollbar for the bottom nav but allow horizontal scroll */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
-<body class="text-slate-800 flex flex-col" style="min-height:100vh;">
+<body class="text-slate-800 h-screen w-screen overflow-hidden flex flex-col bg-slate-50 relative">
 
-  <div id="global-header-container" class="shrink-0 z-50 relative no-print"></div>
+  <div class="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-indigo-100/60 via-indigo-50/20 to-transparent -z-10 pointer-events-none"></div>
 
-  <!-- Admin notice banner for operators -->
-  <div id="index-admin-notice" class="hidden bg-indigo-600 text-white text-sm font-bold px-6 py-2.5 flex items-center gap-3 z-10">
+  <div id="global-header-container" class="shrink-0 z-50 relative no-print bg-white/80 backdrop-blur-md border-b border-slate-200"></div>
+
+  <div id="index-admin-notice" class="hidden bg-gradient-to-r from-indigo-600 to-indigo-800 text-white text-xs font-bold px-6 py-2 flex items-center gap-3 z-10 shadow-sm shrink-0">
     <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
     <span id="index-admin-notice-text"></span>
-    <a href="operator-daily.html#tab-complaints" class="ml-auto text-indigo-200 hover:text-white text-xs font-bold underline shrink-0">Submit Complaint →</a>
+    <a href="operator-daily.html#tab-complaints" class="ml-auto text-indigo-200 hover:text-white underline shrink-0 transition">Submit Complaint →</a>
   </div>
 
-  <main class="flex-grow p-4 md:p-5 lg:p-6 max-w-[1700px] mx-auto w-full flex flex-col gap-5">
+  <main class="flex-grow p-3 md:p-4 lg:p-5 max-w-[1800px] mx-auto w-full flex flex-col min-h-0 gap-4">
 
-    <!-- Top bar: Date & Connection -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <span id="card-update" class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 transition-all duration-300">
-          <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          <span>Date: Loading…</span>
-        </span>
-      </div>
-      <div id="page-conn-bar" class="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl transition-all duration-300">
-        <span id="page-conn-dot" class="live-dot online"></span>
+    <div class="flex flex-wrap items-center justify-between gap-3 shrink-0">
+      <span id="card-update" class="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-indigo-700 bg-white/80 backdrop-blur-sm px-4 py-1.5 rounded-full border border-indigo-100 shadow-sm transition-all duration-300">
+        <svg class="w-3.5 h-3.5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span>Date: Loading…</span>
+      </span>
+      <div id="page-conn-bar" class="flex items-center gap-2 text-[11px] font-extrabold text-emerald-700 bg-white/80 backdrop-blur-sm border border-emerald-100 shadow-sm px-3 py-1.5 rounded-full transition-all duration-300">
+        <span id="page-conn-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
         <span id="page-conn-text">Online</span>
       </div>
     </div>
 
-    <!-- KPI Card -->
-    <div class="grid grid-cols-1 gap-5 flex-grow min-h-0">
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm card-fade flex flex-col overflow-hidden" style="animation-delay:0.05s">
-
-        <!-- Card header -->
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-          <div>
-            <h2 class="text-sm font-black text-slate-800 uppercase tracking-wide">Today's Generation</h2>
-            <p class="text-[10px] text-slate-400 font-medium mt-0.5">Database snapshot · auto-refreshes</p>
-          </div>
-          <span class="w-2 h-2 rounded-full bg-indigo-300 animate-pulse"></span>
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 flex-grow min-h-0">
+      
+      <div class="md:col-span-8 flex flex-col gap-4 min-h-0">
+        
+        <div class="grid grid-cols-2 gap-4 flex-grow min-h-0">
+            <div class="glass-card rounded-3xl p-5 md:p-6 flex flex-col justify-center relative overflow-hidden group hover:border-indigo-300 transition-all duration-500 hover:shadow-lg">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-500"></div>
+                <div class="text-[11px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-1 z-10">Gross Generation</div>
+                <div id="card-gen" class="text-4xl md:text-5xl lg:text-6xl font-black text-indigo-600 text-gradient bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 skeleton-text z-10">—</div>
+                <div class="text-[10px] md:text-xs text-indigo-400 font-bold mt-2 z-10 uppercase tracking-wider">Both units combined</div>
+            </div>
+            
+            <div class="glass-card rounded-3xl p-5 md:p-6 flex flex-col justify-center relative overflow-hidden group hover:border-emerald-300 transition-all duration-500 hover:shadow-lg">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all duration-500"></div>
+                <div class="text-[11px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-1 z-10">Net Export</div>
+                <div id="card-export" class="text-4xl md:text-5xl lg:text-6xl font-black text-emerald-500 text-gradient bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-700 skeleton-text z-10">—</div>
+                <div class="text-[10px] md:text-xs text-emerald-400 font-bold mt-2 z-10 uppercase tracking-wider">To Balanch Substation</div>
+            </div>
         </div>
 
-        <!-- Primary metrics -->
-        <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
-          <div class="p-6 flex flex-col justify-between">
-            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Gross Generation</div>
-            <div id="card-gen" class="text-3xl font-black text-indigo-600 num skeleton-text">—</div>
-            <div class="text-[10px] text-indigo-300 font-bold mt-1 uppercase tracking-wider">Both units combined</div>
-          </div>
-          <div class="p-6 flex flex-col justify-between">
-            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Net Export</div>
-            <div id="card-export" class="text-3xl font-black text-emerald-500 num skeleton-text">—</div>
-            <div class="text-[10px] text-emerald-300 font-bold mt-1 uppercase tracking-wider">To substation</div>
-          </div>
+        <div class="grid grid-cols-4 gap-3 shrink-0">
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-center hover:shadow-md transition-shadow hover:border-indigo-300">
+                <div class="text-[9px] lg:text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Unit 1 Gen</div>
+                <div id="card-u1-gen" class="text-lg lg:text-xl font-black text-slate-800 num">—</div>
+            </div>
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-center hover:shadow-md transition-shadow hover:border-indigo-300">
+                <div class="text-[9px] lg:text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Unit 2 Gen</div>
+                <div id="card-u2-gen" class="text-lg lg:text-xl font-black text-slate-800 num">—</div>
+            </div>
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-center hover:shadow-md transition-shadow hover:border-slate-300">
+                <div class="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Station Cons.</div>
+                <div id="card-station-cons" class="text-lg lg:text-xl font-black text-slate-700 num">—</div>
+            </div>
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-center hover:shadow-md transition-shadow hover:border-emerald-300">
+                <div class="text-[9px] lg:text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1.5">Grid Import</div>
+                <div id="card-import" class="text-lg lg:text-xl font-black text-emerald-700 num">—</div>
+            </div>
         </div>
+      </div>
 
-        <!-- Secondary metrics -->
-        <div class="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
-          <div class="p-5 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-              <svg class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      <div class="md:col-span-4 flex flex-col gap-4 min-h-0">
+         
+         <div class="grid grid-cols-2 gap-3 shrink-0">
+            <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-3 lg:p-4 flex items-center gap-3 hover:bg-blue-50 transition-colors">
+                <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0 shadow-inner">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div>
+                    <div class="text-[9px] lg:text-[10px] font-black text-blue-400 uppercase tracking-widest">Plant Factor</div>
+                    <div id="card-pf" class="text-lg lg:text-xl font-black text-blue-700">—</div>
+                </div>
             </div>
-            <div>
-              <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Plant Factor</div>
-              <div id="card-pf" class="text-2xl font-black text-blue-600 num">—</div>
+            <div class="bg-rose-50/70 border border-rose-100 rounded-2xl p-3 lg:p-4 flex items-center gap-3 hover:bg-rose-50 transition-colors">
+                <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0 shadow-inner">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <div>
+                    <div class="text-[9px] lg:text-[10px] font-black text-rose-400 uppercase tracking-widest">Outages</div>
+                    <div id="card-outages" class="text-lg lg:text-xl font-black text-rose-700">—</div>
+                </div>
             </div>
-          </div>
-          <div class="p-5 flex items-center gap-4">
-            <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
-              <svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            </div>
-            <div>
-              <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Outages</div>
-              <div id="card-outages" class="text-2xl font-black text-rose-500 num">—</div>
-            </div>
-          </div>
-        </div>
+         </div>
 
-        <!-- Runtime & Contract grid -->
-        <div class="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3 flex-grow content-start">
-          <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 hover:border-slate-200 transition">
-            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Unit 1 Runtime</div>
-            <div id="card-u1-hrs" class="text-xl font-black text-slate-700 num">—</div>
-          </div>
-          <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 hover:border-slate-200 transition">
-            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Unit 2 Runtime</div>
-            <div id="card-u2-hrs" class="text-xl font-black text-slate-700 num">—</div>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 hover:border-amber-200 transition">
-            <div class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5">Contract (MCE)</div>
-            <div id="card-mce" class="text-xl font-black text-amber-800 num">—</div>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 rounded-xl p-4 hover:border-amber-200 transition">
-            <div class="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5">Declared (AD)</div>
-            <div id="card-ad" class="text-xl font-black text-amber-800 num">—</div>
-          </div>
-        </div>
+         <div class="grid grid-cols-2 gap-3 flex-grow min-h-0">
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-center items-center text-center shadow-sm hover:border-slate-300 transition-colors">
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">U1 Runtime</div>
+                <div id="card-u1-hrs" class="text-3xl font-black text-slate-800">—</div>
+            </div>
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-center items-center text-center shadow-sm hover:border-slate-300 transition-colors">
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">U2 Runtime</div>
+                <div id="card-u2-hrs" class="text-3xl font-black text-slate-800">—</div>
+            </div>
+         </div>
+
+         <div class="grid grid-cols-2 gap-3 shrink-0 h-[88px]">
+            <div class="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-3 flex flex-col justify-center">
+                <div class="text-[9px] lg:text-[10px] font-black text-amber-600 uppercase tracking-widest mb-0.5">Contract (MCE)</div>
+                <div id="card-mce" class="text-base lg:text-lg font-black text-amber-900">—</div>
+            </div>
+            <div class="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-3 flex flex-col justify-center">
+                <div class="text-[9px] lg:text-[10px] font-black text-amber-600 uppercase tracking-widest mb-0.5">Declared (AD)</div>
+                <div id="card-ad" class="text-base lg:text-lg font-black text-amber-900">—</div>
+            </div>
+         </div>
       </div>
     </div>
 
-    <!-- Quick Navigation (shown after login) -->
-    <div id="quick-nav-section" class="hidden card-fade" style="animation-delay:0.15s">
-      <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Quick Access</div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-        <a href="plant-data.html" class="nav-card bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-indigo-300 hover:shadow-md group no-underline">
-          <div class="w-10 h-10 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition">
-            <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          </div>
-          <div>
-            <div class="text-xs font-black text-slate-800">Data Entry</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Plant daily data</div>
-          </div>
+    <div id="quick-nav-section" class="shrink-0 hidden card-fade mt-1" style="animation-delay:0.15s">
+      <div class="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-2 px-1">
+        
+        <a href="plant-data.html" class="flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-indigo-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-indigo-100 text-indigo-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">Data Entry</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Plant Daily</div></div>
         </a>
 
-        <a href="hourly-log.html" class="nav-card bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-emerald-300 hover:shadow-md group no-underline">
-          <div class="w-10 h-10 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition">
-            <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          </div>
-          <div>
-            <div class="text-xs font-black text-slate-800">Hourly Log</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Shift log sheet</div>
-          </div>
+        <a href="hourly-log.html" class="flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-emerald-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-emerald-100 text-emerald-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">Hourly Log</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Shift Sheet</div></div>
         </a>
 
-        <a href="operator-daily.html" class="nav-card bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-cyan-300 hover:shadow-md group no-underline">
-          <div class="w-10 h-10 bg-cyan-50 border border-cyan-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition">
-            <svg class="w-5 h-5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 11h8M8 15h5M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
-          </div>
-          <div>
-            <div class="text-xs font-black text-slate-800">Operator Daily</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Shift and activity entry</div>
-          </div>
+        <a href="operator-daily.html" class="flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-cyan-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-cyan-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-cyan-100 text-cyan-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 11h8M8 15h5M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">Operator Log</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Shift Entry</div></div>
         </a>
 
-        <a href="inventory.html" class="nav-card bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-violet-300 hover:shadow-md group no-underline">
-          <div class="w-10 h-10 bg-violet-50 border border-violet-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-violet-100 transition">
-            <svg class="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
-          </div>
-          <div>
-            <div class="text-xs font-black text-slate-800">Inventory</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Store, gate pass and fuel</div>
-          </div>
+        <a href="inventory.html" class="flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-violet-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-violet-100 text-violet-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">Inventory</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Store & Fuel</div></div>
         </a>
 
-        <a href="energy-summary.html" class="nav-card staff-only role-hidden bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-teal-300 hover:shadow-md group no-underline">
-          <div class="w-10 h-10 bg-teal-50 border border-teal-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-teal-100 transition">
-            <svg class="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-          </div>
-          <div>
-            <div class="text-xs font-black text-slate-800">Reports</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Energy summary</div>
-          </div>
+        <a href="energy-summary.html" class="staff-only role-hidden flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-teal-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-teal-100 text-teal-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">Reports</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Summary</div></div>
+        </a>
+        
+        <a href="monthly_report.html" class="staff-only role-hidden flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-orange-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-orange-100 text-orange-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">Monthly Rep</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Detailed</div></div>
         </a>
 
-        <a href="nepali-calendar.html" class="nav-card admin-only role-hidden bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-amber-300 hover:shadow-md group no-underline">
-          <div class="w-10 h-10 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-amber-100 transition">
-            <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          </div>
-          <div>
-            <div class="text-xs font-black text-slate-800">Calendar</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Nepali calendar</div>
-          </div>
+        <a href="ad-prediction.html" class="staff-only role-hidden flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-blue-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-blue-100 text-blue-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">AD Predict</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Forecast</div></div>
         </a>
 
-        <a href="user-management.html" class="nav-card admin-only role-hidden bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3 hover:border-red-300 hover:shadow-md group no-underline">
-          <div class="w-10 h-10 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-red-100 transition">
-            <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-          </div>
-          <div>
-            <div class="text-xs font-black text-slate-800">Users</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Team management</div>
-          </div>
+        <a href="attendance.html" class="admin-only role-hidden flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-pink-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-pink-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-pink-100 text-pink-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">Attendance</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Staff Base</div></div>
         </a>
 
+        <a href="nepali-calendar.html" class="admin-only role-hidden flex-none min-w-[140px] bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center gap-2.5 hover:border-amber-400 hover:shadow-md transition group no-underline">
+          <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-amber-100 text-amber-600 transition"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+          <div><div class="text-[11px] font-black text-slate-800 leading-none mb-1">Calendar</div><div class="text-[8px] text-slate-400 uppercase tracking-widest font-bold">Nepali DB</div></div>
+        </a>
       </div>
     </div>
   </main>
 
   <div id="global-footer-container" class="shrink-0 no-print"></div>
 
-  <!-- Login Modal -->
   <div id="login-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-10 w-full max-w-sm relative transform transition-all scale-100">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-10 w-full max-w-sm relative transform transition-all scale-100 border border-indigo-100">
       <button onclick="document.getElementById('login-modal').classList.add('hidden'); document.getElementById('login-modal').classList.remove('flex');" class="absolute top-4 right-5 text-3xl text-slate-400 hover:text-slate-600 leading-none" aria-label="Close">&times;</button>
-      <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg mx-auto mb-6 select-none">M</div>
-      <h2 class="text-2xl font-black text-slate-900 mb-8 text-center">System Login</h2>
+      <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg shadow-indigo-200 mx-auto mb-6 select-none">M</div>
+      <h2 class="text-2xl font-black text-slate-900 mb-8 text-center tracking-tight">System Login</h2>
       <form id="login-form" class="space-y-5">
         <div>
-          <label for="login-email" class="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Email</label>
-          <input type="email" id="login-email" required autocomplete="email"
-            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition" />
+          <label for="login-email" class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Email Address</label>
+          <input type="email" id="login-email" required autocomplete="email" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition" />
         </div>
         <div>
-          <label for="login-password" class="block text-[11px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Password</label>
+          <label for="login-password" class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Password</label>
           <div class="relative">
-            <input type="password" id="login-password" required autocomplete="current-password"
-              class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition pr-16" />
-            <button type="button" id="lm-toggle-pw" tabindex="-1" aria-label="Toggle password visibility"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 hover:text-indigo-600 transition uppercase tracking-wider px-2 py-1">Show</button>
+            <input type="password" id="login-password" required autocomplete="current-password" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition pr-16" />
+            <button type="button" id="lm-toggle-pw" tabindex="-1" aria-label="Toggle password visibility" class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 hover:text-indigo-600 transition uppercase tracking-wider px-2 py-1">Show</button>
           </div>
         </div>
         <div id="login-error" class="text-rose-600 text-xs font-bold hidden text-center bg-rose-50 p-3 rounded-lg border border-rose-100" role="alert"></div>
-        <button type="submit" id="login-submit-btn" class="w-full py-3.5 mt-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black rounded-xl shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5 text-sm uppercase tracking-wide flex items-center justify-center gap-2">
+        <button type="submit" id="login-submit-btn" class="w-full py-3.5 mt-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black rounded-xl shadow-lg hover:shadow-indigo-500/30 transition transform hover:-translate-y-0.5 text-sm uppercase tracking-widest flex items-center justify-center gap-2">
           <span id="login-btn-text">Authenticate</span>
           <svg id="login-spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -221,12 +225,11 @@
     </div>
   </div>
 
-  <!-- Profile Modal -->
   <div id="profile-modal" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
-    <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-slate-200 relative max-h-[90vh] overflow-y-auto custom-scroll">
+    <div class="bg-white p-6 md:p-8 rounded-3xl shadow-xl w-full max-w-md border border-slate-200 relative max-h-[90vh] overflow-y-auto custom-scroll">
       <button onclick="document.getElementById('profile-modal').classList.add('hidden'); document.getElementById('profile-modal').classList.remove('flex');" class="absolute top-4 right-5 text-3xl text-slate-400 hover:text-slate-600 leading-none" aria-label="Close profile">&times;</button>
-      <h2 class="text-2xl font-black text-indigo-900 mb-6 flex items-center gap-2">
-        <svg class="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <h2 class="text-2xl font-black text-indigo-900 mb-6 flex items-center gap-2 tracking-tight">
+        <svg class="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
         My Profile
       </h2>
       <form id="profile-form" class="space-y-4">
@@ -234,58 +237,46 @@
           You are offline. Profile edits and password changes require an internet connection.
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Email Address <span class="text-rose-500 lowercase font-normal">(Cannot be changed)</span></label>
-          <input type="email" id="prof-email" class="w-full border border-slate-200 bg-slate-100 text-slate-500 font-bold rounded-lg p-2.5 text-sm cursor-not-allowed" readonly>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Email Address <span class="text-rose-500 lowercase font-normal tracking-normal">(Cannot be changed)</span></label>
+          <input type="email" id="prof-email" class="w-full border border-slate-200 bg-slate-100 text-slate-500 font-bold rounded-xl p-3 text-sm cursor-not-allowed" readonly>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name <span class="text-rose-500 lowercase font-normal">(Contact Admin to change)</span></label>
-          <input type="text" id="prof-name" class="w-full border border-slate-200 bg-slate-100 text-slate-500 font-bold rounded-lg p-2.5 text-sm cursor-not-allowed" readonly>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Full Name <span class="text-rose-500 lowercase font-normal tracking-normal">(Contact Admin to change)</span></label>
+          <input type="text" id="prof-name" class="w-full border border-slate-200 bg-slate-100 text-slate-500 font-bold rounded-xl p-3 text-sm cursor-not-allowed" readonly>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Position / Title</label>
-            <input type="text" id="prof-position" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Position</label>
+            <input type="text" id="prof-position" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition font-medium">
           </div>
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phone Number</label>
-            <input type="tel" id="prof-phone" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Phone</label>
+            <input type="tel" id="prof-phone" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition font-medium">
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date of Birth</label>
-            <input type="date" id="prof-dob" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
-          </div>
-          <div>
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Company</label>
-            <input type="text" id="prof-company" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
-          </div>
+        <div class="my-4 border-t border-slate-100 pt-5">
+          <label class="block text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-1.5">Change Password <span class="text-slate-400 lowercase font-normal tracking-normal">(Leave blank to keep current)</span></label>
+          <input type="password" id="prof-password" autocomplete="new-password" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition font-medium" placeholder="New password (min 6 chars)">
         </div>
-        <div class="my-4 border-t border-slate-200 pt-4">
-          <label class="block text-[10px] font-bold text-indigo-600 uppercase mb-1">Change Password <span class="text-slate-400 lowercase font-normal">(Leave blank to keep current)</span></label>
-          <input type="password" id="prof-password" autocomplete="new-password"
-            class="w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition" placeholder="New password (min 6 chars)">
-        </div>
-        <button type="submit" id="save-prof-btn" class="w-full bg-indigo-600 text-white font-bold py-3 mt-2 rounded-xl shadow hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed uppercase tracking-widest text-sm">Save Profile Changes</button>
+        <button type="submit" id="save-prof-btn" class="w-full bg-indigo-600 text-white font-black py-3.5 mt-2 rounded-xl shadow-lg hover:shadow-indigo-500/30 hover:bg-indigo-700 transition transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed uppercase tracking-widest text-sm">Save Profile Changes</button>
       </form>
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div id="notification-modal" class="fixed top-5 right-5 z-[200] opacity-0 -translate-y-4 transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-xl border-l-4 px-5 py-4" style="border-left-color:#10b981;" role="status" aria-live="polite">
+  <div id="notification-modal" class="fixed top-5 right-5 z-[200] opacity-0 -translate-y-4 transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-2xl border-l-4 border-emerald-500 px-5 py-4" role="status" aria-live="polite">
     <p id="notification-message" class="text-sm font-bold text-slate-700"></p>
   </div>
 
   <script type="module" src="./assets/js/index.js"></script>
   <script>
-    // Toggle password visibility (login modal)
+    // Toggle password visibility
     document.getElementById('lm-toggle-pw').addEventListener('click', function() {
       const i = document.getElementById('login-password');
       const isHidden = i.type === 'password';
       i.type = isHidden ? 'text' : 'password';
       this.textContent = isHidden ? 'Hide' : 'Show';
     });
-    // Show login modal as flex when opened
+    // Open login modal
     document.getElementById('login-btn') && document.getElementById('login-btn').addEventListener('click', function() {
       const m = document.getElementById('login-modal');
       m.classList.remove('hidden');

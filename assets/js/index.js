@@ -228,17 +228,25 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
 });
 
 // ── Dashboard data loader ──
+// ── Dashboard data loader ──
+// ── Dashboard data loader ──
 async function loadDashboardData() {
     try {
         const nepalNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
         const CUTOFF_HOUR = 12;
 
+        // Determine what "Today" should be based on the 12:00 PM cutoff
         const displayDate = new Date(nepalNow);
-        if (nepalNow.getHours() < CUTOFF_HOUR) displayDate.setDate(displayDate.getDate() - 1);
+        if (nepalNow.getHours() < CUTOFF_HOUR) {
+            displayDate.setDate(displayDate.getDate() - 1);
+        }
 
         const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const todayStr     = fmt(displayDate);
-        const yesterday    = new Date(nepalNow); yesterday.setDate(yesterday.getDate() - 1);
+        const todayStr = fmt(displayDate);
+        
+        // FIX: Calculate yesterday relative to the displayDate, NOT nepalNow
+        const yesterday = new Date(displayDate); 
+        yesterday.setDate(displayDate.getDate() - 1);
         const yesterdayStr = fmt(yesterday);
 
         if (!navigator.onLine) throw new Error('Offline');
@@ -284,10 +292,15 @@ async function loadDashboardData() {
         ]);
 
         let grossGen = 0, netExport = 0;
+        let u1 = 0, u2 = 0, stationCons = 0, gridImport = 0;
 
         if (todayData && prevData) {
-            const u1 = Math.max(0, (todayData.unit1_gen ?? 0) - (prevData.unit1_gen ?? 0));
-            const u2 = Math.max(0, (todayData.unit2_gen ?? 0) - (prevData.unit2_gen ?? 0));
+            // New granular values based on daily cumulatives
+            u1 = Math.max(0, (todayData.unit1_gen ?? 0) - (prevData.unit1_gen ?? 0));
+            u2 = Math.max(0, (todayData.unit2_gen ?? 0) - (prevData.unit2_gen ?? 0));
+            stationCons = Math.max(0, (todayData.station_trans ?? 0) - (prevData.station_trans ?? 0));
+            gridImport = Math.max(0, (todayData.import_substation ?? 0) - (prevData.import_substation ?? 0));
+            
             grossGen = u1 + u2;
             netExport = Math.max(0, (todayData.export_substation ?? 0) - (prevData.export_substation ?? 0));
 
@@ -304,10 +317,20 @@ async function loadDashboardData() {
         const grossMWh  = toMWh(grossGen);
         const exportMWh = toMWh(netExport);
         const plantFactor = (grossMWh / 240) * 100;   // 240 = 10 MW × 24 h
+        
+        const u1MWh = toMWh(u1);
+        const u2MWh = toMWh(u2);
 
         setText('card-gen',    grossMWh  > 0 ? grossMWh.toLocaleString('en-US',  { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-export', exportMWh > 0 ? exportMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-pf',     grossMWh  > 0 ? plantFactor.toFixed(1) + '%' : '0.0%');
+        
+        // Detailed Values 
+        setText('card-u1-gen', u1MWh > 0 ? u1MWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
+        setText('card-u2-gen', u2MWh > 0 ? u2MWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
+        setText('card-station-cons', stationCons > 0 ? stationCons.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kWh' : '0.0 kWh');
+        setText('card-import', gridImport > 0 ? gridImport.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
+
 
         // Outages
         const { data: oData } = await fetchWithTimeout(
@@ -337,10 +360,12 @@ async function loadDashboardData() {
             badge.classList.replace('bg-indigo-50', 'bg-amber-50');
             badge.classList.replace('border-indigo-100', 'border-amber-200');
         }
-        ['card-gen', 'card-export', 'card-pf', 'card-outages', 'card-u1-hrs', 'card-u2-hrs', 'card-mce', 'card-ad']
+        // Set all to fallback
+        ['card-gen', 'card-export', 'card-pf', 'card-outages', 'card-u1-hrs', 'card-u2-hrs', 'card-mce', 'card-ad', 'card-u1-gen', 'card-u2-gen', 'card-station-cons', 'card-import']
             .forEach(id => setText(id, '—'));
     }
 }
+
 
 function setText(id, value) {
     const el = document.getElementById(id);

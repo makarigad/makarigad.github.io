@@ -3,758 +3,970 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AD Prediction Engine v10.1 – Makari Gad</title>
+<title>Makari Gad – AD Engine v5.1 (Live DB & Strategy)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #f8fafc; --panel: #ffffff; --border: #e2e8f0;
-    --accent: #4f46e5; --accent-hover: #4338ca; --accent-light: #e0e7ff;
-    --text: #1e293b; --muted: #64748b; --green: #10b981; --warn: #f59e0b; --danger: #ef4444;
-  }
-  body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; min-height: 100vh; }
-  .font-syne { font-family: 'Syne', sans-serif; }
-  .mono { font-family: 'IBM Plex Mono', monospace; }
+:root{--bg:#f0f4f8;--panel:#fff;--border:#dde3ec;--acc:#2563eb;--acc2:#0891b2;--grn:#059669;--amb:#d97706;--red:#dc2626;--txt:#1e293b;--mut:#64748b;}
+*{box-sizing:border-box;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--txt);margin:0;font-size:13px;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);display:block;margin-bottom:3px;}
+select,input{width:100%;background:#f8fafc;border:1.5px solid #c8d3e0;border-radius:6px;padding:.45rem .65rem;font-size:.82rem;font-weight:600;color:#1e293b;font-family:inherit;outline:none;transition:border .15s,box-shadow .15s;}
+select:focus,input:focus{border-color:var(--acc);box-shadow:0 0 0 3px #dbeafe;}
+input[readonly]{background:#edf0f4;color:#94a3b8;cursor:default;}
+input[type=range] { padding: 0; border: none; background: transparent; cursor: pointer; }
+.card{background:var(--panel);border-radius:10px;box-shadow:0 1px 5px rgba(0,0,0,.07);border:1.5px solid var(--border);padding:.9rem;}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);overflow-x:auto;}
+.tb{padding:.45rem .85rem;font-size:.72rem;font-weight:700;cursor:pointer;border:none;background:none;color:var(--mut);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;letter-spacing:.05em;text-transform:uppercase;transition:all .12s;}
+.tb.active{color:var(--acc);border-bottom-color:var(--acc);}
+.tp{display:none;}.tp.active{display:block;}
+.badge{display:inline-block;font-size:.6rem;font-weight:700;padding:1px 7px;border-radius:99px;}
+.bg{background:#d1fae5;color:#065f46;}.bb{background:#dbeafe;color:#1e40af;}
+.ba{background:#fef3c7;color:#92400e;}.br{background:#fee2e2;color:#991b1b;}
+.bs{background:#f1f5f9;color:#475569;}.bp{background:#ede9fe;color:#5b21b6;}
+.kl{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);}
+.kv{font-size:1.45rem;font-weight:700;line-height:1.1;}
+.scroll-y{overflow-y:auto;max-height:460px;}
+.tbl{width:100%;border-collapse:collapse;font-size:.76rem;}
+.tbl th{padding:.5rem .45rem;text-align:left;font-size:.62rem;color:var(--mut);border-bottom:2px solid var(--border);text-transform:uppercase;font-weight:700;}
+.tbl td{padding:.45rem .45rem;border-bottom:1px solid #f1f5f9;vertical-align:top;}
+.tbl tr:hover td{background:#f8fafc;}
+.sbar{height:10px;background:#e2e8f0;border-radius:99px;position:relative;overflow:visible;}
+.sfill{height:100%;border-radius:99px;transition:width .4s;}
+.sm{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;transform:translateX(-50%);}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
 
-  .card { background: var(--panel); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 1.25rem; border: 1px solid var(--border); }
-  
-  label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; display: block; letter-spacing: 0.05em; }
-  select, input[type=number] { width: 100%; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.6rem; font-size: 0.875rem; font-weight: 600; color: #334155; outline: none; transition: all 0.2s; }
-  select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
-  input[readonly] { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+/* SCADA signal colors */
+.sig-rising{color:#059669;}.sig-falling{color:#dc2626;}.sig-stable{color:#64748b;}
+.sig-warn{color:#d97706;}
 
-  .btn-primary { width: 100%; background: var(--accent); color: white; font-weight: 700; border: none; border-radius: 8px; padding: 0.75rem; cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
-  .btn-primary:hover { background: var(--accent-hover); }
-  .btn-success { width: 100%; background: var(--green); color: white; font-weight: 700; border: none; border-radius: 8px; padding: 0.75rem; cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
-  .btn-success:hover { background: #059669; }
+/* Calculation log */
+.calc-block{background:#f8fafc;border:1px solid #dde3ec;border-radius:8px;padding:.75rem;margin-bottom:.75rem;font-size:.75rem;line-height:1.7;}
+.calc-block .head{font-weight:700;font-size:.8rem;color:#1e293b;border-bottom:1px solid #dde3ec;padding-bottom:.4rem;margin-bottom:.5rem;}
+.calc-row{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;}
+.calc-row .key{color:var(--mut);}
+.calc-row .val{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.calc-formula{background:#1e293b;color:#e2e8f0;font-family:'IBM Plex Mono',monospace;font-size:.7rem;padding:.4rem .6rem;border-radius:5px;margin-top:.4rem;}
+.calc-result{font-weight:700;font-size:.85rem;color:#2563eb;margin-top:.4rem;}
+.warn-box{background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:.5rem .7rem;color:#92400e;font-size:.75rem;}
+.info-box{background:#dbeafe;border:1px solid #bfdbfe;border-radius:6px;padding:.5rem .7rem;color:#1e40af;font-size:.75rem;}
 
-  .tab-group { display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin-bottom: 1rem; overflow-x: auto; padding-bottom: 2px; }
-  .tab { padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; text-transform: uppercase; white-space: nowrap; transition: all 0.2s;}
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-
-  .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  .data-table th { padding: 0.75rem 0.5rem; text-align: left; font-size: 0.7rem; color: var(--muted); border-bottom: 2px solid var(--border); text-transform: uppercase; font-weight: 700; }
-  .data-table td { padding: 0.6rem 0.5rem; border-bottom: 1px solid #f1f5f9; }
-  .data-table tr:hover td { background: #f8fafc; }
-  
-  .scroll-box { overflow-x: auto; max-height: 500px; overflow-y: auto; }
-  .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-  .forecast-card { flex: 0 0 75px; text-align: center; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-  .dot-green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+/* Snow modal */
+#snow-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;}
+.snow-opt{border:2px solid var(--border);border-radius:10px;padding:.8rem 1rem;cursor:pointer;transition:all .15s;text-align:center;}
+.snow-opt:hover,.snow-opt.sel{border-color:var(--acc);background:#eff6ff;}
 </style>
 </head>
 <body>
 
-<header class="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
-    <div>
-        <h1 class="font-syne text-xl font-bold flex items-center gap-3">
-            <i class="fa-solid fa-water text-indigo-400"></i> Makari Gad Prediction Engine v10.1
-        </h1>
-        <p class="text-slate-400 text-xs mt-1">Bug-Free Build: Weather, Pattern Matching & Multi-Year Trends Included</p>
+<div id="snow-modal" style="display: none;">
+  <div class="card" style="max-width:480px;width:95%;">
+    <div class="font-bold text-base text-slate-800 mb-1">❄️ Snow Cover in Catchment (4200m+)</div>
+    <p class="text-xs text-slate-500 mb-4">You can visually see this from the plant. Snow affects snowmelt contribution to river flow — critical for Baisakh/Jestha prediction.</p>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="snow-opt" onclick="setSnow('none',this)">
+        <div class="text-2xl mb-1">🏔️</div>
+        <div class="font-bold text-slate-700 text-sm">None / Bare</div>
+        <div class="text-xs text-slate-500">No visible snow</div>
+      </div>
+      <div class="snow-opt" onclick="setSnow('sparse',this)">
+        <div class="text-2xl mb-1">🌨️</div>
+        <div class="font-bold text-slate-700 text-sm">Sparse</div>
+        <div class="text-xs text-slate-500">Patches in valleys</div>
+      </div>
+      <div class="snow-opt" onclick="setSnow('moderate',this)">
+        <div class="text-2xl mb-1">❄️</div>
+        <div class="font-bold text-slate-700 text-sm">Moderate</div>
+        <div class="text-xs text-slate-500">Good coverage on peaks</div>
+      </div>
+      <div class="snow-opt" onclick="setSnow('full',this)">
+        <div class="text-2xl mb-1">🌨️❄️</div>
+        <div class="font-bold text-slate-700 text-sm">Full</div>
+        <div class="text-xs text-slate-500">Complete snow cover</div>
+      </div>
     </div>
-    <div id="db-status" class="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 text-emerald-400">
-        <i class="fa-solid fa-database"></i> Engine Ready
-    </div>
+    <button id="snow-ok" onclick="confirmSnow()" disabled class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">
+      Confirm Snow Level & Start Analysis
+    </button>
+  </div>
+</div>
+
+<header class="bg-slate-900 text-white px-5 py-3 flex justify-between items-center sticky top-0 z-40 shadow-lg">
+  <div>
+    <div class="font-bold flex items-center gap-2"><i class="fa-solid fa-water text-cyan-400"></i> Makari Gad AD Engine v5.1</div>
+    <div class="text-slate-400 text-[11px]">Live DB Sync · Meter Logic · Historical Scenarios</div>
+  </div>
+  <div class="flex gap-2 items-center flex-wrap">
+    <div id="today-chip" class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] font-bold text-cyan-400"></div>
+    <div id="scada-chip" class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] font-semibold text-slate-400">Trend: Loading…</div>
+    <div id="db-chip"    class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] font-semibold text-slate-400">DB: Offline</div>
+  </div>
 </header>
 
-<main class="p-6 max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
-    
-    <div class="xl:col-span-1 flex flex-col gap-5">
-        
-        <div class="card">
-            <h2 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4"><i class="fa-regular fa-calendar text-indigo-500 mr-1"></i> Target Period</h2>
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <div><label>Month</label><select id="sel-month"></select></div>
-                <div><label>Year</label><select id="sel-year"></select></div>
-            </div>
-            <div>
-                <label>Target Week</label>
-                <select id="sel-week">
-                    <option value="1">Week 1 (Days 1-7)</option>
-                    <option value="2">Week 2 (Days 8-14)</option>
-                    <option value="3" selected>Week 3 (Days 15-21)</option>
-                    <option value="4">Week 4 (Days 22-28)</option>
-                    <option value="5">Week 5 (Remaining)</option>
-                </select>
-            </div>
-            <button id="btn-sync" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg mt-3 text-sm transition" onclick="triggerDatabaseSync()">
-                <i class="fa-solid fa-cloud-arrow-down"></i> Sync Substation DB
-            </button>
-        </div>
+<main class="p-4 max-w-[1680px] mx-auto grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-4 items-start">
 
-        <div class="card bg-slate-50 border-slate-200">
-            <h2 class="text-sm font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4"><i class="fa-solid fa-file-contract text-indigo-500 mr-1"></i> PPA Constraints</h2>
-            <div class="space-y-3 mb-3">
-                <div><label>PPA Energy (MWh)</label><input type="number" id="ppa-energy" value="7299.07" readonly></div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div><label>PPA Days</label><input type="number" id="ppa-days" value="32" readonly></div>
-                    <div><label class="text-indigo-600">Actual Days</label><input type="number" id="actual-days" value="32"></div>
-                </div>
-            </div>
-            <div class="bg-indigo-100 text-indigo-800 p-2 rounded-md text-xs font-bold flex justify-between items-center mt-3">
-                <span>Strict Daily Base:</span>
-                <span id="txt-daily-base" class="text-sm">-- MWh/day</span>
-            </div>
-        </div>
+<div class="flex flex-col gap-3">
 
-        <div class="card">
-            <h2 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 mb-4"><i class="fa-solid fa-bolt text-amber-500 mr-1"></i> Actual Generation Log</h2>
-            <div class="grid grid-cols-2 gap-3">
-                <div><label>W1 Actual</label><input type="number" id="w1-actual" placeholder="—" class="mono"></div>
-                <div><label>W2 Actual</label><input type="number" id="w2-actual" placeholder="—" class="mono"></div>
-                <div><label>W3 Actual</label><input type="number" id="w3-actual" placeholder="—" class="mono"></div>
-                <div><label>W4 Actual</label><input type="number" id="w4-actual" placeholder="—" class="mono"></div>
-            </div>
-            <div class="mt-3">
-                <label>W5 Actual</label><input type="number" id="w5-actual" placeholder="—" class="mono">
-            </div>
-        </div>
-
-        <button id="btn-run" class="btn-primary py-4 text-lg shadow-lg" onclick="runEngine()">
-            <i class="fa-solid fa-calculator"></i> Run Hydro Engine
-        </button>
+  <div class="card">
+    <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa-regular fa-calendar text-blue-500"></i> Analysis Month</div>
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <div><label>Month</label><select id="sel-month"></select></div>
+      <div><label>Year</label><select id="sel-year"></select></div>
     </div>
+    <button onclick="loadAndAnalyse()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-2 transition mt-1">
+      <i class="fa-solid fa-cloud-arrow-down"></i> Load Live DB & Analyse
+    </button>
+  </div>
 
-    <div class="xl:col-span-3 flex flex-col gap-5">
-        
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="card text-center py-4"><div class="kpi-label">Contract Cap (Prorated)</div><div id="kpi-cap" class="kpi-val text-slate-700 font-syne">--</div></div>
-            <div class="card text-center py-4 border-indigo-200 bg-indigo-50"><div class="kpi-label text-indigo-500">Predicted Month AD</div><div id="kpi-pred" class="kpi-val text-indigo-700 font-syne">--</div></div>
-            <div class="card text-center py-4"><div class="kpi-label">River Status</div><div id="kpi-river" class="kpi-val font-syne">--</div></div>
-            <div class="card text-center py-4"><div class="kpi-label">Best Match Year</div><div id="kpi-match" class="kpi-val text-emerald-600 font-syne">--</div></div>
+  <div class="card">
+    <div class="text-xs font-bold text-slate-700 mb-2">PPA Configuration</div>
+    <div class="space-y-2">
+      <div><label>Total Monthly AD (MWh)</label><input id="ppa-ad" class="mono" readonly></div>
+      <div><label>Contract Energy (MWh)</label><input id="ppa-ce" class="mono" readonly></div>
+      <div><label>PPA Rate (NPR/MWh)</label><input id="ppa-rate" value="6554" class="mono"></div>
+    </div>
+  </div>
+
+  <div class="card border-cyan-200 bg-cyan-50/20">
+    <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2">
+      <i class="fa-solid fa-signal text-cyan-500"></i> Active Plant Trend
+    </div>
+    <div id="scada-signal-panel" class="space-y-1.5 text-xs">
+      <div class="text-slate-400 italic">Loading live data from Supabase…</div>
+    </div>
+  </div>
+
+  <div class="card border-indigo-200">
+    <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa-solid fa-sliders text-indigo-500"></i> Prediction Blending</div>
+    <div class="text-[10px] text-slate-500 mb-1 flex justify-between"><span>Current Trend</span><span>Historical Data</span></div>
+    <input type="range" id="hist-weight" min="0" max="100" value="35" class="w-full mb-1" oninput="document.getElementById('hist-val').innerText = this.value + '%'">
+    <div class="text-[10px] text-slate-400 text-center">Using <span id="hist-val" class="font-bold text-indigo-600">35%</span> Historical Seasonal Shape</div>
+  </div>
+
+  <div class="card border-blue-200">
+    <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa-solid fa-snowflake text-blue-400"></i> Snow Cover</div>
+    <div id="snow-display" class="text-sm font-bold text-slate-600">Not set yet</div>
+    <button onclick="document.getElementById('snow-modal').style.display='flex'" class="mt-2 text-xs text-blue-600 underline cursor-pointer">Change snow level</button>
+  </div>
+
+  <button id="btn-run" onclick="runEngine()"
+    class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition shadow mt-2">
+    <i class="fa-solid fa-calculator"></i> Run Full Prediction
+  </button>
+</div>
+
+<div class="flex flex-col gap-4">
+
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div class="card text-center py-2">
+      <div class="kl">Monthly AD</div>
+      <div id="k-ad" class="kv mono text-slate-700">—</div>
+      <div class="text-[10px] text-slate-400">MWh</div>
+    </div>
+    <div class="card text-center py-2 bg-rose-50 border-rose-200">
+      <div class="kl text-rose-600">Min (90%)</div>
+      <div id="k-min" class="kv mono text-rose-600">—</div>
+      <div class="text-[10px] text-rose-400">MWh monthly floor</div>
+    </div>
+    <div class="card text-center py-2 bg-blue-50 border-blue-200">
+      <div class="kl text-blue-600">Projected Total</div>
+      <div id="k-proj" class="kv mono text-blue-700">—</div>
+      <div class="text-[10px] text-blue-400">MWh</div>
+    </div>
+    <div class="card text-center py-2 bg-emerald-50 border-emerald-200">
+      <div class="kl text-emerald-600">Actual to Date</div>
+      <div id="k-actual" class="kv mono text-emerald-700">—</div>
+      <div class="text-[10px] text-emerald-400">MWh (confirmed)</div>
+    </div>
+    <div class="card text-center py-2">
+      <div class="kl">NPR Impact</div>
+      <div id="k-npr" class="kv text-slate-600 text-lg">—</div>
+      <div id="k-npr-l" class="text-[10px] text-slate-400">projected</div>
+    </div>
+  </div>
+
+  <div class="card py-2 px-4">
+    <div class="flex justify-between text-[10px] font-bold mb-1">
+      <span class="text-rose-500">PENALTY &lt;90%</span>
+      <span id="sbar-l" class="text-slate-500">Run engine to see progress</span>
+      <span class="text-amber-500">EXCESS &gt;AD</span>
+    </div>
+    <div class="sbar">
+      <div id="sfill" class="sfill bg-slate-300" style="width:0%"></div>
+      <div class="sm bg-rose-400" style="left:90%"></div>
+      <div class="sm bg-orange-400" style="left:100%"></div>
+    </div>
+    <div class="flex justify-between text-[10px] text-slate-400 mt-0.5"><span>0%</span><span>90% floor</span><span>100% AD</span></div>
+  </div>
+
+  <div class="card p-0 overflow-hidden">
+    <div class="px-4 pt-3">
+      <div class="tabs">
+        <button class="tb active" onclick="showTab('t-weeks',this)">📅 Weeks vs AD</button>
+        <button class="tb text-blue-700" onclick="showTab('t-hist',this)">📈 Strategy & Scenarios</button>
+        <button class="tb" onclick="showTab('t-scada',this)">📡 Current Trend</button>
+        <button class="tb" onclick="showTab('t-daily',this)">📋 Daily Log</button>
+        <button class="tb" onclick="showTab('t-calc',this)">🔢 Calc Detail</button>
+        <button class="tb" onclick="showTab('t-weather',this)">🌦 Weather</button>
+        <button class="tb" onclick="showTab('t-fin',this)">💰 Financial</button>
+      </div>
+    </div>
+    <div class="p-4">
+
+      <div id="t-weeks" class="tp active">
+        <div id="weeks-ph" class="text-center py-12 text-slate-400">
+          <i class="fa-solid fa-calendar-days text-4xl text-slate-200 mb-3"></i>
+          <p class="font-semibold">Select month, load data, then Run Full Prediction</p>
         </div>
-
-        <div class="card flex-grow flex flex-col p-0 overflow-hidden min-h-[550px]">
-            <div class="px-5 pt-4">
-                <div class="tab-group" id="tabs">
-                    <div class="tab active" onclick="switchTab('tab-report')"><i class="fa-solid fa-robot mr-1"></i> Engine Report</div>
-                    <div class="tab" onclick="switchTab('tab-weekly')"><i class="fa-solid fa-scale-balanced mr-1"></i> Weekly Balancer & Save</div>
-                    <div class="tab" onclick="switchTab('tab-weather')"><i class="fa-solid fa-cloud-sun-rain mr-1"></i> Hourly Hydro-Weather</div>
-                    <div class="tab" onclick="switchTab('tab-hist')"><i class="fa-solid fa-table mr-1"></i> Historical DB</div>
-                    <div class="tab" onclick="switchTab('tab-pattern')"><i class="fa-solid fa-wave-square mr-1"></i> Pattern Match</div>
-                    <div class="tab" onclick="switchTab('tab-chart')"><i class="fa-solid fa-chart-line mr-1"></i> Multi-Year Trends</div>
-                </div>
-            </div>
-
-            <div class="px-5 pb-5 flex-grow overflow-hidden relative">
-                
-                <div id="tab-report" class="tab-panel active h-full flex flex-col gap-4">
-                    <div id="narrative-report" class="bg-slate-50 border border-slate-200 rounded-lg p-5 text-sm text-slate-700 leading-relaxed shadow-inner">
-                        Click "Run Hydro Engine" to generate analysis based on Groundwater and Temperature modeling.
-                    </div>
-                    <div class="flex-grow min-h-[300px] relative w-full">
-                        <canvas id="report-chart"></canvas>
-                    </div>
-                </div>
-
-                <div id="tab-weekly" class="tab-panel scroll-box">
-                    <table class="data-table">
-                        <thead class="bg-slate-50">
-                            <tr>
-                                <th>Week</th> <th>Days</th> <th>Baseline AD</th> <th>Actual Logged</th> <th>Deviation</th> <th>Hydro Adj.</th>
-                                <th class="text-indigo-600 bg-indigo-50">FINAL AD TARGET</th>
-                            </tr>
-                        </thead>
-                        <tbody id="weekly-body"></tbody>
-                        <tfoot class="bg-slate-50 font-bold border-t-2 border-slate-200">
-                            <tr>
-                                <td class="text-slate-800">MONTH TOTAL</td> <td id="wt-days" class="mono">--</td> <td id="wt-base" class="mono">--</td> <td id="wt-act" class="mono">--</td> <td id="wt-dev" class="mono">--</td> <td>—</td>
-                                <td id="wt-final" class="mono text-indigo-700 bg-indigo-50 text-base">--</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-
-                    <div class="mt-6 border-t border-slate-200 pt-6">
-                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
-                            <div>
-                                <h3 class="font-bold text-amber-800"><i class="fa-solid fa-database mr-2"></i> Save Predictions to Database</h3>
-                                <p class="text-xs text-amber-700 mt-1">This will update the <code>contract_energy</code> table for the selected month/year. The Contract Energy limit will remain untouched.</p>
-                            </div>
-                            <button id="btn-save-db" class="btn-success w-auto px-6 py-2 shadow-md" onclick="saveToSupabase()">
-                                <i class="fa-solid fa-floppy-disk"></i> Update Contract DB
-                            </button>
-                        </div>
-                        <div id="save-status" class="hidden mt-2 text-sm font-bold text-emerald-600 text-right"></div>
-                    </div>
-                </div>
-
-                <div id="tab-weather" class="tab-panel">
-                    <div class="flex justify-between items-end mb-4 border-b border-slate-100 pb-2">
-                        <div>
-                            <h3 class="font-bold text-slate-800">15-Day Hydro-Meteorological Forecast</h3>
-                            <p class="text-xs text-slate-500">Processed from Hourly Open-Meteo Data</p>
-                        </div>
-                    </div>
-                    <div id="forecast-cards" class="flex gap-3 overflow-x-auto pb-4">
-                        <div class="text-sm text-slate-500">Fetching Hourly Weather Data...</div>
-                    </div>
-                    <div class="mt-4">
-                        <label>Manual Force Multiplier Override</label>
-                        <select id="weather-factor" class="w-auto py-1 px-2 text-sm h-auto bg-white border-slate-300">
-                            <option value="1.00">Normal Flow (1.0x)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="tab-hist" class="tab-panel scroll-box">
-                    <table class="data-table">
-                        <thead class="bg-slate-50"><tr id="hist-head"><th>Day</th><th>Wk</th></tr></thead>
-                        <tbody id="hist-body"></tbody>
-                    </table>
-                </div>
-
-                <div id="tab-chart" class="tab-panel h-full">
-                    <h3 class="font-bold text-sm text-slate-800 mb-2">Historical Monthly Generation Comparison</h3>
-                    <div class="h-[400px] relative w-full border border-slate-100 rounded-lg p-2 bg-slate-50">
-                        <canvas id="multi-year-chart"></canvas>
-                    </div>
-                </div>
-
-                <div id="tab-pattern" class="tab-panel scroll-box">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h3 class="font-bold text-sm text-slate-800 mb-3 border-b pb-1">7-Day Pattern Match</h3>
-                            <table class="data-table"><tbody id="pattern-body"></tbody></table>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-sm text-slate-800 mb-3 border-b pb-1">Year Similarity Ranking</h3>
-                            <div id="rank-body" class="space-y-2"></div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
+        <div id="weeks-content" class="hidden">
+          <div id="weeks-grid" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4"></div>
+          <div id="month-summary" class="bg-slate-50 border border-slate-200 rounded-xl p-3"></div>
         </div>
+      </div>
+
+      <div id="t-hist" class="tp">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div class="xl:col-span-2">
+            <div class="font-bold text-sm text-slate-700 mb-2">Current Generation vs Historical Benchmarks</div>
+            <div class="relative h-64 mb-4"><canvas id="hist-chart"></canvas></div>
+          </div>
+          <div>
+            <div class="card bg-slate-50 border-slate-200 p-3 h-full">
+              <div class="font-bold text-slate-800 text-sm mb-2"><i class="fa-solid fa-shield-halved text-blue-500"></i> The "Emergency Brake" Strategy</div>
+              <div class="text-[11px] text-slate-600 space-y-2">
+                <p><strong>Current Situation:</strong> Generation is climbing rapidly (116 → 165+). If the incoming rain hits the 3000-4000m catchment zone as liquid, flow will surge to 200+ MWh/day (similar to 2082).</p>
+                <p class="text-emerald-700 font-bold">Recommendation: Hold Week 3 AD at 1231.678 MWh.</p>
+                <p>Decreasing Week 3 now will lock you out of full PPA rates if the river surges. You still have 1,759 MWh of undeclared AD for Weeks 4 and 5.</p>
+                <div class="border-t border-slate-200 pt-2 mt-2">
+                  <span class="font-bold text-slate-800">The Trigger Point:</span><br>
+                  If the cold front freezes the 24 sq km mid-catchment, generation will instantly crash back to ~130 MWh (similar to 2080/2081). If this crash happens, <strong>slash your Week 4 AD declaration</strong> to artificially pull your monthly 90% floor down to safety.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scroll-y mt-2">
+          <table class="tbl">
+            <thead><tr id="hist-head"><th>Day</th><th>Wk</th><th>2080 (Freeze)</th><th>2081 (Freeze)</th><th>2082 (Warm Rain)</th><th>Current</th></tr></thead>
+            <tbody id="hist-body"><tr><td colspan="6" class="text-center text-slate-400 py-4">Run engine</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="t-scada" class="tp">
+        <div class="relative h-64 mb-4">
+          <canvas id="scada-chart"></canvas>
+        </div>
+        <div id="scada-explain" class="space-y-2"></div>
+      </div>
+
+      <div id="t-daily" class="tp scroll-y">
+        <p class="text-xs text-slate-500 mb-2">
+          <strong>Meter logic:</strong> Energy for Day N = Substation Export(Day N+1) - Substation Export(Day N), read at 12pm NPT. Today's estimate is based on partial elapsed NPT hours.
+        </p>
+        <table class="tbl">
+          <thead><tr>
+            <th>Day</th><th>Nep Date</th><th>Eng Date</th><th>Wk</th>
+            <th>Export MWh</th><th>Source</th><th>Cat°C</th><th>Rain mm</th>
+            <th>Cumul</th>
+          </tr></thead>
+          <tbody id="daily-body"><tr><td colspan="9" class="text-center text-slate-400 py-6">Run engine first</td></tr></tbody>
+        </table>
+      </div>
+
+      <div id="t-calc" class="tp scroll-y">
+        <div id="calc-ph" class="text-center py-10 text-slate-400">Run engine to see step-by-step calculation log</div>
+        <div id="calc-content"></div>
+      </div>
+
+      <div id="t-weather" class="tp">
+        <div class="font-bold text-sm text-slate-700 mb-2">15-Day Open-Meteo Forecast · 29.85°N 80.95°E (Intake area)</div>
+        <div id="fc-cards" class="flex gap-2 overflow-x-auto pb-3">
+          <div class="text-slate-400 text-xs py-6 w-full text-center"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
+        </div>
+        <div class="mt-3 info-box">
+          <strong>Hydrology interpretation:</strong> Rain → runoff 1–3 days. Rain &gt;7 days → groundwater recharge. Intake temp &gt;15°C + snow → active snowmelt. Catchment temp &lt;0°C + rain → snow accumulation.
+        </div>
+      </div>
+
+      <div id="t-fin" class="tp">
+        <div id="fin-ph" class="text-center py-8 text-slate-400">Run engine first</div>
+        <div id="fin-content" class="hidden">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="bg-rose-50 border border-rose-200 rounded-xl p-3"><div class="font-bold text-rose-700 text-xs mb-2">⚠️ Penalty Scenario</div><div id="fin-pen" class="text-xs space-y-1"></div></div>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3"><div class="font-bold text-amber-700 text-xs mb-2">📈 Excess Scenario</div><div id="fin-exc" class="text-xs space-y-1"></div></div>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3"><div class="font-bold text-slate-700 text-xs mb-2">Current Projection</div><div id="fin-cur" class="text-xs space-y-1"></div></div>
+          <div class="relative h-48 mt-4"><canvas id="fin-chart"></canvas></div>
+        </div>
+      </div>
 
     </div>
+  </div>
+</div>
 </main>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-// GLOBAL STATE
-// ═══════════════════════════════════════════════════════════
-const NEPALI_MONTHS = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Ashoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
-const YEARS = [2079, 2080, 2081, 2082, 2083];
-const WEEK_COLORS = ['#6366f1','#3b82f6','#0ea5e9','#f59e0b','#ec4899'];
-const WEEK_NAMES = ['Week 1','Week 2','Week 3','Week 4','Week 5'];
+// ═══════════════════════════════════════════════════════════════
+// GLOBAL SETUP & CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://ineaqjsmabbsjwwbjfya.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_uadlDXas6Tpif6j4eWp30g_j6OG326s';
 
-let dbAllYears = {}; 
-let currentDbData = null; 
-let reportChartInstance = null;
-let multiYearChartInstance = null;
+// Safe Supabase Initialization
+let supabaseClient = null;
+if (typeof window.supabase !== 'undefined') {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+} else {
+    console.warn("Supabase CDN not loaded. Working in offline/demo mode.");
+}
 
-let dailyWeather = new Array(15).fill(null);
-let finalPredictions = [0,0,0,0,0]; 
-let automatedWeatherFactor = 1.0;
-let totalRainForecast = 0;
+const MONTHS = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Ashoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
 
-// --- OPTIONAL: Uncomment if running inside your actual app environment ---
-// import { supabase } from './core-app.js'; 
-const hasSupabase = typeof supabase !== 'undefined';
+// Capacity Constraints
+const MAX_THEORETICAL_MWH = 250; 
+const MAX_EXPORT_CAPACITY = 236; 
+
+// Hardcoded Historical Data provided by User
+const HIST_2080 = [163.5, 145.26, 165.02, 187.43, 196.34, 197.8, 146.87, 126.09, 112.95, 105.85, 99.56, 95.78, 97.95, 102.21, 108.59, 121.29, 133.98, 180.12, 178.84, 187.13, 186.87, 183.13, 204.24, 183.68, 171.87, 186.08, 168.65, 154.68, 180.03, 207.29, 212.51];
+const HIST_2081 = [123.37, 112.44, 128.6, 163.45, 194.86, 131.23, 204.53, 196.0, 196.66, 151.94, 124.27, 127.63, 127.63, 150.14, 137.15, 137.81, 145.5, 163.33, 117.02, 132.67, 154.58, 130.08, 123.9, 123.89, 119.5, 115.8, 135.97, 128.5, 137.28, 167.76, 170.26];
+const HIST_2082 = [146.82, 172.03, 212.32, 187.48, 208.8, 210.8, 216.98, 225.1, 226.41, 220.52, 202.67, 178.71, 172.91, 144.41, 142.03, 148.51, 147.28, 137.48, 130.31, 138.52, 168.34, 163.87, 170.68, 158.61, 158.83, 155.88, 170.1, 186.23, 186.11, 201.64, 174.87];
+
+
+let snowLevel = null;
+let calendarData = [];
+let contractRow  = null;
+let plantCounters = {}; 
+let rainfallByDay = {};
+let weatherForecast = [];
+let charts = {};
+let todayEng = getTodayNPT();
+let todayNepDay = null;
+let calcLog = []; 
+let currentScadaAnalysis = null;
+let liveScadaTrendData = {};
+
+// Fallback Embedded Calendar & Rainfall Data (2083 Baisakh)
+const CAL_2083_BAISAKH = [{nep_day:1,eng_date:"2026-04-14"},{nep_day:2,eng_date:"2026-04-15"},{nep_day:3,eng_date:"2026-04-16"},{nep_day:4,eng_date:"2026-04-17"},{nep_day:5,eng_date:"2026-04-18"},{nep_day:6,eng_date:"2026-04-19"},{nep_day:7,eng_date:"2026-04-20"},{nep_day:8,eng_date:"2026-04-21"},{nep_day:9,eng_date:"2026-04-22"},{nep_day:10,eng_date:"2026-04-23"},{nep_day:11,eng_date:"2026-04-24"},{nep_day:12,eng_date:"2026-04-25"},{nep_day:13,eng_date:"2026-04-26"},{nep_day:14,eng_date:"2026-04-27"},{nep_day:15,eng_date:"2026-04-28"},{nep_day:16,eng_date:"2026-04-29"},{nep_day:17,eng_date:"2026-04-30"},{nep_day:18,eng_date:"2026-05-01"},{nep_day:19,eng_date:"2026-05-02"},{nep_day:20,eng_date:"2026-05-03"},{nep_day:21,eng_date:"2026-05-04"},{nep_day:22,eng_date:"2026-05-05"},{nep_day:23,eng_date:"2026-05-06"},{nep_day:24,eng_date:"2026-05-07"},{nep_day:25,eng_date:"2026-05-08"},{nep_day:26,eng_date:"2026-05-09"},{nep_day:27,eng_date:"2026-05-10"},{nep_day:28,eng_date:"2026-05-11"},{nep_day:29,eng_date:"2026-05-12"},{nep_day:30,eng_date:"2026-05-13"},{nep_day:31,eng_date:"2026-05-14"}];
+const SCADA_NEP_MON = {"2081_Baisakh":140.2,"2082_Baisakh":176.4,"2083_Baisakh":120.3};
+
+// ═══════════════════════════════════════════════════════════════
+// NPT DATE & TIME HELPERS
+// ═══════════════════════════════════════════════════════════════
+function getTodayNPT() {
+  const nptDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
+  const y = nptDate.getFullYear();
+  const m = String(nptDate.getMonth() + 1).padStart(2, '0');
+  const d = String(nptDate.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getNptHoursElapsed() {
+  const nptDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
+  return nptDate.getHours() + (nptDate.getMinutes() / 60);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MATH & TREND LOGIC
+// ═══════════════════════════════════════════════════════════════
+function slope(series) {
+  const n = series.length; if(n<2) return 0;
+  const xm=(n-1)/2, ym=series.reduce((a,b)=>a+b,0)/n;
+  const num=series.reduce((s,y,i)=>s+(i-xm)*(y-ym),0);
+  const den=series.reduce((s,_,i)=>s+(i-xm)**2,0);
+  return den?num/den:0;
+}
+
+function analyseScada(liveScadaMwh) {
+  const sourceData = liveScadaMwh && Object.keys(liveScadaMwh).length > 0 ? liveScadaMwh : {};
+  const dates = Object.keys(sourceData).sort();
+  
+  const recent7 = dates.slice(-7);
+  const recent7vals = recent7.map(d => sourceData[d]).filter(v => v > 10);
+  const eSlope = slope(recent7vals);
+
+  const last14 = dates.slice(-15).map(d=>sourceData[d]).filter(v=>v>10);
+  const avg14 = last14.length ? last14.reduce((a,b)=>a+b,0)/last14.length : 120;
+
+  // NPT dynamic partial day estimation
+  const todayPartial = sourceData[todayEng];
+  const hoursToday = Math.max(0.1, getNptHoursElapsed());
+  const todayEst = todayPartial ? Math.min(todayPartial * (24/hoursToday), MAX_EXPORT_CAPACITY) : avg14;
+
+  const eTrendLabel = eSlope > 2 ? 'SURGING ↑↑' : eSlope > 0.5 ? 'RISING ↑' : eSlope < -2 ? 'FALLING FAST ↓↓' : eSlope < -0.5 ? 'FALLING ↓' : 'STABLE →';
+  const eTrendClass = eSlope > 0.5 ? 'sig-rising' : eSlope < -0.5 ? 'sig-falling' : 'sig-stable';
+
+  document.getElementById('scada-signal-panel').innerHTML = `
+    <div class="calc-row"><span class="key">Current Data Source</span><span class="val text-blue-600">Live DB (Last 15 days)</span></div>
+    <div class="calc-row"><span class="key">7-day avg base</span><span class="val">${avg14.toFixed(1)} MWh/day</span></div>
+    <div class="calc-row"><span class="key">Energy trend</span><span class="val ${eTrendClass}">${eTrendLabel} (${eSlope>0?'+':''}${eSlope.toFixed(1)} MWh/d²)</span></div>
+    <div class="calc-row"><span class="key">Today est. (${hoursToday.toFixed(1)}h elapsed)</span><span class="val">${todayEst.toFixed(1)} MWh</span></div>`;
+
+  document.getElementById('scada-chip').textContent = `Trend: ${eTrendLabel} ${avg14.toFixed(0)} MWh/d`;
+  document.getElementById('scada-chip').className = `bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] font-semibold ${eSlope > 0.5 ? 'text-emerald-400' : eSlope < -0.5 ? 'text-red-400' : 'text-slate-400'}`;
+
+  return { eSlope, avg14, todayEst, eTrendLabel, raw: sourceData };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SNOW MODAL
+// ═══════════════════════════════════════════════════════════════
+let selectedSnowEl = null;
+function setSnow(level, el) {
+  document.querySelectorAll('.snow-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  snowLevel = level;
+  selectedSnowEl = el;
+  document.getElementById('snow-ok').disabled = false;
+}
+function confirmSnow() {
+  document.getElementById('snow-modal').style.display = 'none';
+  const labels = {none:'🏔️ None / Bare — minimal snowmelt contribution', sparse:'🌨️ Sparse — small snowmelt bonus', moderate:'❄️ Moderate — meaningful snowmelt (+5-8%)', full:'🌨️❄️ Full Cover — strong snowmelt (+10-15%)'};
+  document.getElementById('snow-display').textContent = labels[snowLevel] || snowLevel;
+  runEngine();
+}
+
+function snowMelt(day, catT) {
+  const tempFactor = catT > 15 ? 1.0 : catT > 10 ? 0.7 : catT > 5 ? 0.4 : 0.1;
+  const snowFactor = {none:0, sparse:0.02, moderate:0.05, full:0.10}[snowLevel] || 0;
+  const depletionFactor = Math.max(0.1, 1 - (day-1)/40); 
+  return snowFactor * tempFactor * depletionFactor;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GROUNDWATER & METER LOGIC
+// ═══════════════════════════════════════════════════════════════
+function computeGwSignal(targetDay, rfData) {
+  let gwSignal = 0;
+  const log = [];
+  for (let d = Math.max(1, targetDay - 21); d < targetDay; d++) {
+    const rf = rfData[d];
+    if (!rf || rf.prec < 1) continue;
+    const daysAgo = targetDay - d;
+    const isSnow = rf.catT < 2; 
+    if (isSnow) {
+      log.push(`Day ${d}: ${rf.prec.toFixed(1)}mm at ${rf.catT.toFixed(1)}°C → Snow at catchment`);
+    } else {
+      const lagFactor = daysAgo <= 3 ? 0.9 : daysAgo <= 7 ? 0.7 : daysAgo <= 14 ? 0.4 : 0.1;
+      const intensityBonus = rf.prec > 10 ? 0.025 : rf.prec > 5 ? 0.015 : 0.005;
+      gwSignal += intensityBonus * lagFactor;
+      log.push(`Day ${d}: ${rf.prec.toFixed(1)}mm rain, ${daysAgo}d ago → GW +${(intensityBonus*lagFactor*100).toFixed(2)}%`);
+    }
+  }
+  return { signal: Math.min(gwSignal, 0.20), log };
+}
+
+function computeDailyEnergyFromCounters(counters) {
+  const daily = {};
+  const days = Object.keys(counters).map(Number).sort((a,b)=>a-b);
+  for (let i = 0; i < days.length - 1; i++) {
+    const d = days[i];
+    const dNext = days[i+1];
+    if (dNext === d+1) {
+      const diff = counters[dNext] - counters[d];
+      if (diff >= 0 && diff <= MAX_THEORETICAL_MWH + 10) { 
+        daily[d] = parseFloat(diff.toFixed(2));
+      }
+    }
+  }
+  return daily;
+}
+
+function getDeadline(weekStartNepDay, calendar) {
+  let deadlineNepDay = weekStartNepDay - 8;
+  if (deadlineNepDay <= 0) return {nepDay: null, label:'Last month', passed:true};
+  for (let attempts = 0; attempts < 3; attempts++) {
+    const cal = calendar.find(c => c.nep_day === deadlineNepDay);
+    if (!cal) break;
+    const jsDay = new Date(cal.eng_date).getDay();
+    if (jsDay === 6) { deadlineNepDay--; } else { break; }
+  }
+  const passed = todayNepDay !== null && todayNepDay > deadlineNepDay;
+  return { nepDay: deadlineNepDay, label: `Submit by Day ${deadlineNepDay}`, passed };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PREDICTION ENGINE FOR A SINGLE DAY
+// ═══════════════════════════════════════════════════════════════
+function predictDayEnergy(nepDay, scada, rfData) {
+  const rf = rfData[nepDay] || {};
+  const catT = rf.catT ?? 15;
+  const inT  = rf.inT  ?? 18;
+  const prec = rf.prec ?? 0;
+
+  const log = [];
+  let html = `<div class="calc-block"><div class="head">Day ${nepDay} — Prediction Calculation</div>`;
+
+  // 1. BASE
+  const base = scada.avg14;
+  html += `<div class="calc-row"><span class="key">① Base (Live 14-day avg)</span><span class="val">${base.toFixed(1)} MWh/day</span></div>`;
+
+  // 2. Trend adjustment
+  const daysAhead = nepDay - (todayNepDay || 3);
+  const trendAdj = 1 + Math.max(-0.20, Math.min(0.15, (scada.eSlope * daysAhead / base)));
+  html += `<div class="calc-row"><span class="key">② Energy slope (${scada.eSlope>0?'+':''}${scada.eSlope.toFixed(1)}/d × ${daysAhead}d ahead)</span><span class="val">×${trendAdj.toFixed(3)}</span></div>`;
+
+  // 3. Historical ratio for this day
+  const histWeight = parseFloat(document.getElementById('hist-weight').value) / 100;
+  const histAvg82Month = 176.4; 
+  const hist82 = HIST_2082[nepDay-1];
+  
+  let histRatio = 1.0, histNote = 'No historical day data';
+  if (hist82 && histAvg82Month) {
+    histRatio = hist82 / histAvg82Month;
+    histNote = `2082 benchmark: ${hist82.toFixed(1)} MWh`;
+  }
+  const histDayPred = base * histRatio;
+  html += `<div class="calc-row"><span class="key">③ Historical ratio (Weight: ${(histWeight*100).toFixed(0)}%)</span><span class="val">${histNote} → ${histDayPred.toFixed(1)} MWh est.</span></div>`;
+
+  // 4. Groundwater recharge
+  const gw = computeGwSignal(nepDay, rfData);
+  html += `<div class="calc-row"><span class="key">④ Groundwater recharge</span><span class="val">+${(gw.signal*100).toFixed(1)}%</span></div>`;
+  
+  // 5. Snowmelt
+  const snow = snowMelt(nepDay, catT);
+  html += `<div class="calc-row"><span class="key">⑤ Snowmelt (${snowLevel})</span><span class="val">+${(snow*100).toFixed(1)}%</span></div>`;
+
+  // 6. Future rainfall from weather API
+  let weatherMod = 1.0;
+  if (weatherForecast.length && daysAhead >= 0 && daysAhead < weatherForecast.length) {
+    weatherMod = weatherForecast[daysAhead].hydroMod;
+  }
+  html += `<div class="calc-row"><span class="key">⑥ Weather forecast modifier</span><span class="val">×${weatherMod.toFixed(3)}</span></div>`;
+
+  // 7. Temperature signal
+  let tempMod = 1.0;
+  if (catT < 0) { tempMod = 0.85; }
+  else if (catT < 3) { tempMod = 0.92; }
+  else if (inT > 20) { tempMod = 1.03; }
+  html += `<div class="calc-row"><span class="key">⑦ Temp signal (cat ${catT.toFixed(1)}°C, intake ${inT.toFixed(1)}°C)</span><span class="val">×${tempMod.toFixed(2)}</span></div>`;
+
+  // BLEND and CAP
+  const trendBased = base * trendAdj * (1 + gw.signal + snow) * weatherMod * tempMod;
+  const blended = ((1-histWeight)*trendBased) + (histWeight*histDayPred);
+  
+  // CAPACITY CEILING
+  const finalPrediction = Math.min(Math.max(0, blended), MAX_EXPORT_CAPACITY);
+
+  html += `<div class="calc-formula">Formula: ${base.toFixed(1)} × ${trendAdj.toFixed(3)} × (1 + ${gw.signal.toFixed(3)} + ${snow.toFixed(3)}) × ${weatherMod.toFixed(3)} × ${tempMod.toFixed(2)} = ${trendBased.toFixed(1)} MWh</div>`;
+  html += `<div class="calc-formula">Blend: (${((1-histWeight)*100).toFixed(0)}% trend) + (${(histWeight*100).toFixed(0)}% hist) = ${((1-histWeight)*trendBased).toFixed(1)} + ${(histWeight*histDayPred).toFixed(1)}</div>`;
+  html += `<div class="calc-result">→ Predicted Day ${nepDay}: ${finalPrediction.toFixed(1)} MWh ${finalPrediction === MAX_EXPORT_CAPACITY ? '(Capped at Plant Max)' : ''}</div>`;
+  html += `</div>`;
+
+  return { mwh: finalPrediction, calcHtml: html };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN LOAD + ENGINE
+// ═══════════════════════════════════════════════════════════════
+async function loadAndAnalyse() {
+  const year = parseInt(document.getElementById('sel-year').value);
+  const month = MONTHS[parseInt(document.getElementById('sel-month').value)-1];
+
+  document.getElementById('db-chip').textContent = 'Syncing...';
+  
+  try {
+    if (!supabaseClient) throw new Error("Supabase is offline");
+    const liveScadaData = await loadFromSupabase(year, month);
+    document.getElementById('db-chip').textContent = `✅ ${month} ${year}`;
+    currentScadaAnalysis = analyseScada(liveScadaData);
+  } catch(e) {
+    console.warn(e);
+    document.getElementById('db-chip').textContent = '⚠️ Using demo data';
+    loadEmbedded(year, month);
+    currentScadaAnalysis = analyseScada({});
+  }
+}
+
+async function loadFromSupabase(year, month) {
+  const mIdx = MONTHS.indexOf(month)+1;
+  const pfx  = `${year}.${String(mIdx).padStart(2,'0')}`;
+
+  const {data:cal} = await supabaseClient.from('calendar_mappings').select('eng_date,nep_day,nep_date_str').eq('nep_year',year).eq('nep_month',month).order('nep_day');
+  if (cal?.length) calendarData = cal.map(c=>({nep_day:c.nep_day, eng_date:c.eng_date}));
+
+  const todayRow = calendarData.find(c=>c.eng_date===todayEng);
+  if (todayRow) todayNepDay = todayRow.nep_day;
+
+  const {data:ce} = await supabaseClient.from('contract_energy').select('*').eq('year',year).eq('month',month).single();
+  if (ce) contractRow = ce;
+
+  const prevDayEng = calendarData[0] ? new Date(new Date(calendarData[0].eng_date).setDate(new Date(calendarData[0].eng_date).getDate() - 1)).toISOString().split('T')[0] : null;
+  const {data:plant} = await supabaseClient.from('plant_data').select('id,nepali_date,export_substation,export_plant').or(`id.eq.${prevDayEng},nepali_date.like.${pfx}%`).order('id');
+
+  plantCounters = {};
+  plant?.forEach(row => {
+    const cnt = parseFloat(row.export_substation||row.export_plant||0);
+    if (!cnt) return;
+    if (row.id === prevDayEng) { plantCounters[0] = cnt; } 
+    else {
+      const d = parseInt(row.nepali_date.split('.')[2]);
+      plantCounters[d] = cnt;
+    }
+  });
+
+  const { data: recentPlant } = await supabaseClient.from('plant_data')
+    .select('id, export_substation, export_plant')
+    .lte('id', todayEng)
+    .order('id', { ascending: false })
+    .limit(16);
+
+  let liveScadaMwh = {};
+  if(recentPlant && recentPlant.length > 1) {
+    const sorted = recentPlant.sort((a,b) => a.id.localeCompare(b.id));
+    for(let i=0; i<sorted.length-1; i++) {
+      const day1 = sorted[i];
+      const day2 = sorted[i+1];
+      const reading1 = day1.export_substation || day1.export_plant;
+      const reading2 = day2.export_substation || day2.export_plant;
+      if(reading1 && reading2) {
+        const energy = reading2 - reading1;
+        if(energy >= 0 && energy <= MAX_THEORETICAL_MWH) {
+          liveScadaMwh[day1.id] = energy;
+        }
+      }
+    }
+  }
+  liveScadaTrendData = liveScadaMwh;
+
+  const {data:rf} = await supabaseClient.from('rainfall_data').select('day,api_cat_precip,api_cat_temp,api_in_temp,api_ph_temp').eq('nepali_year',year).eq('nepali_month',month).order('day');
+  rainfallByDay = {};
+  rf?.forEach(r => { rainfallByDay[r.day] = {prec:parseFloat(r.api_cat_precip||0),catT:parseFloat(r.api_cat_temp||15),inT:parseFloat(r.api_in_temp||18)}; });
+
+  if (contractRow) {
+    document.getElementById('ppa-ad').value = contractRow.total_ad?.toFixed(3)||'';
+    document.getElementById('ppa-ce').value = contractRow.contract_energy?.toFixed(3)||'';
+    const ad = contractRow.total_ad||0, days=contractRow.no_of_days||31;
+    document.getElementById('k-ad').textContent = ad.toFixed(1);
+    document.getElementById('k-min').textContent = (ad*0.9).toFixed(1);
+  }
+
+  return liveScadaMwh;
+}
+
+function loadEmbedded(year, month) {
+  calendarData = CAL_2083_BAISAKH;
+  todayNepDay = 6; // Moving demo forward to Day 6 based on user data
+  contractRow = {total_ad:5454.574, contract_energy:5454.574, no_of_days:31, week1_ad:1231678, week2_ad:1231678, week3_ad:1231678, week4_ad:1231678, week5_ad:527862};
+  
+  // Custom user data injected here for demo mode
+  liveScadaTrendData = {"2026-04-14":116, "2026-04-15":118, "2026-04-16":133, "2026-04-17":146, "2026-04-18":165, "2026-04-19":185};
+  
+  // Fake meter values to represent the daily diff
+  plantCounters = {0: 100000, 1: 100116, 2: 100234, 3: 100367, 4: 100513, 5: 100678};
+  rainfallByDay = {}; 
+  document.getElementById('ppa-ad').value = '5454.574';
+  document.getElementById('ppa-ce').value = '5454.574';
+  document.getElementById('k-ad').textContent = '5454.6';
+  document.getElementById('k-min').textContent = '4909.1';
+}
+
+function runEngine() {
+  if (!snowLevel) { 
+    document.getElementById('snow-modal').style.display='flex'; 
+    return; 
+  }
+  if (!contractRow && !document.getElementById('ppa-ad').value) { alert('Load data first'); return; }
+
+  const btn = document.getElementById('btn-run');
+  btn.innerHTML = '<span class="spin"></span> Computing…';
+  btn.disabled = true;
+  setTimeout(()=>{ try{_run();}catch(e){console.error(e);alert('Error: '+e.message);} btn.innerHTML='<i class="fa-solid fa-calculator"></i> Run Full Prediction'; btn.disabled=false; }, 300);
+}
+
+function _run() {
+  const totalAd = parseFloat(document.getElementById('ppa-ad').value)||5454.574;
+  const contractE = parseFloat(document.getElementById('ppa-ce').value)||totalAd;
+  const totalDays = contractRow?.no_of_days||calendarData.length||31;
+  const ppaRate = parseFloat(document.getElementById('ppa-rate').value)||6554;
+
+  const weekAdKwh = [1,2,3,4,5].map(w => (contractRow?.[`week${w}_ad`]||0));
+  const weekAdMwh = weekAdKwh.map(v => v/1000);
+
+  const scada = currentScadaAnalysis || analyseScada({});
+  const confirmedDaily = computeDailyEnergyFromCounters(plantCounters);
+
+  const today = todayNepDay || 6;
+  
+  // Exact Partial Calculation for Today using live data
+  const todayScadaPartial = liveScadaTrendData[todayEng] || 185; // Defaulting to 185 for demo
+  const hoursToday = Math.max(0.1, getNptHoursElapsed()); 
+  const todayEstimate = Math.min(todayScadaPartial ? (todayScadaPartial * (24/hoursToday)) : scada.avg14, MAX_EXPORT_CAPACITY);
+
+  calcLog = [];
+  const dayDetail = [];
+  let cumul = 0;
+  const weekData = [0,1,2,3,4].map(wi => ({
+    wi, ws: wi*7+1, we: Math.min(wi*7+7, totalDays), days: Math.min(7, totalDays-wi*7),
+    actualMwh:0, estMwh:0, predMwh:0, dayEntries:[]
+  }));
+
+  const currentYearActuals = [];
+
+  for (let d = 1; d <= totalDays; d++) {
+    const cal = calendarData.find(c=>c.nep_day===d);
+    const engDate = cal?.eng_date||'';
+    const rf = rainfallByDay[d]||{};
+    const wi = Math.min(Math.floor((d-1)/7), 4);
+    const wk = weekData[wi];
+
+    let mwh, source, srcBadge;
+
+    if (d < today && confirmedDaily[d]) {
+      mwh = confirmedDaily[d];
+      source = 'meter'; srcBadge = '<span class="badge bg">✔ Meter</span>';
+      wk.actualMwh += mwh;
+      currentYearActuals.push(mwh);
+      if (d === 1) calcLog.push(`<div class="info-box text-xs mb-2">ℹ️ Meter difference validated for completed days.</div>`);
+    } else if (d === today) {
+      mwh = todayEstimate;
+      source = 'scada'; srcBadge = `<span class="badge ba">📡 Live Est.</span>`;
+      wk.estMwh += mwh;
+      currentYearActuals.push(mwh);
+      calcLog.push(`<div class="calc-block"><div class="head">Day ${d} — Today</div><div class="calc-row"><span class="key">NPT Time elapsed</span><span class="val">${hoursToday.toFixed(1)}h</span></div><div class="calc-row"><span class="key">Current exported</span><span class="val">${todayScadaPartial.toFixed(1)} MWh</span></div><div class="calc-result">→ Projected Full Day: ${todayEstimate.toFixed(1)} MWh</div></div>`);
+    } else {
+      const pred = predictDayEnergy(d, scada, rainfallByDay);
+      mwh = pred.mwh;
+      source = 'predicted'; srcBadge = '<span class="badge bb">🔮 Predicted</span>';
+      wk.predMwh += mwh;
+      calcLog.push(pred.calcHtml);
+    }
+
+    cumul += mwh;
+    wk.dayEntries.push({d, mwh, source});
+    dayDetail.push({d, engDate, rf, mwh, source, srcBadge, cumul, wi:wi+1});
+  }
+
+  weekData.forEach(wk => { wk.total = wk.actualMwh + wk.estMwh + wk.predMwh; });
+  const totalProjected = weekData.reduce((s,w)=>s+w.total, 0);
+  const totalActual    = weekData.reduce((s,w)=>s+w.actualMwh, 0);
+
+  const {penalty, excessLoss} = computeFinancial(totalProjected, totalAd, contractE, ppaRate);
+
+  renderWeeks(weekData, weekAdMwh, totalAd, totalDays, today);
+  renderDailyTable(dayDetail);
+  renderCalcLog();
+  renderScadaCharts();
+  renderHistTab(totalDays, currentYearActuals);
+  renderFinancial(totalProjected, totalAd, contractE, ppaRate, penalty, excessLoss);
+  renderKPIs(totalAd, totalProjected, totalActual, penalty, excessLoss);
+
+  fetchWeather();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+function renderWeeks(weekData, weekAdMwh, totalAd, totalDays, today) {
+  document.getElementById('weeks-ph').classList.add('hidden');
+  document.getElementById('weeks-content').classList.remove('hidden');
+
+  const names = ['Week 1','Week 2','Week 3','Week 4','Week 5'];
+  const html = weekData.map(wk => {
+    if (wk.days <= 0) return '';
+    const ad = weekAdMwh[wk.wi];
+    const diff = wk.total - ad;
+    const deadline = getDeadline(wk.ws, calendarData);
+    const status = today > wk.we ? 'done' : today >= wk.ws ? 'active' : deadline.passed ? 'submitted' : 'open';
+    const diffColor = Math.abs(diff) < 5 ? 'text-emerald-600' : diff < 0 ? 'text-rose-600' : 'text-amber-600';
+    
+    return `<div class="card border-slate-200 text-xs">
+      <div class="flex justify-between items-start mb-1.5">
+        <div class="font-bold text-slate-800">${names[wk.wi]}</div>
+        <div class="flex gap-1">${wk.total < ad*0.9 ? '<span class="badge br">⚠️ LOW</span>' : '<span class="badge bg">✅</span>'}</div>
+      </div>
+      <div class="space-y-1 mt-2">
+        <div class="flex justify-between"><span class="text-slate-500">Submitted AD</span><span class="mono font-bold">${ad.toFixed(1)}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Predicted Total</span><span class="mono text-blue-600">${wk.total.toFixed(1)}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('weeks-grid').innerHTML = html;
+
+  const totalProjected = weekData.reduce((s,w)=>s+w.total,0);
+  const pct = (totalProjected/totalAd*100).toFixed(1);
+  document.getElementById('month-summary').innerHTML = `
+    <div class="font-bold text-sm mb-2">Month Balance Summary</div>
+    <div class="grid grid-cols-4 gap-3 text-xs text-center">
+      <div><div class="text-slate-500 font-bold">AD</div><div class="mono font-bold">${totalAd.toFixed(1)}</div></div>
+      <div><div class="text-slate-500 font-bold">Projected</div><div class="mono font-bold text-blue-700">${totalProjected.toFixed(1)}</div></div>
+      <div><div class="text-slate-500 font-bold">vs AD</div><div class="mono font-bold ${totalProjected<totalAd*0.9?'text-rose-600':totalProjected>totalAd?'text-amber-600':'text-emerald-600'}">${totalProjected>=totalAd?'+':''}${(totalProjected-totalAd).toFixed(1)} MWh</div></div>
+      <div><div class="text-slate-500 font-bold">Status</div><div class="font-bold text-sm">${pct<90?'⚠️ PENALTY RISK':pct>100?'📈 EXCESS':' ✅ SAFE'} (${pct}%)</div></div>
+    </div>`;
+}
+
+function renderCalcLog() {
+  document.getElementById('calc-ph').classList.add('hidden');
+  document.getElementById('calc-content').innerHTML = `<div class="info-box mb-4 text-xs"><strong>Calculation Method:</strong><br>Uses Substation Export values from Balanch synchronized database. Today's estimate uses exact NPT elapsed time. Daily predictions are capped at ${MAX_EXPORT_CAPACITY} MWh max limit.</div>` + calcLog.join('');
+}
+
+function renderDailyTable(days) {
+  const rows = days.map(d => `<tr>
+      <td class="font-bold">${d.d}</td>
+      <td class="mono text-slate-500 text-[11px]">${d.engDate}</td>
+      <td class="mono text-slate-500 text-[11px]">W${d.wi}</td>
+      <td class="font-bold mono ${d.source==='meter'?'text-emerald-700':d.source==='scada'?'text-amber-600':'text-blue-600'}">${d.mwh.toFixed(2)}</td>
+      <td>${d.srcBadge}</td>
+      <td class="mono text-slate-600">${d.rf.catT!=null?d.rf.catT.toFixed(1):'—'}</td>
+      <td class="mono text-blue-600">${d.rf.prec!=null?d.rf.prec.toFixed(1):'—'}</td>
+      <td class="mono text-slate-700 font-bold">${d.cumul.toFixed(1)}</td>
+    </tr>`).join('');
+  document.getElementById('daily-body').innerHTML = rows;
+}
+
+function renderScadaCharts() {
+  const labels = Object.keys(liveScadaTrendData).sort();
+  const mwhData = labels.map(l => liveScadaTrendData[l]);
+
+  if(charts.scada) charts.scada.destroy();
+  charts.scada = new Chart(document.getElementById('scada-chart').getContext('2d'),{
+    type:'line',data:{labels:labels,datasets:[{label:'Live Substation Export (MWh)',data:mwhData,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',borderWidth:2,pointRadius:3,fill:true,tension:.3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0, max:MAX_THEORETICAL_MWH, grid:{color:'#f1f5f9'}},x:{ticks:{font:{size:9}},grid:{display:false}}}}
+  });
+}
+
+function renderHistTab(totalDays, currentYearActuals) {
+  const labels = Array.from({length:totalDays},(_,i)=>`D${i+1}`);
+  
+  if(charts.hist) charts.hist.destroy();
+  charts.hist = new Chart(document.getElementById('hist-chart').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'2080 (Freeze Drop)',data:HIST_2080,borderColor:'#dc2626',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[3,3]},
+      {label:'2081 (Freeze Drop)',data:HIST_2081,borderColor:'#d97706',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[3,3]},
+      {label:'2082 (Warm Rain Surge)',data:HIST_2082,borderColor:'#059669',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[3,3]},
+      {label:'Current Year',data:currentYearActuals,borderColor:'#2563eb',borderWidth:3,pointRadius:4,tension:.1}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{size:10}}}},
+      scales:{y:{grid:{color:'#f1f5f9'}},x:{grid:{display:false},ticks:{font:{size:9}}}}
+    }
+  });
+
+  let rows = '';
+  for(let d=1;d<=totalDays;d++){
+    const wk = Math.ceil(d/7);
+    const v80 = HIST_2080[d-1], v81 = HIST_2081[d-1], v82 = HIST_2082[d-1];
+    const curr = currentYearActuals[d-1];
+    rows += `<tr class="${wk===3?'bg-blue-50/40':wk===4?'bg-rose-50/40':''}"><td class="font-bold">${d}</td><td class="badge bs text-[10px]">W${wk}</td><td class="mono text-slate-500">${v80?.toFixed(1)}</td><td class="mono text-slate-500">${v81?.toFixed(1)}</td><td class="mono text-slate-500">${v82?.toFixed(1)}</td><td class="mono text-blue-700 font-bold">${curr?.toFixed(1)||'—'}</td></tr>`;
+  }
+  document.getElementById('hist-body').innerHTML = rows;
+}
+
+function renderFinancial(proj, ad, ce, rate, penalty, excessLoss) {
+  document.getElementById('fin-ph').classList.add('hidden');
+  document.getElementById('fin-content').classList.remove('hidden');
+
+  const floor = ad*0.9;
+  const shortfall = Math.max(0,floor-proj);
+  const excess = Math.max(0,proj-ad);
+  const excessCapped = Math.min(excess, ce-ad);
+
+  document.getElementById('fin-pen').innerHTML = `
+    <div class="calc-row"><span class="key">90% Floor</span><span class="val">${floor.toFixed(2)} MWh</span></div>
+    <div class="calc-row"><span class="key">Shortfall</span><span class="val text-rose-700">${shortfall.toFixed(2)} MWh</span></div>
+    <div class="calc-row border-t pt-1"><span class="key">Penalty = 10% × shortfall × rate</span><span class="val text-rose-700 font-bold">${fmtN(penalty)} NPR</span></div>`;
+
+  document.getElementById('fin-exc').innerHTML = `
+    <div class="calc-row"><span class="key">Excess above AD</span><span class="val text-amber-700">${excess.toFixed(2)} MWh</span></div>
+    <div class="calc-row border-t pt-1"><span class="key">Excess loss (50% rate)</span><span class="val text-amber-700 font-bold">${fmtN(excessLoss)} NPR</span></div>`;
+
+  const total = penalty+excessLoss;
+  document.getElementById('fin-cur').innerHTML = `
+    <div class="calc-row"><span class="key">Projected Export</span><span class="val">${proj.toFixed(2)} MWh</span></div>
+    <div class="calc-row font-bold border-t pt-1"><span class="key">Total financial impact</span><span class="val text-red-700">${fmtN(total)} NPR ${total===0?'✅ Zero loss':''}</span></div>`;
+
+  if(charts.fin) charts.fin.destroy();
+  const levels = [0.80,0.85,0.90,0.95,1.00,1.05].map(r=>ad*r);
+  const impacts = levels.map(p => { const {penalty:pen, excessLoss:exc} = computeFinancial(p,ad,ce,rate); return -(pen+exc); });
+  charts.fin = new Chart(document.getElementById('fin-chart').getContext('2d'),{
+    type:'bar', data:{labels:levels.map(v=>`${(v/ad*100).toFixed(0)}%`),datasets:[{label:'NPR Impact',data:impacts,backgroundColor:impacts.map(v=>v<0?'#fca5a5':'#6ee7b7'),borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'#f1f5f9'}}}}
+  });
+}
+
+function renderKPIs(ad, proj, actual, penalty, excessLoss) {
+  document.getElementById('k-proj').textContent = proj.toFixed(1);
+  document.getElementById('k-actual').textContent = actual.toFixed(1);
+  const loss = penalty+excessLoss;
+  document.getElementById('k-npr').textContent = loss>0?`−${fmtN(loss)}`:'✅ 0';
+  document.getElementById('k-npr').className = `kv ${loss>0?'text-rose-600':'text-emerald-600'} text-base`;
+  document.getElementById('k-npr-l').textContent = loss>0?'NPR loss':'No loss projected';
+
+  const pct = Math.min(proj/ad*100, 105);
+  document.getElementById('sfill').style.width = Math.min(pct,100)+'%';
+  document.getElementById('sfill').style.background = pct<90?'#dc2626':pct>100?'#d97706':'#059669';
+  document.getElementById('sbar-l').textContent = `${(proj/ad*100).toFixed(1)}% of AD — ${proj.toFixed(1)} MWh`;
+}
+
+function computeFinancial(proj, ad, ce, rate) {
+  const penalty = Math.max(0, (ad*0.9-proj)*0.1*rate);
+  const excess = Math.max(0, Math.min(proj-ad, ce-ad));
+  return {penalty, excessLoss: excess * 0.5 * rate};
+}
+
+async function fetchWeather() {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); 
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=29.85&longitude=80.95&hourly=temperature_2m,precipitation&timezone=Asia%2FKathmandu&forecast_days=15', { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if(!r.ok) throw new Error('API Response not OK');
+    const raw = await r.json();
+    const hT=raw.hourly.temperature_2m, hR=raw.hourly.precipitation, hTm=raw.hourly.time;
+    weatherForecast=[];
+    
+    for(let d=0;d<15;d++){
+      let maxT=-99,minT=99,rainH=0,rain=0;
+      for(let h=0;h<24;h++){const i=d*24+h;if(hT[i]>maxT)maxT=hT[i];if(hT[i]<minT)minT=hT[i];if(hR[i]>0.1){rainH++;rain+=hR[i];}}
+      const snowM=maxT<5?-0.10:maxT<12?-0.03:maxT>20?0.05:0;
+      const flashM=rain>20?0.04:0;
+      weatherForecast.push({date:new Date(hTm[d*24]),maxT,minT,rainH,rain,hydroMod:1+snowM+flashM});
+    }
+
+    const html=weatherForecast.map((d,i)=>{
+      const l=i===0?'TODAY':d.date.toLocaleDateString('en-US',{weekday:'short',day:'numeric'});
+      const m=Math.round((d.hydroMod-1)*100);
+      const mc=d.hydroMod>1?'bg-emerald-100 text-emerald-700':d.hydroMod<1?'bg-rose-100 text-rose-700':'bg-slate-100 text-slate-500';
+      return `<div class="flex-none w-[76px] bg-white border border-slate-200 rounded-xl p-2 text-center text-[10px]">
+        <div class="font-bold text-slate-400 border-b pb-0.5 mb-1">${l}</div>
+        <div class="font-bold ${d.rainH>0?'text-blue-500':'text-slate-300'}">${d.rainH}h ☔</div>
+        <div class="text-amber-600 mt-0.5">H:${d.maxT.toFixed(0)}° L:${d.minT.toFixed(0)}°</div>
+        <div class="font-bold mt-1 px-0.5 py-0.5 rounded ${mc}">${m>=0?'+':''}${m}%</div>
+      </div>`;
+    }).join('');
+    document.getElementById('fc-cards').innerHTML = html;
+  } catch(e) {
+    document.getElementById('fc-cards').innerHTML='<div class="text-amber-600 text-xs p-4 bg-amber-50 rounded-xl">Weather API unavailable / Timeout</div>';
+  }
+}
+
+function fmtN(n){ if(n>=100000) return (n/100000).toFixed(2)+' L'; if(n>=1000) return (n/1000).toFixed(1)+'K'; return n.toFixed(0); }
+function showTab(id,btn){
+  document.querySelectorAll('.tp').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
 
 function init() {
-    const mSel = document.getElementById('sel-month');
-    NEPALI_MONTHS.forEach((m, i) => mSel.add(new Option(m, i+1)));
-    mSel.value = "9"; // Poush (Winter default for demo)
-    
-    const ySel = document.getElementById('sel-year');
-    YEARS.forEach(y => ySel.add(new Option(y, y)));
-    ySel.value = "2082";
+  const mSel=document.getElementById('sel-month');
+  MONTHS.forEach((m,i)=>mSel.add(new Option(m,i+1)));
+  mSel.value='1';
+  const ySel=document.getElementById('sel-year');
+  [2079,2080,2081,2082,2083].forEach(y=>ySel.add(new Option(y,y)));
+  ySel.value='2083';
 
-    generateMockDatabase();
-    fetchHourlyWeather();
-    triggerDatabaseSync(); 
-}
-
-// Ensure database is populated perfectly so charts never go blank.
-function generateMockDatabase() {
-    YEARS.forEach(y => {
-        dbAllYears[y] = {};
-        for(let m = 1; m <= 12; m++) {
-            let days = (m <= 6) ? 31 : 30; if (m===2) days=32;
-            dbAllYears[y][m] = {};
-            let baseFlow = (m >= 3 && m <= 6) ? 200 : (m >= 10 || m <= 1) ? 80 : 130;
-            
-            for(let d = 1; d <= days; d++) {
-                let val = baseFlow + (Math.sin(d/3)*15) + (Math.random()*10 - 5);
-                dbAllYears[y][m][d] = parseFloat(val.toFixed(1));
-            }
-        }
-    });
-
-    // Mock sharp dropping data for "Freeze Recession" demonstration
-    document.getElementById('w1-actual').value = "550.0"; // High
-    document.getElementById('w2-actual').value = "410.0"; // Dropping sharply
-}
-
-// ═══════════════════════════════════════════════════════════
-// HOURLY HYDROLOGY ENGINE (OPEN-METEO)
-// ═══════════════════════════════════════════════════════════
-async function fetchHourlyWeather() {
-    try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=29.85&longitude=80.95&hourly=temperature_2m,precipitation&timezone=Asia%2FKathmandu&forecast_days=15`);
-        const data = await res.json();
-        
-        const hTime = data.hourly.time;
-        const hTemp = data.hourly.temperature_2m;
-        const hRain = data.hourly.precipitation;
-
-        let html = '';
-        let continuousRainHours = 0;
-        let baseflowModifiers = new Array(15).fill(0);
-        totalRainForecast = 0;
-
-        for(let d = 0; d < 15; d++) {
-            let maxT = -99, minT = 99;
-            let rainHoursToday = 0;
-            let dailyRainTotal = 0;
-
-            for(let h = 0; h < 24; h++) {
-                let idx = d * 24 + h;
-                let t = hTemp[idx];
-                let r = hRain[idx];
-
-                if(t > maxT) maxT = t;
-                if(t < minT) minT = t;
-
-                if(r > 0.1) {
-                    continuousRainHours++;
-                    rainHoursToday++;
-                    dailyRainTotal += r;
-                    totalRainForecast += r;
-                } else {
-                    // Groundwater Recharge Event (>6 hrs)
-                    if (continuousRainHours > 6) {
-                        let peakDay = d + 3; // Delayed 3 days
-                        let multiplier = 0.10; 
-                        for (let lag = peakDay; lag < 15; lag++) {
-                            baseflowModifiers[lag] += multiplier;
-                            multiplier *= 0.70; // 30% decay
-                        }
-                    }
-                    continuousRainHours = 0;
-                }
-            }
-
-            let snowMod = 0;
-            if (maxT < 6) snowMod = -0.10; 
-            else if (maxT <= 12 && minT < 4) snowMod = -0.05; 
-            else if (maxT > 20) snowMod = +0.05; 
-
-            let flashFlood = dailyRainTotal > 20 ? 0.05 : 0; 
-            let totalMod = 1.0 + baseflowModifiers[d] + snowMod + flashFlood;
-            
-            dailyWeather[d] = { date: new Date(hTime[d*24]), maxT, minT, rainHoursToday, dailyRainTotal, hydroMod: totalMod };
-
-            const dayName = dailyWeather[d].date.toLocaleDateString('en-US', { weekday: 'short', day:'numeric' });
-            html += `
-              <div class="forecast-card bg-white border border-slate-200">
-                <div class="text-[9px] font-bold text-slate-400 uppercase border-b pb-1 mb-1">${d===0?'TODAY':dayName}</div>
-                <div class="text-xs font-bold ${rainHoursToday>0?'text-blue-500':'text-slate-400'}">${rainHoursToday}h Rain</div>
-                <div class="text-[10px] text-amber-600 mt-1">H:${maxT.toFixed(0)}° L:${minT.toFixed(0)}°</div>
-                <div class="text-[9px] font-bold mt-1 px-1 rounded ${totalMod>1.0?'bg-emerald-100 text-emerald-700':totalMod<1.0?'bg-rose-100 text-rose-700':'bg-slate-100 text-slate-600'}">
-                    ${totalMod>1.0?'+':''}${Math.round((totalMod-1)*100)}% Flow
-                </div>
-              </div>`;
-        }
-        document.getElementById('forecast-cards').innerHTML = html;
-        
-        // Smart Probability Factor
-        if (totalRainForecast > 50) automatedWeatherFactor = 1.15;
-        else if (totalRainForecast > 15) automatedWeatherFactor = 1.08;
-        else if (totalRainForecast === 0) automatedWeatherFactor = 0.95;
-        else automatedWeatherFactor = 1.00;
-
-        const wSel = document.getElementById('weather-factor');
-        wSel.innerHTML = `
-            <option value="${automatedWeatherFactor}">Auto API (${automatedWeatherFactor>1?'+':''}${Math.round((automatedWeatherFactor-1)*100)}%)</option>
-            <option value="1.15">Heavy Rain (+15%)</option>
-            <option value="1.08">Medium Rain (+8%)</option>
-            <option value="1.00">Normal Flow (0%)</option>
-            <option value="0.95">Dry/Recession (-5%)</option>
-        `;
-        wSel.value = automatedWeatherFactor;
-
-    } catch (e) {
-        document.getElementById('forecast-cards').innerHTML = `<div class="text-sm text-amber-600">Hourly Weather API Offline. Cannot calculate baseflow.</div>`;
-    }
-}
-
-function triggerDatabaseSync() {
-    const btn = document.getElementById('btn-sync');
-    btn.innerHTML = `<span class="spinner" style="margin-right:6px"></span> Syncing...`;
-    
-    setTimeout(() => {
-        document.getElementById('ppa-energy').value = 4005.74; 
-        document.getElementById('ppa-days').value = 30;
-        document.getElementById('actual-days').value = 30; 
-
-        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-500"></i> DB Synced`;
-        setTimeout(() => { btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> Sync Substation DB`; }, 2000);
-        
-        runEngine();
-    }, 400); 
-}
-
-// ═══════════════════════════════════════════════════════════
-// CORE MATH & PROBABILITY ENGINE
-// ═══════════════════════════════════════════════════════════
-function runEngine() {
-    const btn = document.getElementById('btn-run');
-    btn.innerHTML = `<div class="loader border-white border-top-indigo-200"></div> Processing...`;
-    
-    setTimeout(() => {
-        try {
-            const y = parseInt(document.getElementById('sel-year').value);
-            const m = parseInt(document.getElementById('sel-month').value);
-            const targetWeek = parseInt(document.getElementById('sel-week').value);
-            
-            const ppaEnergy = parseFloat(document.getElementById('ppa-energy').value) || 0;
-            const ppaDays = parseInt(document.getElementById('ppa-days').value) || 30;
-            const actualDays = parseInt(document.getElementById('actual-days').value) || 30;
-            const weatherFactor = parseFloat(document.getElementById('weather-factor').value) || automatedWeatherFactor;
-
-            // --- 1. CAP CALCULATION ---
-            const dailyBase = ppaEnergy / ppaDays;
-            const monthlyAllowedCap = dailyBase * actualDays;
-            document.getElementById('txt-daily-base').textContent = dailyBase.toFixed(2) + " MWh/day";
-
-            const weekLens = [7, 7, 7, 7, Math.max(0, actualDays - 28)];
-            const actuals = [1,2,3,4,5].map(w => {
-                const val = parseFloat(document.getElementById(`w${w}-actual`).value);
-                return isNaN(val) ? null : val;
-            });
-
-            // --- 2. FIND BEST MATCH YEAR ---
-            let bestYear = y;
-            let highestConf = 0;
-            let bestData = dbAllYears[y][m]; 
-            
-            let ranks = [];
-            YEARS.forEach(testYear => {
-                if (testYear === y) return;
-                let conf = Math.random() * 40 + 50; 
-                ranks.push({year: testYear, conf: conf});
-                if (conf > highestConf) { highestConf = conf; bestYear = testYear; bestData = dbAllYears[testYear][m]; }
-            });
-            ranks.sort((a,b)=>b.conf - a.conf);
-
-            // --- 3. FREEZE RECESSION LOGIC ---
-            let isFreezeRecession = false;
-            let slopeMwhPerDay = 0;
-
-            if (actuals[0] !== null && actuals[1] !== null) {
-                const w1Avg = actuals[0] / 7;
-                const w2Avg = actuals[1] / 7;
-                if (w2Avg < (w1Avg * 0.9)) {
-                    slopeMwhPerDay = (w2Avg - w1Avg) / 7; 
-                    const recentMaxTemp = dailyWeather[0] ? dailyWeather[0].maxT : 10;
-                    if (recentMaxTemp <= 12) isFreezeRecession = true;
-                }
-            }
-
-            // --- 4. CALCULATE BASELINE TARGETS ---
-            let basePred = [0,0,0,0,0];
-            let histTotal = 0;
-            for(let wi=0; wi<5; wi++) {
-                for(let i=0; i<weekLens[wi]; i++) {
-                    let val = bestData[wi*7 + 1 + i] || dailyBase;
-                    basePred[wi] += val; histTotal += val;
-                }
-            }
-            basePred = basePred.map(val => (val / histTotal) * monthlyAllowedCap);
-
-            // --- 5. SMART DISTRIBUTION ---
-            let finalAD = [...basePred];
-            let devs = [null,null,null,null,null];
-            let adjusts = [0,0,0,0,0];
-            let sumLogged = 0, sumBaseLogged = 0;
-
-            for (let wi = 0; wi < 5; wi++) {
-                if (actuals[wi] !== null) {
-                    finalAD[wi] = actuals[wi];
-                    devs[wi] = actuals[wi] - basePred[wi];
-                    sumLogged += actuals[wi];
-                    sumBaseLogged += basePred[wi];
-                }
-            }
-
-            let remainingAllowed = monthlyAllowedCap - sumLogged;
-            let remainingBase = monthlyAllowedCap - sumBaseLogged;
-
-            for (let wi = 0; wi < 5; wi++) {
-                if (actuals[wi] === null && remainingBase > 0) {
-                    let target = (basePred[wi] / remainingBase) * remainingAllowed;
-                    
-                    if (isFreezeRecession) {
-                        let lastKnownDaily = actuals[1] / 7; 
-                        let projectedDaily = lastKnownDaily + (slopeMwhPerDay * ((wi-1)*7));
-                        if (projectedDaily < (dailyBase * 0.3)) projectedDaily = dailyBase * 0.3; 
-                        target = projectedDaily * weekLens[wi];
-                    } else {
-                        // Baseflow/Weather adjustments
-                        let weekMod = 1.0;
-                        if (dailyWeather[0] !== null) {
-                            let startD = wi*7; let endD = startD+7;
-                            let modSum = 0, count = 0;
-                            for(let d=startD; d<endD && d<15; d++) { modSum += dailyWeather[d].hydroMod; count++; }
-                            if (count > 0) weekMod = modSum / count;
-                        }
-                        
-                        // SMART WEEK 3 BOOST: If W1 overperformed AND weather is rainy/hot (> 1.0)
-                        if (wi === 2 && devs[0] > 0 && weatherFactor > 1.0) {
-                            weekMod = weekMod * weatherFactor;
-                        }
-                        
-                        target = target * weekMod;
-                    }
-                    finalAD[wi] = target;
-                }
-            }
-
-            // Normalization
-            let currentTotal = finalAD.reduce((a,b)=>a+b, 0);
-            let diff = monthlyAllowedCap - currentTotal;
-            if (Math.abs(diff) > 0.1) {
-                for (let wi = 4; wi >= 0; wi--) {
-                    if (actuals[wi] === null && weekLens[wi] > 0) { finalAD[wi] += diff; break; }
-                }
-            }
-
-            finalPredictions = [...finalAD]; 
-
-            for (let wi = 0; wi < 5; wi++) {
-                if (actuals[wi] === null) adjusts[wi] = finalAD[wi] - basePred[wi];
-            }
-
-            // --- 6. UPDATE UI & CHARTS ---
-            generateNarrative(targetWeek, isFreezeRecession, slopeMwhPerDay, finalAD[targetWeek-1], basePred[targetWeek-1]);
-            updateKPIs(monthlyAllowedCap, monthlyAllowedCap, isFreezeRecession ? "FREEZE RECESSION" : "SAFE", bestYear);
-            renderWeeklyTable(weekLens, basePred, actuals, devs, adjusts, finalAD, monthlyAllowedCap);
-            renderHistoricalTable(actualDays, m, y, bestYear);
-            renderMultiYearChart(actualDays, m, y, bestYear);
-            renderReportChart(actualDays, dailyBase, finalAD, actuals, weekLens);
-            
-            const recent7 = getRecent7(dbAllYears[y][m], actualDays);
-            renderPatternAndRanking(dbAllYears[y][m], bestData, ranks, actualDays);
-
-            btn.innerHTML = `<i class="fa-solid fa-calculator"></i> Run Hydro Engine`;
-        } catch (err) {
-            console.error("Engine Crash:", err);
-            alert("Analysis Error: " + err.message);
-            btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Error`;
-        }
-    }, 400); 
-}
-
-// ═══════════════════════════════════════════════════════════
-// DATABASE SAVE (MOCK UPSERT)
-// ═══════════════════════════════════════════════════════════
-async function saveToSupabase() {
-    const btn = document.getElementById('btn-save-db');
-    const status = document.getElementById('save-status');
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
-    
-    const year = document.getElementById('sel-year').value;
-    const monthStr = NEPALI_MONTHS[parseInt(document.getElementById('sel-month').value) - 1];
-
-    const payload = {
-        year: parseInt(year), month: monthStr,
-        week1_ad: finalPredictions[0], week2_ad: finalPredictions[1], week3_ad: finalPredictions[2],
-        week4_ad: finalPredictions[3], week5_ad: finalPredictions[4],
-        total_ad: finalPredictions.reduce((a,b)=>a+b,0)
-    };
-
-    if (hasSupabase) {
-        try {
-            const { error } = await supabase.from('contract_energy').upsert(payload, { onConflict: 'year,month' });
-            if (error) throw error;
-            btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved Successfully`;
-            btn.classList.replace('btn-success', 'bg-emerald-600');
-            status.textContent = `Predictions written to contract_energy for ${monthStr} ${year}.`;
-            status.classList.remove('hidden');
-        } catch (e) {
-            btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Save Failed`;
-            status.textContent = `Error: ${e.message}`;
-            status.classList.replace('text-emerald-600', 'text-rose-600');
-            status.classList.remove('hidden');
-        }
-    } else {
-        setTimeout(() => {
-            btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved (Simulation)`;
-            status.textContent = `[Simulation] Upserted payload to contract_energy: ${JSON.stringify(payload)}`;
-            status.classList.remove('hidden');
-        }, 800);
-    }
-}
-
-// ═══════════════════════════════════════════════════════════
-// UI RENDERING
-// ═══════════════════════════════════════════════════════════
-function generateNarrative(targetWeek, isFreeze, slope, targetAD, targetBase) {
-    let html = `<strong class="text-indigo-700">Hydro-Model Output for Week ${targetWeek}:</strong><br><br>`;
-    
-    if (isFreeze) {
-        html += `<div class="text-rose-700 bg-rose-50 p-3 rounded border border-rose-200 mb-3"><i class="fa-solid fa-temperature-arrow-down"></i> <strong>FREEZE RECESSION DETECTED.</strong> Actual generation dropped sharply by ${Math.abs(slope).toFixed(1)} MWh/day between W1 and W2. Max temperatures are below 12°C, confirming a halt in snowmelt.</div>`;
-        html += `The Engine has overridden historical averages and applied a mathematical recession curve. Target is set aggressively lower to <strong class="text-lg text-rose-600">${targetAD.toFixed(1)} MWh</strong> to avoid penalties.`;
-    } else {
-        if (targetWeek === 1 || targetWeek === 2) {
-            html += `Target for Week ${targetWeek} is aligned closely to the baseline curve derived from the PPA Cap. Modifying early targets significantly is restricted by the Engine to protect against end-of-month contractual shortfalls.`;
-        } else if (targetWeek === 3) {
-            if (targetAD > targetBase + 10) {
-                html += `Week 1 generation exceeded baseline. Combined with a favorable Open-Meteo forecast, the engine triggered a <strong>High-Probability Boost</strong> for Week 3. The target has been dynamically increased from the baseline ${targetBase.toFixed(1)} MWh to <strong class="text-lg text-emerald-600">${targetAD.toFixed(1)} MWh</strong>.`;
-            } else if (targetAD < targetBase - 10) {
-                html += `The forecast indicates dry conditions. To ensure the monthly PPA cap is safely met, the engine applied a conservation penalty to Week 3, lowering expectations to <strong class="text-lg text-amber-600">${targetAD.toFixed(1)} MWh</strong>.`;
-            } else {
-                html += `Standard deviation distribution applied. The projected target is <strong class="text-lg text-indigo-600">${targetAD.toFixed(1)} MWh</strong>.`;
-            }
-        } else {
-            html += `Late month (W4/W5) targets act as absorption buffers. They have been mathematically calculated to absorb previous deviations, guaranteeing the final total exactly matches the Monthly Allowed Cap.`;
-        }
-    }
-    document.getElementById('narrative-report').innerHTML = html;
-}
-
-function updateKPIs(cap, pred, statusText, bestYr) {
-    document.getElementById('kpi-cap').textContent = cap.toFixed(1);
-    document.getElementById('kpi-pred').textContent = pred.toFixed(1);
-    const stat = document.getElementById('kpi-river');
-    stat.textContent = statusText;
-    stat.className = `kpi-val font-syne ${statusText==="FREEZE RECESSION"?'text-rose-500':'text-emerald-500'}`;
-    document.getElementById('kpi-match').textContent = bestYr;
-}
-
-function renderWeeklyTable(days, base, actuals, devs, adjusts, finalAD, cap) {
-    let html = '';
-    let totAct = 0, countAct = 0, totDev = 0;
-    for(let w=0; w<5; w++) {
-        if(days[w] === 0) continue;
-        let isLocked = actuals[w] !== null;
-        if(isLocked) { totAct += actuals[w]; countAct++; totDev += devs[w]; }
-        
-        let dVal = devs[w], aVal = adjusts[w];
-        html += `<tr class="w${w+1}">
-            <td class="font-bold text-slate-700">Week ${w+1}</td>
-            <td class="mono">${days[w]}</td>
-            <td class="mono">${base[w].toFixed(1)}</td>
-            <td class="mono font-bold ${isLocked?'text-amber-600':'text-slate-400'}">${isLocked?actuals[w].toFixed(1):'—'}</td>
-            <td class="mono ${dVal>0?'text-emerald-500':dVal<0?'text-rose-500':''}">${dVal!=null?(dVal>0?'+':'')+dVal.toFixed(1):'—'}</td>
-            <td class="mono ${aVal>0?'text-indigo-500':aVal<0?'text-amber-500':''}">${!isLocked && aVal!=0?(aVal>0?'+':'')+aVal.toFixed(1):'—'}</td>
-            <td class="mono font-bold text-indigo-700 bg-indigo-50">${finalAD[w].toFixed(1)}</td>
-        </tr>`;
-    }
-    document.getElementById('weekly-body').innerHTML = html;
-    document.getElementById('wt-days').textContent = days.reduce((a,b)=>a+b,0);
-    document.getElementById('wt-base').textContent = base.reduce((a,b)=>a+b,0).toFixed(1);
-    document.getElementById('wt-act').textContent = countAct > 0 ? totAct.toFixed(1) : '—';
-    document.getElementById('wt-dev').textContent = countAct > 0 ? (totDev>=0?'+':'')+totDev.toFixed(1) : '—';
-    document.getElementById('wt-final').textContent = finalAD.reduce((a,b)=>a+b,0).toFixed(1);
-}
-
-function renderHistoricalTable(maxDays, m, tYear, bYear) {
-    let head = '<th>Day</th><th>Wk</th>';
-    YEARS.forEach(y => head += `<th>${y} ${y==tYear?'★':y==bYear?'◆':''}</th>`);
-    document.getElementById('hist-head').innerHTML = head;
-
-    let html = '';
-    for(let d=1; d<=maxDays; d++) {
-        let wi = d<=7 ? 1 : d<=14 ? 2 : d<=21 ? 3 : d<=28 ? 4 : 5;
-        html += `<tr class="w${wi}"><td>${d}</td><td class="text-[10px] text-slate-400">W${wi}</td>`;
-        YEARS.forEach(y => {
-            let val = dbAllYears[y][m][d];
-            html += `<td class="mono ${y==tYear?'text-amber-600 font-bold':y==bYear?'text-indigo-600':''}">${val!=null?val.toFixed(1):'—'}</td>`;
-        });
-        html += '</tr>';
-    }
-    document.getElementById('hist-body').innerHTML = html;
-}
-
-function renderMultiYearChart(maxDays, m, tYear, bYear) {
-    if (multiYearChartInstance) multiYearChartInstance.destroy();
-    const labels = Array.from({length: maxDays}, (_, i) => `D${i+1}`);
-    const datasets = [];
-    const colors = ['#94a3b8', '#cbd5e1', '#f59e0b', '#3b82f6', '#10b981'];
-
-    YEARS.forEach((y, i) => {
-        if(dbAllYears[y] && dbAllYears[y][m]) {
-            datasets.push({
-                label: `Year ${y} ${y==tYear?'(Target)':y==bYear?'(Best Match)':''}`,
-                data: Array.from({length: maxDays}, (_, idx) => dbAllYears[y][m][idx+1] || null),
-                borderColor: y == tYear ? '#f59e0b' : y == bYear ? '#3b82f6' : colors[i],
-                borderWidth: y == tYear || y == bYear ? 3 : 1,
-                borderDash: y == bYear ? [5,5] : [],
-                pointRadius: 0, tension: 0.3
-            });
-        }
-    });
-    multiYearChartInstance = new Chart(document.getElementById('multi-year-chart').getContext('2d'), { type: 'line', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } });
-}
-
-function renderReportChart(maxDays, dailyBase, finalAdArr, actualsArr, weekLens) {
-    if (reportChartInstance) reportChartInstance.destroy();
-    const labels = Array.from({length: maxDays}, (_, i) => `Day ${i + 1}`);
-    
-    const finalAdLine = [];
-    for(let w=0; w<5; w++) {
-        for(let i=0; i<weekLens[w]; i++) finalAdLine.push(finalAdArr[w] / weekLens[w]);
-    }
-
-    reportChartInstance = new Chart(document.getElementById('report-chart').getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'Recommended Daily AD', data: finalAdLine, borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', borderWidth: 3, stepped: true, fill: true },
-                { label: 'Contract Baseline', data: Array(maxDays).fill(dailyBase), borderColor: '#ef4444', borderWidth: 2, borderDash: [5,5], pointRadius: 0 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }, plugins: { legend: { position: 'bottom' } } }
-    });
-}
-
-function renderPatternAndRanking(targetData, bestData, ranks, actualDays) {
-    let lastLoggedDay = 0;
-    for(let d=1; d<=actualDays; d++) if(targetData[d]) lastLoggedDay = d;
-    
-    let html = '';
-    for(let d = Math.max(1, lastLoggedDay - 6); d <= lastLoggedDay; d++) {
-        let act = targetData[d]; let best = bestData[d]; let diff = act && best ? act - best : null;
-        html += `<tr><td class="font-bold">Day ${d}</td>
-            <td class="mono text-amber-600">${act?act.toFixed(1):'—'}</td><td class="mono text-indigo-600">${best?best.toFixed(1):'—'}</td>
-            <td class="mono ${diff>0?'text-emerald-500':'text-rose-500'}">${diff?(diff>0?'+':'')+diff.toFixed(1):'—'}</td>
-        </tr>`;
-    }
-    document.getElementById('pattern-body').innerHTML = html;
-
-    let rankHtml = '';
-    ranks.forEach((r, i) => {
-        rankHtml += `<div class="bg-slate-50 border border-slate-200 p-2 rounded flex justify-between items-center">
-            <span class="font-bold text-sm">${i===0?'🏆 ':''}${r.year}</span>
-            <span class="text-xs font-bold ${i===0?'text-emerald-600':'text-slate-500'}">${r.conf.toFixed(1)}% Match</span>
-        </div>`;
-    });
-    document.getElementById('rank-body').innerHTML = rankHtml;
-}
-
-function getRecent7(data, max) {
-  let res = []; let last = 0;
-  for(let d=1; d<=max; d++) if(data[d]) last = d;
-  for(let d=last; d>=1 && res.length<7; d--) if(data[d]) res.unshift({day:d, val:data[d]});
-  return res;
-}
-
-function switchTab(id) {
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    event.currentTarget.classList.add('active');
+  document.getElementById('today-chip').textContent = `📅 NPT: ${todayEng}`;
+  loadAndAnalyse(); 
 }
 
 window.onload = init;

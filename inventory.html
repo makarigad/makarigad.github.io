@@ -3,240 +3,502 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Inventory | Makari Gad 10MW</title>
+  <title>Inventory Hub | Makari Gad 10MW</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/css/index.css">
   <style>
-    .tab-btn.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
-    .tab-pane { display: none; }
-    .tab-pane.active { display: block; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .glass-panel {
+        background: linear-gradient(145deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.85) 100%);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.06);
+    }
+    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .row-selected { background-color: #eff6ff !important; border-left: 3px solid #3b82f6; }
+    td, th { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: 250px; }
+
+    /* Stock status row colours */
+    .stock-zero { background-color: #fff1f2 !important; }
+    .stock-zero:hover { background-color: #ffe4e6 !important; }
+
+    .report-table th { background-color: #f1f5f9; color: #334155; font-weight: 800; border: 1px solid #cbd5e1; padding: 6px 8px; text-transform: uppercase; font-size: 10px; }
+    .report-table td { border: 1px solid #e2e8f0; padding: 6px 8px; font-size: 11px; font-weight: 500; color: #475569; }
+    .report-table .total-row td { background-color: #e2e8f0; font-weight: 900; color: #0f172a; }
+
+    /* Stat card hover lift */
+    .stat-card { transition: transform 0.15s, box-shadow 0.15s; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px 0 rgba(31, 38, 135, 0.10); }
+
+    /* Pulse animation for zero-stock alert */
+    @keyframes soft-pulse { 0%,100% { opacity:1; } 50% { opacity:.7; } }
+    .alert-pulse { animation: soft-pulse 2.2s ease-in-out infinite; }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
-  <div id="global-header-container" class="shrink-0"></div>
+<body class="text-slate-800 h-screen w-screen overflow-hidden flex flex-col bg-slate-50 relative">
 
-  <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 no-print">
-    <div class="flex items-center gap-4">
-      <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-100">
-        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
+  <div class="absolute top-0 left-0 w-full h-[30vh] bg-gradient-to-b from-indigo-100/50 to-transparent -z-10 pointer-events-none"></div>
+  <div id="global-header-container" class="shrink-0 z-50 relative"></div>
+
+  <main class="flex-grow p-2 mx-auto w-full max-w-[1920px] flex flex-col min-h-0 gap-2 overflow-y-auto custom-scroll">
+
+    <!-- ─── TOP ACTION BAR ─── -->
+    <div class="flex flex-wrap items-center justify-between gap-2 shrink-0 glass-panel p-2 rounded-xl">
+      <!-- Category Filters -->
+      <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar" id="category-filters">
+        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest shrink-0 pr-1 hidden sm:block">VIEW:</span>
+        <button data-cat="All" class="filter-btn active bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold shadow-sm transition flex items-center gap-1">
+          📦 All <span id="count-all" class="bg-white/25 text-white px-1.5 rounded-full text-[9px] font-black tabular-nums"></span>
+        </button>
+        <button data-cat="Fuel" class="filter-btn bg-white text-slate-600 hover:bg-amber-50 hover:text-amber-700 border border-slate-200 px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+          ⛽ Fuel <span id="count-fuel" class="text-amber-600 text-[9px] font-black tabular-nums ml-0.5"></span>
+        </button>
+        <button data-cat="Consumable" class="filter-btn bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+          🧴 Consumables <span id="count-consumable" class="text-emerald-600 text-[9px] font-black tabular-nums ml-0.5"></span>
+        </button>
+        <button data-cat="Asset" class="filter-btn bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+          🔧 Assets <span id="count-asset" class="text-blue-600 text-[9px] font-black tabular-nums ml-0.5"></span>
+        </button>
+        <button data-cat="WKV" class="filter-btn bg-white text-slate-600 hover:bg-purple-50 hover:text-purple-700 border border-slate-200 px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+          ⚙️ WKV <span id="count-wkv" class="text-purple-600 text-[9px] font-black tabular-nums ml-0.5"></span>
+        </button>
       </div>
-      <div>
-        <h1 class="text-xl font-black text-slate-900 tracking-tight">Inventory & Fuel Management</h1>
-        <p class="text-xs text-slate-500 font-medium mt-0.5">Track consumable items, non-consumable assets, and fuel stocks.</p>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 shrink-0 flex-wrap">
+        <button onclick="openFuelReportModal()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-black shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          ⛽ Fuel Report
+        </button>
+        <button onclick="openFuelImportModal()" class="admin-only role-hidden bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-black shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Fuel Importer
+        </button>
+        <button onclick="openImportModal()" class="admin-only role-hidden bg-slate-700 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[11px] font-black shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Import Items
+        </button>
+        <button onclick="openNewItemModal()" class="admin-only role-hidden bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-[11px] font-black shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          ➕ Add New Item
+        </button>
       </div>
     </div>
-    <div class="flex items-center gap-3">
-      <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all shadow-sm">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Hub Dashboard
-      </a>
+
+    <!-- ─── SUMMARY STATS STRIP ─── -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0">
+      <!-- Total Items -->
+      <div class="glass-panel rounded-xl p-3 flex items-center gap-3 stat-card">
+        <div class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0 text-xl">📦</div>
+        <div class="min-w-0">
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Total Items</div>
+          <div id="stat-total" class="text-2xl font-black text-indigo-700 leading-none tabular-nums">--</div>
+          <div class="text-[9px] text-slate-400 font-medium">in inventory</div>
+        </div>
+      </div>
+      <!-- Tools / Assets -->
+      <div class="glass-panel rounded-xl p-3 flex items-center gap-3 stat-card">
+        <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0 text-xl">🔧</div>
+        <div class="min-w-0">
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Tools / Assets</div>
+          <div id="stat-assets" class="text-2xl font-black text-blue-700 leading-none tabular-nums">--</div>
+          <div class="text-[9px] text-slate-400 font-medium">assets tracked</div>
+        </div>
+      </div>
+      <!-- Consumables -->
+      <div class="glass-panel rounded-xl p-3 flex items-center gap-3 stat-card">
+        <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0 text-xl">🧴</div>
+        <div class="min-w-0">
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Consumables</div>
+          <div id="stat-consumables" class="text-2xl font-black text-emerald-700 leading-none tabular-nums">--</div>
+          <div class="text-[9px] text-slate-400 font-medium">items tracked</div>
+        </div>
+      </div>
+      <!-- Zero / Low Stock Alert -->
+      <div class="glass-panel rounded-xl p-3 flex items-center gap-3 stat-card" id="alert-card">
+        <div class="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center shrink-0 text-xl" id="alert-icon">⚠️</div>
+        <div class="min-w-0">
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Out of Stock</div>
+          <div id="stat-zero" class="text-2xl font-black text-rose-600 leading-none tabular-nums">--</div>
+          <div class="text-[9px] text-slate-400 font-medium" id="alert-label">items need restock</div>
+        </div>
+      </div>
     </div>
-  </header>
 
-  <main class="max-w-7xl mx-auto w-full px-4 py-5 md:px-6 md:py-6 flex flex-col gap-5">
-    <section class="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-      <div class="grid grid-cols-3 gap-3">
-        <button id="tab-in-btn" class="tab-btn active border border-slate-200 rounded-xl py-3 text-sm font-black transition-all hover:bg-slate-50">1) Material In</button>
-        <button id="tab-out-btn" class="tab-btn border border-slate-200 rounded-xl py-3 text-sm font-black transition-all hover:bg-slate-50">2) Material Out</button>
-        <button id="tab-report-btn" class="tab-btn border border-slate-200 rounded-xl py-3 text-sm font-black transition-all hover:bg-slate-50">3) Stock Report</button>
-      </div>
-    </section>
+    <!-- ─── MAIN CONTENT GRID ─── -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-2 flex-grow min-h-0">
 
-    <section id="tab-in" class="tab-pane active bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-      <h2 class="text-sm font-black uppercase tracking-wide text-slate-700 mb-3">In Register (New Materials / Diesel)</h2>
-      <form id="in-form" class="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div>
-          <label class="text-[11px] font-bold text-slate-500">English Date</label>
-          <input id="in-date" type="date" required class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full" />
+      <!-- LEFT: INVENTORY TABLE -->
+      <div class="lg:col-span-7 glass-panel rounded-xl flex flex-col min-h-0 overflow-hidden">
+        <div class="p-2 border-b border-slate-200/80 bg-white/50 flex items-center justify-between gap-2 shrink-0 flex-wrap">
+          <div class="relative flex-grow" style="max-width:280px">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="search-inventory" placeholder="Search item name or location..." class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[12px] font-semibold focus:ring-2 focus:ring-indigo-400 outline-none transition placeholder:text-slate-400">
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span id="list-count-badge" class="hidden bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-[9px] font-black"></span>
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest hidden sm:block">👆 Tap row to see stock card</span>
+          </div>
         </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500">Nepali Date</label>
-          <input id="in-nep-date" type="text" readonly class="mt-1 rounded-lg border border-slate-200 bg-slate-100 p-2.5 text-sm w-full" />
-        </div>
-        <div class="md:col-span-1">
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Entry Type</label>
-          <select id="in-category" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition">
-            <option value="consumable">Consumable Item</option>
-            <option value="non_consumable">Non-Consumable (Assets)</option>
-            <option value="fuel">Fuel Item (Diesel/Petrol)</option>
-          </select>
-        </div>
-        <div class="md:col-span-1">
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Store / Location</label>
-          <select id="in-store" required class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition">
-            <option value="civil_store">Civil Store</option>
-            <option value="electrical_store">Electrical Store</option>
-            <option value="mechanical_store_s1">Mechanical Store S1</option>
-            <option value="mechanical_store_s2">Mechanical Store S2</option>
-            <option value="consumable_store">Consumable Store</option>
-            <option value="outside_store">Outside Store</option>
-            <option value="powerhouse_store">Powerhouse Store</option>
-            <option value="dam_store">Dam Store</option>
-            <option value="headworks">Headworks</option>
-            <option value="ropeway_store">Ropeway Store</option>
-            <option value="transmission_line_store">Transmission Line Store</option>
-            <option value="outside_transmission_line_store">Transmission Line Store Outside</option>
-            <option value="wkv_materials_store">WKV Materials Store</option>
-            <option value="plant_inventory">Plant Inventory</option>
-            <option value="powerhouse_main_tank">Powerhouse Main Tank (Fuel)</option>
-            <option value="dam_fuel">Dam Fuel</option>
-            <option value="ropeway_fuel">Ropeway Fuel</option>
-          </select>
-        </div>
-        <div class="md:col-span-2">
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Item Name / Description</label>
-          <input id="in-item" type="text" required placeholder="Ex: Mobil Delvac, Gate Valve 4 inch, Diesel" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Quantity</label>
-          <input id="in-qty" type="number" step="0.01" required placeholder="0.00" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Unit</label>
-          <input id="in-unit" type="text" required placeholder="pcs, kg, L, set" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Gate Pass / Bill No.</label>
-          <input id="in-gate-pass" type="text" placeholder="Ex: GP-102" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Supplier / Source</label>
-          <input id="in-party" type="text" placeholder="Ex: Local Market, KTM Store" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <textarea id="in-remark" rows="2" placeholder="Remark" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-4"></textarea>
-        <button type="submit" class="md:col-span-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black px-4 py-2.5 rounded-lg">Save In Entry</button>
-      </form>
-    </section>
 
-    <section id="tab-out" class="tab-pane bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-      <h2 class="text-sm font-black uppercase tracking-wide text-slate-700 mb-3">Out Register (Issue / Consumption)</h2>
-      <form id="out-form" class="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div>
-          <label class="text-[11px] font-bold text-slate-500">English Date</label>
-          <input id="out-date" type="date" required class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500">Nepali Date</label>
-          <input id="out-nep-date" type="text" readonly class="mt-1 rounded-lg border border-slate-200 bg-slate-100 p-2.5 text-sm w-full" />
-        </div>
-        <div class="md:col-span-1">
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Entry Type</label>
-          <select id="out-category" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition">
-            <option value="consumable">Consumable Consumption</option>
-            <option value="non_consumable">Non-Consumable (Assets)</option>
-            <option value="fuel">Fuel Issue</option>
-          </select>
-        </div>
-        <div class="md:col-span-1">
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">From Store / Location</label>
-          <select id="out-store" required class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition">
-            <option value="civil_store">Civil Store</option>
-            <option value="electrical_store">Electrical Store</option>
-            <option value="mechanical_store_s1">Mechanical Store S1</option>
-            <option value="mechanical_store_s2">Mechanical Store S2</option>
-            <option value="consumable_store">Consumable Store</option>
-            <option value="outside_store">Outside Store</option>
-            <option value="powerhouse_store">Powerhouse Store</option>
-            <option value="dam_store">Dam Store</option>
-            <option value="headworks">Headworks</option>
-            <option value="ropeway_store">Ropeway Store</option>
-            <option value="transmission_line_store">Transmission Line Store</option>
-            <option value="outside_transmission_line_store">Transmission Line Store Outside</option>
-            <option value="wkv_materials_store">WKV Materials Store</option>
-            <option value="plant_inventory">Plant Inventory</option>
-            <option value="powerhouse_main_tank">Powerhouse Main Tank (Fuel)</option>
-            <option value="dam_fuel">Dam Fuel</option>
-            <option value="ropeway_fuel">Ropeway Fuel</option>
-          </select>
-        </div>
-        <div class="md:col-span-2">
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Item Name / Description</label>
-          <input id="out-item" type="text" required placeholder="Ex: Mobil Delvac, Gate Valve 4 inch, Diesel" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Quantity</label>
-          <input id="out-qty" type="number" step="0.01" required placeholder="0.00" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Unit</label>
-          <input id="out-unit" type="text" required placeholder="pcs, kg, L, set" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Issued To / Receiver</label>
-          <input id="out-receiver" type="text" placeholder="Ex: Operator Name, Dept." class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Purpose / Machine</label>
-          <input id="out-purpose" type="text" placeholder="Ex: Tractor, DG-1, Unit-2" class="mt-1 rounded-lg border border-slate-300 p-2.5 text-sm w-full focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition" />
-        </div>
-        <textarea id="out-remark" rows="2" placeholder="Remark" class="rounded-lg border border-slate-300 p-2.5 text-sm md:col-span-4"></textarea>
-        <button type="submit" class="md:col-span-4 bg-rose-600 hover:bg-rose-700 text-white text-sm font-black px-4 py-2.5 rounded-lg">Save Out Entry</button>
-      </form>
-    </section>
-
-    <section id="tab-report" class="tab-pane bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
-          <div class="text-[10px] uppercase font-black text-slate-500">Diesel Main Tank</div>
-          <div id="diesel-powerhouse-main" class="text-lg font-black text-indigo-700 mt-1">0 L</div>
-        </div>
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
-          <div class="text-[10px] uppercase font-black text-slate-500">Diesel at Dam</div>
-          <div id="diesel-dam" class="text-lg font-black text-emerald-700 mt-1">0 L</div>
-        </div>
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
-          <div class="text-[10px] uppercase font-black text-slate-500">Diesel at Ropeway</div>
-          <div id="diesel-ropeway" class="text-lg font-black text-cyan-700 mt-1">0 L</div>
-        </div>
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
-          <div class="text-[10px] uppercase font-black text-slate-500">Total Diesel Stock</div>
-          <div id="diesel-total" class="text-lg font-black text-violet-700 mt-1">0 L</div>
+        <div class="flex-grow overflow-y-auto custom-scroll bg-white/40 relative">
+          <table class="w-full text-left text-[11px] whitespace-nowrap">
+            <thead class="sticky top-0 bg-slate-100 text-slate-500 uppercase tracking-wider font-extrabold text-[9px] shadow-sm z-10 border-b border-slate-200">
+              <tr>
+                <th class="px-3 py-2">Item Name</th>
+                <th class="px-2 py-2">Category</th>
+                <th class="px-2 py-2 hidden md:table-cell">Location</th>
+                <th class="px-2 py-2 text-center hidden sm:table-cell">Unit</th>
+                <th class="px-3 py-2 text-right">Qty in Stock</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-list" class="divide-y divide-slate-100 font-medium">
+              <tr><td colspan="5" class="p-6 text-center text-slate-400 font-bold">Loading inventory...</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div class="bg-white border border-slate-200 rounded-xl p-3 overflow-x-auto">
-        <h3 class="text-xs font-black uppercase tracking-wide text-slate-700 mb-2">Store-wise Balance</h3>
-        <table class="min-w-full text-xs">
-          <thead class="bg-slate-50 text-slate-600">
-            <tr>
-              <th class="px-2 py-2 text-left">Store Location</th>
-              <th class="px-2 py-2 text-left">Item & Size/Spec</th>
-              <th class="px-2 py-2 text-left">Live Balance</th>
-              <th class="px-2 py-2 text-left">Unit</th>
-            </tr>
-          </thead>
-          <tbody id="stock-balance-body"></tbody>
-        </table>
+      <!-- RIGHT: STOCK CARD PANEL -->
+      <div class="lg:col-span-5 glass-panel rounded-xl flex flex-col min-h-0 relative overflow-hidden" id="stock-card-panel">
+
+        <!-- Empty State -->
+        <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center bg-white/75 z-20 gap-3 pointer-events-none">
+          <div class="text-5xl">👈</div>
+          <p class="text-sm font-black text-slate-500 text-center px-6 leading-relaxed">
+            Tap any item on the left<br>to see its stock details
+          </p>
+          <p class="text-[10px] text-slate-400 font-semibold text-center px-8">You can add or remove stock from this panel</p>
+        </div>
+
+        <!-- Item Header -->
+        <div class="p-3 bg-white/90 border-b border-slate-200/80 shrink-0">
+          <div class="flex justify-between items-start mb-2.5">
+            <div class="min-w-0 pr-2">
+              <h2 id="sc-title" class="text-base font-black text-slate-800 leading-tight truncate">--</h2>
+              <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                  Code: <span id="sc-asset" class="text-slate-600 font-black">--</span>
+                </span>
+                <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">
+                  Measured in: <span id="sc-unit">--</span>
+                </span>
+              </div>
+            </div>
+            <!-- Big Stock Number -->
+            <div class="shrink-0 bg-indigo-50 border-2 border-indigo-100 rounded-xl px-3 py-2 text-center min-w-[80px]">
+              <div class="text-[8px] font-black text-indigo-400 uppercase tracking-widest leading-tight mb-0.5">AVAILABLE</div>
+              <div id="sc-stock" class="text-xl font-black text-indigo-600 leading-none tabular-nums">--</div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex gap-2 admin-only role-hidden">
+            <button onclick="openTxnModal('IN')" class="flex-1 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white py-2 rounded-xl text-[11px] font-black transition shadow-sm flex items-center justify-center gap-1.5">
+              ✅ ADD STOCK (Receive IN)
+            </button>
+            <button onclick="openTxnModal('OUT')" class="flex-1 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white py-2 rounded-xl text-[11px] font-black transition shadow-sm flex items-center justify-center gap-1.5">
+              📤 USE STOCK (Issue OUT)
+            </button>
+          </div>
+        </div>
+
+        <!-- Log Table Header -->
+        <div class="px-3 py-1.5 bg-slate-100 border-b border-slate-200 shrink-0 flex items-center justify-between">
+          <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">📋 Transaction History</span>
+          <span class="text-[9px] text-slate-400 font-semibold">Latest 200 entries</span>
+        </div>
+
+        <!-- Log Table -->
+        <div class="flex-grow overflow-y-auto custom-scroll bg-slate-50/50">
+          <table class="w-full text-left text-[10px] whitespace-nowrap">
+            <thead class="sticky top-0 bg-slate-200 text-slate-600 uppercase tracking-widest font-black shadow-sm text-[9px]">
+              <tr>
+                <th class="px-2 py-1.5">Date</th>
+                <th class="px-2 py-1.5">Action</th>
+                <th class="px-2 py-1.5 w-full">Details / Purpose</th>
+                <th class="px-2 py-1.5 text-right">Qty</th>
+              </tr>
+            </thead>
+            <tbody id="stock-card-logs" class="divide-y divide-slate-100 font-medium"></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="bg-white border border-slate-200 rounded-xl p-3 overflow-x-auto">
-        <h3 class="text-xs font-black uppercase tracking-wide text-slate-700 mb-2">Recent Transactions (In & Out)</h3>
-        <table class="min-w-full text-xs">
-          <thead>
-            <tr class="bg-slate-50 text-slate-600">
-              <th class="px-2 py-2 text-left">Date (NP)</th>
-              <th class="px-2 py-2 text-left">In/Out</th>
-              <th class="px-2 py-2 text-left">Type</th>
-              <th class="px-2 py-2 text-left">Store Location</th>
-              <th class="px-2 py-2 text-left">Item Description</th>
-              <th class="px-2 py-2 text-left">Qty</th>
-              <th class="px-2 py-2 text-left">Unit</th>
-            </tr>
-          </thead>
-          <tbody id="report-transactions-body"></tbody>
-        </table>
-      </div>
-    </section>
+    </div>
   </main>
 
-  <div id="notification-modal" class="fixed top-4 right-4 z-50 opacity-0 -translate-y-4 transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-xl border-l-4 px-4 py-3" style="border-left-color:#10b981;">
-    <p id="notification-message" class="text-sm font-bold text-slate-700"></p>
+  <div id="global-footer-container" class="shrink-0"></div>
+
+  <!-- ─────────────────────────────────────────────
+       FUEL REPORT MODAL  (format unchanged, minor UI polish)
+       ───────────────────────────────────────────── -->
+  <div id="fuel-report-modal" class="fixed inset-0 bg-slate-50 z-[200] hidden flex-col">
+    <div class="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center shrink-0 shadow-sm z-10">
+      <div class="flex items-center gap-4 flex-wrap">
+        <h3 class="text-xl font-black text-indigo-900 uppercase tracking-wide">⛽ Fuel Ledger &amp; Summary</h3>
+        <form id="fuel-report-form" class="flex items-center gap-3 ml-4 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 shadow-inner">
+          <div class="flex items-center gap-2">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">From:</label>
+            <input type="date" id="fr-start" required class="p-1 border border-slate-200 rounded text-xs font-bold outline-none bg-white focus:border-indigo-400">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">To:</label>
+            <input type="date" id="fr-end" required class="p-1 border border-slate-200 rounded text-xs font-bold outline-none bg-white focus:border-indigo-400">
+          </div>
+          <button type="submit" id="fr-generate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-black transition">Generate</button>
+        </form>
+      </div>
+      <button type="button" onclick="closeModal('fuel-report-modal')" class="text-slate-400 hover:text-rose-600 text-3xl leading-none transition font-light">&times;</button>
+    </div>
+    <div class="flex-grow p-4 md:p-6 overflow-y-auto custom-scroll" id="fuel-report-content">
+      <div id="fr-empty-state" class="h-full flex flex-col items-center justify-center text-slate-400">
+        <p class="font-bold text-sm tracking-wide">Select date range and click Generate to view the ledger.</p>
+      </div>
+      <div id="fr-generated-tables" class="w-full max-w-[1600px] mx-auto hidden"></div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────
+       FUEL IMPORT MODAL  (unchanged)
+       ───────────────────────────────────────────── -->
+  <div id="fuel-import-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden border border-slate-200 flex flex-col max-h-[95vh]">
+      <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-rose-600 shrink-0">
+        <h3 class="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Fuel Master Importer (Sheet-by-Sheet)
+        </h3>
+        <button type="button" onclick="closeModal('fuel-import-modal')" class="text-rose-200 hover:text-white text-xl leading-none transition">&times;</button>
+      </div>
+
+      <div class="p-6 overflow-y-auto custom-scroll" id="fi-setup-section">
+        <div class="bg-rose-50 border border-rose-100 rounded-lg p-4 mb-4 text-xs text-rose-800 font-medium">
+          <p class="font-black mb-2 uppercase tracking-widest text-[10px] text-rose-900">Setup Instructions</p>
+          <ul class="list-decimal pl-4 space-y-1 mb-2">
+            <li>You can upload <b>multiple CSV files</b> at once by highlighting them, or a single Excel workbook.</li>
+            <li>The system will extract the exact 4 tables (PH, Ropeway, Dam, Petrol) sheet by sheet for you to review and save.</li>
+            <li>Duplicates will be automatically highlighted and unchecked.</li>
+          </ul>
+          <button id="fi-wipe-btn" class="mt-2 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-md shadow-md text-[11px] uppercase tracking-widest">
+            ⚠️ Wipe All Fuel Data &amp; Initialize Clean Slate
+          </button>
+        </div>
+        <form id="fi-form" class="space-y-3 mt-6">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-widest">Select CSV/Excel Files</label>
+            <input type="file" id="fi-file" multiple accept=".csv, .xlsx, .xls" required class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+          </div>
+          <button type="submit" id="fi-submit-btn" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-lg shadow-md transition text-[11px] uppercase tracking-widest flex items-center justify-center gap-2">
+            Read Data Files
+          </button>
+        </form>
+      </div>
+
+      <div class="p-4 hidden flex-col h-full min-h-0 bg-slate-50" id="fi-review-section">
+        <div class="bg-white border border-slate-200 p-3 rounded-lg mb-3 flex justify-between items-center shrink-0 shadow-sm">
+          <div>
+            <h4 class="font-black text-indigo-900 text-base" id="fi-sheet-title">Sheet: --</h4>
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5" id="fi-sheet-progress">File 1 of ?</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-md border border-emerald-200 cursor-pointer">
+              <input type="checkbox" id="fi-is-opening" class="w-3.5 h-3.5 accent-emerald-600">
+              Include Opening Stock
+            </label>
+            <button id="fi-skip-btn" class="px-4 py-2 bg-white border border-slate-300 font-bold rounded-md shadow-sm text-slate-700 hover:bg-slate-100 text-xs transition">Skip Sheet</button>
+            <button id="fi-save-btn" class="px-4 py-2 bg-indigo-600 border border-indigo-700 font-bold rounded-md shadow-sm text-white hover:bg-indigo-700 text-xs transition">Save Checked &amp; Next</button>
+          </div>
+        </div>
+        <div class="flex-grow overflow-y-auto custom-scroll grid grid-cols-1 md:grid-cols-2 gap-4 pb-4" id="fi-tables-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────
+       TRANSACTION MODAL  (user-friendly labels + stock banner)
+       ───────────────────────────────────────────── -->
+  <div id="txn-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200 flex flex-col">
+
+      <!-- Colour-coded header (green = IN, red = OUT) -->
+      <div id="txn-header" class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <h3 id="txn-title" class="text-sm font-black text-slate-800 uppercase tracking-wide">Record Transaction</h3>
+        <button type="button" onclick="closeModal('txn-modal')" class="text-slate-400 hover:text-slate-600 text-2xl leading-none font-light">&times;</button>
+      </div>
+
+      <!-- Current stock info banner -->
+      <div id="txn-stock-banner" class="hidden px-5 py-2 border-b flex items-center justify-between bg-indigo-50 border-indigo-100">
+        <div>
+          <span class="text-[9px] font-bold text-indigo-400 uppercase tracking-widest block">Current Stock Before This Entry</span>
+          <span id="txn-current-stock" class="text-base font-black text-indigo-700">--</span>
+        </div>
+        <div class="text-2xl">📊</div>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scroll">
+        <form id="txn-form" class="space-y-3">
+          <input type="hidden" id="txn-item-id">
+          <input type="hidden" id="txn-type">
+          <input type="hidden" id="txn-log-id">
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">📅 Date of Entry</label>
+              <input type="date" id="txn-date" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">
+                🔢 Quantity (<span id="txn-unit" class="text-indigo-600 font-black"></span>)
+              </label>
+              <input type="number" id="txn-qty" step="0.01" min="0.01" required placeholder="0"
+                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-indigo-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition">
+            </div>
+          </div>
+
+          <!-- OUT-only fields -->
+          <div id="out-fields" class="space-y-3 hidden">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">📍 Where Was It Used?</label>
+              <select id="txn-location" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+                <option value="">-- Select a Location --</option>
+                <option value="Powerhouse (PH)">🏭 Powerhouse (PH)</option>
+                <option value="Dam / Headworks">🌊 Dam / Headworks</option>
+                <option value="Ropeway">🚡 Ropeway</option>
+                <option value="Transmission Line">⚡ Transmission Line (TL)</option>
+                <option value="Camp/Quarters">🏠 Camp / Quarters</option>
+                <option value="Vehicle">🚛 Vehicle (Tractor / Bolero)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">📝 What Was It Used For?</label>
+              <input type="text" id="txn-purpose" placeholder="e.g. Generator 2 service, Pipe repair..."
+                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            </div>
+          </div>
+
+          <!-- IN-only fields -->
+          <div id="in-fields" class="space-y-3 hidden">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">🧾 Bill / Reference No.</label>
+              <input type="text" id="txn-ref" placeholder="Bill number or Gate Pass number"
+                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">👤 Requested By</label>
+              <input type="text" id="txn-req" placeholder="Person's name"
+                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-indigo-400">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">✅ Approved By</label>
+              <input type="text" id="txn-app" placeholder="Approver's name"
+                class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-indigo-400">
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-4">
+            <button type="button" id="txn-delete-btn"
+              class="hidden flex-1 py-2.5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-black rounded-xl shadow-sm transition text-[11px] uppercase tracking-widest">
+              🗑️ Delete
+            </button>
+            <button type="submit" id="txn-submit"
+              class="flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition text-[11px] uppercase tracking-widest">
+              💾 Save Transaction
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────
+       CREATE / ADD NEW ITEM MODAL
+       ───────────────────────────────────────────── -->
+  <div id="item-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+      <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
+        <div>
+          <h3 class="text-lg font-black text-indigo-900 uppercase tracking-wide">➕ Add New Item</h3>
+          <p class="text-[10px] text-indigo-500 font-semibold mt-0.5">Create a new item to track in the inventory</p>
+        </div>
+        <button type="button" onclick="closeModal('item-modal')" class="text-indigo-400 hover:text-indigo-700 text-2xl leading-none font-light">&times;</button>
+      </div>
+      <form id="new-item-form" class="p-6 space-y-4">
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">
+            📦 Item Name <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" id="ni-name" required
+            placeholder="e.g. Engine Oil, Safety Helmet, Wire Rope..."
+            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">
+              🏷️ Category <span class="text-rose-500">*</span>
+            </label>
+            <select id="ni-cat" required
+              class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+              <option value="Consumable">🧴 Consumable</option>
+              <option value="Asset">🔧 Asset / Tool</option>
+              <option value="WKV">⚙️ WKV Spare</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">
+              📏 Unit of Measure <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" id="ni-unit" required placeholder="e.g. nos / Ltr / Kg / Mtr"
+              class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition">
+            <p class="text-[9px] text-slate-400 mt-1 font-semibold">Examples: nos, Ltr, Kg, Mtr, Pcs, Set</p>
+          </div>
+        </div>
+
+        <!-- Unit Quick-Select Pills -->
+        <div>
+          <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Common Units – tap to fill:</p>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" onclick="document.getElementById('ni-unit').value='nos'" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 text-[10px] font-bold rounded-lg transition">nos</button>
+            <button type="button" onclick="document.getElementById('ni-unit').value='Ltr'" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 text-[10px] font-bold rounded-lg transition">Ltr</button>
+            <button type="button" onclick="document.getElementById('ni-unit').value='Kg'" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 text-[10px] font-bold rounded-lg transition">Kg</button>
+            <button type="button" onclick="document.getElementById('ni-unit').value='Mtr'" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 text-[10px] font-bold rounded-lg transition">Mtr</button>
+            <button type="button" onclick="document.getElementById('ni-unit').value='Pcs'" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 text-[10px] font-bold rounded-lg transition">Pcs</button>
+            <button type="button" onclick="document.getElementById('ni-unit').value='Set'" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 text-[10px] font-bold rounded-lg transition">Set</button>
+            <button type="button" onclick="document.getElementById('ni-unit').value='Roll'" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 text-[10px] font-bold rounded-lg transition">Roll</button>
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md transition text-sm uppercase tracking-widest mt-2">
+          ✅ Create Item in Inventory
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────
+       STANDARD IMPORT MODAL (disabled info)
+       ───────────────────────────────────────────── -->
+  <div id="import-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
+    <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
+      <h3 class="text-lg font-black text-slate-800 mb-2">Standard Importer</h3>
+      <p class="text-xs text-slate-500 mb-4">Use the <b>⛽ Fuel Importer</b> button for fuel data, or <b>➕ Add New Item</b> to add items manually.</p>
+      <button type="button" onclick="closeModal('import-modal')" class="w-full py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition">Close</button>
+    </div>
   </div>
 
   <script type="module" src="./assets/js/inventory.js"></script>
-
-  <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
-
-
-

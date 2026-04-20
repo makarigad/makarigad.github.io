@@ -227,7 +227,7 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
     }
 });
 
-// ── Dashboard data loader ──
+
 // ── Dashboard data loader ──
 // ── Dashboard data loader ──
 async function loadDashboardData() {
@@ -244,12 +244,14 @@ async function loadDashboardData() {
         const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const todayStr = fmt(displayDate);
         
-        // FIX: Calculate yesterday relative to the displayDate, NOT nepalNow
         const yesterday = new Date(displayDate); 
         yesterday.setDate(displayDate.getDate() - 1);
         const yesterdayStr = fmt(yesterday);
 
         if (!navigator.onLine) throw new Error('Offline');
+
+        // TRIGGER THE NEW NOON-TO-NOON FUNCTION
+        fetchNoonToNoonData();
 
         // Calendar lookup
         const { data: calData } = await fetchWithTimeout(
@@ -280,7 +282,6 @@ async function loadDashboardData() {
                 } catch { /* non-critical */ }
             }
 
-            // Update inner span text (not the whole element to preserve icon)
             const span = badge.querySelector('span') ?? badge;
             span.textContent = 'Today: ' + dateLabel + rangeText;
         }
@@ -295,7 +296,6 @@ async function loadDashboardData() {
         let u1 = 0, u2 = 0, stationCons = 0, gridImport = 0;
 
         if (todayData && prevData) {
-            // New granular values based on daily cumulatives
             u1 = Math.max(0, (todayData.unit1_gen ?? 0) - (prevData.unit1_gen ?? 0));
             u2 = Math.max(0, (todayData.unit2_gen ?? 0) - (prevData.unit2_gen ?? 0));
             stationCons = Math.max(0, (todayData.station_trans ?? 0) - (prevData.station_trans ?? 0));
@@ -316,7 +316,7 @@ async function loadDashboardData() {
         const toMWh = (kwh) => kwh > 1000 ? kwh / 1000 : kwh;
         const grossMWh  = toMWh(grossGen);
         const exportMWh = toMWh(netExport);
-        const plantFactor = (grossMWh / 240) * 100;   // 240 = 10 MW × 24 h
+        const plantFactor = (grossMWh / 240) * 100;
         
         const u1MWh = toMWh(u1);
         const u2MWh = toMWh(u2);
@@ -325,20 +325,16 @@ async function loadDashboardData() {
         setText('card-export', exportMWh > 0 ? exportMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-pf',     grossMWh  > 0 ? plantFactor.toFixed(1) + '%' : '0.0%');
         
-        // Detailed Values 
         setText('card-u1-gen', u1MWh > 0 ? u1MWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-u2-gen', u2MWh > 0 ? u2MWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-station-cons', stationCons > 0 ? stationCons.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kWh' : '0.0 kWh');
         setText('card-import', gridImport > 0 ? gridImport.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
 
-
-        // Outages
         const { data: oData } = await fetchWithTimeout(
             supabase.from('outages').select('loss_time_min').eq('id', todayStr).maybeSingle(), 3000
         );
         setText('card-outages', oData?.loss_time_min ? (oData.loss_time_min / 60).toFixed(1) + ' h' : '0.0 h');
 
-        // MCE / AD
         if (calData?.nep_year && calData?.nep_month) {
             const mceKey = `${calData.nep_year}_${calData.nep_month}`;
             const { data: mce } = await fetchWithTimeout(
@@ -351,27 +347,98 @@ async function loadDashboardData() {
         }
 
     } catch (err) {
-        console.warn('[dashboard] Offline or error:', err.message);
-        const badge = document.getElementById('card-update');
-        if (badge) {
-            const span = badge.querySelector('span') ?? badge;
-            span.textContent = 'Status: Offline Mode';
-            badge.classList.replace('text-indigo-600', 'text-amber-600');
-            badge.classList.replace('bg-indigo-50', 'bg-amber-50');
-            badge.classList.replace('border-indigo-100', 'border-amber-200');
-        }
-        // Set all to fallback
-        ['card-gen', 'card-export', 'card-pf', 'card-outages', 'card-u1-hrs', 'card-u2-hrs', 'card-mce', 'card-ad', 'card-u1-gen', 'card-u2-gen', 'card-station-cons', 'card-import']
-            .forEach(id => setText(id, '—'));
+        console.warn('[dashboard] Error:', err.message);
+        ['card-gen', 'card-export', 'card-pf', 'card-outages', 'card-u1-hrs', 'card-u2-hrs', 'card-mce', 'card-ad', 'card-u1-gen', 'card-u2-gen', 'card-station-cons', 'card-import'].forEach(id => setText(id, '—'));
     }
 }
 
+// ── NEW: NOON TO NOON LOGIC ──
+// ── NOON TO NOON LOGIC ──
+async function fetchNoonToNoonData() {
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
+    const currentHour = now.getHours();
+
+    // 1. Establish the window (12 PM yesterday or today)
+    let startDate = new Date(now);
+    if (currentHour < 12) {
+        startDate.setDate(startDate.getDate() - 1);
+    }
+    
+    const startEnglishDate = startDate.toISOString().split('T')[0];
+    const endEnglishDate = now.toISOString().split('T')[0];
+
+    try {
+        // Fetch Nepali Date for Display
+        let nepaliStartDate = startEnglishDate;
+        const { data: calData } = await supabase
+            .from('calendar_mappings')
+            .select('nep_date_str')
+            .eq('eng_date', startEnglishDate)
+            .maybeSingle();
+            
+        if (calData && calData.nep_date_str) {
+            nepaliStartDate = calData.nep_date_str;
+        }
+        
+        const dateLabel = document.getElementById('noon-start-date');
+        if (dateLabel) dateLabel.textContent = nepaliStartDate;
+
+        // Fetch logs for the date range, ordered chronologically
+        const { data: logs, error } = await supabase
+            .from('hourly_logs') 
+            .select('e_u1_gwh, e_u2_gwh, log_date, log_time')
+            .gte('log_date', startEnglishDate)
+            .lte('log_date', endEnglishDate)
+            .order('log_date', { ascending: true })
+            .order('log_time', { ascending: true });
+
+        if (error) throw error;
+
+        let totalGenMWh = 0;
+
+        if (logs && logs.length > 0) {
+            // Filter logs strictly within the 12:00 PM -> 11:59 AM window
+            const windowLogs = logs.filter(log => {
+                const isStartDay = log.log_date === startEnglishDate;
+                const logHour = parseInt(log.log_time.split(':')[0], 10);
+                if (isStartDay) return logHour >= 12;
+                return logHour < 12;
+            });
+
+            if (windowLogs.length > 0) {
+                // The first log is our baseline (12:00 PM reading)
+                const firstLog = windowLogs[0];
+                const startU1 = parseFloat(firstLog.e_u1_gwh) || 0;
+                const startU2 = parseFloat(firstLog.e_u2_gwh) || 0;
+
+                // The last log is the most current reading
+                const lastLog = windowLogs[windowLogs.length - 1];
+                const latestU1 = parseFloat(lastLog.e_u1_gwh) || 0;
+                const latestU2 = parseFloat(lastLog.e_u2_gwh) || 0;
+
+                // Difference between Latest PMU and Start PMU
+                const genU1 = Math.max(0, latestU1 - startU1);
+                const genU2 = Math.max(0, latestU2 - startU2);
+                
+                // Multiply by 1000 to convert GWh to MWh
+                totalGenMWh = (genU1 + genU2) * 1000;
+            }
+        }
+
+        // Display Data
+        const formattedTotal = totalGenMWh > 0 ? totalGenMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh';
+        setText('card-noon-gen', formattedTotal);
+
+    } catch (err) {
+        console.error("Error fetching Noon-to-Noon data:", err);
+        setText('card-noon-gen', '—');
+    }
+}
 
 function setText(id, value) {
     const el = document.getElementById(id);
     if (el) {
         el.textContent = value;
-        // FIX: Remove the loading shimmer class so the text color becomes visible
         el.classList.remove('skeleton-text'); 
     }
 }

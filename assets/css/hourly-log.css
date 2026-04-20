@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
 
-body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
 
 /* ── Scrollbars ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -12,166 +12,140 @@ body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
 
 /* ── Table inputs ── */
 .table-input {
-  width: 100%; padding: 0.45rem 0.65rem;
-  border: 1px solid #cbd5e1; border-radius: 0.375rem;
+  width: 100%; padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0; border-radius: 0.5rem;
   font-size: 0.875rem; outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+  transition: all 0.2s;
   background: #fff;
+  color: #1e293b;
 }
-.table-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.18); }
+.table-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
 .table-input:disabled, .table-input[readonly] {
-  background-color: #f1f5f9; color: #64748b;
+  background-color: #f8fafc; color: #64748b;
   border-color: #e2e8f0; cursor: not-allowed;
 }
 
 /* ── Form label ── */
 .form-label {
-  display: block; font-size: 0.7rem; font-weight: 700;
-  color: #475569; text-transform: uppercase;
-  letter-spacing: 0.06em; margin-bottom: 0.3rem;
+  display: block; font-size: 0.75rem; font-weight: 600;
+  color: #64748b; margin-bottom: 0.35rem;
 }
 
 /* ── Validation warning ── */
 .validation-warning {
-  color: #dc2626 !important; background-color: #fff1f2 !important;
-  border-color: #fca5a5 !important; font-weight: 700;
-  box-shadow: 0 0 0 2px rgba(220,38,38,0.25) !important;
+  color: #ef4444 !important; background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.2) !important;
 }
 
 /* ── TABS ── */
 #form-tabs {
   background: #fff;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
   padding: 0 1rem;
-  gap: 2px;
+  gap: 0.5rem;
   flex-wrap: nowrap;
 }
 
 .section-tab {
   cursor: pointer;
-  padding: 0.8rem 1.1rem;
-  font-size: 0.75rem;
-  font-weight: 700;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: #64748b;
-  letter-spacing: 0.03em;
   white-space: nowrap;
-  border-bottom: 3px solid transparent;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-  margin-bottom: -2px;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  margin-bottom: -1px;
 }
-.section-tab:hover { color: #4f46e5; background: #f5f3ff; }
+.section-tab:hover { color: #1e293b; }
 .section-tab.active {
-  color: #4f46e5;
+  color: #4f46e5; font-weight: 600;
   border-bottom-color: #4f46e5;
-  background: #f5f3ff;
 }
 
-.section-content { display: none; animation: fadeIn 0.25s ease-in-out; }
+.section-content { display: none; animation: fadeIn 0.3s ease; }
 .section-content.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ── Section headers within form ── */
 .section-heading {
   display: flex; align-items: center; gap: 0.5rem;
-  font-size: 0.7rem; font-weight: 900;
-  color: #4338ca; text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.5rem; padding: 0.5rem 0.75rem;
-  background: #eef2ff; border-left: 3px solid #4f46e5;
-  border-radius: 0 0.375rem 0.375rem 0;
+  font-size: 0.875rem; font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.75rem; padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-/* ── Excel tables ── */
+/* ── Modern Data Grid ── */
 .excel-table-wrapper {
   overflow-x: auto; background: white;
-  border-radius: 0.5rem; border: 1px solid #e2e8f0;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  border-radius: 0.75rem; border: 1px solid #e2e8f0;
+  margin-bottom: 2rem;
 }
 .excel-table {
   width: 100%; min-width: 1400px;
   border-collapse: collapse; table-layout: auto;
-  font-family: 'Times New Roman', Times, serif; font-size: 1.05rem;
+  font-size: 0.875rem;
 }
 .excel-table th {
-  background-color: #f8fafc; border: 1px solid #cbd5e1;
-  padding: 6px 4px; font-size: 0.78rem; font-weight: 700;
-  text-align: center; color: #334155; line-height: 1.2;
-  font-family: 'Inter', sans-serif; white-space: normal; word-wrap: break-word;
+  background-color: #f8fafc; border: 1px solid #e2e8f0; border-top: none;
+  padding: 0.75rem 0.5rem; font-size: 0.75rem; font-weight: 600;
+  text-align: center; color: #64748b; line-height: 1.2;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  white-space: normal; word-wrap: break-word;
 }
 .excel-table td {
-  border: 1px solid #cbd5e1; padding: 0;
+  border: 1px solid #e2e8f0; padding: 0;
   background-color: #fff; position: relative;
-  height: 36px; white-space: normal; word-wrap: break-word;
+  height: 44px; white-space: normal; word-wrap: break-word;
+  transition: background-color 0.15s;
 }
+.excel-table tbody tr:hover td { background-color: #f8fafc; }
+
 .excel-input {
   width: 100%; height: 100%; border: none;
   background: transparent; text-align: center;
-  font-family: 'Times New Roman', Times, serif;
-  font-size: 1.05rem; font-weight: 600;
+  font-family: inherit; font-size: 0.875rem; font-weight: 500;
   color: #0f172a; outline: none; padding: 0;
 }
 .excel-input:focus {
-  background-color: #e0e7ff;
-  outline: 2px solid #4f46e5; outline-offset: -2px;
+  background-color: #fff;
+  box-shadow: inset 0 0 0 2px #6366f1;
   z-index: 10; position: relative;
 }
-.excel-select { appearance: none; cursor: pointer; text-align: center; font-size: 0.95rem; }
+.excel-select { appearance: none; cursor: pointer; text-align: center; font-size: 0.875rem; font-weight: 600; }
 
 /* Synced/readonly backgrounds */
-.synced-bg { background-color: #f1f5f9; color: #64748b; cursor: not-allowed; }
-.synced-bg:focus { outline: none; background-color: #f1f5f9; }
+.synced-bg { background-color: #f8fafc; color: #94a3b8; cursor: not-allowed; }
+.synced-bg:focus { box-shadow: none; background-color: #f8fafc; }
 
 /* ── Validation banner ── */
 #validation-banner {
-  position: fixed;
-  bottom: 1.5rem; right: 1.5rem;
-  z-index: 200;
-  width: 360px; max-height: 40vh;
-  overflow-y: auto;
-  padding: 1rem 1.25rem;
-  border-radius: 0.75rem;
-  background: #fff1f2;
-  border: 1.5px solid #fca5a5;
-  border-left: 4px solid #dc2626;
-  color: #991b1b;
-  font-size: 0.8rem;
-  box-shadow: 0 8px 24px rgba(220,38,38,0.15), 0 2px 8px rgba(0,0,0,0.08);
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  z-index: 200; width: 360px; max-height: 40vh; overflow-y: auto;
+  padding: 1rem; border-radius: 0.75rem;
+  background: #fff; border: 1px solid #e2e8f0;
+  border-left: 4px solid #ef4444; color: #1e293b;
+  font-size: 0.875rem;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
 }
 
-/* ── Preview tables ── */
-.preview-table-container table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: white; }
-.preview-table-container th, .preview-table-container td { border: 1px solid #000; padding: 6px; text-align: center; }
-.preview-table-container th { background-color: #f3f4f6; font-weight: bold; }
-
-/* ── Audit modal ── */
-#audit-modal { backdrop-filter: blur(4px); }
-
-/* ── No-print ── */
-@media print { .no-print { display: none !important; } }
-
-/* Remove up/down arrows from number inputs for a clean Excel look */
+/* Remove up/down arrows from number inputs for a clean grid look */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    appearance: none; /* <-- Adds standard compatibility */
-    margin: 0;
+    -webkit-appearance: none; appearance: none; margin: 0;
 }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
-/* Fix for Firefox browsers */
-input[type="number"] {
-    -moz-appearance: textfield;
-    appearance: textfield; /* <-- Adds standard compatibility */
-}
 /* ── Admin Threshold Panel ── */
 .threshold-label {
-  display: block; font-size: 0.7rem; font-weight: 700;
-  color: #475569; text-transform: uppercase; letter-spacing: 0.05em;
+  display: block; font-size: 0.75rem; font-weight: 600; color: #475569; 
 }
 .threshold-input {
-  width: 100%; padding: 0.4rem 0.6rem; margin-top: 0.25rem;
-  border: 1px solid #cbd5e1; border-radius: 0.375rem;
-  font-size: 0.875rem; font-weight: 600; outline: none;
-  background: #fff; transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%; padding: 0.5rem 0.75rem; margin-top: 0.35rem;
+  border: 1px solid #e2e8f0; border-radius: 0.5rem;
+  font-size: 0.875rem; font-weight: 500; outline: none;
+  background: #fff; transition: all 0.2s;
 }
-.threshold-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
+.threshold-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.1); }

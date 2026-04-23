@@ -12,11 +12,11 @@
     th { background-color: #f1f5f9; font-weight: 700; color: #334155; }
     .input-field { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; transition: border 0.2s; }
     .input-field:focus { border-color: #4f46e5; }
+    .perm-select { padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem; font-weight: 600; outline: none; background: white; width: 100%; cursor: pointer;}
   </style>
 </head>
 <body class="flex flex-col h-screen text-slate-800">
 
-  <!-- Notification Toast -->
   <div id="um-toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] opacity-0 transition-all duration-300 pointer-events-none px-6 py-3 rounded-xl shadow-xl font-bold text-sm border-l-4 bg-white max-w-md text-center" style="border-left-color:#10b981;">
     <span id="um-toast-msg"></span>
   </div>
@@ -28,7 +28,7 @@
       </div>
       <div>
         <h1 class="text-xl font-black text-slate-900 tracking-tight">Team & HR Management</h1>
-        <p class="text-xs text-slate-500 font-medium mt-0.5">Create accounts and manage profiles for the Makari Gad Dashboard.</p>
+        <p class="text-xs text-slate-500 font-medium mt-0.5">Manage operator accounts, access levels, and module permissions.</p>
       </div>
     </div>
     <div class="flex items-center gap-3">
@@ -46,10 +46,10 @@
       </div>
   </div>
 
-  <main id="admin-panel" class="p-6 hidden max-w-7xl mx-auto w-full flex-grow overflow-auto">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <main id="admin-panel" class="p-6 hidden max-w-[1400px] mx-auto w-full flex-grow overflow-auto">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        <div class="lg:col-span-1">
+        <div class="xl:col-span-1">
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-6">
                 <h2 class="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Register / Update Employee</h2>
                 
@@ -65,12 +65,49 @@
                             <input type="password" id="u-password" placeholder="Set a secure password..." class="input-field w-full" autocomplete="new-password">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1">System Access Level *</label>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Base System Role *</label>
                             <select id="u-role" class="input-field w-full bg-white font-medium">
-                                <option value="normal">Normal (Guest - Daily Data Only)</option>
-                                <option value="operator">Operator (Plant Staff - Add/Edit Daily Data)</option>
-                                <option value="staff">Staff (Management - Read All Reports & Financials)</option>
+                                <option value="normal">Normal (Guest)</option>
+                                <option value="operator">Operator (Plant Staff)</option>
+                                <option value="staff">Staff (Management)</option>
                                 <option value="admin">Admin (Full Control)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-200">
+
+                    <div class="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Module Permissions</h3>
+                        <p class="text-[10px] text-slate-500 font-medium mb-2">Override base role with specific page access.</p>
+                        
+                        <div class="grid grid-cols-2 gap-3 items-center">
+                            <span class="text-xs font-bold text-slate-700">Daily Plant Data</span>
+                            <select id="perm-plant_data" class="perm-select text-slate-700">
+                                <option value="none">🚫 No Access</option>
+                                <option value="read">👁️ View Only</option>
+                                <option value="edit" selected>✏️ Can Edit</option>
+                            </select>
+
+                            <span class="text-xs font-bold text-slate-700">Hourly Logs</span>
+                            <select id="perm-hourly_log" class="perm-select text-slate-700">
+                                <option value="none">🚫 No Access</option>
+                                <option value="read">👁️ View Only</option>
+                                <option value="edit" selected>✏️ Can Edit</option>
+                            </select>
+
+                            <span class="text-xs font-bold text-slate-700">Inventory</span>
+                            <select id="perm-inventory" class="perm-select text-slate-700">
+                                <option value="none">🚫 No Access</option>
+                                <option value="read">👁️ View Only</option>
+                                <option value="edit" selected>✏️ Can Edit</option>
+                            </select>
+
+                            <span class="text-xs font-bold text-slate-700">Attendance</span>
+                            <select id="perm-attendance" class="perm-select text-slate-700">
+                                <option value="none">🚫 No Access</option>
+                                <option value="read">👁️ View Only</option>
+                                <option value="edit" selected>✏️ Can Edit</option>
                             </select>
                         </div>
                     </div>
@@ -97,14 +134,14 @@
             </div>
         </div>
 
-        <div class="lg:col-span-2">
+        <div class="xl:col-span-2">
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table class="w-full border-collapse">
                     <thead>
                         <tr>
                             <th>Employee Details</th>
-                            <th>Contact & Company</th>
-                            <th>Role</th>
+                            <th>Contact / Info</th>
+                            <th>Base Role</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
@@ -119,26 +156,26 @@
   <script type="module">
     import { supabase, initializeApplication } from './assets/js/core-app.js';
 
-function showToast(msg, isError = false) {
-    const toast = document.getElementById('um-toast');
-    const msgEl = document.getElementById('um-toast-msg');
-    msgEl.textContent = msg;
-    toast.style.borderLeftColor = isError ? '#dc2626' : '#10b981';
-    toast.classList.remove('opacity-0');
-    toast.classList.add('opacity-100');
-    setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0'); }, 4000);
-}
+    function showToast(msg, isError = false) {
+        const toast = document.getElementById('um-toast');
+        const msgEl = document.getElementById('um-toast-msg');
+        msgEl.textContent = msg;
+        toast.style.borderLeftColor = isError ? '#dc2626' : '#10b981';
+        toast.classList.remove('opacity-0');
+        toast.classList.add('opacity-100');
+        setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.add('opacity-0'); }, 4000);
+    }
 
     async function startPage() { 
-         const sessionData = await initializeApplication(true); 
-          
-         if (sessionData && sessionData.role === 'admin') { 
-             document.getElementById('admin-panel').classList.remove('hidden'); 
-             loadUsers(); 
-         } else { 
-             document.getElementById('access-denied').classList.remove('hidden'); 
-         } 
-     }
+        const sessionData = await initializeApplication(true); 
+        
+        if (sessionData && sessionData.role === 'admin') { 
+            document.getElementById('admin-panel').classList.remove('hidden'); 
+            loadUsers(); 
+        } else { 
+            document.getElementById('access-denied').classList.remove('hidden'); 
+        } 
+    }
 
     async function loadUsers() {
         const { data, error } = await supabase.from('user_roles').select('*').order('role', { ascending: true });
@@ -155,64 +192,63 @@ function showToast(msg, isError = false) {
 
             const isMaster = user.email === 'upenjyo@gmail.com';
             const tr = document.createElement('tr');
-tr.className = "hover:bg-slate-50";
+            tr.className = "hover:bg-slate-50";
 
-// Safe text nodes — no interpolation into innerHTML for user data
-const td1 = document.createElement('td');
-const nameDiv = document.createElement('div');
-nameDiv.className = 'font-bold text-slate-800';
-nameDiv.textContent = user.full_name || '—';
-const posDiv = document.createElement('div');
-posDiv.className = 'text-xs text-slate-500';
-posDiv.textContent = user.position || 'No Title';
-td1.appendChild(nameDiv);
-td1.appendChild(posDiv);
+            const td1 = document.createElement('td');
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'font-bold text-slate-800';
+            nameDiv.textContent = user.full_name || '—';
+            const posDiv = document.createElement('div');
+            posDiv.className = 'text-xs text-slate-500';
+            posDiv.textContent = user.position || 'No Title';
+            td1.appendChild(nameDiv);
+            td1.appendChild(posDiv);
 
-const td2 = document.createElement('td');
-const emailDiv = document.createElement('div');
-emailDiv.className = 'text-sm font-medium text-slate-700';
-emailDiv.textContent = user.email;
-const contactDiv = document.createElement('div');
-contactDiv.className = 'text-xs text-slate-500';
-contactDiv.textContent = `${user.phone || ''} | ${user.company || ''}`;
-td2.appendChild(emailDiv);
-td2.appendChild(contactDiv);
+            const td2 = document.createElement('td');
+            const emailDiv = document.createElement('div');
+            emailDiv.className = 'text-sm font-medium text-slate-700';
+            emailDiv.textContent = user.email;
+            const contactDiv = document.createElement('div');
+            contactDiv.className = 'text-xs text-slate-500';
+            contactDiv.textContent = `${user.phone || ''} | ${user.company || ''}`;
+            td2.appendChild(emailDiv);
+            td2.appendChild(contactDiv);
 
-const td3 = document.createElement('td');
-const badge = document.createElement('span');
-badge.className = `px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${roleColor}`;
-badge.textContent = user.role;
-td3.appendChild(badge);
+            const td3 = document.createElement('td');
+            const badge = document.createElement('span');
+            badge.className = `px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${roleColor}`;
+            badge.textContent = user.role;
+            td3.appendChild(badge);
 
-const td4 = document.createElement('td');
-td4.className = 'text-center';
-if (isMaster) {
-    const masterSpan = document.createElement('span');
-    masterSpan.className = 'text-xs text-slate-400 font-bold';
-    masterSpan.textContent = 'MASTER';
-    td4.appendChild(masterSpan);
-} else {
-    const editBtn = document.createElement('button');
-    editBtn.className = 'text-indigo-600 hover:underline font-bold text-xs mr-3';
-    editBtn.textContent = 'Edit';
-    editBtn.dataset.email = user.email;
-    editBtn.addEventListener('click', () => editUser(user.email));
+            const td4 = document.createElement('td');
+            td4.className = 'text-center';
+            if (isMaster) {
+                const masterSpan = document.createElement('span');
+                masterSpan.className = 'text-xs text-slate-400 font-bold';
+                masterSpan.textContent = 'MASTER';
+                td4.appendChild(masterSpan);
+            } else {
+                const editBtn = document.createElement('button');
+                editBtn.className = 'text-indigo-600 hover:underline font-bold text-xs mr-3';
+                editBtn.textContent = 'Edit';
+                editBtn.dataset.email = user.email;
+                editBtn.addEventListener('click', () => editUser(user.email));
 
-    const delBtn = document.createElement('button');
-    delBtn.className = 'text-red-600 hover:underline font-bold text-xs';
-    delBtn.textContent = 'Del';
-    delBtn.dataset.email = user.email;
-    delBtn.addEventListener('click', () => deleteUser(user.email));
+                const delBtn = document.createElement('button');
+                delBtn.className = 'text-red-600 hover:underline font-bold text-xs';
+                delBtn.textContent = 'Del';
+                delBtn.dataset.email = user.email;
+                delBtn.addEventListener('click', () => deleteUser(user.email));
 
-    td4.appendChild(editBtn);
-    td4.appendChild(delBtn);
-}
+                td4.appendChild(editBtn);
+                td4.appendChild(delBtn);
+            }
 
-tr.appendChild(td1);
-tr.appendChild(td2);
-tr.appendChild(td3);
-tr.appendChild(td4);
-tbody.appendChild(tr);
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+            tr.appendChild(td4);
+            tbody.appendChild(tr);
         });
     }
 
@@ -227,6 +263,14 @@ tbody.appendChild(tr);
             document.getElementById('u-dob').value = data.dob || '';
             document.getElementById('u-company').value = data.company || 'Makari Gad Hydroelectric Project';
             document.getElementById('u-password').value = ''; 
+            
+            // Load Permissions into Dropdowns (Fallback to "edit" if blank)
+            const perms = data.permissions || {};
+            document.getElementById('perm-plant_data').value = perms.plant_data || 'edit';
+            document.getElementById('perm-hourly_log').value = perms.hourly_log || 'edit';
+            document.getElementById('perm-inventory').value = perms.inventory || 'edit';
+            document.getElementById('perm-attendance').value = perms.attendance || 'edit';
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
@@ -239,17 +283,24 @@ tbody.appendChild(tr);
         btn.innerText = "Processing...";
 
         try {
-            // Note: Depending on your Supabase settings, standard users might not be able to 
-            // sign up other users. If this fails, you must create accounts in the Supabase Dashboard.
             if (password.length > 0) {
                 if (password.length < 6) throw new Error("Password must be at least 6 characters.");
                 const { error: authError } = await supabase.auth.signUp({ email: email, password: password });
                 if (authError && authError.message !== "User already registered") throw authError;
             }
 
+            // Extract the chosen permissions
+            const userPermissions = {
+                plant_data: document.getElementById('perm-plant_data').value,
+                hourly_log: document.getElementById('perm-hourly_log').value,
+                inventory: document.getElementById('perm-inventory').value,
+                attendance: document.getElementById('perm-attendance').value
+            };
+
             const { error: dbError } = await supabase.from('user_roles').upsert({
                 email: email,
                 role: document.getElementById('u-role').value,
+                permissions: userPermissions, // Saves the JSON object to the DB
                 full_name: document.getElementById('u-name').value.trim() || null,
                 position: document.getElementById('u-position').value.trim() || null,
                 phone: document.getElementById('u-phone').value.trim() || null,
@@ -262,7 +313,7 @@ tbody.appendChild(tr);
             
             document.getElementById('user-form').reset();
             document.getElementById('u-company').value = 'Makari Gad Hydroelectric Project';
-            showToast("✅ Employee successfully saved!");
+            showToast("✅ Employee and permissions successfully saved!");
             loadUsers();
         } catch (err) {
             showToast("❌ Error: " + err.message, true);
@@ -272,15 +323,14 @@ tbody.appendChild(tr);
     });
 
     async function deleteUser(email) {
-        // Simple inline confirm — no native dialog
-if (!window.confirm(`Remove profile for ${email}?\n\nThis only removes their dashboard role. Their login account remains active.`)) return;
-const { error } = await supabase.from('user_roles').delete().eq('email', email);
-if (error) {
-    showToast("❌ Error deleting: " + error.message, true);
-} else {
-    showToast("User profile removed.");
-    loadUsers();
-}
+        if (!window.confirm(`Remove profile for ${email}?\n\nThis only removes their dashboard role. Their login account remains active.`)) return;
+        const { error } = await supabase.from('user_roles').delete().eq('email', email);
+        if (error) {
+            showToast("❌ Error deleting: " + error.message, true);
+        } else {
+            showToast("User profile removed.");
+            loadUsers();
+        }
     }
 
     startPage();
@@ -289,5 +339,3 @@ if (error) {
   <div id="global-footer-container" class="shrink-0 no-print"></div>
 </body>
 </html>
-
-

@@ -440,7 +440,7 @@ window.validateForm = function() {
 
     function chk(id, min, max, name) { const v=val(id); if(v!==null && (v<min || v>max)) { errors.push(`${name} must be between ${min} and ${max}.`); markErr(id); } }
     ['t_u1_u', 't_u1_v', 't_u1_w', 't_u1_de', 't_u1_nde', 't_u2_u', 't_u2_v', 't_u2_w', 't_u2_de', 't_u2_nde'].forEach(id => chk(id, 15, 95, id.toUpperCase() + ' Temp'));
-    ['t_u1_gov', 't_u1_hyd', 't_u2_gov', 't_u2_hyd'].forEach(id => chk(id, 15, 50, 'Governor/Hyd Temp'));
+    ['t_u1_gov', 't_u1_hyd', 't_u2_gov', 't_u2_hyd'].forEach(id => chk(id, 15, 60, 'Governor/Hyd Temp'));
     chk('t_temp_out', 10, 50, 'Outside Temp'); chk('t_temp_in', 10, 50, 'Inside Temp'); chk('t_temp_intake', -5, 30, 'Intake Temp');
     chk('t_pressure', 830, 900, 'Pressure');
     ['tr_1_temp', 'tr_2_temp', 'tr_aux_temp'].forEach(id => chk(id, 15, 70, 'Transformer Temp'));

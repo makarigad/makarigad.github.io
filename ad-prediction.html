@@ -502,6 +502,7 @@ function predictDayEnergy(nepDay, scada, rfData) {
   const log = [];
   let html = `<div class="calc-block"><div class="head">Day ${nepDay} — Prediction Calculation</div>`;
 
+
   // 1. BASE
   const base = scada.avg14;
   html += `<div class="calc-row"><span class="key">① Base (Live 14-day avg)</span><span class="val">${base.toFixed(1)} MWh/day</span></div>`;
@@ -534,9 +535,9 @@ function predictDayEnergy(nepDay, scada, rfData) {
 
   // 6. Future rainfall from weather API
   let weatherMod = 1.0;
-  if (weatherForecast.length && daysAhead >= 0 && daysAhead < weatherForecast.length) {
-    weatherMod = weatherForecast[daysAhead].hydroMod;
-  }
+  if (weatherForecast && weatherForecast[daysAhead]) {
+    weatherMod = weatherForecast[daysAhead].hydroMod || 1.0;
+}
   html += `<div class="calc-row"><span class="key">⑥ Weather forecast modifier</span><span class="val">×${weatherMod.toFixed(3)}</span></div>`;
 
   // 7. Temperature signal
@@ -584,11 +585,19 @@ async function loadAndAnalyse() {
 }
 
 async function loadFromSupabase(year, month) {
+  contractRow = null; 
+  document.getElementById('ppa-ad').value = '';
+  document.getElementById('ppa-ce').value = '';
+  document.getElementById('k-ad').textContent = '—';
   const mIdx = MONTHS.indexOf(month)+1;
   const pfx  = `${year}.${String(mIdx).padStart(2,'0')}`;
 
   const {data:cal} = await supabaseClient.from('calendar_mappings').select('eng_date,nep_day,nep_date_str').eq('nep_year',year).eq('nep_month',month).order('nep_day');
-  if (cal?.length) calendarData = cal.map(c=>({nep_day:c.nep_day, eng_date:c.eng_date}));
+  if (cal?.length) calendarData = cal.map(c=>({
+    nep_day: c.nep_day, 
+    eng_date: c.eng_date, 
+    nep_date_str: c.nep_date_str // <--- This adds the missing data
+}));
 
   const todayRow = calendarData.find(c=>c.eng_date===todayEng);
   if (todayRow) todayNepDay = todayRow.nep_day;
@@ -650,20 +659,20 @@ async function loadFromSupabase(year, month) {
 }
 
 function loadEmbedded(year, month) {
-  calendarData = CAL_2083_BAISAKH;
-  todayNepDay = 6; // Moving demo forward to Day 6 based on user data
-  contractRow = {total_ad:5454.574, contract_energy:5454.574, no_of_days:31, week1_ad:1231678, week2_ad:1231678, week3_ad:1231678, week4_ad:1231678, week5_ad:527862};
+  // Replace the hardcoded 5454.574 with a simple month-based logic
+  const monthIdx = MONTHS.indexOf(month);
   
-  // Custom user data injected here for demo mode
-  liveScadaTrendData = {"2026-04-14":116, "2026-04-15":118, "2026-04-16":133, "2026-04-17":146, "2026-04-18":165, "2026-04-19":185};
+  // Example: Higher AD for wet months (Ashadh/Shrawan), Lower for dry
+  let mockAD = (monthIdx >= 2 && monthIdx <= 5) ? 12000.500 : 5454.574;
   
-  // Fake meter values to represent the daily diff
-  plantCounters = {0: 100000, 1: 100116, 2: 100234, 3: 100367, 4: 100513, 5: 100678};
-  rainfallByDay = {}; 
-  document.getElementById('ppa-ad').value = '5454.574';
-  document.getElementById('ppa-ce').value = '5454.574';
-  document.getElementById('k-ad').textContent = '5454.6';
-  document.getElementById('k-min').textContent = '4909.1';
+  contractRow = {
+    total_ad: mockAD, 
+    contract_energy: mockAD,
+    // ...
+  };
+  
+  document.getElementById('ppa-ad').value = mockAD.toFixed(3);
+  document.getElementById('ppa-ce').value = mockAD.toFixed(3);
 }
 
 function runEngine() {
@@ -694,7 +703,7 @@ function _run() {
   const today = todayNepDay || 6;
   
   // Exact Partial Calculation for Today using live data
-  const todayScadaPartial = liveScadaTrendData[todayEng] || 185; // Defaulting to 185 for demo
+  const todayScadaPartial = liveScadaTrendData[todayEng] || (scada.avg14 * (getNptHoursElapsed()/24)); 
   const hoursToday = Math.max(0.1, getNptHoursElapsed()); 
   const todayEstimate = Math.min(todayScadaPartial ? (todayScadaPartial * (24/hoursToday)) : scada.avg14, MAX_EXPORT_CAPACITY);
 
@@ -709,10 +718,15 @@ function _run() {
   const currentYearActuals = [];
 
   for (let d = 1; d <= totalDays; d++) {
-    const cal = calendarData.find(c=>c.nep_day===d);
-    const engDate = cal?.eng_date||'';
-    const rf = rainfallByDay[d]||{};
-    const wi = Math.min(Math.floor((d-1)/7), 4);
+    // 1. First, find the calendar data for the day
+    const cal = calendarData.find(c => c.nep_day === d);
+    
+    // 2. Define the variables (THE ORDER MATTERS HERE)
+    const engDate = cal?.eng_date || ''; // Define engDate first
+    const nepDate = cal?.nep_date_str || ''; // Define nepDate second
+    
+    const rf = rainfallByDay[d] || {};
+    const wi = Math.min(Math.floor((d - 1) / 7), 4);
     const wk = weekData[wi];
 
     let mwh, source, srcBadge;
@@ -739,8 +753,18 @@ function _run() {
 
     cumul += mwh;
     wk.dayEntries.push({d, mwh, source});
-    dayDetail.push({d, engDate, rf, mwh, source, srcBadge, cumul, wi:wi+1});
-  }
+    dayDetail.push({
+        d, 
+        nepDate,  // <--- This matches the new column
+        engDate,  // <--- This was causing your error
+        rf, 
+        mwh, 
+        source, 
+        srcBadge, 
+        cumul, 
+        wi: wi + 1
+    });
+}
 
   weekData.forEach(wk => { wk.total = wk.actualMwh + wk.estMwh + wk.predMwh; });
   const totalProjected = weekData.reduce((s,w)=>s+w.total, 0);
@@ -809,7 +833,7 @@ function renderCalcLog() {
 function renderDailyTable(days) {
   const rows = days.map(d => `<tr>
       <td class="font-bold">${d.d}</td>
-      <td class="mono text-slate-500 text-[11px]">${d.nepDate || '—'}</td> <td class="mono text-slate-500 text-[11px]">${d.engDate}</td>
+      <td class="mono text-slate-500 text-[11px]">${d.nepDate}</td> <td class="mono text-slate-500 text-[11px]">${d.engDate}</td>
       <td class="mono text-slate-500 text-[11px]">W${d.wi}</td>
       <td class="font-bold mono ${d.source==='meter'?'text-emerald-700':d.source==='scada'?'text-amber-600':'text-blue-600'}">${d.mwh.toFixed(2)}</td>
       <td>${d.srcBadge}</td>

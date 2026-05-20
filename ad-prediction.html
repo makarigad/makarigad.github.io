@@ -809,7 +809,7 @@ function renderCalcLog() {
 function renderDailyTable(days) {
   const rows = days.map(d => `<tr>
       <td class="font-bold">${d.d}</td>
-      <td class="mono text-slate-500 text-[11px]">${d.engDate}</td>
+      <td class="mono text-slate-500 text-[11px]">${d.nepDate || '—'}</td> <td class="mono text-slate-500 text-[11px]">${d.engDate}</td>
       <td class="mono text-slate-500 text-[11px]">W${d.wi}</td>
       <td class="font-bold mono ${d.source==='meter'?'text-emerald-700':d.source==='scada'?'text-amber-600':'text-blue-600'}">${d.mwh.toFixed(2)}</td>
       <td>${d.srcBadge}</td>

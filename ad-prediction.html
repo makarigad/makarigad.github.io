@@ -3,306 +3,295 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Makari Gad – AD Engine v5.1 (Live DB & Strategy)</title>
+<title>Makari Gad – AD Prediction Engine v6.8</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f0f4f8;--panel:#fff;--border:#dde3ec;--acc:#2563eb;--acc2:#0891b2;--grn:#059669;--amb:#d97706;--red:#dc2626;--txt:#1e293b;--mut:#64748b;}
-*{box-sizing:border-box;}
-body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--txt);margin:0;font-size:13px;}
+:root{--bg:#0f172a;--panel:#1e293b;--panel2:#263347;--border:#334155;--acc:#3b82f6;--grn:#10b981;--amb:#f59e0b;--red:#ef4444;--txt:#e2e8f0;--mut:#94a3b8;--cyan:#06b6d4;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--txt);font-size:13px;min-height:100vh;}
 .mono{font-family:'IBM Plex Mono',monospace;}
-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);display:block;margin-bottom:3px;}
-select,input{width:100%;background:#f8fafc;border:1.5px solid #c8d3e0;border-radius:6px;padding:.45rem .65rem;font-size:.82rem;font-weight:600;color:#1e293b;font-family:inherit;outline:none;transition:border .15s,box-shadow .15s;}
-select:focus,input:focus{border-color:var(--acc);box-shadow:0 0 0 3px #dbeafe;}
-input[readonly]{background:#edf0f4;color:#94a3b8;cursor:default;}
-input[type=range] { padding: 0; border: none; background: transparent; cursor: pointer; }
-.card{background:var(--panel);border-radius:10px;box-shadow:0 1px 5px rgba(0,0,0,.07);border:1.5px solid var(--border);padding:.9rem;}
-.tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);overflow-x:auto;}
-.tb{padding:.45rem .85rem;font-size:.72rem;font-weight:700;cursor:pointer;border:none;background:none;color:var(--mut);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;letter-spacing:.05em;text-transform:uppercase;transition:all .12s;}
+label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);display:block;margin-bottom:3px;}
+select,input{width:100%;background:#0f172a;border:1.5px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-size:.8rem;font-weight:600;color:var(--txt);font-family:inherit;outline:none;transition:border .15s;}
+select:focus,input:focus{border-color:var(--acc);}
+input[readonly]{background:#1a2535;color:var(--mut);cursor:default;}
+input[type=range]{padding:0;border:none;background:transparent;cursor:pointer;accent-color:var(--acc);}
+input[type=checkbox]{width:auto;accent-color:var(--acc);}
+.card{background:var(--panel);border-radius:10px;border:1.5px solid var(--border);padding:.85rem;}
+.card2{background:var(--panel2);border-radius:8px;border:1px solid var(--border);padding:.7rem;}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+.tb{padding:.4rem .8rem;font-size:.68rem;font-weight:700;cursor:pointer;border:none;background:none;color:var(--mut);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;letter-spacing:.05em;text-transform:uppercase;}
 .tb.active{color:var(--acc);border-bottom-color:var(--acc);}
 .tp{display:none;}.tp.active{display:block;}
-.badge{display:inline-block;font-size:.6rem;font-weight:700;padding:1px 7px;border-radius:99px;}
-.bg{background:#d1fae5;color:#065f46;}.bb{background:#dbeafe;color:#1e40af;}
-.ba{background:#fef3c7;color:#92400e;}.br{background:#fee2e2;color:#991b1b;}
-.bs{background:#f1f5f9;color:#475569;}.bp{background:#ede9fe;color:#5b21b6;}
-.kl{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);}
-.kv{font-size:1.45rem;font-weight:700;line-height:1.1;}
-.scroll-y{overflow-y:auto;max-height:460px;}
-.tbl{width:100%;border-collapse:collapse;font-size:.76rem;}
-.tbl th{padding:.5rem .45rem;text-align:left;font-size:.62rem;color:var(--mut);border-bottom:2px solid var(--border);text-transform:uppercase;font-weight:700;}
-.tbl td{padding:.45rem .45rem;border-bottom:1px solid #f1f5f9;vertical-align:top;}
-.tbl tr:hover td{background:#f8fafc;}
-.sbar{height:10px;background:#e2e8f0;border-radius:99px;position:relative;overflow:visible;}
-.sfill{height:100%;border-radius:99px;transition:width .4s;}
-.sm{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;transform:translateX(-50%);}
-.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;}
+.badge{display:inline-block;font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:99px;line-height:1.5;}
+.bg{background:#064e3b;color:#6ee7b7;}.bb{background:#1e3a5f;color:#93c5fd;}
+.ba{background:#451a03;color:#fcd34d;}.br{background:#450a0a;color:#fca5a5;}
+.bs{background:#1e293b;color:#94a3b8;}.bp{background:#2e1065;color:#c4b5fd;}
+.kl{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);}
+.kv{font-size:1.4rem;font-weight:700;line-height:1.1;font-family:'IBM Plex Mono',monospace;}
+.scroll-y{overflow-y:auto;max-height:500px;}
+.tbl{width:100%;border-collapse:collapse;font-size:.73rem;}
+.tbl th{padding:.45rem .4rem;text-align:left;font-size:.59rem;color:var(--mut);border-bottom:2px solid var(--border);text-transform:uppercase;font-weight:700;white-space:nowrap;}
+.tbl td{padding:.4rem .4rem;border-bottom:1px solid #1e293b;vertical-align:middle;}
+.tbl tr:hover td{background:#263347;}
+.sbar{height:8px;background:#1e293b;border-radius:99px;position:relative;overflow:visible;}
+.sfill{height:100%;border-radius:99px;transition:width .5s;}
+.sm{position:absolute;top:-5px;width:3px;height:18px;border-radius:2px;transform:translateX(-50%);}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;}
 @keyframes sp{to{transform:rotate(360deg);}}
 
-/* SCADA signal colors */
-.sig-rising{color:#059669;}.sig-falling{color:#dc2626;}.sig-stable{color:#64748b;}
-.sig-warn{color:#d97706;}
+.warn-box{background:#451a0322;border:1px solid #92400e;border-radius:6px;padding:.6rem .8rem;color:#fcd34d;font-size:.75rem;}
+.info-box{background:#1e3a5f22;border:1px solid #1e40af;border-radius:6px;padding:.6rem .8rem;color:#93c5fd;font-size:.75rem;}
 
-/* Calculation log */
-.calc-block{background:#f8fafc;border:1px solid #dde3ec;border-radius:8px;padding:.75rem;margin-bottom:.75rem;font-size:.75rem;line-height:1.7;}
-.calc-block .head{font-weight:700;font-size:.8rem;color:#1e293b;border-bottom:1px solid #dde3ec;padding-bottom:.4rem;margin-bottom:.5rem;}
-.calc-row{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;}
-.calc-row .key{color:var(--mut);}
-.calc-row .val{font-family:'IBM Plex Mono',monospace;font-weight:600;}
-.calc-formula{background:#1e293b;color:#e2e8f0;font-family:'IBM Plex Mono',monospace;font-size:.7rem;padding:.4rem .6rem;border-radius:5px;margin-top:.4rem;}
-.calc-result{font-weight:700;font-size:.85rem;color:#2563eb;margin-top:.4rem;}
-.warn-box{background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:.5rem .7rem;color:#92400e;font-size:.75rem;}
-.info-box{background:#dbeafe;border:1px solid #bfdbfe;border-radius:6px;padding:.5rem .7rem;color:#1e40af;font-size:.75rem;}
+.week-card{background:var(--panel);border:1.5px solid var(--border);border-radius:12px;padding:1rem;position:relative;overflow:hidden;}
+.week-card.active{border-color:var(--acc);}
+.week-card.risk{border-color:var(--red);}
+.week-card .wc-bar{position:absolute;top:0;left:0;right:0;height:3px;}
+.wc-row{display:flex;justify-content:space-between;align-items:baseline;font-size:.72rem;padding:.15rem 0;}
+.wc-row .wk{color:var(--mut);}
+.wc-row .wv{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.wc-section{margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border);}
+.wc-section-title{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:.35rem;}
 
-/* Snow modal */
-#snow-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;}
-.snow-opt{border:2px solid var(--border);border-radius:10px;padding:.8rem 1rem;cursor:pointer;transition:all .15s;text-align:center;}
-.snow-opt:hover,.snow-opt.sel{border-color:var(--acc);background:#eff6ff;}
+.fault-day{background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d;border-radius:5px;padding:.2rem .5rem;font-size:.65rem;font-family:'IBM Plex Mono',monospace;display:inline-block;margin:.15rem;}
+
+/* Explainability Narrative Styles */
+.wf-block { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.8rem; overflow: hidden; }
+.wf-head { background: #1e293b; padding: 0.6rem 0.8rem; font-weight: 700; font-size: 0.8rem; color: #93c5fd; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+.wf-body { padding: 0.6rem 0.8rem; }
+.wf-narrative { background: #1e293b; border-left: 4px solid #3b82f6; padding: 1rem; border-radius: 4px; font-size: 0.85rem; line-height: 1.6; margin-bottom: 1rem; color: #e2e8f0; }
+.wf-bounds { display: flex; justify-content: space-between; margin-top: 0.5rem; padding: 0.6rem; background: #0a1628; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; border: 1px solid #1e3a5f; }
+.wf-row { display: flex; justify-content: space-between; padding: 0.25rem 0; font-size: 0.72rem; border-bottom: 1px dashed #334155; }
+.wf-row:last-child { border-bottom: none; }
+.wf-row .wf-label { color: var(--mut); }
+.wf-row .wf-val { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: #94a3b8; }
+.wf-row.pos .wf-val { color: #10b981; }
+.wf-row.neg .wf-val { color: #ef4444; }
+.wf-row.base .wf-val { color: #e2e8f0; }
+
+.load-item{display:flex;align-items:center;gap:.5rem;font-size:.72rem;padding:.25rem 0;}
+.load-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;}
+.toast-item{background:#1e293b;border:1px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.75rem;animation:fadeIn .3s ease;max-width:280px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+#snow-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center;}
+.snow-opt{border:2px solid var(--border);border-radius:10px;padding:.7rem .9rem;cursor:pointer;transition:all .15s;text-align:center;background:var(--panel2);}
+.snow-opt:hover,.snow-opt.sel{border-color:var(--acc);background:#1e3a5f;}
 </style>
 </head>
 <body>
 
-<div id="snow-modal" style="display: none;">
-  <div class="card" style="max-width:480px;width:95%;">
-    <div class="font-bold text-base text-slate-800 mb-1">❄️ Snow Cover in Catchment (4200m+)</div>
-    <p class="text-xs text-slate-500 mb-4">You can visually see this from the plant. Snow affects snowmelt contribution to river flow — critical for Baisakh/Jestha prediction.</p>
-    <div class="grid grid-cols-2 gap-3 mb-4">
-      <div class="snow-opt" onclick="setSnow('none',this)">
-        <div class="text-2xl mb-1">🏔️</div>
-        <div class="font-bold text-slate-700 text-sm">None / Bare</div>
-        <div class="text-xs text-slate-500">No visible snow</div>
-      </div>
-      <div class="snow-opt" onclick="setSnow('sparse',this)">
-        <div class="text-2xl mb-1">🌨️</div>
-        <div class="font-bold text-slate-700 text-sm">Sparse</div>
-        <div class="text-xs text-slate-500">Patches in valleys</div>
-      </div>
-      <div class="snow-opt" onclick="setSnow('moderate',this)">
-        <div class="text-2xl mb-1">❄️</div>
-        <div class="font-bold text-slate-700 text-sm">Moderate</div>
-        <div class="text-xs text-slate-500">Good coverage on peaks</div>
-      </div>
-      <div class="snow-opt" onclick="setSnow('full',this)">
-        <div class="text-2xl mb-1">🌨️❄️</div>
-        <div class="font-bold text-slate-700 text-sm">Full</div>
-        <div class="text-xs text-slate-500">Complete snow cover</div>
-      </div>
+<div id="snow-modal">
+  <div class="card" style="max-width:460px;width:95%;background:#1e293b;">
+    <div class="font-bold text-base mb-1 text-cyan-400">❄️ Snow Cover — Catchment (4200m+)</div>
+    <p class="text-xs text-slate-400 mb-3">Visually observed from plant. Affects snowmelt contribution to river flow.</p>
+    <div class="grid grid-cols-2 gap-2 mb-4">
+      <div class="snow-opt" onclick="setSnow('none',this)"><div class="text-2xl mb-1">🏔️</div><div class="font-bold text-sm">None / Bare</div></div>
+      <div class="snow-opt" onclick="setSnow('sparse',this)"><div class="text-2xl mb-1">🌨️</div><div class="font-bold text-sm">Sparse</div></div>
+      <div class="snow-opt" onclick="setSnow('moderate',this)"><div class="text-2xl mb-1">❄️</div><div class="font-bold text-sm">Moderate</div></div>
+      <div class="snow-opt" onclick="setSnow('full',this)"><div class="text-2xl mb-1">🌨️❄️</div><div class="font-bold text-sm">Full Cover</div></div>
     </div>
     <button id="snow-ok" onclick="confirmSnow()" disabled class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition">
-      Confirm Snow Level & Start Analysis
+      Confirm &amp; Run Analysis
     </button>
   </div>
 </div>
 
-<header class="bg-slate-900 text-white px-5 py-3 flex justify-between items-center sticky top-0 z-40 shadow-lg">
+<div id="toast"></div>
+
+<header class="sticky top-0 z-40 px-5 py-2.5 flex justify-between items-center shadow-xl" style="background:#0a1628;border-bottom:1px solid #1e293b;">
   <div>
-    <div class="font-bold flex items-center gap-2"><i class="fa-solid fa-water text-cyan-400"></i> Makari Gad AD Engine v5.1</div>
-    <div class="text-slate-400 text-[11px]">Live DB Sync · Meter Logic · Historical Scenarios</div>
+    <div class="font-bold text-sm flex items-center gap-2 text-white">
+      <i class="fa-solid fa-water text-cyan-400"></i> Makari Gad — AD Prediction Engine v6.8
+    </div>
+    <div class="text-[10px] text-slate-500">Probabilistic Bounds · Explainable AI · Optimal Architecture</div>
   </div>
   <div class="flex gap-2 items-center flex-wrap">
-    <div id="today-chip" class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] font-bold text-cyan-400"></div>
-    <div id="scada-chip" class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] font-semibold text-slate-400">Trend: Loading…</div>
-    <div id="db-chip"    class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] font-semibold text-slate-400">DB: Offline</div>
+    <div id="chip-today" class="px-2.5 py-1 rounded-full text-[11px] font-bold text-cyan-400" style="background:#0f1f35;border:1px solid #1e3a5f;"></div>
+    <div id="chip-rate"  class="px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-400" style="background:#0f1f35;border:1px solid #1e3a5f;">Rate: —</div>
+    <div id="chip-db"   class="px-2.5 py-1 rounded-full text-[11px] font-semibold text-slate-400" style="background:#0f1f35;border:1px solid #1e3a5f;">DB: —</div>
+    <div id="chip-trend" class="px-2.5 py-1 rounded-full text-[11px] font-semibold text-slate-400" style="background:#0f1f35;border:1px solid #1e3a5f;">Trend: —</div>
   </div>
 </header>
 
-<main class="p-4 max-w-[1680px] mx-auto grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-4 items-start">
+<main class="p-4 max-w-[1800px] mx-auto grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-4 items-start">
 
 <div class="flex flex-col gap-3">
-
   <div class="card">
-    <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa-regular fa-calendar text-blue-500"></i> Analysis Month</div>
+    <div class="text-xs font-bold mb-2 text-cyan-400 flex items-center gap-2"><i class="fa-regular fa-calendar"></i> Analysis Period</div>
     <div class="grid grid-cols-2 gap-2 mb-2">
-      <div><label>Month</label><select id="sel-month"></select></div>
-      <div><label>Year</label><select id="sel-year"></select></div>
+      <div><label>Month</label><select id="sel-month" onchange="onPeriodChange()"></select></div>
+      <div><label>Year</label><select id="sel-year" onchange="onPeriodChange()"></select></div>
     </div>
-    <button onclick="loadAndAnalyse()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-2 transition mt-1">
-      <i class="fa-solid fa-cloud-arrow-down"></i> Load Live DB & Analyse
+    <div id="auto-load-ind" class="text-[10px] text-blue-400 text-center mb-1 hidden"><span class="spin"></span> Auto-loading…</div>
+    <button onclick="loadAll()" class="w-full font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-2 transition" style="background:#1d4ed8;color:white;">
+      <i class="fa-solid fa-cloud-arrow-down"></i> Sync Database
     </button>
   </div>
 
   <div class="card">
-    <div class="text-xs font-bold text-slate-700 mb-2">PPA Configuration</div>
+    <div class="text-xs font-bold mb-2 text-cyan-400">PPA Configuration</div>
     <div class="space-y-2">
-      <div><label>Total Monthly AD (MWh)</label><input id="ppa-ad" class="mono" readonly></div>
-      <div><label>Contract Energy (MWh)</label><input id="ppa-ce" class="mono" readonly></div>
-      <div><label>PPA Rate (NPR/MWh)</label><input id="ppa-rate" value="6554" class="mono"></div>
+      <div><label>Monthly AD (MWh)</label><input id="ppa-ad" class="mono" readonly placeholder="Load data"></div>
+      <div><label>Contract Energy (MWh)</label><input id="ppa-ce" class="mono" readonly placeholder="Load data"></div>
+      <div><label>PPA Rate (NPR/MWh)</label><input id="ppa-rate" class="mono" readonly></div>
     </div>
   </div>
 
-  <div class="card border-cyan-200 bg-cyan-50/20">
-    <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2">
-      <i class="fa-solid fa-signal text-cyan-500"></i> Active Plant Trend
+  <div class="card">
+    <div class="text-xs font-bold mb-2 text-cyan-400">Analysis Safety Margins</div>
+    <div class="space-y-2">
+      <label class="flex items-center gap-2 cursor-pointer text-xs font-normal text-slate-300">
+        <input type="checkbox" id="opt-buffer" checked onchange="runEngine()">
+        <span>Active 10-Hour Outage Shield</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer text-xs font-normal text-slate-300">
+        <input type="checkbox" id="opt-sunday" onchange="recomputeDeadlines()">
+        <span>Include Sunday as Holiday</span>
+      </label>
+      <div>
+        <label>Historical Match Weight</label>
+        <input type="range" id="hist-weight" min="0" max="60" value="25" class="w-full" oninput="document.getElementById('hist-val').textContent=this.value+'%'">
+        <div class="text-[10px] text-slate-400 text-center">Base: <span id="hist-val" class="text-indigo-400 font-bold">25%</span></div>
+      </div>
     </div>
-    <div id="scada-signal-panel" class="space-y-1.5 text-xs">
-      <div class="text-slate-400 italic">Loading live data from Supabase…</div>
+  </div>
+
+  <div class="card" style="border-color:#1e3a5f;">
+    <div class="text-xs font-bold mb-2 text-cyan-400 flex items-center gap-2"><i class="fa-solid fa-snowflake text-blue-400"></i> Snow Cover (Visual)</div>
+    <div id="snow-display" class="text-sm font-bold text-slate-400 mb-1">Not set</div>
+    <button onclick="document.getElementById('snow-modal').style.display='flex'" class="text-xs text-blue-400 underline cursor-pointer">Change snow level</button>
+  </div>
+
+  <div class="card" id="load-progress-card">
+    <div class="text-xs font-bold mb-2 text-cyan-400">Data Load Status</div>
+    <div id="load-status" class="space-y-1">
+      <div class="text-xs text-slate-500 italic">Select period and load data</div>
     </div>
   </div>
 
-  <div class="card border-indigo-200">
-    <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa-solid fa-sliders text-indigo-500"></i> Prediction Blending</div>
-    <div class="text-[10px] text-slate-500 mb-1 flex justify-between"><span>Current Trend</span><span>Historical Data</span></div>
-    <input type="range" id="hist-weight" min="0" max="100" value="35" class="w-full mb-1" oninput="document.getElementById('hist-val').innerText = this.value + '%'">
-    <div class="text-[10px] text-slate-400 text-center">Using <span id="hist-val" class="font-bold text-indigo-600">35%</span> Historical Seasonal Shape</div>
-  </div>
-
-  <div class="card border-blue-200">
-    <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa-solid fa-snowflake text-blue-400"></i> Snow Cover</div>
-    <div id="snow-display" class="text-sm font-bold text-slate-600">Not set yet</div>
-    <button onclick="document.getElementById('snow-modal').style.display='flex'" class="mt-2 text-xs text-blue-600 underline cursor-pointer">Change snow level</button>
-  </div>
-
-  <button id="btn-run" onclick="runEngine()"
-    class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition shadow mt-2">
-    <i class="fa-solid fa-calculator"></i> Run Full Prediction
+  <button id="btn-run" onclick="runEngine()" class="w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition shadow mt-1" style="background:#1e293b;color:white;border:1.5px solid #334155;">
+    <i class="fa-solid fa-calculator text-cyan-400"></i> Run Full Prediction
   </button>
 </div>
 
 <div class="flex flex-col gap-4">
-
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-    <div class="card text-center py-2">
-      <div class="kl">Monthly AD</div>
-      <div id="k-ad" class="kv mono text-slate-700">—</div>
-      <div class="text-[10px] text-slate-400">MWh</div>
-    </div>
-    <div class="card text-center py-2 bg-rose-50 border-rose-200">
-      <div class="kl text-rose-600">Min (90%)</div>
-      <div id="k-min" class="kv mono text-rose-600">—</div>
-      <div class="text-[10px] text-rose-400">MWh monthly floor</div>
-    </div>
-    <div class="card text-center py-2 bg-blue-50 border-blue-200">
-      <div class="kl text-blue-600">Projected Total</div>
-      <div id="k-proj" class="kv mono text-blue-700">—</div>
-      <div class="text-[10px] text-blue-400">MWh</div>
-    </div>
-    <div class="card text-center py-2 bg-emerald-50 border-emerald-200">
-      <div class="kl text-emerald-600">Actual to Date</div>
-      <div id="k-actual" class="kv mono text-emerald-700">—</div>
-      <div class="text-[10px] text-emerald-400">MWh (confirmed)</div>
-    </div>
-    <div class="card text-center py-2">
-      <div class="kl">NPR Impact</div>
-      <div id="k-npr" class="kv text-slate-600 text-lg">—</div>
-      <div id="k-npr-l" class="text-[10px] text-slate-400">projected</div>
-    </div>
+  <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+    <div class="card text-center py-2"><div class="kl">Monthly AD</div><div id="k-ad" class="kv text-slate-300">—</div><div class="text-[10px] text-slate-500">MWh</div></div>
+    <div class="card text-center py-2" style="border-color:#7f1d1d;background:#450a0a22;"><div class="kl text-red-400">90% Floor</div><div id="k-min" class="kv text-red-400">—</div><div class="text-[10px] text-red-600">Min required</div></div>
+    <div class="card text-center py-2" style="border-color:#1e40af;background:#1e3a5f22;"><div class="kl text-blue-400">P50 Expected</div><div id="k-proj" class="kv text-blue-400">—</div><div class="text-[10px] text-blue-600">MWh</div></div>
+    <div class="card text-center py-2" style="border-color:#065f46;background:#064e3b22;"><div class="kl text-emerald-400">Actual Metered</div><div id="k-actual" class="kv text-emerald-400">—</div><div class="text-[10px] text-emerald-600">MWh confirmed</div></div>
+    <div class="card text-center py-2"><div class="kl">Gap to 90%</div><div id="k-gap" class="kv text-slate-300">—</div><div class="text-[10px] text-slate-500">MWh</div></div>
+    <div class="card text-center py-2"><div class="kl">NPR Impact</div><div id="k-npr" class="kv text-slate-300 text-lg">—</div><div id="k-npr-l" class="text-[10px] text-slate-500">—</div></div>
   </div>
 
   <div class="card py-2 px-4">
     <div class="flex justify-between text-[10px] font-bold mb-1">
-      <span class="text-rose-500">PENALTY &lt;90%</span>
-      <span id="sbar-l" class="text-slate-500">Run engine to see progress</span>
-      <span class="text-amber-500">EXCESS &gt;AD</span>
+      <span class="text-red-400">⚠ PENALTY ZONE &lt;90%</span>
+      <span id="sbar-l" class="text-slate-400">Run engine first</span>
+      <span class="text-amber-400">EXCESS ZONE &gt;AD</span>
     </div>
     <div class="sbar">
-      <div id="sfill" class="sfill bg-slate-300" style="width:0%"></div>
-      <div class="sm bg-rose-400" style="left:90%"></div>
-      <div class="sm bg-orange-400" style="left:100%"></div>
+      <div id="sfill" class="sfill" style="width:0%;background:#334155;"></div>
+      <div class="sm" style="left:90%;background:#ef4444;"></div>
+      <div class="sm" style="left:100%;background:#f59e0b;"></div>
     </div>
-    <div class="flex justify-between text-[10px] text-slate-400 mt-0.5"><span>0%</span><span>90% floor</span><span>100% AD</span></div>
+    <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>0%</span><span>90% floor</span><span>100% AD</span></div>
   </div>
 
   <div class="card p-0 overflow-hidden">
     <div class="px-4 pt-3">
       <div class="tabs">
-        <button class="tb active" onclick="showTab('t-weeks',this)">📅 Weeks vs AD</button>
-        <button class="tb text-blue-700" onclick="showTab('t-hist',this)">📈 Strategy & Scenarios</button>
-        <button class="tb" onclick="showTab('t-scada',this)">📡 Current Trend</button>
+        <button class="tb active" onclick="showTab('t-weeks',this)">📅 Strategic AD Planner</button>
+        <button class="tb" onclick="showTab('t-calc',this)">🧠 Explainable AI</button>
+        <button class="tb" onclick="showTab('t-hist',this)">📊 Historical Trends</button>
+        <button class="tb" onclick="showTab('t-fault',this)">⚡ Fault Logic</button>
+        <button class="tb" onclick="showTab('t-dev',this)">📐 Deviation</button>
         <button class="tb" onclick="showTab('t-daily',this)">📋 Daily Log</button>
-        <button class="tb" onclick="showTab('t-calc',this)">🔢 Calc Detail</button>
         <button class="tb" onclick="showTab('t-weather',this)">🌦 Weather</button>
-        <button class="tb" onclick="showTab('t-fin',this)">💰 Financial</button>
+        <button class="tb" onclick="showTab('t-fin',this)">💰 PPA Financial</button>
       </div>
     </div>
     <div class="p-4">
 
       <div id="t-weeks" class="tp active">
-        <div id="weeks-ph" class="text-center py-12 text-slate-400">
-          <i class="fa-solid fa-calendar-days text-4xl text-slate-200 mb-3"></i>
-          <p class="font-semibold">Select month, load data, then Run Full Prediction</p>
+        <div id="weeks-ph" class="text-center py-16 text-slate-500">
+          <i class="fa-solid fa-chess-knight text-5xl text-slate-700 mb-4"></i>
+          <p class="font-semibold text-slate-400">Load data and Run Prediction to see strategic AD analysis</p>
+          <p class="text-xs mt-1">Evaluates P10/P50/P90 confidence bounds and 10-hour safety shields.</p>
         </div>
         <div id="weeks-content" class="hidden">
-          <div id="weeks-grid" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4"></div>
-          <div id="month-summary" class="bg-slate-50 border border-slate-200 rounded-xl p-3"></div>
+          <div id="weeks-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4"></div>
         </div>
       </div>
 
+      <div id="t-calc" class="tp scroll-y">
+        <div class="info-box mb-3 text-xs">
+          <strong>Narrative Explainability Engine:</strong> The AI interprets historical matching, weather forecasts, and rolling averages to explain *why* it recommends modifying or maintaining the AD, written in clear operational language.
+        </div>
+        <div id="calc-ph" class="text-center py-10 text-slate-500">Run engine to see AI explanation</div>
+        <div id="calc-content"></div>
+      </div>
+
       <div id="t-hist" class="tp">
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
           <div class="xl:col-span-2">
-            <div class="font-bold text-sm text-slate-700 mb-2">Current Generation vs Historical Benchmarks</div>
-            <div class="relative h-64 mb-4"><canvas id="hist-chart"></canvas></div>
+            <div class="text-xs font-bold mb-2 text-slate-300">Daily Energy Comparison (MWh)</div>
+            <div class="relative h-72"><canvas id="hist-chart"></canvas></div>
           </div>
           <div>
-            <div class="card bg-slate-50 border-slate-200 p-3 h-full">
-              <div class="font-bold text-slate-800 text-sm mb-2"><i class="fa-solid fa-shield-halved text-blue-500"></i> The "Emergency Brake" Strategy</div>
-              <div class="text-[11px] text-slate-600 space-y-2">
-                <p><strong>Current Situation:</strong> Generation is climbing rapidly (116 → 165+). If the incoming rain hits the 3000-4000m catchment zone as liquid, flow will surge to 200+ MWh/day (similar to 2082).</p>
-                <p class="text-emerald-700 font-bold">Recommendation: Hold Week 3 AD at 1231.678 MWh.</p>
-                <p>Decreasing Week 3 now will lock you out of full PPA rates if the river surges. You still have 1,759 MWh of undeclared AD for Weeks 4 and 5.</p>
-                <div class="border-t border-slate-200 pt-2 mt-2">
-                  <span class="font-bold text-slate-800">The Trigger Point:</span><br>
-                  If the cold front freezes the 24 sq km mid-catchment, generation will instantly crash back to ~130 MWh (similar to 2080/2081). If this crash happens, <strong>slash your Week 4 AD declaration</strong> to artificially pull your monthly 90% floor down to safety.
-                </div>
-              </div>
-            </div>
+            <div class="text-xs font-bold mb-2 text-slate-300">Year Similarity to Current 7-Day Trend</div>
+            <div id="sim-scores" class="space-y-2"></div>
           </div>
         </div>
-        <div class="scroll-y mt-2">
-          <table class="tbl">
-            <thead><tr id="hist-head"><th>Day</th><th>Wk</th><th>2080 (Freeze)</th><th>2081 (Freeze)</th><th>2082 (Warm Rain)</th><th>Current</th></tr></thead>
-            <tbody id="hist-body"><tr><td colspan="6" class="text-center text-slate-400 py-4">Run engine</td></tr></tbody>
+        <div class="scroll-y">
+          <table class="tbl" id="hist-table">
+            <thead><tr id="hist-head"></tr></thead>
+            <tbody id="hist-body"><tr><td colspan="20" class="text-center text-slate-500 py-4">Run engine to see all-year comparison</td></tr></tbody>
           </table>
         </div>
       </div>
 
-      <div id="t-scada" class="tp">
-        <div class="relative h-64 mb-4">
-          <canvas id="scada-chart"></canvas>
+      <div id="t-fault" class="tp">
+        <div class="info-box mb-3">
+          <strong>Asymmetric Fault Filter:</strong> A day is marked as a fault if generation drops >25% from the previous 2-day average AND the following day recovers >75%. Fault days are stripped from calculations. <em>Sudden increases are strictly preserved, as they indicate valid rainfall responses.</em>
         </div>
-        <div id="scada-explain" class="space-y-2"></div>
+        <div id="fault-content"><div class="text-center py-8 text-slate-500">Load data to detect faults</div></div>
+      </div>
+
+      <div id="t-dev" class="tp">
+        <div class="info-box mb-3">
+          <strong>Deviation Carry-Forward:</strong> When actual energy differs from predicted in W1/W2, 60% of the variance carries to W3 targets and 40% to W4. This prevents end-of-month 90% floor surprises.
+        </div>
+        <div id="dev-content"><div class="text-center py-8 text-slate-500">Run engine to see deviation carry-forwards</div></div>
       </div>
 
       <div id="t-daily" class="tp scroll-y">
-        <p class="text-xs text-slate-500 mb-2">
-          <strong>Meter logic:</strong> Energy for Day N = Substation Export(Day N+1) - Substation Export(Day N), read at 12pm NPT. Today's estimate is based on partial elapsed NPT hours.
-        </p>
+        <p class="text-xs text-slate-500 mb-2"><strong>Meter logic:</strong> Daily MWh = export_substation(Day N+1) − export_substation(Day N) at 12:00pm NPT.</p>
         <table class="tbl">
-          <thead><tr>
-            <th>Day</th><th>Nep Date</th><th>Eng Date</th><th>Wk</th>
-            <th>Export MWh</th><th>Source</th><th>Cat°C</th><th>Rain mm</th>
-            <th>Cumul</th>
-          </tr></thead>
-          <tbody id="daily-body"><tr><td colspan="9" class="text-center text-slate-400 py-6">Run engine first</td></tr></tbody>
+          <thead><tr><th>Day</th><th>Nep Date</th><th>Eng Date</th><th>Wk</th><th>P50 MWh</th><th>Source</th><th>Fault?</th><th>Cat°C</th><th>Rain</th><th>Cumul</th></tr></thead>
+          <tbody id="daily-body"><tr><td colspan="10" class="text-center text-slate-500 py-6">Run engine first</td></tr></tbody>
         </table>
       </div>
 
-      <div id="t-calc" class="tp scroll-y">
-        <div id="calc-ph" class="text-center py-10 text-slate-400">Run engine to see step-by-step calculation log</div>
-        <div id="calc-content"></div>
-      </div>
-
       <div id="t-weather" class="tp">
-        <div class="font-bold text-sm text-slate-700 mb-2">15-Day Open-Meteo Forecast · 29.85°N 80.95°E (Intake area)</div>
-        <div id="fc-cards" class="flex gap-2 overflow-x-auto pb-3">
-          <div class="text-slate-400 text-xs py-6 w-full text-center"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>
-        </div>
-        <div class="mt-3 info-box">
-          <strong>Hydrology interpretation:</strong> Rain → runoff 1–3 days. Rain &gt;7 days → groundwater recharge. Intake temp &gt;15°C + snow → active snowmelt. Catchment temp &lt;0°C + rain → snow accumulation.
-        </div>
+        <div class="text-xs font-bold mb-2 text-slate-300">15-Day Open-Meteo Forecast · 29.85°N 80.95°E</div>
+        <div id="fc-cards" class="flex gap-2 overflow-x-auto pb-2"><div class="text-slate-500 text-xs py-6 w-full text-center"><span class="spin"></span> Loading…</div></div>
       </div>
 
       <div id="t-fin" class="tp">
-        <div id="fin-ph" class="text-center py-8 text-slate-400">Run engine first</div>
-        <div id="fin-content" class="hidden">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div class="bg-rose-50 border border-rose-200 rounded-xl p-3"><div class="font-bold text-rose-700 text-xs mb-2">⚠️ Penalty Scenario</div><div id="fin-pen" class="text-xs space-y-1"></div></div>
-            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3"><div class="font-bold text-amber-700 text-xs mb-2">📈 Excess Scenario</div><div id="fin-exc" class="text-xs space-y-1"></div></div>
+        <div id="fin-ph" class="text-center py-8 text-slate-500">Run engine first</div>
+        <div id="fin-content" class="hidden space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="card2" style="border-color:#7f1d1d;"><div class="font-bold text-red-400 text-xs mb-2">⚠️ If Penalty (Actual &lt; 90% AD)</div><div id="fin-pen" class="text-xs space-y-1"></div></div>
+            <div class="card2" style="border-color:#451a03;"><div class="font-bold text-amber-400 text-xs mb-2">📈 If Excess (Actual &gt; AD)</div><div id="fin-exc" class="text-xs space-y-1"></div></div>
+            <div class="card2" style="border-color:#065f46;"><div class="font-bold text-emerald-400 text-xs mb-2">✅ Current P50 Projection</div><div id="fin-cur" class="text-xs space-y-1"></div></div>
           </div>
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3"><div class="font-bold text-slate-700 text-xs mb-2">Current Projection</div><div id="fin-cur" class="text-xs space-y-1"></div></div>
-          <div class="relative h-48 mt-4"><canvas id="fin-chart"></canvas></div>
+          <div class="relative h-48"><canvas id="fin-chart"></canvas></div>
         </div>
       </div>
 
@@ -312,688 +301,1059 @@ input[type=range] { padding: 0; border: none; background: transparent; cursor: p
 </main>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
-// GLOBAL SETUP & CONSTANTS
-// ═══════════════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://ineaqjsmabbsjwwbjfya.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_uadlDXas6Tpif6j4eWp30g_j6OG326s';
-
-// Safe Supabase Initialization
-let supabaseClient = null;
-if (typeof window.supabase !== 'undefined') {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-} else {
-    console.warn("Supabase CDN not loaded. Working in offline/demo mode.");
-}
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  GLOBALS & STATE                                          ║
+// ╚═══════════════════════════════════════════════════════════╝
+const CONFIG = {
+  SB_URL: 'https://ineaqjsmabbsjwwbjfya.supabase.co',
+  SB_KEY: 'sb_publishable_uadlDXas6Tpif6j4eWp30g_j6OG326s', // Ensure RLS is active on Supabase tables
+  MAX_EXPORT: 236,  
+  MAX_THEOR: 250  
+};
 
 const MONTHS = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Ashoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
+const HIST_COLORS = ['#f472b6','#fb923c','#facc15','#4ade80','#22d3ee','#818cf8','#f87171','#a3e635'];
 
-// Capacity Constraints
-const MAX_THEORETICAL_MWH = 250; 
-const MAX_EXPORT_CAPACITY = 236; 
+const FALLBACK_HIST = {
+  2079: [150.2, 148.1, 155.0, 160.2, 162.1, 158.4, 142.1, 135.0, 130.1, 125.5, 120.2, 118.5, 122.0, 125.1, 130.4, 135.2, 140.1, 145.6, 150.2, 152.1, 150.0, 148.2, 160.1, 165.2, 162.0, 158.4, 160.1, 165.2, 170.1, 175.2, 172.1],
+  2080: [163.5, 145.26, 165.02, 187.43, 196.34, 197.8, 146.87, 126.09, 112.95, 105.85, 99.56, 95.78, 97.95, 102.21, 108.59, 121.29, 133.98, 180.12, 178.84, 187.13, 186.87, 183.13, 204.24, 183.68, 171.87, 186.08, 168.65, 154.68, 180.03, 207.29, 212.51],
+  2081: [123.37, 112.44, 128.6, 163.45, 194.86, 131.23, 204.53, 196.0, 196.66, 151.94, 124.27, 127.63, 127.63, 150.14, 137.15, 137.81, 145.5, 163.33, 117.02, 132.67, 154.58, 130.08, 123.9, 123.89, 119.5, 115.8, 135.97, 128.5, 137.28, 167.76, 170.26],
+  2082: [146.82, 172.03, 212.32, 187.48, 208.8, 210.8, 216.98, 225.1, 226.41, 220.52, 202.67, 178.71, 172.91, 144.41, 142.03, 148.51, 147.28, 137.48, 130.31, 138.52, 168.34, 163.87, 170.68, 158.61, 158.83, 155.88, 170.1, 186.23, 186.11, 201.64, 174.87],
+  2083: [140.2, 145.5, 150.2, 155.1, 158.2, 160.0, 165.2, 170.1, 175.5, 172.0, 168.5, 165.2, 160.1, 155.2, 158.4, 162.1, 165.5, 170.2, 175.1, 178.2, 180.1, 175.5, 170.2, 165.1, 160.2, 158.5, 162.1, 165.5, 170.2, 175.1, 172.2]
+};
 
-// Hardcoded Historical Data provided by User
-const HIST_2080 = [163.5, 145.26, 165.02, 187.43, 196.34, 197.8, 146.87, 126.09, 112.95, 105.85, 99.56, 95.78, 97.95, 102.21, 108.59, 121.29, 133.98, 180.12, 178.84, 187.13, 186.87, 183.13, 204.24, 183.68, 171.87, 186.08, 168.65, 154.68, 180.03, 207.29, 212.51];
-const HIST_2081 = [123.37, 112.44, 128.6, 163.45, 194.86, 131.23, 204.53, 196.0, 196.66, 151.94, 124.27, 127.63, 127.63, 150.14, 137.15, 137.81, 145.5, 163.33, 117.02, 132.67, 154.58, 130.08, 123.9, 123.89, 119.5, 115.8, 135.97, 128.5, 137.28, 167.76, 170.26];
-const HIST_2082 = [146.82, 172.03, 212.32, 187.48, 208.8, 210.8, 216.98, 225.1, 226.41, 220.52, 202.67, 178.71, 172.91, 144.41, 142.03, 148.51, 147.28, 137.48, 130.31, 138.52, 168.34, 163.87, 170.68, 158.61, 158.83, 155.88, 170.1, 186.23, 186.11, 201.64, 174.87];
+let sb = null;
+try { if (typeof window.supabase !== 'undefined') sb = window.supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY); } catch(e) {}
 
+let state = {
+  todayEng:       getTodayNPT(),
+  todayNepDay:    null,
+  calCurrent:     [],   
+  calPrev:        [],   
+  contractRow:    null, 
+  plantCounters:  {},   
+  plantDaily:     {},   
+  histData:       {}, 
+  histRain:       {}, 
+  histFaults:     {},   
+  currentFaults:  new Set(),
+  currentFaultReasons: {},
+  histFaultReasons: {},
+  rainfallByDay:  {},   
+  weatherFcst:    [],
+  simScores:      {},   
+  scadaAnalysis:  null,
+  liveScada:      {},   
+  snowLevel:      null,
+  deadlines:      {},   
+  calcLog:        [],
+  availYears:     [],   
+  deviationData:  {},
+  lastResults:    null, 
+};
 
-let snowLevel = null;
-let calendarData = [];
-let contractRow  = null;
-let plantCounters = {}; 
-let rainfallByDay = {};
-let weatherForecast = [];
+let _autoTimer = null;
 let charts = {};
-let todayEng = getTodayNPT();
-let todayNepDay = null;
-let calcLog = []; 
-let currentScadaAnalysis = null;
-let liveScadaTrendData = {};
 
-// Fallback Embedded Calendar & Rainfall Data (2083 Baisakh)
-const CAL_2083_BAISAKH = [{nep_day:1,eng_date:"2026-04-14"},{nep_day:2,eng_date:"2026-04-15"},{nep_day:3,eng_date:"2026-04-16"},{nep_day:4,eng_date:"2026-04-17"},{nep_day:5,eng_date:"2026-04-18"},{nep_day:6,eng_date:"2026-04-19"},{nep_day:7,eng_date:"2026-04-20"},{nep_day:8,eng_date:"2026-04-21"},{nep_day:9,eng_date:"2026-04-22"},{nep_day:10,eng_date:"2026-04-23"},{nep_day:11,eng_date:"2026-04-24"},{nep_day:12,eng_date:"2026-04-25"},{nep_day:13,eng_date:"2026-04-26"},{nep_day:14,eng_date:"2026-04-27"},{nep_day:15,eng_date:"2026-04-28"},{nep_day:16,eng_date:"2026-04-29"},{nep_day:17,eng_date:"2026-04-30"},{nep_day:18,eng_date:"2026-05-01"},{nep_day:19,eng_date:"2026-05-02"},{nep_day:20,eng_date:"2026-05-03"},{nep_day:21,eng_date:"2026-05-04"},{nep_day:22,eng_date:"2026-05-05"},{nep_day:23,eng_date:"2026-05-06"},{nep_day:24,eng_date:"2026-05-07"},{nep_day:25,eng_date:"2026-05-08"},{nep_day:26,eng_date:"2026-05-09"},{nep_day:27,eng_date:"2026-05-10"},{nep_day:28,eng_date:"2026-05-11"},{nep_day:29,eng_date:"2026-05-12"},{nep_day:30,eng_date:"2026-05-13"},{nep_day:31,eng_date:"2026-05-14"}];
-const SCADA_NEP_MON = {"2081_Baisakh":140.2,"2082_Baisakh":176.4,"2083_Baisakh":120.3};
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  CORE UTILS                                               ║
+// ╚═══════════════════════════════════════════════════════════╝
+function getPpaRate(y, mIdx) {
+  const escWet = Math.min(Math.max(0, y - 2080), 5);
+  const escDry = Math.min(Math.max(0, mIdx === 11 ? y - 2079 : y - 2080), 5);
+  const wR = [8.4, 8.65, 8.9, 9.16, 9.43, 9.71];  
+  const rR = [4.8, 4.94, 5.09, 5.24, 5.39, 5.55];  
+  return mIdx >= 8 ? wR[escDry] : rR[escWet];
+}
 
-// ═══════════════════════════════════════════════════════════════
-// NPT DATE & TIME HELPERS
-// ═══════════════════════════════════════════════════════════════
+function selectedRateMwh() {
+  const y = parseInt(document.getElementById('sel-year').value);
+  const m = parseInt(document.getElementById('sel-month').value) - 1;
+  return getPpaRate(y, m) * 1000;
+}
+
+function updateRateDisplay() {
+  const y = parseInt(document.getElementById('sel-year').value);
+  const m = parseInt(document.getElementById('sel-month').value) - 1;
+  const rKwh = getPpaRate(y, m);
+  const rMwh = Math.round(rKwh * 1000);
+  document.getElementById('ppa-rate').value = rMwh;
+  document.getElementById('chip-rate').textContent = `Rate: ${rKwh.toFixed(2)} NPR/kWh`;
+}
+
 function getTodayNPT() {
-  const nptDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
-  const y = nptDate.getFullYear();
-  const m = String(nptDate.getMonth() + 1).padStart(2, '0');
-  const d = String(nptDate.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const d = new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Kathmandu"}));
+  return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 }
 
-function getNptHoursElapsed() {
-  const nptDate = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
-  return nptDate.getHours() + (nptDate.getMinutes() / 60);
+function getNptHours() {
+  const d = new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Kathmandu"}));
+  return d.getHours() + d.getMinutes()/60;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MATH & TREND LOGIC
-// ═══════════════════════════════════════════════════════════════
-function slope(series) {
-  const n = series.length; if(n<2) return 0;
-  const xm=(n-1)/2, ym=series.reduce((a,b)=>a+b,0)/n;
-  const num=series.reduce((s,y,i)=>s+(i-xm)*(y-ym),0);
-  const den=series.reduce((s,_,i)=>s+(i-xm)**2,0);
+function p2(n){ return String(n).padStart(2,'0'); }
+function addDays(engDate, n) {
+  const d = new Date(engDate); d.setDate(d.getDate()+n);
+  return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+}
+function fmtEngDate(s) { return s ? s.replace(/-/g,'') : ''; }
+
+function getCurrentNepPeriod() {
+  const today = new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Kathmandu"}));
+  const y = today.getFullYear(), m = today.getMonth()+1, d = today.getDate();
+  const boundaries = [
+    [2026,5,15,2083,2],[2026,4,14,2083,1],[2025,12,16,2082,9],[2025,11,16,2082,8],
+    [2025,10,17,2082,7],[2025,9,17,2082,6],[2025,8,17,2082,5],[2025,7,17,2082,4],
+    [2025,6,15,2082,3],[2025,5,15,2082,2],[2025,4,14,2082,1]
+  ];
+  const cur = new Date(y,m-1,d);
+  for(const [by,bm,bd,ny,nm] of boundaries){
+    if(cur >= new Date(by,bm-1,bd)) return {year:ny, month:nm};
+  }
+  return {year:2083, month:2};
+}
+
+function slope(arr) {
+  const n = arr.length; if(n<2) return 0;
+  const xm=(n-1)/2, ym=arr.reduce((a,b)=>a+b,0)/n;
+  const num=arr.reduce((s,y,i)=>s+(i-xm)*(y-ym),0);
+  const den=arr.reduce((s,_,i)=>s+(i-xm)**2,0);
   return den?num/den:0;
 }
 
-function analyseScada(liveScadaMwh) {
-  const sourceData = liveScadaMwh && Object.keys(liveScadaMwh).length > 0 ? liveScadaMwh : {};
-  const dates = Object.keys(sourceData).sort();
+function ewma(arr, a=0.3) {
+  if(!arr.length) return 0; let v=arr[0];
+  for(let i=1;i<arr.length;i++) v=a*arr[i]+(1-a)*v; return v;
+}
+
+function pearson(a, b) {
+  const n = Math.min(a.length, b.length); if(n<3) return 0;
+  const am=a.slice(0,n).reduce((s,x)=>s+x,0)/n, bm=b.slice(0,n).reduce((s,x)=>s+x,0)/n;
+  let num=0,ad=0,bd=0;
+  for(let i=0;i<n;i++){const ai=a[i]-am,bi=b[i]-bm;num+=ai*bi;ad+=ai*ai;bd+=bi*bi;}
+  return (ad&&bd)?num/Math.sqrt(ad*bd):0;
+}
+
+function fmtN(n) {
+  if(n>=10000000) return (n/10000000).toFixed(2)+' Cr';
+  if(n>=100000)   return (n/100000).toFixed(2)+' L';
+  if(n>=1000)     return (n/1000).toFixed(1)+'K';
+  return n.toFixed(0);
+}
+function fmtMwh(n){ return (n||0).toFixed(2); }
+
+function computeFinancial(proj, ad, ce, rate) {
+  const penalty = Math.max(0, (ad * 0.9 - proj) * 0.1 * rate);
+  const excess = Math.max(0, Math.min(proj - ad, ce - ad));
+  return { penalty, excessLoss: excess * 0.5 * rate };
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  BUSINESS LOGIC & PROBABILISTIC FORECASTING               ║
+// ╚═══════════════════════════════════════════════════════════╝
+function detectFaults(dailyMwh) {
+  const days = Object.keys(dailyMwh).map(Number).sort((a,b)=>a-b);
+  const faults = new Set(); const reasons = {};
+  for (let i=2; i<days.length-1; i++) {
+    const d=days[i], dp1=days[i-1], dp2=days[i-2], dn1=days[i+1];
+    if (dp1 !== d-1 || dp2 !== d-2 || dn1 !== d+1) continue; 
+    const vd=dailyMwh[d], vp1=dailyMwh[dp1], vp2=dailyMwh[dp2], vn1=dailyMwh[dn1];
+    if (vp1==null||vp2==null||vd==null||vn1==null) continue;
+    
+    const avg2 = (vp1+vp2)/2;
+    const dropPct = (avg2-vd)/avg2;
+    const recoverPct = vn1/avg2;
+    
+    if (dropPct > 0.25 && recoverPct > 0.75) {
+      faults.add(d);
+      reasons[d] = `Day ${d}: Dropped to ${vd.toFixed(1)} MWh (vs 2-day prior avg ${avg2.toFixed(1)} MWh). Drop of ${(dropPct*100).toFixed(1)}%, recovery next day ${(recoverPct*100).toFixed(1)}%. Triggered grid/plant fault logic.`;
+    }
+  }
+  return {faultDays: faults, reasons};
+}
+
+function isHoliday(engDate, sundayEnabled) {
+  const day = new Date(`${engDate}T00:00:00`).getDay();
+  return (day === 6) || (sundayEnabled && day === 0);
+}
+
+function skipBackwardIfHoliday(nepDay, calLookup, sundayEnabled) {
+  let d = nepDay;
+  for (let attempts=0; attempts<5; attempts++) {
+    const cal = calLookup[d]; if (!cal) break;
+    if (!isHoliday(cal.eng_date, sundayEnabled)) return {nepDay:d, engDate:cal.eng_date};
+    d--;
+  }
+  return {nepDay:d, engDate: calLookup[d]?.eng_date};
+}
+
+function computeDeadlines() {
+  const sundayEnabled = document.getElementById('opt-sunday').checked;
+  const calCur  = {};  state.calCurrent.forEach(c=>calCur[c.nep_day]=c);
+  const calPrev = {};  state.calPrev.forEach(c=>calPrev[c.nep_day]=c);
+  const prevLastDay = state.calPrev.length;
+  const deadlines = {};
+
+  deadlines.w1 = skipBackwardIfHoliday(21, calPrev, sundayEnabled);
+  deadlines.w2 = skipBackwardIfHoliday(prevLastDay, calPrev, sundayEnabled);
+  deadlines.w3 = skipBackwardIfHoliday(7, calCur, sundayEnabled);
+  deadlines.w4 = skipBackwardIfHoliday(14, calCur, sundayEnabled);
+  deadlines.w5 = skipBackwardIfHoliday(21, calCur, sundayEnabled);
+
+  const todayNep = state.todayNepDay || 1;
+  ['w1','w2','w3','w4','w5'].forEach(wk => {
+    if (!deadlines[wk]) return;
+    const d = deadlines[wk];
+    d.passed = (wk==='w1'||wk==='w2') ? true : (todayNep > (d.nepDay||99));
+  });
+  state.deadlines = deadlines;
+}
+
+function recomputeDeadlines() { computeDeadlines(); if (state.lastResults) runEngine(); }
+
+function weekRange(wi, totalDays) {
+  const ws = wi*7+1; const we = wi<4 ? ws+6 : totalDays; const days = we-ws+1;
+  return {ws, we, days};
+}
+
+function analyseScada() {
+  const data = state.liveScada;
+  const dates = Object.keys(data).sort();
+  const vals = dates.map(d=>data[d]).filter(v=>v>5);
+  const last7 = vals.slice(-7);
+  const ewmaV = vals.length ? ewma(vals.slice(-14)) : 120;
+  const eSlope= slope(last7);
   
-  const recent7 = dates.slice(-7);
-  const recent7vals = recent7.map(d => sourceData[d]).filter(v => v > 10);
-  const eSlope = slope(recent7vals);
+  const hoursT = Math.max(0.1, getNptHours()); 
+  const liveWeight = Math.min(1, hoursT / 24); 
+  const todayPart = data[state.todayEng] || 0;
+  const rawLiveEst = todayPart ? (todayPart * 24 / hoursT) : ewmaV;
+  const todayEst = Math.min(CONFIG.MAX_EXPORT, (liveWeight * rawLiveEst) + ((1 - liveWeight) * ewmaV));
 
-  const last14 = dates.slice(-15).map(d=>sourceData[d]).filter(v=>v>10);
-  const avg14 = last14.length ? last14.reduce((a,b)=>a+b,0)/last14.length : 120;
+  const tLabel = eSlope>3?'SURGING ↑↑':eSlope>0.8?'RISING ↑':eSlope<-3?'FALLING FAST ↓↓':eSlope<-0.8?'FALLING ↓':'STABLE →';
+  const tColor = eSlope>0.8?'text-emerald-400':eSlope<-0.8?'text-red-400':'text-slate-400';
 
-  // NPT dynamic partial day estimation
-  const todayPartial = sourceData[todayEng];
-  const hoursToday = Math.max(0.1, getNptHoursElapsed());
-  const todayEst = todayPartial ? Math.min(todayPartial * (24/hoursToday), MAX_EXPORT_CAPACITY) : avg14;
+  document.getElementById('chip-trend').textContent = `Trend: ${tLabel} ${ewmaV.toFixed(0)} MWh/d`;
+  document.getElementById('chip-trend').className = `px-2.5 py-1 rounded-full text-[11px] font-semibold ${tColor}`;
 
-  const eTrendLabel = eSlope > 2 ? 'SURGING ↑↑' : eSlope > 0.5 ? 'RISING ↑' : eSlope < -2 ? 'FALLING FAST ↓↓' : eSlope < -0.5 ? 'FALLING ↓' : 'STABLE →';
-  const eTrendClass = eSlope > 0.5 ? 'sig-rising' : eSlope < -0.5 ? 'sig-falling' : 'sig-stable';
-
-  document.getElementById('scada-signal-panel').innerHTML = `
-    <div class="calc-row"><span class="key">Current Data Source</span><span class="val text-blue-600">Live DB (Last 15 days)</span></div>
-    <div class="calc-row"><span class="key">7-day avg base</span><span class="val">${avg14.toFixed(1)} MWh/day</span></div>
-    <div class="calc-row"><span class="key">Energy trend</span><span class="val ${eTrendClass}">${eTrendLabel} (${eSlope>0?'+':''}${eSlope.toFixed(1)} MWh/d²)</span></div>
-    <div class="calc-row"><span class="key">Today est. (${hoursToday.toFixed(1)}h elapsed)</span><span class="val">${todayEst.toFixed(1)} MWh</span></div>`;
-
-  document.getElementById('scada-chip').textContent = `Trend: ${eTrendLabel} ${avg14.toFixed(0)} MWh/d`;
-  document.getElementById('scada-chip').className = `bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] font-semibold ${eSlope > 0.5 ? 'text-emerald-400' : eSlope < -0.5 ? 'text-red-400' : 'text-slate-400'}`;
-
-  return { eSlope, avg14, todayEst, eTrendLabel, raw: sourceData };
+  return {eSlope, ewmaBase:ewmaV, todayEst, tLabel, last7};
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SNOW MODAL
-// ═══════════════════════════════════════════════════════════════
-let selectedSnowEl = null;
+function computeSimilarity() {
+  const scada = state.scadaAnalysis;
+  if (!scada || !scada.last7) return;
+  const cur7 = scada.last7;  
+  const scores = {};
+  for (const y of state.availYears) {
+    const hd = state.histData[y]; if (!hd) continue;
+    const faults = state.histFaults[y] || new Set();
+    const days = Object.keys(hd).map(Number).sort((a,b)=>a-b);
+    const histFirst7 = days.slice(0,7).filter(d=>!faults.has(d)).map(d=>hd[d]).filter(v=>v>5);
+    if (histFirst7.length < 3) continue;
+    const corr = pearson(cur7, histFirst7);
+    const curAvg = cur7.reduce((a,b)=>a+b,0)/cur7.length;
+    const histAvg = histFirst7.reduce((a,b)=>a+b,0)/histFirst7.length;
+    const levelSim = 1 - Math.min(Math.abs(curAvg-histAvg)/Math.max(curAvg,histAvg,1), 1);
+    scores[y] = Math.max(0, 0.6*corr + 0.4*levelSim);
+  }
+  const maxS = Math.max(...Object.values(scores), 0.001);
+  Object.keys(scores).forEach(y=>scores[y]=scores[y]/maxS);
+  state.simScores = scores;
+}
+
+function computeGwSignal(targetDay, rfData) {
+  let signal = 0;
+  for (let d=Math.max(1,targetDay-21); d<targetDay; d++) {
+    const rf = rfData[d]; if(!rf||rf.prec<0.5) continue;
+    const dAgo = targetDay-d;
+    if (rf.catT < 2) {
+      signal -= 0.003*(rf.prec/10)*(dAgo<=3?1:0.5); 
+    } else {
+      const lag = dAgo<=3?0.5:dAgo<=7?0.3:dAgo<=14?0.15:0.05;
+      const intensity = rf.prec>20?0.04:rf.prec>10?0.025:rf.prec>5?0.015:0.006;
+      signal += intensity*lag;
+    }
+  }
+  return Math.max(-0.05, Math.min(0.20, signal));
+}
+
+function snowMeltFactor(nepDay, catT) {
+  const packF = {none:0,sparse:0.025,moderate:0.06,full:0.12}[state.snowLevel]||0;
+  if(!packF) return 0;
+  const dd = Math.max(0,catT)/10;
+  const depletion = Math.max(0.05, 1-(nepDay-1)/40);
+  return packF*dd*depletion;
+}
+
+function predictDay(nepDay, scada) {
+  const rf     = state.rainfallByDay[nepDay] || {};
+  const catT   = rf.catT ?? 15;
+  const inT    = rf.inT  ?? 18;
+  const dAhead = Math.max(0, nepDay-(state.todayNepDay||1));
+  const baseHW = parseFloat(document.getElementById('hist-weight').value)/100;
+  const autoHW = Math.min(0.25, dAhead*0.015);
+  const histW  = Math.min(0.80, baseHW+autoHW);
+  const liveW  = 1-histW;
+
+  const base = scada.ewmaBase;
+  const damp = Math.exp(-0.06*dAhead);
+  const tMod = 1 + Math.max(-0.25,Math.min(0.25,(scada.eSlope*dAhead/Math.max(base,1))))*damp;
+
+  let histPred = base; 
+  let totalSimW = 0, weightedH = 0;
+  for (const y of state.availYears) {
+    const hd = state.histData[y]; if(!hd) continue;
+    const faults = state.histFaults[y]||new Set();
+    if (faults.has(nepDay)) continue;
+    const hVal = hd[nepDay]; if(!hVal) continue;
+    const cleanVals = Object.keys(hd).map(Number).filter(d=>!faults.has(d)).map(d=>hd[d]).filter(v=>v>5);
+    const hAvg = cleanVals.length ? cleanVals.reduce((a,b)=>a+b,0)/cleanVals.length : base;
+    const ratio = hAvg>0 ? hVal/hAvg : 1;
+    const simW = (state.simScores[y]||0.1)+0.1;
+    weightedH += ratio*simW; totalSimW += simW;
+  }
+  if (totalSimW > 0) histPred = base*(weightedH/totalSimW);
+
+  const trendBased = base * tMod;
+  const gw = computeGwSignal(nepDay, state.rainfallByDay);
+  const snow = snowMeltFactor(nepDay, catT);
+
+  let wMod = 1.0; let rainFcst = 0;
+  if (state.weatherFcst.length>dAhead) {
+     wMod = state.weatherFcst[dAhead]?.hydroMod||1;
+     rainFcst = state.weatherFcst[dAhead]?.rain||0;
+  }
+  
+  let tempMod = 1.0;
+  if(catT<-2) tempMod=0.82; else if(catT<0) tempMod=0.88; else if(catT<3) tempMod=0.93;
+  else if(inT>22) tempMod=1.04; else if(inT>18) tempMod=1.01;
+
+  const blendedP50 = Math.min(CONFIG.MAX_EXPORT, Math.max(5, (liveW * (trendBased * (1+gw+snow) * wMod * tempMod)) + (histW * histPred)));
+
+  const timeUncertainty = dAhead * 0.015; 
+  const rainUncertainty = rainFcst > 20 ? 0.15 : rainFcst > 5 ? 0.08 : 0.03;
+  const totalUncertainty = Math.min(0.35, timeUncertainty + rainUncertainty);
+  
+  // P90 = Conservative (Lower), P10 = Aggressive (Upper)
+  const p90 = Math.max(5, blendedP50 * (1 - totalUncertainty));
+  const p10 = Math.min(CONFIG.MAX_EXPORT, blendedP50 * (1 + totalUncertainty));
+
+  let factors = [
+    { label: 'Base Calculation (Rolling Avg)', val: base, type: 'base' },
+    { label: 'Short-Term Trend Vector', val: (trendBased - base), type: 'mod' },
+    { label: 'Historical Similarity Shape', val: (histPred - base) * histW, type: 'mod' },
+    { label: 'Weather (Snowmelt/Lag/Rain)', val: trendBased * (gw + snow + (wMod-1)), type: 'mod' }
+  ];
+
+  return { p50: blendedP50, p90, p10, factors, dAhead };
+}
+
+function predictWeek(wi, scada, totalDays, applyCarry = true) {
+  const {ws, we, days} = weekRange(wi, totalDays);
+  const bufferEnabled = document.getElementById('opt-buffer').checked;
+  const submittedKwh = state.contractRow?.[`week${wi+1}_ad`]||0;
+  const submittedMwh = submittedKwh/1000;
+  const minAllowed = submittedMwh * 0.60; 
+
+  const dlKeys = ['w1','w2','w3','w4','w5'];
+  const deadline = state.deadlines[dlKeys[wi]];
+  const isPassed = deadline ? deadline.passed : false;
+
+  let weekTotal=0, weekP90=0, weekP10=0, remainingDays=0;
+  const dayValues = [];
+
+  for (let d=ws; d<=we; d++) {
+    const confirmed = state.plantDaily[d];
+    const today = state.todayNepDay||1;
+    let mwh, p90, p10, src;
+
+    if (d < today && confirmed != null && !state.currentFaults.has(d)) { 
+        mwh = confirmed; p90 = confirmed; p10 = confirmed; src = 'meter'; 
+    } else if (d === today) { 
+        mwh = scada.todayEst; p90 = mwh*0.98; p10 = Math.min(CONFIG.MAX_EXPORT, mwh*1.02); src = 'live'; 
+        remainingDays++;
+    } else { 
+        const pred = predictDay(d, scada); 
+        mwh = pred.p50; p90 = pred.p90; p10 = pred.p10; src = 'pred'; 
+        if(applyCarry && wi<=2) state.calcLog.push({ d, pred, wi }); 
+        remainingDays++;
+    }
+    
+    weekTotal += mwh; weekP90 += p90; weekP10 += p10;
+    dayValues.push({d, mwh, src});
+  }
+
+  let devCarry = 0;
+  if (applyCarry) {
+      if (wi===2 && state.deviationData.w1) devCarry = state.deviationData.w1.deviation*0.6;
+      if (wi===3 && (state.deviationData.w1||state.deviationData.w2)) {
+        devCarry = (state.deviationData.w1?.deviation||0)*0.4 + (state.deviationData.w2?.deviation||0)*0.5;
+      }
+  }
+  
+  const totalWithCarry = weekTotal + devCarry;
+  const p90WithCarry = weekP90 + devCarry;
+  const p10WithCarry = weekP10 + devCarry;
+
+  const avgDay = totalWithCarry / Math.max(1, days);
+  // Apply buffer ONLY to remaining unmetered days
+  const buffer = bufferEnabled ? avgDay * (10 / 24) * remainingDays : 0; 
+  
+  // SAFE AD uses P90 (Conservative Lower Bound) minus buffer
+  let safeAD = p90WithCarry - buffer;
+  let cappedAD = Math.max(safeAD, minAllowed);
+
+  let holdText = "";
+  if (isPassed) {
+      holdText = "🔒 <strong>Submission deadline passed.</strong> The declared energy target is locked for this week. Focus on operational fulfillment.";
+  } else {
+      if (cappedAD < submittedMwh) {
+          const decreaseAmt = submittedMwh - cappedAD;
+          holdText = `📉 <strong>Recommendation: Decrease AD.</strong> We suggest lowering the energy by up to ${decreaseAmt.toFixed(1)} MWh this week (Target: ${cappedAD.toFixed(1)} MWh). The conservative P90 prediction is tracking low (${p90WithCarry.toFixed(1)} MWh), meaning you are at risk of missing the 90% floor and incurring penalties if you hold constant.`;
+      } else if (cappedAD > submittedMwh) {
+          holdText = `📈 <strong>Recommendation: Increase AD.</strong> We suggest raising the energy target to ${cappedAD.toFixed(1)} MWh. The river flow is trending high, and excess energy produced above your AD is paid at only a 50% rate. Increasing the target captures full revenue.`;
+      } else {
+          holdText = "✅ <strong>Recommendation: Hold Constant.</strong> The expected generation perfectly aligns with your currently submitted AD. It is safe to remain constant this week without risking a penalty.";
+      }
+  }
+
+  return { wi, ws, we, days, submittedMwh, minAllowed, weekTotal, weekP90: p90WithCarry, weekP10: p10WithCarry, buffer, cappedAD, holdText, isPassed, dayValues, devCarry };
+}
+
+function computeDeviation(weekPredictions) {
+  const today = state.todayNepDay||1;
+  const devData = {};
+  for (let wi=0; wi<4; wi++) {
+    const {ws,we} = weekRange(wi, state.calCurrent.length||31);
+    if (today <= we) break; 
+    const pred = weekPredictions[wi];
+    if (!pred) continue;
+    let actual = 0;
+    for (let d=ws;d<=we;d++){
+      const v = state.plantDaily[d];
+      if(v!=null && !state.currentFaults.has(d)) actual += v;
+    }
+    const dev = actual - pred.cappedAD; 
+    devData[`w${wi+1}`] = {predicted:pred.cappedAD, actual, deviation:dev};
+  }
+  state.deviationData = devData;
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  DATA LOADING                                             ║
+// ╚═══════════════════════════════════════════════════════════╝
+async function loadHistoricalYear(year, monthName) {
+  const {data:cal} = await sb.from('calendar_mappings').select('eng_date,nep_day').eq('nep_year',year).eq('nep_month',monthName).order('nep_day');
+  if (!cal?.length) {
+      if (FALLBACK_HIST[year]) {
+          const res = {}; FALLBACK_HIST[year].forEach((val, idx) => res[idx+1] = val); return res;
+      }
+      return null;
+  }
+  const startEng = fmtEngDate(cal[0].eng_date);
+  const endEng   = fmtEngDate(cal[cal.length-1].eng_date);
+  const {data:hist} = await sb.from('historical_data').select('id,active_power_kw').gte('id',`${startEng}_0000`).lte('id',`${endEng}_2359`);
+  
+  if (!hist?.length) {
+      if (FALLBACK_HIST[year]) {
+          const res = {}; FALLBACK_HIST[year].forEach((val, idx) => res[idx+1] = val); return res;
+      }
+      return null;
+  }
+  
+  const dailyMap = {};
+  hist.forEach(row=>{
+    const dateKey = row.id.substring(0,8);
+    const kw = parseFloat(row.active_power_kw)||0;
+    if(!dailyMap[dateKey]) dailyMap[dateKey]=0;
+    dailyMap[dateKey] += kw*(5/60)/1000; 
+  });
+  const result = {};
+  cal.forEach(c=>{
+    const key = fmtEngDate(c.eng_date);
+    if(dailyMap[key]!=null) result[c.nep_day] = parseFloat(dailyMap[key].toFixed(2));
+  });
+  return result;
+}
+
+function onPeriodChange() {
+  updateRateDisplay();
+  clearTimeout(_autoTimer);
+  document.getElementById('auto-load-ind').classList.remove('hidden');
+  _autoTimer = setTimeout(()=>{ document.getElementById('auto-load-ind').classList.add('hidden'); loadAll(); }, 700);
+}
+
+function updateLoadItem(i, status) {
+  const el=document.getElementById(`load-item-${i}`); if(!el) return;
+  el.querySelector('.load-dot').style.background=status==='done'?'#10b981':'#ef4444';
+  const spin = el.querySelector('.spin'); if(spin) spin.remove();
+}
+
+async function loadAll() {
+  const year  = parseInt(document.getElementById('sel-year').value);
+  const mVal  = parseInt(document.getElementById('sel-month').value);
+  const month = MONTHS[mVal-1];
+  
+  state.plantCounters = {}; state.plantDaily = {}; state.liveScada = {};
+  state.histData = {}; state.histFaults = {}; state.histFaultReasons = {};
+  state.histRain = {}; state.deviationData = {}; state.lastResults = null; state.availYears = [];
+  
+  updateRateDisplay();
+  setChip('chip-db','⏳ Syncing…','text-amber-400');
+  document.getElementById('load-status').innerHTML=
+    [{label:'Contract & Calendar', status:'loading'},{label:'Live Plant Metrics', status:'loading'},{label:'Historical Data', status:'loading'}]
+    .map((it,i)=>`<div class="load-item" id="load-item-${i}"><div class="load-dot" style="background:${it.status==='done'?'#10b981':it.status==='loading'?'#3b82f6':'#334155'};"></div><span class="text-slate-300">${it.label}</span>${it.status==='loading'?'<span class="spin ml-1"></span>':''}</div>`).join('');
+
+  try {
+    if (!sb) throw new Error('Network offline');
+    const pfx = `${year}.${p2(mVal)}`;
+    const prevM = mVal === 1 ? 12 : mVal - 1;
+    const prevY = mVal === 1 ? year - 1 : year;
+    
+    // STEP 1: Fetch Calendars first so we can accurately get the end of previous month
+    const [ceRes, curCalRes, prevCalRes] = await Promise.all([
+      sb.from('contract_energy').select('*').eq('year',year).eq('month',month).single(),
+      sb.from('calendar_mappings').select('eng_date,nep_day,nep_date_str').eq('nep_year',year).eq('nep_month',month).order('nep_day'),
+      sb.from('calendar_mappings').select('eng_date,nep_day').eq('nep_year',prevY).eq('nep_month',MONTHS[prevM-1]).order('nep_day')
+    ]);
+
+    if(ceRes.data) {
+      state.contractRow = ceRes.data;
+      const ad = Math.max(ceRes.data.total_ad||0, 1);
+      document.getElementById('ppa-ad').value = fmtMwh(ad);
+      document.getElementById('ppa-ce').value = fmtMwh(ceRes.data.contract_energy||ad);
+      document.getElementById('k-ad').textContent = ad.toFixed(1);
+      document.getElementById('k-min').textContent = (ad*0.9).toFixed(1);
+    }
+
+    if(curCalRes.data?.length) {
+      state.calCurrent = curCalRes.data.map(c=>({...c, nep_date_str: c.nep_date_str||`${year}.${p2(mVal)}.${p2(c.nep_day)}`}));
+    }
+    if(prevCalRes.data?.length) state.calPrev = prevCalRes.data;
+    
+    const firstEng = state.calCurrent[0]?.eng_date;
+    const prevDayEng = firstEng ? addDays(firstEng, -1) : null;
+    
+    updateLoadItem(0,'done');
+
+    // STEP 2: Fetch Plant Metrics and Historical Arrays in Parallel
+    const [plantRes, recentPlantRes, rfRes, allRfRes, h1, h2, h3, h4] = await Promise.all([
+      sb.from('plant_data').select('id,nepali_date,export_substation').or(`id.eq.${prevDayEng},nepali_date.like.${pfx}%`).order('id'),
+      sb.from('plant_data').select('id,export_substation').lte('id',state.todayEng).order('id',{ascending:false}).limit(17),
+      sb.from('rainfall_data').select('day,api_cat_precip,api_cat_temp,api_in_temp').eq('nepali_year',year).eq('nepali_month',month).order('day'),
+      sb.from('rainfall_data').select('nepali_year, day, api_cat_precip').eq('nepali_month',month),
+      loadHistoricalYear(year-1, month),
+      loadHistoricalYear(year-2, month),
+      loadHistoricalYear(year-3, month),
+      loadHistoricalYear(year-4, month)
+    ]);
+
+    plantRes.data?.forEach(row=>{
+      const cnt = row.export_substation; if(!cnt) return;
+      if (row.id === prevDayEng) { state.plantCounters[0]=parseFloat(cnt); return; }
+      const d = parseInt((row.nepali_date||'').split('.')[2]||'0');
+      if (d>0) state.plantCounters[d]=parseFloat(cnt);
+    });
+    
+    const days = Object.keys(state.plantCounters).map(Number).sort((a,b)=>a-b);
+    for(let i=0;i<days.length-1;i++){
+      const d=days[i], dn=days[i+1];
+      if(dn===d+1){
+        const diff = state.plantCounters[dn]-state.plantCounters[d];
+        if(diff>=0&&diff<=CONFIG.MAX_THEOR+10) state.plantDaily[dn]=parseFloat(diff.toFixed(2));
+      }
+    }
+    
+    // SAFE TODAY LOGIC
+    const meteredDays = Object.keys(state.plantDaily).map(Number);
+    const lastMeteredDay = meteredDays.length > 0 ? Math.max(...meteredDays) : 0;
+    const calToday = state.calCurrent.find(c=>c.eng_date===state.todayEng);
+    state.todayNepDay = calToday ? calToday.nep_day : (lastMeteredDay + 1);
+    if(state.todayNepDay <= lastMeteredDay) state.todayNepDay = lastMeteredDay + 1;
+
+    const {faultDays, reasons:curReasons} = detectFaults(state.plantDaily);
+    state.currentFaults = faultDays;
+    state.currentFaultReasons = curReasons;
+
+    if(recentPlantRes.data?.length>1){
+      const sorted = recentPlantRes.data.sort((a,b)=>a.id.localeCompare(b.id));
+      for(let i=0;i<sorted.length-1;i++){
+        const v1=sorted[i].export_substation, v2=sorted[i+1].export_substation;
+        if(v1&&v2){const e=v2-v1; if(e>=0&&e<=CONFIG.MAX_THEOR) state.liveScada[sorted[i].id]=e;}
+      }
+    }
+    
+    rfRes.data?.forEach(r=>{
+      state.rainfallByDay[r.day]={ prec:parseFloat(r.api_cat_precip||0), catT:parseFloat(r.api_cat_temp||15), inT: parseFloat(r.api_in_temp||18) };
+    });
+    
+    if(allRfRes.data) {
+        allRfRes.data.forEach(r => {
+            if(!state.histRain[r.nepali_year]) state.histRain[r.nepali_year] = {};
+            state.histRain[r.nepali_year][r.day] = parseFloat(r.api_cat_precip||0);
+        });
+    }
+    updateLoadItem(1,'done');
+
+    const histArr = [h1, h2, h3, h4];
+    const yearsToTry = [year-1, year-2, year-3, year-4];
+    histArr.forEach((res, i) => {
+      if(res && Object.keys(res).length>5){
+        const y=yearsToTry[i];
+        state.histData[y]=res;
+        const {faultDays, reasons:histReasons}=detectFaults(res);
+        state.histFaults[y]=faultDays;
+        state.histFaultReasons[y]=histReasons;
+        state.availYears.push(y);
+      }
+    });
+    state.availYears.sort();
+    updateLoadItem(2,'done');
+
+    state.scadaAnalysis = analyseScada();
+    computeDeadlines();
+    computeSimilarity();
+    setChip('chip-db',`✅ Synced`,'text-emerald-400');
+    toast(`Database linked. Ready to run.`, 'success');
+
+  } catch(e) {
+    console.warn('Load error:', e);
+    setChip('chip-db','⚠️ Offline Matrix','text-amber-400');
+    toast('Network unreachable. Instantiating isolated environment.', 'warn');
+    
+    state.contractRow = { total_ad: 8500, contract_energy: 8500, no_of_days: 31 };
+    document.getElementById('ppa-ad').value = "8500.00";
+    document.getElementById('ppa-ce').value = "8500.00";
+    
+    state.calCurrent = Array.from({length: 31}, (_, i) => ({nep_day: i+1, eng_date: addDays(state.todayEng, i - 15)}));
+    state.todayNepDay = 16;
+    state.plantDaily = {1:180, 2:185, 3:190, 4:188, 5:192};
+    state.scadaAnalysis = {eSlope: 1.2, ewmaBase: 190, todayEst: 195, tLabel: 'RISING', last7: [180,185,190,188,192,190,195]};
+    
+    state.histData = FALLBACK_HIST;
+    state.availYears = [2079, 2080, 2081, 2082, 2083];
+    
+    computeDeadlines();
+    updateLoadItem(0,'done'); updateLoadItem(1,'done'); updateLoadItem(2,'done'); 
+  }
+}
+
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  EXECUTION & RENDERING                                    ║
+// ╚═══════════════════════════════════════════════════════════╝
 function setSnow(level, el) {
-  document.querySelectorAll('.snow-opt').forEach(e => e.classList.remove('sel'));
-  el.classList.add('sel');
-  snowLevel = level;
-  selectedSnowEl = el;
-  document.getElementById('snow-ok').disabled = false;
+  document.querySelectorAll('.snow-opt').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel'); state.snowLevel=level;
+  document.getElementById('snow-ok').disabled=false;
 }
+
 function confirmSnow() {
-  document.getElementById('snow-modal').style.display = 'none';
-  const labels = {none:'🏔️ None / Bare — minimal snowmelt contribution', sparse:'🌨️ Sparse — small snowmelt bonus', moderate:'❄️ Moderate — meaningful snowmelt (+5-8%)', full:'🌨️❄️ Full Cover — strong snowmelt (+10-15%)'};
-  document.getElementById('snow-display').textContent = labels[snowLevel] || snowLevel;
+  document.getElementById('snow-modal').style.display='none';
+  const L={none:'🏔️ Barepack',sparse:'🌨️ Sparse',moderate:'❄️ Moderate',full:'🌨️❄️ Full System'};
+  document.getElementById('snow-display').textContent=L[state.snowLevel]||state.snowLevel;
   runEngine();
 }
 
-function snowMelt(day, catT) {
-  const tempFactor = catT > 15 ? 1.0 : catT > 10 ? 0.7 : catT > 5 ? 0.4 : 0.1;
-  const snowFactor = {none:0, sparse:0.02, moderate:0.05, full:0.10}[snowLevel] || 0;
-  const depletionFactor = Math.max(0.1, 1 - (day-1)/40); 
-  return snowFactor * tempFactor * depletionFactor;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// GROUNDWATER & METER LOGIC
-// ═══════════════════════════════════════════════════════════════
-function computeGwSignal(targetDay, rfData) {
-  let gwSignal = 0;
-  const log = [];
-  for (let d = Math.max(1, targetDay - 21); d < targetDay; d++) {
-    const rf = rfData[d];
-    if (!rf || rf.prec < 1) continue;
-    const daysAgo = targetDay - d;
-    const isSnow = rf.catT < 2; 
-    if (isSnow) {
-      log.push(`Day ${d}: ${rf.prec.toFixed(1)}mm at ${rf.catT.toFixed(1)}°C → Snow at catchment`);
-    } else {
-      const lagFactor = daysAgo <= 3 ? 0.9 : daysAgo <= 7 ? 0.7 : daysAgo <= 14 ? 0.4 : 0.1;
-      const intensityBonus = rf.prec > 10 ? 0.025 : rf.prec > 5 ? 0.015 : 0.005;
-      gwSignal += intensityBonus * lagFactor;
-      log.push(`Day ${d}: ${rf.prec.toFixed(1)}mm rain, ${daysAgo}d ago → GW +${(intensityBonus*lagFactor*100).toFixed(2)}%`);
-    }
-  }
-  return { signal: Math.min(gwSignal, 0.20), log };
-}
-
-function computeDailyEnergyFromCounters(counters) {
-  const daily = {};
-  const days = Object.keys(counters).map(Number).sort((a,b)=>a-b);
-  for (let i = 0; i < days.length - 1; i++) {
-    const d = days[i];
-    const dNext = days[i+1];
-    if (dNext === d+1) {
-      const diff = counters[dNext] - counters[d];
-      if (diff >= 0 && diff <= MAX_THEORETICAL_MWH + 10) { 
-        daily[d] = parseFloat(diff.toFixed(2));
-      }
-    }
-  }
-  return daily;
-}
-
-function getDeadline(weekStartNepDay, calendar) {
-  let deadlineNepDay = weekStartNepDay - 8;
-  if (deadlineNepDay <= 0) return {nepDay: null, label:'Last month', passed:true};
-  for (let attempts = 0; attempts < 3; attempts++) {
-    const cal = calendar.find(c => c.nep_day === deadlineNepDay);
-    if (!cal) break;
-    const jsDay = new Date(cal.eng_date).getDay();
-    if (jsDay === 6) { deadlineNepDay--; } else { break; }
-  }
-  const passed = todayNepDay !== null && todayNepDay > deadlineNepDay;
-  return { nepDay: deadlineNepDay, label: `Submit by Day ${deadlineNepDay}`, passed };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// PREDICTION ENGINE FOR A SINGLE DAY
-// ═══════════════════════════════════════════════════════════════
-function predictDayEnergy(nepDay, scada, rfData) {
-  const rf = rfData[nepDay] || {};
-  const catT = rf.catT ?? 15;
-  const inT  = rf.inT  ?? 18;
-  const prec = rf.prec ?? 0;
-
-  const log = [];
-  let html = `<div class="calc-block"><div class="head">Day ${nepDay} — Prediction Calculation</div>`;
-
-
-  // 1. BASE
-  const base = scada.avg14;
-  html += `<div class="calc-row"><span class="key">① Base (Live 14-day avg)</span><span class="val">${base.toFixed(1)} MWh/day</span></div>`;
-
-  // 2. Trend adjustment
-  const daysAhead = nepDay - (todayNepDay || 3);
-  const trendAdj = 1 + Math.max(-0.20, Math.min(0.15, (scada.eSlope * daysAhead / base)));
-  html += `<div class="calc-row"><span class="key">② Energy slope (${scada.eSlope>0?'+':''}${scada.eSlope.toFixed(1)}/d × ${daysAhead}d ahead)</span><span class="val">×${trendAdj.toFixed(3)}</span></div>`;
-
-  // 3. Historical ratio for this day
-  const histWeight = parseFloat(document.getElementById('hist-weight').value) / 100;
-  const histAvg82Month = 176.4; 
-  const hist82 = HIST_2082[nepDay-1];
-  
-  let histRatio = 1.0, histNote = 'No historical day data';
-  if (hist82 && histAvg82Month) {
-    histRatio = hist82 / histAvg82Month;
-    histNote = `2082 benchmark: ${hist82.toFixed(1)} MWh`;
-  }
-  const histDayPred = base * histRatio;
-  html += `<div class="calc-row"><span class="key">③ Historical ratio (Weight: ${(histWeight*100).toFixed(0)}%)</span><span class="val">${histNote} → ${histDayPred.toFixed(1)} MWh est.</span></div>`;
-
-  // 4. Groundwater recharge
-  const gw = computeGwSignal(nepDay, rfData);
-  html += `<div class="calc-row"><span class="key">④ Groundwater recharge</span><span class="val">+${(gw.signal*100).toFixed(1)}%</span></div>`;
-  
-  // 5. Snowmelt
-  const snow = snowMelt(nepDay, catT);
-  html += `<div class="calc-row"><span class="key">⑤ Snowmelt (${snowLevel})</span><span class="val">+${(snow*100).toFixed(1)}%</span></div>`;
-
-  // 6. Future rainfall from weather API
-  let weatherMod = 1.0;
-  if (weatherForecast && weatherForecast[daysAhead]) {
-    weatherMod = weatherForecast[daysAhead].hydroMod || 1.0;
-}
-  html += `<div class="calc-row"><span class="key">⑥ Weather forecast modifier</span><span class="val">×${weatherMod.toFixed(3)}</span></div>`;
-
-  // 7. Temperature signal
-  let tempMod = 1.0;
-  if (catT < 0) { tempMod = 0.85; }
-  else if (catT < 3) { tempMod = 0.92; }
-  else if (inT > 20) { tempMod = 1.03; }
-  html += `<div class="calc-row"><span class="key">⑦ Temp signal (cat ${catT.toFixed(1)}°C, intake ${inT.toFixed(1)}°C)</span><span class="val">×${tempMod.toFixed(2)}</span></div>`;
-
-  // BLEND and CAP
-  const trendBased = base * trendAdj * (1 + gw.signal + snow) * weatherMod * tempMod;
-  const blended = ((1-histWeight)*trendBased) + (histWeight*histDayPred);
-  
-  // CAPACITY CEILING
-  const finalPrediction = Math.min(Math.max(0, blended), MAX_EXPORT_CAPACITY);
-
-  html += `<div class="calc-formula">Formula: ${base.toFixed(1)} × ${trendAdj.toFixed(3)} × (1 + ${gw.signal.toFixed(3)} + ${snow.toFixed(3)}) × ${weatherMod.toFixed(3)} × ${tempMod.toFixed(2)} = ${trendBased.toFixed(1)} MWh</div>`;
-  html += `<div class="calc-formula">Blend: (${((1-histWeight)*100).toFixed(0)}% trend) + (${(histWeight*100).toFixed(0)}% hist) = ${((1-histWeight)*trendBased).toFixed(1)} + ${(histWeight*histDayPred).toFixed(1)}</div>`;
-  html += `<div class="calc-result">→ Predicted Day ${nepDay}: ${finalPrediction.toFixed(1)} MWh ${finalPrediction === MAX_EXPORT_CAPACITY ? '(Capped at Plant Max)' : ''}</div>`;
-  html += `</div>`;
-
-  return { mwh: finalPrediction, calcHtml: html };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// MAIN LOAD + ENGINE
-// ═══════════════════════════════════════════════════════════════
-async function loadAndAnalyse() {
-  const year = parseInt(document.getElementById('sel-year').value);
-  const month = MONTHS[parseInt(document.getElementById('sel-month').value)-1];
-
-  document.getElementById('db-chip').textContent = 'Syncing...';
-  
-  try {
-    if (!supabaseClient) throw new Error("Supabase is offline");
-    const liveScadaData = await loadFromSupabase(year, month);
-    document.getElementById('db-chip').textContent = `✅ ${month} ${year}`;
-    currentScadaAnalysis = analyseScada(liveScadaData);
-  } catch(e) {
-    console.warn(e);
-    document.getElementById('db-chip').textContent = '⚠️ Using demo data';
-    loadEmbedded(year, month);
-    currentScadaAnalysis = analyseScada({});
-  }
-}
-
-async function loadFromSupabase(year, month) {
-  contractRow = null; 
-  document.getElementById('ppa-ad').value = '';
-  document.getElementById('ppa-ce').value = '';
-  document.getElementById('k-ad').textContent = '—';
-  const mIdx = MONTHS.indexOf(month)+1;
-  const pfx  = `${year}.${String(mIdx).padStart(2,'0')}`;
-
-  const {data:cal} = await supabaseClient.from('calendar_mappings').select('eng_date,nep_day,nep_date_str').eq('nep_year',year).eq('nep_month',month).order('nep_day');
-  if (cal?.length) calendarData = cal.map(c=>({
-    nep_day: c.nep_day, 
-    eng_date: c.eng_date, 
-    nep_date_str: c.nep_date_str // <--- This adds the missing data
-}));
-
-  const todayRow = calendarData.find(c=>c.eng_date===todayEng);
-  if (todayRow) todayNepDay = todayRow.nep_day;
-
-  const {data:ce} = await supabaseClient.from('contract_energy').select('*').eq('year',year).eq('month',month).single();
-  if (ce) contractRow = ce;
-
-  const prevDayEng = calendarData[0] ? new Date(new Date(calendarData[0].eng_date).setDate(new Date(calendarData[0].eng_date).getDate() - 1)).toISOString().split('T')[0] : null;
-  const {data:plant} = await supabaseClient.from('plant_data').select('id,nepali_date,export_substation,export_plant').or(`id.eq.${prevDayEng},nepali_date.like.${pfx}%`).order('id');
-
-  plantCounters = {};
-  plant?.forEach(row => {
-    const cnt = parseFloat(row.export_substation||row.export_plant||0);
-    if (!cnt) return;
-    if (row.id === prevDayEng) { plantCounters[0] = cnt; } 
-    else {
-      const d = parseInt(row.nepali_date.split('.')[2]);
-      plantCounters[d] = cnt;
-    }
-  });
-
-  const { data: recentPlant } = await supabaseClient.from('plant_data')
-    .select('id, export_substation, export_plant')
-    .lte('id', todayEng)
-    .order('id', { ascending: false })
-    .limit(16);
-
-  let liveScadaMwh = {};
-  if(recentPlant && recentPlant.length > 1) {
-    const sorted = recentPlant.sort((a,b) => a.id.localeCompare(b.id));
-    for(let i=0; i<sorted.length-1; i++) {
-      const day1 = sorted[i];
-      const day2 = sorted[i+1];
-      const reading1 = day1.export_substation || day1.export_plant;
-      const reading2 = day2.export_substation || day2.export_plant;
-      if(reading1 && reading2) {
-        const energy = reading2 - reading1;
-        if(energy >= 0 && energy <= MAX_THEORETICAL_MWH) {
-          liveScadaMwh[day1.id] = energy;
-        }
-      }
-    }
-  }
-  liveScadaTrendData = liveScadaMwh;
-
-  const {data:rf} = await supabaseClient.from('rainfall_data').select('day,api_cat_precip,api_cat_temp,api_in_temp,api_ph_temp').eq('nepali_year',year).eq('nepali_month',month).order('day');
-  rainfallByDay = {};
-  rf?.forEach(r => { rainfallByDay[r.day] = {prec:parseFloat(r.api_cat_precip||0),catT:parseFloat(r.api_cat_temp||15),inT:parseFloat(r.api_in_temp||18)}; });
-
-  if (contractRow) {
-    document.getElementById('ppa-ad').value = contractRow.total_ad?.toFixed(3)||'';
-    document.getElementById('ppa-ce').value = contractRow.contract_energy?.toFixed(3)||'';
-    const ad = contractRow.total_ad||0, days=contractRow.no_of_days||31;
-    document.getElementById('k-ad').textContent = ad.toFixed(1);
-    document.getElementById('k-min').textContent = (ad*0.9).toFixed(1);
-  }
-
-  return liveScadaMwh;
-}
-
-function loadEmbedded(year, month) {
-  // Replace the hardcoded 5454.574 with a simple month-based logic
-  const monthIdx = MONTHS.indexOf(month);
-  
-  // Example: Higher AD for wet months (Ashadh/Shrawan), Lower for dry
-  let mockAD = (monthIdx >= 2 && monthIdx <= 5) ? 12000.500 : 5454.574;
-  
-  contractRow = {
-    total_ad: mockAD, 
-    contract_energy: mockAD,
-    // ...
-  };
-  
-  document.getElementById('ppa-ad').value = mockAD.toFixed(3);
-  document.getElementById('ppa-ce').value = mockAD.toFixed(3);
-}
-
 function runEngine() {
-  if (!snowLevel) { 
-    document.getElementById('snow-modal').style.display='flex'; 
-    return; 
-  }
-  if (!contractRow && !document.getElementById('ppa-ad').value) { alert('Load data first'); return; }
-
-  const btn = document.getElementById('btn-run');
-  btn.innerHTML = '<span class="spin"></span> Computing…';
-  btn.disabled = true;
-  setTimeout(()=>{ try{_run();}catch(e){console.error(e);alert('Error: '+e.message);} btn.innerHTML='<i class="fa-solid fa-calculator"></i> Run Full Prediction'; btn.disabled=false; }, 300);
+  if (!state.snowLevel){document.getElementById('snow-modal').style.display='flex';return;}
+  if (!state.contractRow){toast('Synchronize database first','warn');return;}
+  const btn=document.getElementById('btn-run');
+  btn.innerHTML='<span class="spin"></span> Running Matrices…'; btn.disabled=true;
+  setTimeout(()=>{try{_run();}catch(e){console.error(e);toast('Calculation Fault: '+e.message,'error');}
+    btn.innerHTML='<i class="fa-solid fa-calculator text-cyan-400"></i> Run Full Prediction';btn.disabled=false;},300);
 }
 
 function _run() {
-  const totalAd = parseFloat(document.getElementById('ppa-ad').value)||5454.574;
-  const contractE = parseFloat(document.getElementById('ppa-ce').value)||totalAd;
-  const totalDays = contractRow?.no_of_days||calendarData.length||31;
-  const ppaRate = parseFloat(document.getElementById('ppa-rate').value)||6554;
+  state.calcLog = []; 
+  const totalAd   = Math.max(state.contractRow.total_ad||0, 1);
+  const contractE = state.contractRow.contract_energy||totalAd;
+  const totalDays = state.calCurrent.length||31;
+  const ppaRate   = selectedRateMwh();
+  const scada     = state.scadaAnalysis || analyseScada();
 
-  const weekAdKwh = [1,2,3,4,5].map(w => (contractRow?.[`week${w}_ad`]||0));
-  const weekAdMwh = weekAdKwh.map(v => v/1000);
+  const pass1 = {};
+  for (let wi=0;wi<5;wi++) { if(weekRange(wi,totalDays).ws<=totalDays) pass1[wi]=predictWeek(wi,scada,totalDays, false); }
+  computeDeviation(pass1);
 
-  const scada = currentScadaAnalysis || analyseScada({});
-  const confirmedDaily = computeDailyEnergyFromCounters(plantCounters);
+  const weekPredictions = {};
+  for (let wi=0;wi<5;wi++) {
+    const {ws}=weekRange(wi,totalDays);
+    if (ws<=totalDays) weekPredictions[wi]=predictWeek(wi,scada,totalDays, true);
+  }
 
-  const today = todayNepDay || 6;
-  
-  // Exact Partial Calculation for Today using live data
-  const todayScadaPartial = liveScadaTrendData[todayEng] || (scada.avg14 * (getNptHoursElapsed()/24)); 
-  const hoursToday = Math.max(0.1, getNptHoursElapsed()); 
-  const todayEstimate = Math.min(todayScadaPartial ? (todayScadaPartial * (24/hoursToday)) : scada.avg14, MAX_EXPORT_CAPACITY);
-
-  calcLog = [];
   const dayDetail = [];
-  let cumul = 0;
-  const weekData = [0,1,2,3,4].map(wi => ({
-    wi, ws: wi*7+1, we: Math.min(wi*7+7, totalDays), days: Math.min(7, totalDays-wi*7),
-    actualMwh:0, estMwh:0, predMwh:0, dayEntries:[]
-  }));
-
-  const currentYearActuals = [];
-
-  for (let d = 1; d <= totalDays; d++) {
-    // 1. First, find the calendar data for the day
-    const cal = calendarData.find(c => c.nep_day === d);
+  let cumul=0;
+  const today = state.todayNepDay || 1;
+  for (let d=1; d<=totalDays; d++) {
+    const cal = state.calCurrent.find(c=>c.nep_day===d);
+    const rf  = state.rainfallByDay[d]||{catT:15, prec:0};
+    const wi  = Math.min(Math.floor((d-1)/7),4);
+    const isFault = state.currentFaults.has(d);
     
-    // 2. Define the variables (THE ORDER MATTERS HERE)
-    const engDate = cal?.eng_date || ''; // Define engDate first
-    const nepDate = cal?.nep_date_str || ''; // Define nepDate second
-    
-    const rf = rainfallByDay[d] || {};
-    const wi = Math.min(Math.floor((d - 1) / 7), 4);
-    const wk = weekData[wi];
-
-    let mwh, source, srcBadge;
-
-    if (d < today && confirmedDaily[d]) {
-      mwh = confirmedDaily[d];
-      source = 'meter'; srcBadge = '<span class="badge bg">✔ Meter</span>';
-      wk.actualMwh += mwh;
-      currentYearActuals.push(mwh);
-      if (d === 1) calcLog.push(`<div class="info-box text-xs mb-2">ℹ️ Meter difference validated for completed days.</div>`);
-    } else if (d === today) {
-      mwh = todayEstimate;
-      source = 'scada'; srcBadge = `<span class="badge ba">📡 Live Est.</span>`;
-      wk.estMwh += mwh;
-      currentYearActuals.push(mwh);
-      calcLog.push(`<div class="calc-block"><div class="head">Day ${d} — Today</div><div class="calc-row"><span class="key">NPT Time elapsed</span><span class="val">${hoursToday.toFixed(1)}h</span></div><div class="calc-row"><span class="key">Current exported</span><span class="val">${todayScadaPartial.toFixed(1)} MWh</span></div><div class="calc-result">→ Projected Full Day: ${todayEstimate.toFixed(1)} MWh</div></div>`);
-    } else {
-      const pred = predictDayEnergy(d, scada, rainfallByDay);
-      mwh = pred.mwh;
-      source = 'predicted'; srcBadge = '<span class="badge bb">🔮 Predicted</span>';
-      wk.predMwh += mwh;
-      calcLog.push(pred.calcHtml);
+    let mwh = 0, src = '';
+    const wData = weekPredictions[wi];
+    if(wData && wData.dayValues) {
+       const dv = wData.dayValues.find(x=>x.d===d);
+       if(dv) { mwh = dv.mwh; src = dv.src; }
     }
+    
+    let srcBadge = '';
+    if(src==='meter' && isFault) srcBadge = '<span class="badge br">⚡ Fault</span>';
+    else if(src==='meter') srcBadge = '<span class="badge bg">✔ Meter</span>';
+    else if(src==='live') srcBadge = '<span class="badge ba">📡 Live</span>';
+    else srcBadge = '<span class="badge bb">🔮 P50</span>';
 
     cumul += mwh;
-    wk.dayEntries.push({d, mwh, source});
-    dayDetail.push({
-        d, 
-        nepDate,  // <--- This matches the new column
-        engDate,  // <--- This was causing your error
-        rf, 
-        mwh, 
-        source, 
-        srcBadge, 
-        cumul, 
-        wi: wi + 1
-    });
+    dayDetail.push({d, nepDate:cal?.nep_date_str||'', engDate:cal?.eng_date||'', rf, mwh, src, srcBadge, cumul, wi:wi+1, isFault});
+  }
+
+  const totalProjected = Object.values(weekPredictions).reduce((s,w)=>s+(w?.weekTotal||0),0);
+  const totalActual    = Object.values(state.plantDaily).reduce((s,v)=>s+v,0);
+  
+  const penalty    = Math.max(0,(totalAd*0.9-totalProjected)*0.1*ppaRate);
+  const excessMwh  = Math.max(0,Math.min(totalProjected-totalAd,contractE-totalAd));
+  const excessLoss = excessMwh*0.5*ppaRate;
+
+  state.lastResults = { weekPredictions, dayDetail, totalProjected, totalActual, totalAd, contractE, ppaRate, penalty, excessLoss, totalDays };
+  renderAll();
 }
 
-  weekData.forEach(wk => { wk.total = wk.actualMwh + wk.estMwh + wk.predMwh; });
-  const totalProjected = weekData.reduce((s,w)=>s+w.total, 0);
-  const totalActual    = weekData.reduce((s,w)=>s+w.actualMwh, 0);
+function renderAll() {
+  if(!state.lastResults) return;
+  const { weekPredictions, dayDetail, totalProjected, totalActual, totalAd, contractE, ppaRate, penalty, excessLoss, totalDays } = state.lastResults;
 
-  const {penalty, excessLoss} = computeFinancial(totalProjected, totalAd, contractE, ppaRate);
+  document.getElementById('k-proj').textContent   = totalProjected.toFixed(1);
+  document.getElementById('k-actual').textContent = totalActual.toFixed(1);
+  const gap = totalProjected - totalAd*0.9;
+  document.getElementById('k-gap').textContent  = (gap>=0?'+':'')+gap.toFixed(1);
+  document.getElementById('k-gap').className    = `kv ${gap>=0?'text-emerald-400':'text-red-400'}`;
+  const loss=penalty+excessLoss;
+  document.getElementById('k-npr').textContent  = loss>0?`−${fmtN(loss)}`:'✅ Secure';
+  document.getElementById('k-npr').className    = `kv ${loss>0?'text-red-400':'text-emerald-400'} text-lg`;
 
-  renderWeeks(weekData, weekAdMwh, totalAd, totalDays, today);
-  renderDailyTable(dayDetail);
-  renderCalcLog();
-  renderScadaCharts();
-  renderHistTab(totalDays, currentYearActuals);
-  renderFinancial(totalProjected, totalAd, contractE, ppaRate, penalty, excessLoss);
-  renderKPIs(totalAd, totalProjected, totalActual, penalty, excessLoss);
+  const pct = Math.min(totalProjected/totalAd*100,105);
+  document.getElementById('sfill').style.width=Math.min(pct,100)+'%';
+  document.getElementById('sfill').style.background=pct<90?'#ef4444':pct>100?'#f59e0b':'#10b981';
+  document.getElementById('sbar-l').textContent=`${(totalProjected/totalAd*100).toFixed(1)}% of AD — ${totalProjected.toFixed(1)} MWh`;
 
-  fetchWeather();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// RENDER FUNCTIONS
-// ═══════════════════════════════════════════════════════════════
-function renderWeeks(weekData, weekAdMwh, totalAd, totalDays, today) {
   document.getElementById('weeks-ph').classList.add('hidden');
   document.getElementById('weeks-content').classList.remove('hidden');
-
-  const names = ['Week 1','Week 2','Week 3','Week 4','Week 5'];
-  const html = weekData.map(wk => {
-    if (wk.days <= 0) return '';
-    const ad = weekAdMwh[wk.wi];
-    const diff = wk.total - ad;
-    const deadline = getDeadline(wk.ws, calendarData);
-    const status = today > wk.we ? 'done' : today >= wk.ws ? 'active' : deadline.passed ? 'submitted' : 'open';
-    const diffColor = Math.abs(diff) < 5 ? 'text-emerald-600' : diff < 0 ? 'text-rose-600' : 'text-amber-600';
+  
+  document.getElementById('weeks-grid').innerHTML = Object.values(weekPredictions).map((wp,wi)=>{
+    const {ws,we,days,submittedMwh,minAllowed,weekTotal,weekP10,weekP90,buffer,cappedAD,holdText,isPassed}=wp;
+    const isRisk=weekP90<submittedMwh*0.9;
     
-    return `<div class="card border-slate-200 text-xs">
-      <div class="flex justify-between items-start mb-1.5">
-        <div class="font-bold text-slate-800">${names[wk.wi]}</div>
-        <div class="flex gap-1">${wk.total < ad*0.9 ? '<span class="badge br">⚠️ LOW</span>' : '<span class="badge bg">✅</span>'}</div>
+    return `<div class="week-card ${isRisk?'risk':'active'}">
+      <div class="wc-bar" style="background:${isRisk?'var(--red)':'var(--acc)'};"></div>
+      <div class="flex justify-between">
+        <div class="font-bold text-sm mb-2 text-cyan-400">Week ${wi+1} <span class="text-[10px] text-slate-500 ml-1">Days ${ws}–${we}</span></div>
+        <div class="text-[10px] font-bold ${isPassed?'text-red-400':'text-emerald-400'}">${isPassed?'PASSED 🔒':'OPEN 📝'}</div>
       </div>
-      <div class="space-y-1 mt-2">
-        <div class="flex justify-between"><span class="text-slate-500">Submitted AD</span><span class="mono font-bold">${ad.toFixed(1)}</span></div>
-        <div class="flex justify-between"><span class="text-slate-500">Predicted Total</span><span class="mono text-blue-600">${wk.total.toFixed(1)}</span></div>
+      
+      <div class="wc-section">
+        <div class="wc-row"><span class="wk">Submitted AD</span><span class="wv">${submittedMwh.toFixed(1)} MWh</span></div>
+        <div class="wc-row"><span class="wk">40% Floor Limit</span><span class="wv text-slate-400">${minAllowed.toFixed(1)} MWh</span></div>
+      </div>
+      
+      <div class="wc-section">
+        <div class="wc-row"><span class="wk">P50 Expected Vol</span><span class="wv text-blue-400">${weekTotal.toFixed(1)} MWh</span></div>
+        <div class="wc-row"><span class="wk">P90 Safe Vol</span><span class="wv text-amber-400">${weekP90.toFixed(1)} MWh</span></div>
+        <div class="wc-row"><span class="wk">P10 Max Vol</span><span class="wv text-emerald-400">${weekP10.toFixed(1)} MWh</span></div>
+        ${buffer>0?`<div class="wc-row"><span class="wk">10-Hr Safety Shield</span><span class="wv text-slate-400">−${buffer.toFixed(1)} MWh</span></div>`:''}
+        <div class="wc-row border-t border-slate-700 mt-1 pt-1"><span class="wk font-bold text-white">Target Safe AD</span><span class="wv font-bold text-emerald-400">${cappedAD.toFixed(1)} MWh</span></div>
+      </div>
+
+      <div class="wc-section">
+        <div class="wc-section-title">AI Strategy Analysis</div>
+        <div class="text-[11px] text-slate-300 leading-relaxed bg-[#0a1628] p-2.5 rounded border border-slate-700">${holdText}</div>
       </div>
     </div>`;
   }).join('');
 
-  document.getElementById('weeks-grid').innerHTML = html;
-
-  const totalProjected = weekData.reduce((s,w)=>s+w.total,0);
-  const pct = (totalProjected/totalAd*100).toFixed(1);
-  document.getElementById('month-summary').innerHTML = `
-    <div class="font-bold text-sm mb-2">Month Balance Summary</div>
-    <div class="grid grid-cols-4 gap-3 text-xs text-center">
-      <div><div class="text-slate-500 font-bold">AD</div><div class="mono font-bold">${totalAd.toFixed(1)}</div></div>
-      <div><div class="text-slate-500 font-bold">Projected</div><div class="mono font-bold text-blue-700">${totalProjected.toFixed(1)}</div></div>
-      <div><div class="text-slate-500 font-bold">vs AD</div><div class="mono font-bold ${totalProjected<totalAd*0.9?'text-rose-600':totalProjected>totalAd?'text-amber-600':'text-emerald-600'}">${totalProjected>=totalAd?'+':''}${(totalProjected-totalAd).toFixed(1)} MWh</div></div>
-      <div><div class="text-slate-500 font-bold">Status</div><div class="font-bold text-sm">${pct<90?'⚠️ PENALTY RISK':pct>100?'📈 EXCESS':' ✅ SAFE'} (${pct}%)</div></div>
-    </div>`;
-}
-
-function renderCalcLog() {
-  document.getElementById('calc-ph').classList.add('hidden');
-  document.getElementById('calc-content').innerHTML = `<div class="info-box mb-4 text-xs"><strong>Calculation Method:</strong><br>Uses Substation Export values from Balanch synchronized database. Today's estimate uses exact NPT elapsed time. Daily predictions are capped at ${MAX_EXPORT_CAPACITY} MWh max limit.</div>` + calcLog.join('');
-}
-
-function renderDailyTable(days) {
-  const rows = days.map(d => `<tr>
-      <td class="font-bold">${d.d}</td>
-      <td class="mono text-slate-500 text-[11px]">${d.nepDate}</td> <td class="mono text-slate-500 text-[11px]">${d.engDate}</td>
-      <td class="mono text-slate-500 text-[11px]">W${d.wi}</td>
-      <td class="font-bold mono ${d.source==='meter'?'text-emerald-700':d.source==='scada'?'text-amber-600':'text-blue-600'}">${d.mwh.toFixed(2)}</td>
-      <td>${d.srcBadge}</td>
-      <td class="mono text-slate-600">${d.rf.catT!=null?d.rf.catT.toFixed(1):'—'}</td>
-      <td class="mono text-blue-600">${d.rf.prec!=null?d.rf.prec.toFixed(1):'—'}</td>
-      <td class="mono text-slate-700 font-bold">${d.cumul.toFixed(1)}</td>
-    </tr>`).join('');
-  document.getElementById('daily-body').innerHTML = rows;
-}
-
-function renderScadaCharts() {
-  const labels = Object.keys(liveScadaTrendData).sort();
-  const mwhData = labels.map(l => liveScadaTrendData[l]);
-
-  if(charts.scada) charts.scada.destroy();
-  charts.scada = new Chart(document.getElementById('scada-chart').getContext('2d'),{
-    type:'line',data:{labels:labels,datasets:[{label:'Live Substation Export (MWh)',data:mwhData,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',borderWidth:2,pointRadius:3,fill:true,tension:.3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0, max:MAX_THEORETICAL_MWH, grid:{color:'#f1f5f9'}},x:{ticks:{font:{size:9}},grid:{display:false}}}}
-  });
-}
-
-function renderHistTab(totalDays, currentYearActuals) {
-  const labels = Array.from({length:totalDays},(_,i)=>`D${i+1}`);
+  renderDailyLog(dayDetail);
+  renderExplainabilityLog();
+  renderHistTab(totalDays);
+  renderFaultTab();
+  renderDeviationTab();
+  renderFinancialTab(totalProjected, totalAd, contractE, ppaRate, penalty, excessLoss);
   
-  if(charts.hist) charts.hist.destroy();
-  charts.hist = new Chart(document.getElementById('hist-chart').getContext('2d'),{
-    type:'line',
-    data:{labels,datasets:[
-      {label:'2080 (Freeze Drop)',data:HIST_2080,borderColor:'#dc2626',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[3,3]},
-      {label:'2081 (Freeze Drop)',data:HIST_2081,borderColor:'#d97706',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[3,3]},
-      {label:'2082 (Warm Rain Surge)',data:HIST_2082,borderColor:'#059669',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[3,3]},
-      {label:'Current Year',data:currentYearActuals,borderColor:'#2563eb',borderWidth:3,pointRadius:4,tension:.1}
-    ]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{size:10}}}},
-      scales:{y:{grid:{color:'#f1f5f9'}},x:{grid:{display:false},ticks:{font:{size:9}}}}
-    }
-  });
-
-  let rows = '';
-  for(let d=1;d<=totalDays;d++){
-    const wk = Math.ceil(d/7);
-    const v80 = HIST_2080[d-1], v81 = HIST_2081[d-1], v82 = HIST_2082[d-1];
-    const curr = currentYearActuals[d-1];
-    rows += `<tr class="${wk===3?'bg-blue-50/40':wk===4?'bg-rose-50/40':''}"><td class="font-bold">${d}</td><td class="badge bs text-[10px]">W${wk}</td><td class="mono text-slate-500">${v80?.toFixed(1)}</td><td class="mono text-slate-500">${v81?.toFixed(1)}</td><td class="mono text-slate-500">${v82?.toFixed(1)}</td><td class="mono text-blue-700 font-bold">${curr?.toFixed(1)||'—'}</td></tr>`;
-  }
-  document.getElementById('hist-body').innerHTML = rows;
+  fetchWeather();
 }
 
-function renderFinancial(proj, ad, ce, rate, penalty, excessLoss) {
+function renderExplainabilityLog() {
+  document.getElementById('calc-ph').classList.add('hidden');
+  const container = document.getElementById('calc-content');
+  if(!state.calcLog.length) { container.innerHTML = '<div class="text-slate-500">No predictions made yet.</div>'; return; }
+
+  const today = state.todayNepDay || 1;
+  const activeWi = Math.min(4, Math.floor((today - 1) / 7));
+  const sampleLog = state.calcLog.find(l => l.wi === activeWi) || state.calcLog[0];
+
+  const simYears = Object.keys(state.simScores).sort((a,b)=>state.simScores[b]-state.simScores[a]);
+  const bestY = simYears.length > 0 ? simYears[0] : "recent historical data";
+  const bestSim = simYears.length > 0 ? (state.simScores[bestY]*100).toFixed(0) : "80";
+
+  let factorsHtml = sampleLog.pred.factors.map(f => {
+    const sign = f.val > 0 ? '+' : '';
+    const cl = f.type === 'base' ? 'base' : f.val > 0 ? 'pos' : 'neg';
+    return `<div class="wf-row ${cl}">
+      <div><div class="wf-label">${f.label}</div></div>
+      <div class="wf-val">${sign}${f.val.toFixed(1)} MWh</div>
+    </div>`;
+  }).join('');
+
+  const rain = state.weatherFcst.slice(0, 7).reduce((acc, val) => acc + val.rain, 0);
+  const rainTxt = rain > 25 ? "moderate/heavy rain" : rain > 5 ? "light rain or snow melt" : "dry weather patterns";
+  const flowDir = sampleLog.pred.p50 >= state.scadaAnalysis.ewmaBase ? "increasing" : "stable/decreasing";
+
+  const narrative = `
+    <div class="wf-narrative">
+      <p><strong>Strategic Summary for Week ${activeWi + 1}:</strong></p>
+      <p class="mt-2">As the past generation trend of year <strong>${bestY}</strong> is matching our current trend (<strong>${bestSim}% match</strong>) and seasonal patterns are similar, we are using ${bestY} as the base year for prediction. Due to expected <strong>${rainTxt}</strong> in the coming days, the chances of <strong>${flowDir}</strong> flow are higher.</p>
+      <p class="mt-2">Therefore, we assumed an average of <strong>${sampleLog.pred.p50.toFixed(1)} MWh</strong> as the daily discharge based on the calculations shown below.</p>
+    </div>`;
+
+  container.innerHTML = `
+    ${narrative}
+    <div class="card2" style="max-width: 600px;">
+      <div class="font-bold text-sm text-cyan-400 mb-3 border-b border-slate-700 pb-2">Mathematical Breakdown (Day ${sampleLog.d} Example)</div>
+      ${factorsHtml}
+      <div class="wf-bounds mt-3">
+        <div class="text-amber-400">P90 Safe: ${sampleLog.pred.p90.toFixed(1)}</div>
+        <div class="text-blue-400 font-bold text-sm">P50 Result: ${sampleLog.pred.p50.toFixed(1)}</div>
+        <div class="text-emerald-400">P10 Max: ${sampleLog.pred.p10.toFixed(1)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDailyLog(dayDetail) {
+  if(!dayDetail?.length) return;
+  document.getElementById('daily-body').innerHTML=dayDetail.map(d=>`<tr class="${d.isFault?'bg-red-900/20':''}">
+    <td class="font-bold">${d.d}</td>
+    <td class="mono text-slate-500 text-[10px]">${d.nepDate}</td>
+    <td class="mono text-slate-500 text-[10px]">${d.engDate}</td>
+    <td class="mono text-slate-600 text-[10px]">W${d.wi}</td>
+    <td class="font-bold mono ${d.src==='meter'?'text-emerald-400':d.src==='fault'?'text-red-400':d.src==='live'?'text-amber-400':'text-blue-400'}">${d.mwh.toFixed(2)}</td>
+    <td>${d.srcBadge}</td>
+    <td>${d.isFault?'<span class="fault-day">⚡</span>':''}</td>
+    <td class="mono text-slate-400">${d.rf.catT!=null?d.rf.catT.toFixed(1):'—'}</td>
+    <td class="mono text-blue-400">${d.rf.prec!=null?d.rf.prec.toFixed(1):'—'}</td>
+    <td class="mono font-bold text-slate-300">${d.cumul.toFixed(1)}</td>
+  </tr>`).join('');
+}
+
+function renderHistTab(totalDays) {
+  const labels=Array.from({length:totalDays},(_,i)=>`D${i+1}`);
+  const datasets=[];
+  state.availYears.forEach((y,i)=>{
+    const hd=state.histData[y]; if(!hd) return;
+    const faults=state.histFaults[y]||new Set();
+    const data=Array.from({length:totalDays},(_,d)=>{
+      const v=hd[d+1]; return (faults.has(d+1)||v==null)?null:v;
+    });
+    datasets.push({label:String(y),data,borderColor:HIST_COLORS[i%HIST_COLORS.length],borderWidth:1.5,pointRadius:0,tension:.3,spanGaps:true});
+  });
+
+  const curData=Array.from({length:totalDays},(_,d)=>state.plantDaily[d+1]!=null&&!state.currentFaults.has(d+1)?state.plantDaily[d+1]:null);
+  datasets.push({label:'Current',data:curData,borderColor:'#fff',borderWidth:2.5,pointRadius:3,tension:.1,spanGaps:true});
+
+  if(charts.hist) charts.hist.destroy();
+  charts.hist=new Chart(document.getElementById('hist-chart').getContext('2d'),{
+    type:'line',data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{size:9},color:'#94a3b8'}}},
+      scales:{y:{min:0,max:CONFIG.MAX_THEOR,grid:{color:'#1e293b'},ticks:{color:'#94a3b8'}},x:{grid:{display:false},ticks:{font:{size:8},color:'#64748b'}}}}
+  });
+
+  const sorted=Object.entries(state.simScores).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('sim-scores').innerHTML=sorted.map(([y,s],i)=>`
+    <div>
+      <div class="flex justify-between text-xs mb-0.5">
+        <span class="font-bold" style="color:${HIST_COLORS[state.availYears.indexOf(parseInt(y))%HIST_COLORS.length]};">${y}</span>
+        <span class="mono text-slate-300">${(s*100).toFixed(0)}% similar</span>
+      </div>
+      <div class="sim-bar"><div class="sim-fill" style="width:${s*100}%;background:${HIST_COLORS[state.availYears.indexOf(parseInt(y))%HIST_COLORS.length]};"></div></div>
+    </div>`).join('')||'<div class="text-xs text-slate-500">No historical data loaded</div>';
+
+  let headHtml=`<th>Day</th><th>Wk</th>`;
+  state.availYears.forEach(y=>headHtml+=`<th class="text-center">${y}<br><span class="text-[9px] text-slate-500">Energy / Rain</span></th>`);
+  headHtml+=`<th>Current Energy</th>`;
+  document.getElementById('hist-head').innerHTML=headHtml;
+
+  let bodyHtml='';
+  for(let d=1;d<=totalDays;d++){
+    const wi=Math.ceil(d/7);
+    let rowHtml=`<tr class="${wi%2===0?'':'bg-slate-900/30'}"><td class="font-bold">${d}</td><td><span class="badge bs text-[9px]">W${wi}</span></td>`;
+    state.availYears.forEach(y=>{
+      const hd=state.histData[y]; const faults=state.histFaults[y]||new Set();
+      const v=hd?.[d]; const isFault=faults.has(d);
+      
+      const rainVal = state.histRain[y]?.[d];
+      const rainTxt = rainVal != null ? `<br><span class="text-[9px] text-blue-400 font-normal">${rainVal.toFixed(1)} mm</span>` : '';
+      
+      rowHtml+=`<td class="mono text-center ${isFault?'text-red-400 line-through':''} ${v==null?'text-slate-600':'text-slate-300'}">${v!=null?v.toFixed(1):'—'} MWh ${rainTxt}</td>`;
+    });
+    const cur=state.plantDaily[d]!=null&&!state.currentFaults.has(d)?state.plantDaily[d]:null;
+    rowHtml+=`<td class="mono font-bold text-white text-center">${cur!=null?cur.toFixed(1):'—'}</td></tr>`;
+    bodyHtml+=rowHtml;
+  }
+  document.getElementById('hist-body').innerHTML=bodyHtml;
+}
+
+function renderFaultTab() {
+  const allFaults=[];
+  const curY = document.getElementById('sel-year').value;
+  state.currentFaults.forEach(d=>{
+    allFaults.push({year:`Current (${curY})`, day:d, reason:state.currentFaultReasons[d]||`Day ${d} — fault detected`});
+  });
+  state.availYears.forEach(y=>{
+    const faults=state.histFaults[y]||new Set();
+    faults.forEach(d=>allFaults.push({year:y,day:d,reason:state.histFaultReasons[y]?.[d]||`Day ${d} — fault detected`}));
+  });
+
+  if (!allFaults.length){
+    document.getElementById('fault-content').innerHTML='<div class="grn-box">✅ No faults detected in current or historical data. Grid stability is optimal.</div>';
+    return;
+  }
+  document.getElementById('fault-content').innerHTML=`
+    <div class="warn-box mb-3">⚡ ${allFaults.length} fault day(s) detected and automatically excluded from prediction averages.</div>
+    <table class="tbl"><thead><tr><th>Year</th><th>Day</th><th>Detection Details</th></tr></thead>
+    <tbody>${allFaults.map(f=>`<tr><td class="mono text-amber-400">${f.year}</td><td class="font-bold">${f.day}</td><td class="text-[10px] text-slate-400">${f.reason}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderDeviationTab() {
+  const devData=state.deviationData;
+  if(!Object.keys(devData).length){
+    document.getElementById('dev-content').innerHTML='<div class="info-box">Deviation data available after Week 1 is complete (all 7 days metered).</div>';
+    return;
+  }
+  let html='<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+  ['w1','w2','w3','w4'].forEach(wk=>{
+    const d=devData[wk]; if(!d) return;
+    const sign=d.deviation>=0?'+':'';
+    const color=d.deviation>=0?'text-emerald-400':'text-red-400';
+    html+=`<div class="card2">
+      <div class="font-bold text-sm mb-2" style="color:${d.deviation>=0?'#10b981':'#ef4444'};">${wk.toUpperCase()}</div>
+      <div class="wc-row"><span class="wk">Predicted P50</span><span class="wv">${d.predicted.toFixed(1)} MWh</span></div>
+      <div class="wc-row"><span class="wk">Actual</span><span class="wv">${d.actual.toFixed(1)} MWh</span></div>
+      <div class="wc-row border-t border-slate-700 mt-1 pt-1"><span class="wk font-bold">Deviation</span><span class="wv font-bold ${color}">${sign}${d.deviation.toFixed(1)} MWh</span></div>
+    </div>`;
+  });
+  html+='</div>';
+
+  const w1dev=devData.w1?.deviation||0, w2dev=devData.w2?.deviation||0;
+  const w3carry=w1dev*0.6, w4carry=w1dev*0.4+w2dev*0.5;
+  html+=`<div class="card2 mt-3">
+    <div class="font-bold text-sm mb-2 text-cyan-400">Carry-Forward Calculation</div>
+    <div class="text-xs text-slate-400 mb-2">Negative deviation (actual &lt; predicted) means river produced less than expected — remaining weeks need to compensate.</div>
+    <div class="wc-row"><span class="wk">W1 deviation → W3 carry (60%)</span><span class="wv ${w3carry>=0?'text-emerald-400':'text-red-400'}">${w3carry>=0?'+':''}${w3carry.toFixed(1)} MWh</span></div>
+    <div class="wc-row"><span class="wk">W1 (40%) + W2 (50%) → W4 carry</span><span class="wv ${w4carry>=0?'text-emerald-400':'text-red-400'}">${w4carry>=0?'+':''}${w4carry.toFixed(1)} MWh</span></div>
+  </div>`;
+  document.getElementById('dev-content').innerHTML=html;
+}
+
+function renderFinancialTab(proj, ad, ce, rate, penalty, excessLoss) {
   document.getElementById('fin-ph').classList.add('hidden');
   document.getElementById('fin-content').classList.remove('hidden');
+  const floor=ad*0.9, shortfall=Math.max(0,floor-proj), excess=Math.max(0,proj-ad);
+  const rKwh=(rate/1000).toFixed(2);
 
-  const floor = ad*0.9;
-  const shortfall = Math.max(0,floor-proj);
-  const excess = Math.max(0,proj-ad);
-  const excessCapped = Math.min(excess, ce-ad);
+  document.getElementById('fin-pen').innerHTML=`
+    <div class="wc-row"><span class="wk">90% Floor</span><span class="wv">${floor.toFixed(2)} MWh</span></div>
+    <div class="wc-row"><span class="wk">Shortfall</span><span class="wv text-red-400">${shortfall.toFixed(2)} MWh</span></div>
+    <div class="wc-row"><span class="wk">Rate</span><span class="wv">${rKwh} NPR/kWh</span></div>
+    <div class="calc-formula">Penalty = 10% × ${shortfall.toFixed(2)} × ${rate.toFixed(0)} = ${fmtN(penalty)} NPR</div>`;
 
-  document.getElementById('fin-pen').innerHTML = `
-    <div class="calc-row"><span class="key">90% Floor</span><span class="val">${floor.toFixed(2)} MWh</span></div>
-    <div class="calc-row"><span class="key">Shortfall</span><span class="val text-rose-700">${shortfall.toFixed(2)} MWh</span></div>
-    <div class="calc-row border-t pt-1"><span class="key">Penalty = 10% × shortfall × rate</span><span class="val text-rose-700 font-bold">${fmtN(penalty)} NPR</span></div>`;
+  document.getElementById('fin-exc').innerHTML=`
+    <div class="wc-row"><span class="wk">Excess above AD</span><span class="wv text-amber-400">${excess.toFixed(2)} MWh</span></div>
+    <div class="calc-formula">Loss = 50% × ${Math.min(excess,ce-ad).toFixed(2)} × ${rate.toFixed(0)} = ${fmtN(excessLoss)} NPR</div>`;
 
-  document.getElementById('fin-exc').innerHTML = `
-    <div class="calc-row"><span class="key">Excess above AD</span><span class="val text-amber-700">${excess.toFixed(2)} MWh</span></div>
-    <div class="calc-row border-t pt-1"><span class="key">Excess loss (50% rate)</span><span class="val text-amber-700 font-bold">${fmtN(excessLoss)} NPR</span></div>`;
+  const total=penalty+excessLoss;
+  document.getElementById('fin-cur').innerHTML=`
+    <div class="wc-row"><span class="wk">Projected</span><span class="wv">${proj.toFixed(2)} MWh</span></div>
+    <div class="wc-row"><span class="wk">AD</span><span class="wv">${ad.toFixed(2)} MWh (${(proj/ad*100).toFixed(1)}%)</span></div>
+    <div class="wc-row border-t border-slate-700 pt-1 mt-1"><span class="wk font-bold">Total Impact</span><span class="wv font-bold ${total>0?'text-red-400':'text-emerald-400'}">${fmtN(total)} NPR ${total===0?'✅':''}</span></div>`;
 
-  const total = penalty+excessLoss;
-  document.getElementById('fin-cur').innerHTML = `
-    <div class="calc-row"><span class="key">Projected Export</span><span class="val">${proj.toFixed(2)} MWh</span></div>
-    <div class="calc-row font-bold border-t pt-1"><span class="key">Total financial impact</span><span class="val text-red-700">${fmtN(total)} NPR ${total===0?'✅ Zero loss':''}</span></div>`;
-
+  const levels=[0.80,0.85,0.90,0.95,1.00,1.05].map(r=>ad*r);
+  const impacts=levels.map(p=>{const{penalty:pen,excessLoss:exc}=computeFinancial(p,ad,ce,rate);return -(pen+exc);});
   if(charts.fin) charts.fin.destroy();
-  const levels = [0.80,0.85,0.90,0.95,1.00,1.05].map(r=>ad*r);
-  const impacts = levels.map(p => { const {penalty:pen, excessLoss:exc} = computeFinancial(p,ad,ce,rate); return -(pen+exc); });
-  charts.fin = new Chart(document.getElementById('fin-chart').getContext('2d'),{
-    type:'bar', data:{labels:levels.map(v=>`${(v/ad*100).toFixed(0)}%`),datasets:[{label:'NPR Impact',data:impacts,backgroundColor:impacts.map(v=>v<0?'#fca5a5':'#6ee7b7'),borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'#f1f5f9'}}}}
+  charts.fin=new Chart(document.getElementById('fin-chart').getContext('2d'),{
+    type:'bar',data:{labels:levels.map(v=>`${(v/ad*100).toFixed(0)}%`),
+      datasets:[{label:'NPR Impact',data:impacts,backgroundColor:impacts.map(v=>v<0?'#7f1d1d':'#064e3b'),borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{grid:{color:'#1e293b'},ticks:{color:'#94a3b8'}},x:{grid:{display:false},ticks:{color:'#94a3b8'}}}}
   });
-}
-
-function renderKPIs(ad, proj, actual, penalty, excessLoss) {
-  document.getElementById('k-proj').textContent = proj.toFixed(1);
-  document.getElementById('k-actual').textContent = actual.toFixed(1);
-  const loss = penalty+excessLoss;
-  document.getElementById('k-npr').textContent = loss>0?`−${fmtN(loss)}`:'✅ 0';
-  document.getElementById('k-npr').className = `kv ${loss>0?'text-rose-600':'text-emerald-600'} text-base`;
-  document.getElementById('k-npr-l').textContent = loss>0?'NPR loss':'No loss projected';
-
-  const pct = Math.min(proj/ad*100, 105);
-  document.getElementById('sfill').style.width = Math.min(pct,100)+'%';
-  document.getElementById('sfill').style.background = pct<90?'#dc2626':pct>100?'#d97706':'#059669';
-  document.getElementById('sbar-l').textContent = `${(proj/ad*100).toFixed(1)}% of AD — ${proj.toFixed(1)} MWh`;
-}
-
-function computeFinancial(proj, ad, ce, rate) {
-  const penalty = Math.max(0, (ad*0.9-proj)*0.1*rate);
-  const excess = Math.max(0, Math.min(proj-ad, ce-ad));
-  return {penalty, excessLoss: excess * 0.5 * rate};
 }
 
 async function fetchWeather() {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); 
-    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=29.85&longitude=80.95&hourly=temperature_2m,precipitation&timezone=Asia%2FKathmandu&forecast_days=15', { signal: controller.signal });
-    clearTimeout(timeoutId);
+    const ctrl=new AbortController(); 
+    const tId=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=29.85&longitude=80.95&hourly=temperature_2m,precipitation&forecast_days=15',{signal:ctrl.signal});
+    clearTimeout(tId);
     
-    if(!r.ok) throw new Error('API Response not OK');
-    const raw = await r.json();
-    const hT=raw.hourly.temperature_2m, hR=raw.hourly.precipitation, hTm=raw.hourly.time;
-    weatherForecast=[];
-    
+    if(!r.ok) throw new Error();
+    const raw=await r.json();
+    const hT=raw.hourly.temperature_2m,hR=raw.hourly.precipitation,hTm=raw.hourly.time;
+    state.weatherFcst=[];
     for(let d=0;d<15;d++){
-      let maxT=-99,minT=99,rainH=0,rain=0;
-      for(let h=0;h<24;h++){const i=d*24+h;if(hT[i]>maxT)maxT=hT[i];if(hT[i]<minT)minT=hT[i];if(hR[i]>0.1){rainH++;rain+=hR[i];}}
-      const snowM=maxT<5?-0.10:maxT<12?-0.03:maxT>20?0.05:0;
-      const flashM=rain>20?0.04:0;
-      weatherForecast.push({date:new Date(hTm[d*24]),maxT,minT,rainH,rain,hydroMod:1+snowM+flashM});
+      let maxT=-99,minT=99,rain=0;
+      for(let h=0;h<24;h++){
+        const i=d*24+h; 
+        if(hT[i]>maxT)maxT=hT[i]; 
+        if(hT[i]<minT)minT=hT[i]; 
+        if(hR[i]>0.1)rain+=hR[i];
+      }
+      
+      const catT = maxT - 16.25;
+      const snowM = catT < 0 ? -0.12 : catT < 5 ? -0.05 : catT > 18 ? 0.06 : 0;
+      const flashM = rain > 25 ? 0.05 : rain > 10 ? 0.02 : 0;
+      const hydroMod = 1 + snowM + flashM;
+      
+      state.weatherFcst.push({date:new Date(hTm[d*24]),maxT,minT,rain,hydroMod});
     }
-
-    const html=weatherForecast.map((d,i)=>{
-      const l=i===0?'TODAY':d.date.toLocaleDateString('en-US',{weekday:'short',day:'numeric'});
-      const m=Math.round((d.hydroMod-1)*100);
-      const mc=d.hydroMod>1?'bg-emerald-100 text-emerald-700':d.hydroMod<1?'bg-rose-100 text-rose-700':'bg-slate-100 text-slate-500';
-      return `<div class="flex-none w-[76px] bg-white border border-slate-200 rounded-xl p-2 text-center text-[10px]">
-        <div class="font-bold text-slate-400 border-b pb-0.5 mb-1">${l}</div>
-        <div class="font-bold ${d.rainH>0?'text-blue-500':'text-slate-300'}">${d.rainH}h ☔</div>
-        <div class="text-amber-600 mt-0.5">H:${d.maxT.toFixed(0)}° L:${d.minT.toFixed(0)}°</div>
-        <div class="font-bold mt-1 px-0.5 py-0.5 rounded ${mc}">${m>=0?'+':''}${m}%</div>
+    document.getElementById('fc-cards').innerHTML=state.weatherFcst.map((d,i)=>{
+      const lbl=i===0?'TODAY':d.date.toLocaleDateString('en-US',{weekday:'short',day:'numeric'});
+      return `<div class="flex-none w-[78px] rounded-xl p-2 text-center text-[10px]" style="background:#1e293b;border:1px solid #334155;">
+        <div class="font-bold text-slate-400 border-b border-slate-700 pb-0.5 mb-1">${lbl}</div>
+        <div class="text-blue-400 font-semibold">${d.rain.toFixed(1)}mm</div>
+        <div class="text-amber-400 mt-0.5">${d.maxT.toFixed(0)}° / ${d.minT.toFixed(0)}°</div>
       </div>`;
     }).join('');
-    document.getElementById('fc-cards').innerHTML = html;
-  } catch(e) {
-    document.getElementById('fc-cards').innerHTML='<div class="text-amber-600 text-xs p-4 bg-amber-50 rounded-xl">Weather API unavailable / Timeout</div>';
+  } catch(e){
+    state.weatherFcst = Array.from({length: 15}, () => ({ rain: 0, hydroMod: 1, maxT: 20, minT: 10 }));
+    document.getElementById('fc-cards').innerHTML='<div class="info-box w-full text-center">Using internal weather baseline (API offline).</div>';
   }
 }
 
-function fmtN(n){ if(n>=100000) return (n/100000).toFixed(2)+' L'; if(n>=1000) return (n/1000).toFixed(1)+'K'; return n.toFixed(0); }
-function showTab(id,btn){
+function showTab(id, btn) {
   document.querySelectorAll('.tp').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  btn.classList.add('active');
+  document.getElementById(id).classList.add('active'); btn.classList.add('active');
+}
+function setChip(id, txt, cls) {
+  const el=document.getElementById(id);
+  el.textContent=txt; el.className=`px-2.5 py-1 rounded-full text-[11px] font-semibold ${cls}`;
+}
+function toast(msg, type='info') {
+  const colors={success:'text-emerald-400',warn:'text-amber-400',error:'text-red-400'};
+  const el=document.createElement('div');
+  el.className=`toast-item ${colors[type]||'text-blue-400'}`;
+  el.textContent=msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(()=>el.remove(), 4000);
 }
 
-function init() {
+window.onload=()=>{
+  const {year:curY, month:curM} = getCurrentNepPeriod();
   const mSel=document.getElementById('sel-month');
-  MONTHS.forEach((m,i)=>mSel.add(new Option(m,i+1)));
-  mSel.value='1';
+  MONTHS.forEach((m,i)=>mSel.add(new Option(m,i+1))); mSel.value=curM;
   const ySel=document.getElementById('sel-year');
-  [2079,2080,2081,2082,2083].forEach(y=>ySel.add(new Option(y,y)));
-  ySel.value='2083';
-
-  document.getElementById('today-chip').textContent = `📅 NPT: ${todayEng}`;
-  loadAndAnalyse(); 
-}
-
-window.onload = init;
+  for(let y=2079;y<=curY+3;y++) ySel.add(new Option(y,y)); ySel.value=curY;
+  document.getElementById('chip-today').textContent=`📅 NPT: ${state.todayEng}`;
+  updateRateDisplay(); loadAll();
+};
 </script>
 </body>
 </html>

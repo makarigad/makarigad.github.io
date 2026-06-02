@@ -58,6 +58,174 @@ window.fmt = (val, type, mwVal = null) => {
     return str.endsWith('.0') ? str.slice(0, -2) : str;
 };
 
+// ==========================================
+// REMINDER QUEUE & VALIDATION ENGINE
+// ==========================================
+class ModalQueueManager {
+    constructor() { this.queue = []; this.isShowing = false; }
+    
+    add(title, msg, buttons) {
+        this.queue.push({ title, msg, buttons });
+        this.process();
+    }
+    
+    process() {
+        if (this.isShowing || this.queue.length === 0) return;
+        this.isShowing = true;
+        const current = this.queue.shift();
+        
+        const overlay = document.getElementById('action-modal-overlay');
+        const box = document.getElementById('action-modal-box');
+        document.getElementById('action-modal-title').innerText = current.title;
+        document.getElementById('action-modal-msg').innerHTML = current.msg;
+        
+        const btnContainer = document.getElementById('action-modal-buttons');
+        btnContainer.innerHTML = '';
+        
+        current.buttons.forEach(btn => {
+            const b = document.createElement('button');
+            b.className = `px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-sm ${btn.colorClass}`;
+            b.innerText = btn.text;
+            b.onclick = () => {
+                if(btn.action) btn.action();
+                this.closeCurrent();
+            };
+            btnContainer.appendChild(b);
+        });
+        
+        overlay.classList.remove('hidden');
+        // Small delay to trigger CSS transitions
+        setTimeout(() => {
+            overlay.classList.remove('opacity-0');
+            box.classList.remove('scale-95');
+        }, 10);
+    }
+    
+    closeCurrent() {
+        const overlay = document.getElementById('action-modal-overlay');
+        const box = document.getElementById('action-modal-box');
+        overlay.classList.add('opacity-0');
+        box.classList.add('scale-95');
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            this.isShowing = false;
+            this.process(); // Process next in queue
+        }, 300);
+    }
+}
+
+window.ActionModals = new ModalQueueManager();
+
+// Background Polling for Missing Data (Runs every 10 minutes)
+setInterval(checkMissingHourlyData, 600000); 
+
+async function checkMissingHourlyData() {
+    if (window.userRole === 'staff') return; // Read-only staff don't need prompts
+    
+    const now = new Date();
+    const hour = now.getHours();
+    const todayEng = document.getElementById('log-date').value;
+    if (!todayEng) return;
+
+    // 1. Check 08:00 AM Rainfall if current time is past 8 AM
+    if (hour >= 8) {
+        const postponeRain = parseInt(localStorage.getItem('postpone_rain_until') || '0');
+        if (now.getTime() > postponeRain) {
+            // Find Nepali Date ID for Rainfall
+            const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', todayEng).maybeSingle();
+            if (cal) {
+                const rainId = `${cal.nep_year}_${cal.nep_month}_${parseInt(cal.nep_day)}`;
+                const { data: rData } = await supabase.from('rainfall_data').select('headworks').eq('id', rainId).maybeSingle();
+                if (!rData || rData.headworks === null) {
+                    window.ActionModals.add(
+                        "🌧️ Rainfall Missing", 
+                        "08:00 AM Rainfall data has not been entered for today. Please input the data (it can be 0).", 
+                        [
+                            { text: "Input Data Now", colorClass: "bg-blue-600 text-white hover:bg-blue-700", action: () => openDailyTab('08:00') },
+                            { text: "Postpone 1 Hour", colorClass: "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200", action: () => localStorage.setItem('postpone_rain_until', now.getTime() + 3600000) }
+                        ]
+                    );
+                }
+            }
+        }
+    }
+
+    // 2. Check 12:00 PM Balanch if current time is past 12 PM
+    if (hour >= 12) {
+        const postponeBal = parseInt(localStorage.getItem('postpone_bal_until') || '0');
+        if (now.getTime() > postponeBal) {
+            const { data: bData } = await supabase.from('balanch_readings').select('main_export').eq('eng_date', todayEng).maybeSingle();
+            if (!bData || bData.main_export === null) {
+                window.ActionModals.add(
+                    "⚡ Balanch Missing", 
+                    "12:00 PM Substation Balanch data is required.", 
+                    [
+                        { text: "Input Data Now", colorClass: "bg-emerald-600 text-white hover:bg-emerald-700", action: () => openDailyTab('12:00') },
+                        { text: "Postpone 1 Hour", colorClass: "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200", action: () => localStorage.setItem('postpone_bal_until', now.getTime() + 3600000) }
+                    ]
+                );
+            }
+        }
+    }
+}
+
+function openDailyTab(timeStr) {
+    const dailyTab = document.querySelector('[data-target="tab-daily-data"]');
+    if (dailyTab) dailyTab.click();
+    const timeSelect = document.getElementById('dd-entry-time');
+    if (timeSelect) {
+        timeSelect.value = timeStr;
+        timeSelect.dispatchEvent(new Event('change'));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Strict Balanch Math Validation
+window.validateBalanchMath = async function(targetDate, inputExportMwh) {
+    // Get yesterday's date
+    const todayObj = new Date(targetDate);
+    const yesterdayObj = new Date(todayObj);
+    yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+    const yestStr = yesterdayObj.toISOString().split('T')[0];
+
+    // Get Yesterday's Balanch
+    const { data: yBal } = await supabase.from('balanch_readings').select('main_export').eq('eng_date', yestStr).maybeSingle();
+    const yExp = yBal && yBal.main_export !== null ? parseFloat(yBal.main_export) : null;
+
+    if (yExp !== null) {
+        // CHECK 1: Must be greater and max increase 245 MWh
+        if (inputExportMwh < yExp) {
+            throw new Error(`Today's Balanch Main Export (${inputExportMwh}) must be GREATER than Yesterday's (${yExp}).`);
+        }
+        if ((inputExportMwh - yExp) > 245) {
+            throw new Error(`Balanch increase (${(inputExportMwh - yExp).toFixed(2)} MWh) exceeds the maximum allowed 245 MWh limit.`);
+        }
+
+        // CHECK 2: Energy Balance (Today = Yesterday + Gen - Losses)
+        // Fetch generation from PMU meters at 12:00 PM for today and yesterday
+        const [{ data: gToday }, { data: gYest }] = await Promise.all([
+            supabase.from('hourly_logs').select('u1_pmu_reading, u2_pmu_reading').eq('log_date', targetDate).eq('log_time', '12:00:00').maybeSingle(),
+            supabase.from('hourly_logs').select('u1_pmu_reading, u2_pmu_reading').eq('log_date', yestStr).eq('log_time', '12:00:00').maybeSingle()
+        ]);
+
+        if (gToday && gYest && gToday.u1_pmu_reading && gYest.u1_pmu_reading) {
+            const u1GenMwh = (gToday.u1_pmu_reading - gYest.u1_pmu_reading) * 1000;
+            const u2GenMwh = (gToday.u2_pmu_reading - gYest.u2_pmu_reading) * 1000;
+            const totalGen24h = u1GenMwh + u2GenMwh;
+
+            const calculatedLoss = (yExp + totalGen24h) - inputExportMwh;
+
+            if (calculatedLoss < 0) {
+                throw new Error(`Invalid Input: Calculated loss is negative (${calculatedLoss.toFixed(2)} MWh). Today's Balanch is too high compared to generation.`);
+            }
+            if (calculatedLoss > 15) {
+                throw new Error(`Invalid Input: Calculated loss (${calculatedLoss.toFixed(2)} MWh) exceeds the maximum allowed 15 MWh.`);
+            }
+        }
+    }
+    return true; // Passed validation
+}
+
 async function updateDates() {
     const todayDate = dateInput.value;
     if (!todayDate) return;
@@ -222,7 +390,6 @@ window.validateForm = function() {
     let errors = [];
     document.querySelectorAll('.validation-warning').forEach(el => el.classList.remove('validation-warning', 'bg-rose-50', 'ring-2', 'ring-rose-500'));
 
-    // FIX: Catch HTML5 "badInput" trap where invalid characters make the value return as ""
     const val = (id) => { 
         const el = document.getElementById(id); 
         if (!el) return null;
@@ -318,7 +485,6 @@ window.validateForm = function() {
             } else if (!allZero) {
                 if (ry<lineVMin||ry>lineVMax || yb<lineVMin||yb>lineVMax || br<lineVMin||br>lineVMax) { errors.push(`Outgoing Voltages must be between ${lineVMin} and ${lineVMax}`); markErr(ryId); markErr(ybId); markErr(brId); }
                 const avg = (ry+yb+br)/3;
-                // FIX: Corrected typo checking 'ry' twice instead of 'yb'
                 if (Math.abs(ry-avg) > avg*0.006 || Math.abs(yb-avg) > avg*0.006 || Math.abs(br-avg) > avg*0.006) { errors.push(`Outgoing Voltages vary by > 0.6% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
             }
         } else {
@@ -382,7 +548,6 @@ window.validateForm = function() {
     
     if (u1Gwh!==null && u2Gwh!==null && outMwh!==null && (u1Gwh*1000 + u2Gwh*1000) < outMwh) { errors.push(`Sum of U1+U2 Energy must be ≥ Outgoing Energy (U1+U2=${(u1Gwh*1000+u2Gwh*1000).toFixed(3)}, Out=${outMwh}).`); markErr('e_out_mwh'); }
 
-    // FIX: Fallback u1/u2 MW to 0 if null, so if a unit is off, outMw is still checked against the running unit
     if (outMw !== null && outMw > 0) {
         const totalGenMw = (u1Mw || 0) + (u2Mw || 0);
         if (outMw > totalGenMw + 0.25) { errors.push(`Outgoing MW (${outMw}) cannot exceed U1+U2 total (${totalGenMw.toFixed(3)} MW). Check transformer losses.`); markErr('e_out_mw'); }
@@ -433,10 +598,10 @@ window.validateForm = function() {
     const waterLvl = val('water-level');
     if (waterLvl !== null && (waterLvl < 0 || waterLvl > 1500)) { errors.push(`Water Level (${waterLvl} cm) is out of expected range (0–1500 cm).`); markErr('water-level'); }
 
-    const g_m_e = val('inp-bal-main-exp'); if (g_m_e !== null && (g_m_e < 0 || g_m_e > 100000)) { errors.push('Main Export must be between 0-100,000 MWh'); markErr('inp-bal-main-exp'); }
-    const g_m_i = val('inp-bal-main-imp'); if (g_m_i !== null && (g_m_i < 0 || g_m_i > 100000)) { errors.push('Main Import must be between 0-100,000 MWh'); markErr('inp-bal-main-imp'); }
-    const g_c_e = val('inp-bal-check-exp'); if (g_c_e !== null && (g_c_e < 0 || g_c_e > 100000)) { errors.push('Check Export must be between 0-100,000 MWh'); markErr('inp-bal-check-exp'); }
-    const g_c_i = val('inp-bal-check-imp'); if (g_c_i !== null && (g_c_i < 0 || g_c_i > 100000)) { errors.push('Check Import must be between 0-100,000 MWh'); markErr('inp-bal-check-imp'); }
+    const g_m_e = val('inp-bal-main-exp'); if (g_m_e !== null && (g_m_e < 0 || g_m_e > 1000000)) { errors.push('Main Export must be between 0-100,000 MWh'); markErr('inp-bal-main-exp'); }
+    const g_m_i = val('inp-bal-main-imp'); if (g_m_i !== null && (g_m_i < 0 || g_m_i > 1000000)) { errors.push('Main Import must be between 0-100,000 MWh'); markErr('inp-bal-main-imp'); }
+    const g_c_e = val('inp-bal-check-exp'); if (g_c_e !== null && (g_c_e < 0 || g_c_e > 1000000)) { errors.push('Check Export must be between 0-100,000 MWh'); markErr('inp-bal-check-exp'); }
+    const g_c_i = val('inp-bal-check-imp'); if (g_c_i !== null && (g_c_i < 0 || g_c_i > 1000000)) { errors.push('Check Import must be between 0-100,000 MWh'); markErr('inp-bal-check-imp'); }
 
     function chk(id, min, max, name) { const v=val(id); if(v!==null && (v<min || v>max)) { errors.push(`${name} must be between ${min} and ${max}.`); markErr(id); } }
     ['t_u1_u', 't_u1_v', 't_u1_w', 't_u1_de', 't_u1_nde', 't_u2_u', 't_u2_v', 't_u2_w', 't_u2_de', 't_u2_nde'].forEach(id => chk(id, 15, 95, id.toUpperCase() + ' Temp'));
@@ -533,7 +698,7 @@ document.getElementById('hourly-form').addEventListener('submit', async function
             e_u2_v_ry: p('e_u2_v_ry'), e_u2_v_yb: p('e_u2_v_yb'), e_u2_v_br: p('e_u2_v_br'), e_u2_a_i1: p('e_u2_a_i1'), e_u2_a_i2: p('e_u2_a_i2'), e_u2_a_i3: p('e_u2_a_i3'), e_u2_mw: p('e_u2_mw'), e_u2_kvar: p('e_u2_kvar'), e_u2_cos: p('e_u2_cos'), e_u2_hz: p('e_u2_hz'), e_u2_gwh: p('e_u2_gwh'),
             e_out_v_ry: p('e_out_v_ry'), e_out_v_yb: p('e_out_v_yb'), e_out_v_br: p('e_out_v_br'), e_out_a_i1: p('e_out_a_i1'), e_out_a_i2: p('e_out_a_i2'), e_out_a_i3: p('e_out_a_i3'), e_out_mw: p('e_out_mw'), e_out_kvar: p('e_out_kvar'), e_out_cos: p('e_out_cos'), e_out_hz: p('e_out_hz'), e_out_mwh: p('e_out_mwh'),
             t_u1_u: p('t_u1_u'), t_u1_v: p('t_u1_v'), t_u1_w: p('t_u1_w'), t_u1_de: p('t_u1_de'), t_u1_nde: p('t_u1_nde'), t_u1_gov_temp: p('t_u1_gov'), t_u1_hyd_temp: p('t_u1_hyd'), t_u1_oil_flow: p('t_u1_flow'), t_u1_oil_level: s('t_u1_lvl'),
-t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_de'), t_u2_nde: p('t_u2_nde'), t_u2_gov_temp: p('t_u2_gov'), t_u2_hyd_temp: p('t_u2_hyd'), t_u2_oil_flow: p('t_u2_flow'), t_u2_oil_level: s('t_u2_lvl'),
+            t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_de'), t_u2_nde: p('t_u2_nde'), t_u2_gov_temp: p('t_u2_gov'), t_u2_hyd_temp: p('t_u2_hyd'), t_u2_oil_flow: p('t_u2_flow'), t_u2_oil_level: s('t_u2_lvl'),
             t_temp_out: p('t_temp_out'), t_temp_in: p('t_temp_in'), t_temp_intake: p('t_temp_intake'), t_pressure: p('t_pressure'),
             tr_1_temp: p('tr_1_temp'), tr_1_lvl: p('tr_1_lvl'), tr_2_temp: p('tr_2_temp'), tr_2_lvl: p('tr_2_lvl'), tr_aux_temp: p('tr_aux_temp'), tr_aux_lvl: p('tr_aux_lvl'),
             dg_batt: p('dg_batt'), dg_fuel: p('dg_fuel'), dg_runtime: s('dg_runtime'),
@@ -560,6 +725,11 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
             const chk_exp_mwh = p('inp-bal-check-exp');
             const chk_imp_mwh = p('inp-bal-check-imp');
 
+            // --- NEW: STRICT BALANCH VALIDATION ---
+            if (main_exp_mwh !== null) {
+                await window.validateBalanchMath(engDate, main_exp_mwh);
+            }
+                        
             // FETCH EXISTING DATA to preserve other fields
             const [{ data: curPlant }, { data: curBalanch }] = await Promise.all([
                 supabase.from('plant_data').select('*').eq('id', engDate).maybeSingle(),
@@ -634,7 +804,6 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
             if (isNaN(rYear) || isNaN(rDay) || !safeMonthName) {
                 alert("⚠️ Cannot sync Rainfall: Nepali Date is missing or invalid.");
             } else {
-                // THE FIX: Force the day to have a leading zero (e.g., '5' becomes '05')
                 const safeDayStr = String(rDay).padStart(2, '0');
                 const rainId = `${rYear}_${safeMonthName}_${safeDayStr}`; 
                 console.log("Syncing Rainfall ID:", rainId);
@@ -666,23 +835,38 @@ t_u2_u: p('t_u2_u'), t_u2_v: p('t_u2_v'), t_u2_w: p('t_u2_w'), t_u2_de: p('t_u2_
             }
         }
 
+        // THE FIX: Generate a specific, unmissable success message
+        let successMsg = "✅ Hourly Log Saved Successfully!";
+        if (logTime.startsWith('12:00')) successMsg = "✅ 12:00 PM Data Synced to Daily Master & Substation!";
+        if (logTime.startsWith('08:00')) successMsg = "✅ 08:00 AM Rainfall Synced to Daily Master!";
         
+        // 1. Try to show the sliding notification
+        showNotification(successMsg);
+        
+        // 2. FORCE a browser popup so the operator knows 100% it worked
+        // alert(successMsg);
 
-        // ... (End of the 08:00 AM Rainfall Block) ...
+        updateDates();
+        if (typeof window.fetchLogs === 'function') window.fetchLogs();
 
-            // THE FIX: Generate a specific, unmissable success message
-            let successMsg = "✅ Hourly Log Saved Successfully!";
-            if (logTime.startsWith('12:00')) successMsg = "✅ 12:00 PM Data Synced to Daily Master & Substation!";
-            if (logTime.startsWith('08:00')) successMsg = "✅ 08:00 AM Rainfall Synced to Daily Master!";
-            
-            // 1. Try to show the sliding notification
-            showNotification(successMsg);
-            
-            // 2. FORCE a browser popup so the operator knows 100% it worked
+        // --- NEW: FAULT REDIRECTION LOGIC ---
+        if (logTime.startsWith('12:00')) {
+            window.ActionModals.add(
+                "⚠️ Log Saved", 
+                "Master input saved. Are there any faults or trippings to record for the past 24 hours?", 
+                [
+                    { text: "Yes, Record Faults", colorClass: "bg-rose-600 text-white hover:bg-rose-700", action: () => openDailyTab('12:00') },
+                    { text: "No Faults", colorClass: "bg-slate-200 text-slate-700 hover:bg-slate-300", action: null }
+                ]
+            );
+        } else if (logTime.startsWith('08:00')) {
+            // Remove the standard alert() for 8am and 12pm, let the Modal handle it smoothly if preferred,
+            // or keep standard alerts for other hours.
             alert(successMsg);
-
-            updateDates();
-            if (typeof window.fetchLogs === 'function') window.fetchLogs();
+        } else {
+            alert(successMsg);
+        }
+        // ------------------------------------
 
     } catch (err) {
         // Force a popup if it fails, too
@@ -702,7 +886,12 @@ document.getElementById('hourly-form').addEventListener('keydown', function(e) {
         e.preventDefault(); 
         const focusable = Array.from(this.querySelectorAll('input:not([readonly]):not([disabled]), select:not([disabled])'));
         const index = focusable.indexOf(e.target);
-        if (index > -1 && index < focusable.length - 1) { focusable[index + 1].focus(); if(focusable[index + 1].select) focusable[index + 1].select(); }
+        
+        // NEW: Check that the next element actually exists before focusing
+        if (index > -1 && index < focusable.length - 1 && focusable[index + 1]) { 
+            focusable[index + 1].focus(); 
+            if(focusable[index + 1].select) focusable[index + 1].select(); 
+        }
     }
 });
 
@@ -1057,7 +1246,6 @@ function addFaultRow() {
     });
 }
 
-// ADD THIS FUNCTION TO HANDLE DYNAMIC RAIN TIME RANGES
 function addRainEventRow(existingData = null) {
     const container = document.getElementById('rain-events-container');
     const rowId = 'rain-event-' + Date.now() + Math.random().toString(36).substr(2, 5);
@@ -1117,7 +1305,6 @@ function addRainEventRow(existingData = null) {
     }
 }
 
-// Bind the Add Event button
 document.addEventListener('click', function(e) {
     if (e.target && e.target.id === 'btn-add-rain-event') {
         addRainEventRow();
@@ -1161,7 +1348,6 @@ if(btnRain) {
                 rainId = `${nYear}_${monthName}_${nDay}`;
             }
 
-            // Fetch existing so we don't accidentally overwrite anything
             const { data: curRain } = await supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle();
 
             let eventsArray = [];
@@ -1189,7 +1375,7 @@ if(btnRain) {
                 day: nDay,
                 headworks: parseFloat(document.getElementById('inp-rain-dam').value) || 0,
                 powerhouse: parseFloat(document.getElementById('inp-rain-ph').value) || 0,
-                rain_events: eventsArray, // --- ADD THIS NEW ARRAY ---
+                rain_events: eventsArray,
                 operator_email: window.currentUser?.email || null,
                 operator_uid: window.currentUser?.id || null,
                 updated_at: new Date().toISOString()
@@ -1201,7 +1387,6 @@ if(btnRain) {
                 alert("❌ Database Error saving rainfall:\n" + error.message);
                 showNotification("❌ Error: " + error.message, true);
             } else {
-                // THE FIX: Unmissable success alert
                 const successMsg = "✅ 08:00 AM Rainfall Synced to Daily Master!";
                 alert(successMsg);
                 showNotification(successMsg);
@@ -1222,10 +1407,17 @@ if(btnNoon) {
     document.getElementById('btn-save-noon').addEventListener('click', async () => {
         const btn = document.getElementById('btn-save-noon');
         btn.innerText = "Syncing..."; btn.disabled = true;
-
+    
         try {
             const targetDate = document.getElementById('dd-entry-date').value;
             if (!targetDate) throw new Error("Please select an English Date first.");
+            
+            const inpExp = parseFloat(document.getElementById('inp-bal-main-exp').value);
+            
+            // --- NEW: STRICT BALANCH VALIDATION ---
+            if (!isNaN(inpExp)) {
+                await window.validateBalanchMath(targetDate, inpExp);
+            }
             
             // 1. Save Substation Readings (Entered in MWh, Store in MWh)
             const balPayload = {
@@ -1337,7 +1529,6 @@ if(btnNoon) {
                 faultDetailsArray = [...faultDetailsArray, ...newDetailsArray];
 
                 // OVERLAP VALIDATION ENGINE
-                // Sort by start time. If start times are equal, prioritize 'Dispatch instruction' to be processed first
                 faultDetailsArray.sort((a, b) => {
                     let tA = new Date(a.start).getTime();
                     let tB = new Date(b.start).getTime();
@@ -1379,7 +1570,6 @@ if(btnNoon) {
                                 let mwhReduction = (overlapMins / 60) * f1.lossMw;
                                 f1.mwh = Number(Math.max(0, f1.mwh - mwhReduction).toFixed(3));
                                 
-                                // Silently append a note to the reason so the math makes sense in audits
                                 if (!f1.reason.includes('(Auto-deducted')) {
                                     f1.reason += ` (Auto-deducted ${overlapMins}m for overlapping ${f2.type})`;
                                 }
@@ -1498,9 +1688,23 @@ if(btnNoon) {
                 if(typeof window.renderSavedFaultsTable === 'function') window.renderSavedFaultsTable(updatedOutagePayloadForUI, targetDate);
             }
 
-            const successMsg = "✅ 12:00 PM Data (Substation & Outages) Synced Successfully!";
-            alert(successMsg);
+            // THE FIX: Generate a specific, unmissable success message
+            let successMsg = "✅ 12:00 PM Data Synced to Daily Master & Substation!";
             showNotification(successMsg);
+            
+            updateDates();
+            if (typeof window.fetchLogs === 'function') window.fetchLogs();
+
+            // --- NEW: FAULT REDIRECTION LOGIC ---
+            // ✅ FIX: Trigger the modal directly without checking logTime since this is the Noon button.
+            window.ActionModals.add(
+                "⚠️ Log Saved", 
+                "Master input saved. Are there any faults or trippings to record for the past 24 hours?", 
+                [
+                    { text: "Yes, Record Faults", colorClass: "bg-rose-600 text-white hover:bg-rose-700", action: () => openDailyTab('12:00') },
+                    { text: "No Faults", colorClass: "bg-slate-200 text-slate-700 hover:bg-slate-300", action: null }
+                ]
+            );
 
         } catch (err) { 
             alert("❌ Critical Error:\n" + err.message);
@@ -1839,17 +2043,30 @@ window.editFaultModal = async function(rowId, faultIndex = null) {
     details[idx].reason = newReason;
     details[idx].mwh = Number(parsedMwh.toFixed(3));
 
-    let agg = { dispatch_mwh: 0, forced_outage_mwh: 0, grid_fault_mwh: 0, line_132kv_mwh: 0, fm_33kv_mwh: 0, fm_penstock_mwh: 0, fm_equipment_mwh: 0, reasons: [] };
+    // 3. Recalculate all the MWh aggregates AND Minutes for the day
+    let agg = { 
+        dispatch_mwh: 0, forced_outage_mwh: 0, grid_fault_mwh: 0, line_132kv_mwh: 0, 
+        fm_33kv_mwh: 0, fm_penstock_mwh: 0, fm_equipment_mwh: 0, reasons: [],
+        nea_trip: 0, loss_time_min: 0, u1_min: 0, u2_min: 0, trippings: details.length 
+    };
     
     details.forEach(f => {
         agg.reasons.push(f.reason);
-        if(f.type === 'Dispatch instruction') agg.dispatch_mwh += f.mwh;
-        else if(f.type === 'Non-Dispatch') agg.forced_outage_mwh += f.mwh;
-        else if(f.type === 'Grid Faults') agg.grid_fault_mwh += f.mwh;
-        else if(f.type === '132 kV line faults') agg.line_132kv_mwh += f.mwh;
-        else if(f.type === '33 kV line fault') agg.fm_33kv_mwh += f.mwh;
-        else if(f.type === 'penstock pipe fault') agg.fm_penstock_mwh += f.mwh;
-        else if(f.type === 'plant equipment issue') agg.fm_equipment_mwh += f.mwh;
+        const m = Number(f.mwh || 0);
+        const mins = Number(f.durMins || 0);
+
+        if(f.type === 'Dispatch instruction') { agg.dispatch_mwh += m; agg.nea_trip += mins; }
+        else if(f.type === 'Non-Dispatch') { agg.forced_outage_mwh += m; agg.nea_trip += mins; }
+        else if(f.type === 'Grid Faults') { agg.grid_fault_mwh += m; agg.loss_time_min += mins; }
+        else if(f.type === '132 kV line faults') { agg.line_132kv_mwh += m; agg.loss_time_min += mins; }
+        else if(f.type === '33 kV line fault') { agg.fm_33kv_mwh += m; }
+        else if(f.type === 'penstock pipe fault') { agg.fm_penstock_mwh += m; }
+        else if(f.type === 'plant equipment issue') { agg.fm_equipment_mwh += m; }
+
+        if(f.type !== 'Dispatch instruction' && f.type !== 'Non-Dispatch' && f.type !== 'Grid Faults' && f.type !== '132 kV line faults'){
+            agg.u1_min += mins;
+            agg.u2_min += mins;
+        }
     });
 
     const updatePayload = {
@@ -1857,6 +2074,14 @@ window.editFaultModal = async function(rowId, faultIndex = null) {
         energy_loss_line_trip: Number((agg.grid_fault_mwh + agg.line_132kv_mwh).toFixed(3)),
         energy_loss_other: Number((agg.fm_33kv_mwh + agg.fm_penstock_mwh + agg.fm_equipment_mwh).toFixed(3)),
         total_energy_loss: Number((agg.dispatch_mwh + agg.forced_outage_mwh + agg.grid_fault_mwh + agg.line_132kv_mwh + agg.fm_33kv_mwh + agg.fm_penstock_mwh + agg.fm_equipment_mwh).toFixed(3)),
+        
+        // NEW: Ensure minutes are properly overwritten
+        nea_trip_loss_time_min: agg.nea_trip,
+        no_of_trippings: agg.trippings,
+        loss_time_min: agg.loss_time_min,
+        loss_time_u1_min: agg.u1_min,
+        loss_time_u2_min: agg.u2_min,
+        
         reason: agg.reasons.join(' + '),
         fault_details: details,
         updated_at: new Date().toISOString()
@@ -2475,10 +2700,16 @@ window.processLegacyImport = async function() {
                     let row = rows[i];
                     if(!row) continue;
                     let rowStr = row.join(" ");
-                    let match = rowStr.match(/Nepali Date.*?(\d{1,2})\D+(\d{1,2})\D+(\d{4})/i);
-                    if(match) {
-                        nepaliDateStr = `${match[3]}.${match[2].padStart(2,'0')}.${match[1].padStart(2,'0')}`;
-                        console.log(`Found Nepali date: ${nepaliDateStr}`);
+                    
+                    // Checks for YYYY-MM-DD first, then falls back to DD-MM-YYYY
+                    let matchYYYY = rowStr.match(/Nepali Date.*?(\d{4})\D+(\d{1,2})\D+(\d{1,2})/i);
+                    let matchDD = rowStr.match(/Nepali Date.*?(\d{1,2})\D+(\d{1,2})\D+(\d{4})/i);
+                    
+                    if(matchYYYY) {
+                        nepaliDateStr = `${matchYYYY[1]}.${matchYYYY[2].padStart(2,'0')}.${matchYYYY[3].padStart(2,'0')}`;
+                        break;
+                    } else if (matchDD) {
+                        nepaliDateStr = `${matchDD[3]}.${matchDD[2].padStart(2,'0')}.${matchDD[1].padStart(2,'0')}`;
                         break;
                     }
                 }
@@ -2532,7 +2763,7 @@ window.processLegacyImport = async function() {
 
                 let inDataBlock = false;
                 let rowsFound = 0;
-                let sheetPayloads = []; // NEW: Array to hold this sheet's rows
+                let sheetPayloads = []; 
 
                 for (let i=0; i<rows.length; i++) {
                     let r = rows[i];
@@ -2653,14 +2884,12 @@ window.processLegacyImport = async function() {
                     return n; // Returns original name if no match
                 };
 
-                // --- NEW: EXTRACT SIGNATURE NAMES FROM BOTTOM OF EXCEL ---
                 let shiftAName = null, shiftBName = null, shiftCName = null;
                 for (let k = 0; k < rows.length; k++) {
                     if (!rows[k]) continue;
                     for (let j = 0; j < rows[k].length; j++) {
                         let cellStr = String(rows[k][j] || "").trim();
                         
-                        // Find cells containing "Name :"
                         if (cellStr.toLowerCase().includes("name :") || cellStr.toLowerCase().includes("name:")) {
                             let parts = cellStr.split(/:/);
                             if (parts.length > 1) {
@@ -2677,7 +2906,6 @@ window.processLegacyImport = async function() {
 
                 // Auto-fill extracted names into the 05:00, 13:00, and 21:00 hour logs
                 sheetPayloads.forEach(p => {
-                    // Normalize the name even if it was typed directly into the hourly row
                     if (p.remarks) p.remarks = formatOperatorName(p.remarks);
 
                     // Inject the extracted bottom-of-page names
@@ -2686,9 +2914,7 @@ window.processLegacyImport = async function() {
                     if (p.log_time === '21:00:00' && shiftCName && !p.remarks) p.remarks = shiftCName;
                 });
 
-                payloads.push(...sheetPayloads); // Add modified rows to main upload queue
-                // ---------------------------------------------------------
-
+                payloads.push(...sheetPayloads); 
                 console.log(`Sheet ${sheetName}: Found ${rowsFound} rows of data`);
                 if (rowsFound > 0) processedSheets++;
             }
@@ -2751,7 +2977,6 @@ window.processLegacyImport = async function() {
 // ==========================================
 // AUTO-REFRESH SUMMARY TABS ON DATE CHANGE
 // ==========================================
-// 1. Auto-refresh Daily Summary when date picker changes
 const summaryDatePicker = document.getElementById('summary-date-picker');
 if (summaryDatePicker) {
     summaryDatePicker.addEventListener('change', () => {
@@ -2760,7 +2985,6 @@ if (summaryDatePicker) {
     });
 }
 
-// 2. Auto-refresh Monthly Tabular when month or year dropdown changes
 const summaryMonthSelect = document.getElementById('summary-month-select');
 const summaryMonthYear = document.getElementById('summary-month-year');
 
@@ -2778,7 +3002,6 @@ if (summaryMonthYear) {
     });
 }
 
-// Add auto-refresh to the main Hourly Log date picker too, just in case!
 const mainDatePicker = document.getElementById('log-date');
 if (mainDatePicker) {
     mainDatePicker.addEventListener('change', () => {
@@ -2786,26 +3009,23 @@ if (mainDatePicker) {
     });
 }
 
-// 3. Auto-refresh Daily Data Master (8:00 AM / 12:00 PM) on date change
 const dailyDataDate = document.getElementById('dd-entry-date');
 if (dailyDataDate) {
     dailyDataDate.addEventListener('change', () => {
         const timeSelect = document.getElementById('dd-entry-time');
-        // If 08:00 or 12:00 is already selected, force it to re-fetch the data for the new date!
         if (timeSelect && timeSelect.value !== '') {
             timeSelect.dispatchEvent(new Event('change'));
         }
     });
 }
 
-
 // Start the whole process
 startPage();
+
 // ==========================================
 // ADMIN THRESHOLD MANAGEMENT
 // ==========================================
 
-// Default thresholds (used as fallback if DB not available)
 const DEFAULT_THRESHOLDS = {
     max_unit_mw: 5.3,
     max_out_mw: 10.6,
@@ -2826,10 +3046,8 @@ const DEFAULT_THRESHOLDS = {
     pressure_max: 900,
     trans_t_max: 70,
     trans_lvl_max: 9.5
-
 };
 
-// Global thresholds (loaded from DB, fall back to defaults)
 window.validationThresholds = { ...DEFAULT_THRESHOLDS };
 
 const THRESHOLD_FIELD_MAP = {
@@ -3011,18 +3229,30 @@ window.deleteSingleFaultEvent = async function(rowId, faultIndex) {
     let details = [...row.fault_details];
     details.splice(faultIndex, 1);
 
-    // 3. Recalculate all the MWh aggregates for the day
-    let agg = { dispatch_mwh: 0, forced_outage_mwh: 0, grid_fault_mwh: 0, line_132kv_mwh: 0, fm_33kv_mwh: 0, fm_penstock_mwh: 0, fm_equipment_mwh: 0, reasons: [] };
+    // 3. Recalculate all the MWh aggregates AND Minutes for the day
+    let agg = { 
+        dispatch_mwh: 0, forced_outage_mwh: 0, grid_fault_mwh: 0, line_132kv_mwh: 0, 
+        fm_33kv_mwh: 0, fm_penstock_mwh: 0, fm_equipment_mwh: 0, reasons: [],
+        nea_trip: 0, loss_time_min: 0, u1_min: 0, u2_min: 0, trippings: details.length 
+    };
     
     details.forEach(f => {
         agg.reasons.push(f.reason);
-        if(f.type === 'Dispatch instruction') agg.dispatch_mwh += Number(f.mwh || 0);
-        else if(f.type === 'Non-Dispatch') agg.forced_outage_mwh += Number(f.mwh || 0);
-        else if(f.type === 'Grid Faults') agg.grid_fault_mwh += Number(f.mwh || 0);
-        else if(f.type === '132 kV line faults') agg.line_132kv_mwh += Number(f.mwh || 0);
-        else if(f.type === '33 kV line fault') agg.fm_33kv_mwh += Number(f.mwh || 0);
-        else if(f.type === 'penstock pipe fault') agg.fm_penstock_mwh += Number(f.mwh || 0);
-        else if(f.type === 'plant equipment issue') agg.fm_equipment_mwh += Number(f.mwh || 0);
+        const m = Number(f.mwh || 0);
+        const mins = Number(f.durMins || 0);
+
+        if(f.type === 'Dispatch instruction') { agg.dispatch_mwh += m; agg.nea_trip += mins; }
+        else if(f.type === 'Non-Dispatch') { agg.forced_outage_mwh += m; agg.nea_trip += mins; }
+        else if(f.type === 'Grid Faults') { agg.grid_fault_mwh += m; agg.loss_time_min += mins; }
+        else if(f.type === '132 kV line faults') { agg.line_132kv_mwh += m; agg.loss_time_min += mins; }
+        else if(f.type === '33 kV line fault') { agg.fm_33kv_mwh += m; }
+        else if(f.type === 'penstock pipe fault') { agg.fm_penstock_mwh += m; }
+        else if(f.type === 'plant equipment issue') { agg.fm_equipment_mwh += m; }
+
+        if(f.type !== 'Dispatch instruction' && f.type !== 'Non-Dispatch' && f.type !== 'Grid Faults' && f.type !== '132 kV line faults'){
+            agg.u1_min += mins;
+            agg.u2_min += mins;
+        }
     });
 
     const updatePayload = {
@@ -3030,6 +3260,13 @@ window.deleteSingleFaultEvent = async function(rowId, faultIndex) {
         energy_loss_line_trip: Number((agg.grid_fault_mwh + agg.line_132kv_mwh).toFixed(3)),
         energy_loss_other: Number((agg.fm_33kv_mwh + agg.fm_penstock_mwh + agg.fm_equipment_mwh).toFixed(3)),
         total_energy_loss: Number((agg.dispatch_mwh + agg.forced_outage_mwh + agg.grid_fault_mwh + agg.line_132kv_mwh + agg.fm_33kv_mwh + agg.fm_penstock_mwh + agg.fm_equipment_mwh).toFixed(3)),
+        
+        nea_trip_loss_time_min: agg.nea_trip,
+        no_of_trippings: agg.trippings,
+        loss_time_min: agg.loss_time_min,
+        loss_time_u1_min: agg.u1_min,
+        loss_time_u2_min: agg.u2_min,
+        
         reason: agg.reasons.join(' + '),
         fault_details: details,
         updated_at: new Date().toISOString()

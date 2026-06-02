@@ -736,6 +736,19 @@
 
     <div id="global-footer-container" class="shrink-0 no-print"></div>
 
+    <div id="action-modal-overlay" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[9999] hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-300" id="action-modal-box">
+            <div class="bg-indigo-600 p-4 text-center">
+                <h2 id="action-modal-title" class="text-lg font-black text-white uppercase tracking-widest">Notification</h2>
+            </div>
+            <div class="p-6 text-center">
+                <p id="action-modal-msg" class="text-slate-600 font-medium mb-6 text-sm"></p>
+                <div id="action-modal-buttons" class="flex justify-center gap-4">
+                    </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="./assets/js/hourly-log.js"></script>
 </body>
 </html>

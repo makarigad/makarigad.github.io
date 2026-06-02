@@ -2,11 +2,6 @@
   "name": "makarigad-app",
   "version": "1.0.0",
   "description": "Makari Gad Hydroelectric Project — command center and operator tools",
-  "main": "main.js",
-  "scripts": {
-    "start": "electron .",
-    "build": "electron-builder --win"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/makarigad/makarigad.github.io.git"
@@ -18,9 +13,5 @@
   "bugs": {
     "url": "https://github.com/makarigad/makarigad.github.io/issues"
   },
-  "homepage": "https://github.com/makarigad/makarigad.github.io#readme",
-  "devDependencies": {
-    "electron": "^41.0.4",
-    "electron-builder": "^26.8.1"
-  }
+  "homepage": "https://github.com/makarigad/makarigad.github.io#readme"
 }

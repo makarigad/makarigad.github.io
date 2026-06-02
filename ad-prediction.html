@@ -106,13 +106,20 @@ input[type=checkbox]{width:auto;accent-color:var(--acc);}
 <div id="toast"></div>
 
 <header class="sticky top-0 z-40 px-5 py-2.5 flex justify-between items-center shadow-xl" style="background:#0a1628;border-bottom:1px solid #1e293b;">
-  <div>
-    <div class="font-bold text-sm flex items-center gap-2 text-white">
-      <i class="fa-solid fa-water text-cyan-400"></i> Makari Gad — AD Prediction Engine v6.8
+  <div class="flex items-center gap-4">
+    <a href="index.html" class="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1e293b] hover:bg-blue-600 border border-[#334155] hover:border-blue-500 transition-all text-slate-300 hover:text-white" title="Return to Main Hub">
+      <i class="fa-solid fa-arrow-left text-sm"></i>
+    </a>
+
+    <div>
+      <div class="font-bold text-sm flex items-center gap-2 text-white">
+        <i class="fa-solid fa-water text-cyan-400"></i> Makari Gad — AD Prediction Engine v6.8
+      </div>
+      <div class="text-[10px] text-slate-500">Probabilistic Bounds · Explainable AI · Optimal Architecture</div>
     </div>
-    <div class="text-[10px] text-slate-500">Probabilistic Bounds · Explainable AI · Optimal Architecture</div>
   </div>
-  <div class="flex gap-2 items-center flex-wrap">
+  
+  <div class="flex gap-2 items-center flex-wrap mt-2 sm:mt-0">
     <div id="chip-today" class="px-2.5 py-1 rounded-full text-[11px] font-bold text-cyan-400" style="background:#0f1f35;border:1px solid #1e3a5f;"></div>
     <div id="chip-rate"  class="px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-400" style="background:#0f1f35;border:1px solid #1e3a5f;">Rate: —</div>
     <div id="chip-db"   class="px-2.5 py-1 rounded-full text-[11px] font-semibold text-slate-400" style="background:#0f1f35;border:1px solid #1e3a5f;">DB: —</div>

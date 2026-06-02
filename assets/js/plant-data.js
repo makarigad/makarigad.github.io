@@ -2085,7 +2085,7 @@ function updateTrendChart(dailyData, historicalData) {
 }
 
 document.getElementById('download-trend-btn')?.addEventListener('click', () => {
-    const canvas = document.getElementById('trend-chart');
+    const canvas = document.getElementById('daily-trend-chart');
     if (!canvas) return;
     const nc = document.createElement('canvas');
     nc.width = canvas.width;

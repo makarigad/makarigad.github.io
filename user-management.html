@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#4f46e5" />
   <title>User & HR Management - Makari Gad</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -190,7 +191,7 @@
             if (user.role === 'operator') roleColor = 'bg-indigo-100 text-indigo-700';
             if (user.role === 'staff') roleColor = 'bg-emerald-100 text-emerald-700';
 
-            const isMaster = user.email === 'upenjyo@gmail.com';
+            const isMaster = user.role === 'admin';
             const tr = document.createElement('tr');
             tr.className = "hover:bg-slate-50";
 

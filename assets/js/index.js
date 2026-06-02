@@ -19,11 +19,11 @@ function updateConnBar(online) {
     const text = document.getElementById('page-conn-text');
     if (!bar) return;
     if (online) {
-        bar.className  = 'flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl transition-all duration-300';
+        bar.className  = 'flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 shadow-sm px-3 py-1.5 rounded-lg transition-all duration-300';
         dot.className  = 'live-dot online';
         text.textContent = 'Online';
     } else {
-        bar.className  = 'flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl transition-all duration-300';
+        bar.className  = 'flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 shadow-sm px-3 py-1.5 rounded-lg transition-all duration-300';
         dot.className  = 'live-dot offline';
         text.textContent = 'Offline Mode';
     }
@@ -32,49 +32,51 @@ window.addEventListener('online',  () => updateConnBar(true));
 window.addEventListener('offline', () => updateConnBar(false));
 updateConnBar(navigator.onLine);
 
-// ── Observer: bind click on display-user-name once injected by header ──
-const _observer = new MutationObserver(() => {
-    const el = document.getElementById('display-user-name');
-    if (!el || el.dataset.clickBound) return;
-    el.dataset.clickBound = 'true';
-    el.classList.add('clickable-username');
-    el.title = 'Click to edit profile';
+// ── Modals (login / profile) ──
+function closeLoginModal() {
+    const m = document.getElementById('login-modal');
+    if (!m) return;
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+}
 
-    if (!navigator.onLine) el.classList.add('offline-disabled');
+function closeProfileModal() {
+    const m = document.getElementById('profile-modal');
+    if (!m) return;
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+}
 
-    el.addEventListener('click', () => {
-        if (!navigator.onLine) {
-            showNotification('You must be online to edit your profile.', true);
-            return;
-        }
-        const modal = document.getElementById('profile-modal');
-        if (!modal) return;
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        const pw = document.getElementById('prof-password');
-        if (pw) pw.value = '';
-    });
+document.getElementById('lm-toggle-pw')?.addEventListener('click', function () {
+    const i = document.getElementById('login-password');
+    const isHidden = i?.type === 'password';
+    if (i) i.type = isHidden ? 'text' : 'password';
+    this.textContent = isHidden ? 'Hide' : 'Show';
 });
-_observer.observe(document.body, { childList: true, subtree: true });
 
-window.addEventListener('offline', () => {
-    document.getElementById('display-user-name')?.classList.add('offline-disabled');
+document.getElementById('login-modal-close')?.addEventListener('click', closeLoginModal);
+document.getElementById('profile-modal-close')?.addEventListener('click', closeProfileModal);
+
+document.getElementById('login-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'login-modal') closeLoginModal();
 });
-window.addEventListener('online', () => {
-    document.getElementById('display-user-name')?.classList.remove('offline-disabled');
+
+document.getElementById('profile-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'profile-modal') closeProfileModal();
 });
 
 // ── Page initialisation ──
 async function startPage() {
     const session = await initializeApplication(false);
 
+    const guestHint = document.getElementById('quick-nav-guest-hint');
     if (session?.user) {
         window.currentUserEmail = session.user.email;
         window.userRole = session.role;
         if (navigator.onLine) fetchUserProfile(session.user.email);
-
-        const qnav = document.getElementById('quick-nav-section');
-        if (qnav) qnav.classList.remove('hidden');
+        if (guestHint) guestHint.classList.add('hidden');
+    } else if (guestHint) {
+        guestHint.classList.remove('hidden');
     }
 
     loadDashboardData();
@@ -103,7 +105,7 @@ async function loadAdminNotice() {
                 }
             }
         }
-    } catch(e) { console.warn('Notice load error:', e); }
+    } catch (e) { console.warn('Notice load error:', e); }
 }
 
 // ── Login modal form ──
@@ -137,13 +139,8 @@ document.getElementById('login-form')?.addEventListener('submit', async (e) => {
         spinner?.classList.add('hidden');
         if (submitBtn) submitBtn.disabled = false;
     } else {
-        // Change text so they know it's loading their location
         if (btnText) btnText.textContent = 'Checking location...';
-
-        // 👉 TRIGGER AUTO CHECK-IN HERE (Wait for it to finish) 👈
         await performAutoAttendance(email, 'IN');
-
-        // Now reload the page to apply the login session
         if (btnText) btnText.textContent = 'Redirecting…';
         window.location.reload();
     }
@@ -164,11 +161,21 @@ async function fetchUserProfile(email) {
             setField('prof-phone',    data.phone);
             setField('prof-dob',      data.dob);
             setField('prof-company',  data.company);
+            updateHeaderDisplayName(data.full_name || email.split('@')[0]);
         } else {
             setField('prof-company', 'Makari Gad Hydroelectric Project');
+            updateHeaderDisplayName(email.split('@')[0]);
         }
     } catch {
         console.warn('[profile] Could not fetch (offline or slow)');
+        updateHeaderDisplayName(email.split('@')[0]);
+    }
+}
+
+function updateHeaderDisplayName(name) {
+    const headerEmailSpan = document.getElementById('header-email')?.querySelector('span');
+    if (headerEmailSpan && name) {
+        headerEmailSpan.textContent = name.includes(' ') ? name.split(' ')[0] : name;
     }
 }
 
@@ -214,17 +221,9 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
         if (dbErr) throw dbErr;
 
         showNotification('Profile updated successfully!');
-        const modal = document.getElementById('profile-modal');
-        modal?.classList.add('hidden');
-        modal?.classList.remove('flex');
+        closeProfileModal();
 
-        if (payload.full_name) {
-            const nameEl = document.getElementById('display-user-name');
-            if (nameEl) nameEl.textContent = payload.full_name;
-            // Also update header email button span
-            const headerEmailSpan = document.getElementById('header-email')?.querySelector('span');
-            if (headerEmailSpan) headerEmailSpan.textContent = payload.full_name.split(' ')[0];
-        }
+        if (payload.full_name) updateHeaderDisplayName(payload.full_name);
 
     } catch (err) {
         showNotification('Error saving profile: ' + err.message, true);
@@ -241,7 +240,6 @@ async function loadDashboardData() {
         const nepalNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
         const CUTOFF_HOUR = 12;
 
-        // Determine what "Today" should be based on the 12:00 PM cutoff
         const displayDate = new Date(nepalNow);
         if (nepalNow.getHours() < CUTOFF_HOUR) {
             displayDate.setDate(displayDate.getDate() - 1);
@@ -249,23 +247,20 @@ async function loadDashboardData() {
 
         const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const todayStr = fmt(displayDate);
-        
-        const yesterday = new Date(displayDate); 
+
+        const yesterday = new Date(displayDate);
         yesterday.setDate(displayDate.getDate() - 1);
         const yesterdayStr = fmt(yesterday);
 
         if (!navigator.onLine) throw new Error('Offline');
 
-        // TRIGGER THE NEW NOON-TO-NOON FUNCTION
         fetchNoonToNoonData();
 
-        // Calendar lookup
         const { data: calData } = await fetchWithTimeout(
             supabase.from('calendar_mappings').select('nep_date_str, nep_year, nep_month').eq('eng_date', todayStr).maybeSingle(),
             4000
         );
 
-        // Date badge
         const badge = document.getElementById('card-update');
         if (badge) {
             let dateLabel = calData?.nep_date_str ?? todayStr;
@@ -292,7 +287,6 @@ async function loadDashboardData() {
             span.textContent = 'Today: ' + dateLabel + rangeText;
         }
 
-        // Plant data
         const [{ data: todayData }, { data: prevData }] = await Promise.all([
             fetchWithTimeout(supabase.from('plant_data').select('*').eq('id', todayStr).maybeSingle(), 4000),
             fetchWithTimeout(supabase.from('plant_data').select('*').eq('id', yesterdayStr).maybeSingle(), 4000),
@@ -306,7 +300,7 @@ async function loadDashboardData() {
             u2 = Math.max(0, (todayData.unit2_gen ?? 0) - (prevData.unit2_gen ?? 0));
             stationCons = Math.max(0, (todayData.station_trans ?? 0) - (prevData.station_trans ?? 0));
             gridImport = Math.max(0, (todayData.import_substation ?? 0) - (prevData.import_substation ?? 0));
-            
+
             grossGen = u1 + u2;
             netExport = Math.max(0, (todayData.export_substation ?? 0) - (prevData.export_substation ?? 0));
 
@@ -323,14 +317,14 @@ async function loadDashboardData() {
         const grossMWh  = toMWh(grossGen);
         const exportMWh = toMWh(netExport);
         const plantFactor = (grossMWh / 240) * 100;
-        
+
         const u1MWh = toMWh(u1);
         const u2MWh = toMWh(u2);
 
         setText('card-gen',    grossMWh  > 0 ? grossMWh.toLocaleString('en-US',  { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-export', exportMWh > 0 ? exportMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-pf',     grossMWh  > 0 ? plantFactor.toFixed(1) + '%' : '0.0%');
-        
+
         setText('card-u1-gen', u1MWh > 0 ? u1MWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-u2-gen', u2MWh > 0 ? u2MWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
         setText('card-station-cons', stationCons > 0 ? stationCons.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kWh' : '0.0 kWh');
@@ -358,39 +352,35 @@ async function loadDashboardData() {
     }
 }
 
-// ── NOON TO NOON LOGIC ──
 async function fetchNoonToNoonData() {
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
     const currentHour = now.getHours();
 
-    // 1. Establish the window (12 PM yesterday or today)
     let startDate = new Date(now);
     if (currentHour < 12) {
         startDate.setDate(startDate.getDate() - 1);
     }
-    
+
     const startEnglishDate = startDate.toISOString().split('T')[0];
     const endEnglishDate = now.toISOString().split('T')[0];
 
     try {
-        // Fetch Nepali Date for Display
         let nepaliStartDate = startEnglishDate;
         const { data: calData } = await supabase
             .from('calendar_mappings')
             .select('nep_date_str')
             .eq('eng_date', startEnglishDate)
             .maybeSingle();
-            
+
         if (calData && calData.nep_date_str) {
             nepaliStartDate = calData.nep_date_str;
         }
-        
+
         const dateLabel = document.getElementById('noon-start-date');
         if (dateLabel) dateLabel.textContent = nepaliStartDate;
 
-        // Fetch logs for the date range, ordered chronologically
         const { data: logs, error } = await supabase
-            .from('hourly_logs') 
+            .from('hourly_logs')
             .select('e_u1_gwh, e_u2_gwh, log_date, log_time')
             .gte('log_date', startEnglishDate)
             .lte('log_date', endEnglishDate)
@@ -402,7 +392,6 @@ async function fetchNoonToNoonData() {
         let totalGenMWh = 0;
 
         if (logs && logs.length > 0) {
-            // Filter logs strictly within the 12:00 PM -> 11:59 AM window
             const windowLogs = logs.filter(log => {
                 const isStartDay = log.log_date === startEnglishDate;
                 const logHour = parseInt(log.log_time.split(':')[0], 10);
@@ -411,31 +400,26 @@ async function fetchNoonToNoonData() {
             });
 
             if (windowLogs.length > 0) {
-                // The first log is our baseline (12:00 PM reading)
                 const firstLog = windowLogs[0];
                 const startU1 = parseFloat(firstLog.e_u1_gwh) || 0;
                 const startU2 = parseFloat(firstLog.e_u2_gwh) || 0;
 
-                // The last log is the most current reading
                 const lastLog = windowLogs[windowLogs.length - 1];
                 const latestU1 = parseFloat(lastLog.e_u1_gwh) || 0;
                 const latestU2 = parseFloat(lastLog.e_u2_gwh) || 0;
 
-                // Difference between Latest PMU and Start PMU
                 const genU1 = Math.max(0, latestU1 - startU1);
                 const genU2 = Math.max(0, latestU2 - startU2);
-                
-                // Multiply by 1000 to convert GWh to MWh
+
                 totalGenMWh = (genU1 + genU2) * 1000;
             }
         }
 
-        // Display Data
         const formattedTotal = totalGenMWh > 0 ? totalGenMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh';
         setText('card-noon-gen', formattedTotal);
 
     } catch (err) {
-        console.error("Error fetching Noon-to-Noon data:", err);
+        console.error('Error fetching Noon-to-Noon data:', err);
         setText('card-noon-gen', '—');
     }
 }
@@ -444,6 +428,6 @@ function setText(id, value) {
     const el = document.getElementById(id);
     if (el) {
         el.textContent = value;
-        el.classList.remove('skeleton-text'); 
+        el.classList.remove('skeleton-text');
     }
 }

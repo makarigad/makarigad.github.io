@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4f46e5">
+<link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml">
 <title>Makari Gad – AD Prediction Engine v6.8</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script type="module" src="./assets/js/ad-prediction-init.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -305,10 +307,8 @@ input[type=checkbox]{width:auto;accent-color:var(--acc);}
 // ║  GLOBALS & STATE                                          ║
 // ╚═══════════════════════════════════════════════════════════╝
 const CONFIG = {
-  SB_URL: 'https://ineaqjsmabbsjwwbjfya.supabase.co',
-  SB_KEY: 'sb_publishable_uadlDXas6Tpif6j4eWp30g_j6OG326s', // Ensure RLS is active on Supabase tables
-  MAX_EXPORT: 236,  
-  MAX_THEOR: 250  
+  MAX_EXPORT: 236,
+  MAX_THEOR: 250
 };
 
 const MONTHS = ["Baisakh","Jestha","Ashadh","Shrawan","Bhadra","Ashoj","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
@@ -323,7 +323,34 @@ const FALLBACK_HIST = {
 };
 
 let sb = null;
-try { if (typeof window.supabase !== 'undefined') sb = window.supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY); } catch(e) {}
+let _supabaseInitPromise = null;
+
+async function ensureSupabase() {
+  if (sb) return sb;
+  if (window.__mgSupabase) {
+    sb = window.__mgSupabase;
+    return sb;
+  }
+  if (!_supabaseInitPromise) {
+    _supabaseInitPromise = (async () => {
+      if (window.__mgSupabaseReady) {
+        try {
+          const ready = await window.__mgSupabaseReady;
+          if (ready) return ready;
+        } catch (err) {
+          console.warn('[ensureSupabase] init module pending failed:', err.message);
+        }
+      }
+      const mod = await import('./assets/js/core-app.js');
+      const client = mod.supabase;
+      if (!client) throw new Error('Supabase client failed to initialize');
+      window.__mgSupabase = client;
+      return client;
+    })();
+  }
+  sb = await _supabaseInitPromise;
+  return sb;
+}
 
 let state = {
   todayEng:       getTodayNPT(),
@@ -743,7 +770,8 @@ function computeDeviation(weekPredictions) {
 // ║  DATA LOADING                                             ║
 // ╚═══════════════════════════════════════════════════════════╝
 async function loadHistoricalYear(year, monthName) {
-  const {data:cal} = await sb.from('calendar_mappings').select('eng_date,nep_day').eq('nep_year',year).eq('nep_month',monthName).order('nep_day');
+  const client = await ensureSupabase();
+  const {data:cal} = await client.from('calendar_mappings').select('eng_date,nep_day').eq('nep_year',year).eq('nep_month',monthName).order('nep_day');
   if (!cal?.length) {
       if (FALLBACK_HIST[year]) {
           const res = {}; FALLBACK_HIST[year].forEach((val, idx) => res[idx+1] = val); return res;
@@ -752,7 +780,7 @@ async function loadHistoricalYear(year, monthName) {
   }
   const startEng = fmtEngDate(cal[0].eng_date);
   const endEng   = fmtEngDate(cal[cal.length-1].eng_date);
-  const {data:hist} = await sb.from('historical_data').select('id,active_power_kw').gte('id',`${startEng}_0000`).lte('id',`${endEng}_2359`);
+  const {data:hist} = await client.from('historical_data').select('id,active_power_kw').gte('id',`${startEng}_0000`).lte('id',`${endEng}_2359`);
   
   if (!hist?.length) {
       if (FALLBACK_HIST[year]) {
@@ -805,16 +833,17 @@ async function loadAll() {
     .map((it,i)=>`<div class="load-item" id="load-item-${i}"><div class="load-dot" style="background:${it.status==='done'?'#10b981':it.status==='loading'?'#3b82f6':'#334155'};"></div><span class="text-slate-300">${it.label}</span>${it.status==='loading'?'<span class="spin ml-1"></span>':''}</div>`).join('');
 
   try {
-    if (!sb) throw new Error('Network offline');
+    const client = await ensureSupabase();
+    if (!navigator.onLine) throw new Error('Network offline');
     const pfx = `${year}.${p2(mVal)}`;
     const prevM = mVal === 1 ? 12 : mVal - 1;
     const prevY = mVal === 1 ? year - 1 : year;
     
     // STEP 1: Fetch Calendars first so we can accurately get the end of previous month
     const [ceRes, curCalRes, prevCalRes] = await Promise.all([
-      sb.from('contract_energy').select('*').eq('year',year).eq('month',month).single(),
-      sb.from('calendar_mappings').select('eng_date,nep_day,nep_date_str').eq('nep_year',year).eq('nep_month',month).order('nep_day'),
-      sb.from('calendar_mappings').select('eng_date,nep_day').eq('nep_year',prevY).eq('nep_month',MONTHS[prevM-1]).order('nep_day')
+      client.from('contract_energy').select('*').eq('year',year).eq('month',month).single(),
+      client.from('calendar_mappings').select('eng_date,nep_day,nep_date_str').eq('nep_year',year).eq('nep_month',month).order('nep_day'),
+      client.from('calendar_mappings').select('eng_date,nep_day').eq('nep_year',prevY).eq('nep_month',MONTHS[prevM-1]).order('nep_day')
     ]);
 
     if(ceRes.data) {
@@ -838,10 +867,10 @@ async function loadAll() {
 
     // STEP 2: Fetch Plant Metrics and Historical Arrays in Parallel
     const [plantRes, recentPlantRes, rfRes, allRfRes, h1, h2, h3, h4] = await Promise.all([
-      sb.from('plant_data').select('id,nepali_date,export_substation').or(`id.eq.${prevDayEng},nepali_date.like.${pfx}%`).order('id'),
-      sb.from('plant_data').select('id,export_substation').lte('id',state.todayEng).order('id',{ascending:false}).limit(17),
-      sb.from('rainfall_data').select('day,api_cat_precip,api_cat_temp,api_in_temp').eq('nepali_year',year).eq('nepali_month',month).order('day'),
-      sb.from('rainfall_data').select('nepali_year, day, api_cat_precip').eq('nepali_month',month),
+      client.from('plant_data').select('id,nepali_date,export_substation').or(`id.eq.${prevDayEng},nepali_date.like.${pfx}%`).order('id'),
+      client.from('plant_data').select('id,export_substation').lte('id',state.todayEng).order('id',{ascending:false}).limit(17),
+      client.from('rainfall_data').select('day,api_cat_precip,api_cat_temp,api_in_temp').eq('nepali_year',year).eq('nepali_month',month).order('day'),
+      client.from('rainfall_data').select('nepali_year, day, api_cat_precip').eq('nepali_month',month),
       loadHistoricalYear(year-1, month),
       loadHistoricalYear(year-2, month),
       loadHistoricalYear(year-3, month),
@@ -1345,14 +1374,17 @@ function toast(msg, type='info') {
   setTimeout(()=>el.remove(), 4000);
 }
 
-window.onload=()=>{
+window.onload=async ()=>{
   const {year:curY, month:curM} = getCurrentNepPeriod();
   const mSel=document.getElementById('sel-month');
   MONTHS.forEach((m,i)=>mSel.add(new Option(m,i+1))); mSel.value=curM;
   const ySel=document.getElementById('sel-year');
   for(let y=2079;y<=curY+3;y++) ySel.add(new Option(y,y)); ySel.value=curY;
   document.getElementById('chip-today').textContent=`📅 NPT: ${state.todayEng}`;
-  updateRateDisplay(); loadAll();
+  if (window.__mgSupabaseReady) {
+    try { await window.__mgSupabaseReady; } catch (_) { /* loadAll falls back to offline matrix */ }
+  }
+  await loadAll();
 };
 </script>
 </body>

@@ -1,200 +1,282 @@
-import { supabase, fetchWithTimeout } from './core-app.js';
+import { supabase, fetchWithTimeout, initHeaderUI, initializeApplication } from './core-app.js';
 
 let allItems = [];
+let stores = [];
+let pumps = [];
+let equipment = [];
 let currentItem = null;
+let selectedStoreId = null;
+let currentUser = null;
+let userRole = 'operator';
+let v2TablesOk = true;
 
-// Temporary Fuel Importer State
 let fuelWorkbookSheets = [];
 let currentSheetIdx = 0;
-let fuelMasterIds = {}; 
+let fuelMasterIds = {};
+
+const todayNPT = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Kathmandu' });
 
 function showToast(message, type = 'success') {
     let modal = document.getElementById('notification-modal');
     let msgEl = document.getElementById('notification-message');
     if (!modal) {
-        modal = document.createElement('div'); modal.id = 'notification-modal';
+        modal = document.createElement('div');
+        modal.id = 'notification-modal';
         modal.className = 'fixed top-4 right-4 z-[400] transition-all duration-300 pointer-events-none max-w-xs w-full bg-white rounded-xl shadow-2xl border-l-4 px-4 py-3 opacity-0 -translate-y-4';
-        msgEl = document.createElement('p'); msgEl.id = 'notification-message'; msgEl.className = 'text-xs font-bold text-slate-700';
-        modal.appendChild(msgEl); document.body.appendChild(modal);
+        msgEl = document.createElement('p');
+        msgEl.id = 'notification-message';
+        msgEl.className = 'text-xs font-bold text-slate-700';
+        modal.appendChild(msgEl);
+        document.body.appendChild(modal);
     }
-    if (type === 'error') modal.classList.replace('border-emerald-500', 'border-rose-500');
-    else if (type === 'warning') { modal.classList.replace('border-emerald-500', 'border-amber-500'); modal.classList.replace('border-rose-500', 'border-amber-500'); }
-    else { modal.classList.replace('border-rose-500', 'border-emerald-500'); modal.classList.replace('border-amber-500', 'border-emerald-500'); }
-    
+    modal.classList.remove('border-emerald-500', 'border-rose-500', 'border-amber-500');
+    if (type === 'error') modal.classList.add('border-rose-500');
+    else if (type === 'warning') modal.classList.add('border-amber-500');
+    else modal.classList.add('border-emerald-500');
     msgEl.textContent = message;
     modal.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
     modal.classList.add('opacity-100', 'translate-y-0');
     setTimeout(() => {
         modal.classList.remove('opacity-100', 'translate-y-0');
         modal.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
-    }, 3000);
+    }, 3200);
 }
 
 window.closeModal = (id) => {
-    const m = document.getElementById(id); 
-    if(m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+    const m = document.getElementById(id);
+    if (m) { m.classList.add('hidden'); m.classList.remove('flex'); }
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
+function isAdmin() { return userRole === 'admin'; }
+function displayName() {
+    return currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'User';
+}
+
+function canEditLog(log) {
+    if (!log) return false;
+    if (isAdmin()) return true;
+    const email = currentUser?.email?.toLowerCase();
+    if (!email) return false;
+    return (log.created_by_email || '').toLowerCase() === email || log.operator_uid === currentUser?.id;
+}
+
+async function captureGeo() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve({ latitude: null, longitude: null, geo_label: null });
+        navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                geo_label: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`
+            }),
+            () => resolve({ latitude: null, longitude: null, geo_label: 'Location not shared' }),
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        );
+    });
+}
+
+async function writeAudit(entityType, entityId, action, summary, payload = null, geo = null) {
+    if (!v2TablesOk) return;
     try {
+        await supabase.from('inventory_audit').insert([{
+            entity_type: entityType,
+            entity_id: entityId,
+            action,
+            summary,
+            payload,
+            user_email: currentUser?.email,
+            user_name: displayName(),
+            user_role: userRole,
+            latitude: geo?.latitude ?? null,
+            longitude: geo?.longitude ?? null,
+            geo_label: geo?.geo_label ?? null
+        }]);
+    } catch (e) { console.warn('[audit]', e.message); }
+}
+
+function storeName(storeId) {
+    const s = stores.find(x => x.id === storeId);
+    return s?.name || '—';
+}
+
+function getFuelTankItem(storeId, fuelType) {
+    const label = fuelType === 'petrol' ? 'Petrol' : 'Diesel';
+    const sn = storeName(storeId);
+    return allItems.find(i =>
+        i.category === 'Fuel' &&
+        (i.store_id === storeId || (i.store_location && i.store_location.includes(sn))) &&
+        (i.fuel_type === fuelType || i.item_name.toLowerCase().includes(fuelType))
+    );
+}
+
+async function ensureFuelTank(storeId, fuelType) {
+    let item = getFuelTankItem(storeId, fuelType);
+    if (item) return item;
+    const sn = storeName(storeId);
+    const name = `${fuelType === 'petrol' ? 'Petrol' : 'Diesel'} – ${sn}`;
+    const row = {
+        item_name: name,
+        category: 'Fuel',
+        unit: 'Ltr',
+        current_stock: 0,
+        store_id: storeId,
+        fuel_type: fuelType,
+        store_location: sn
+    };
+    const { data, error } = await supabase.from('inventory_items').insert([row]).select().single();
+    if (error) throw error;
+    await writeAudit('item', data.id, 'create', `Auto-created fuel tank: ${name}`);
+    allItems.push(data);
+    return data;
+}
+
+async function insertLog(payload, geo) {
+    const base = {
+        ...payload,
+        created_by_email: currentUser?.email,
+        created_by_name: displayName(),
+        latitude: geo?.latitude,
+        longitude: geo?.longitude,
+        geo_label: geo?.geo_label,
+        operator_uid: currentUser?.id
+    };
+    const { data, error } = await supabase.from('inventory_logs').insert([base]).select().single();
+    if (error) throw error;
+    await writeAudit('log', data.id, 'create', `${payload.txn_type} ${payload.quantity} – ${payload.purpose || payload.txn_subtype || ''}`, base, geo);
+    return data;
+}
+
+async function loadAllData() {
+    try {
+        const { data: st, error: stErr } = await fetchWithTimeout(
+            supabase.from('inventory_stores').select('*').eq('is_active', true).order('sort_order'),
+            6000
+        );
+        if (stErr) { v2TablesOk = false; stores = []; }
+        else stores = st || [];
+    } catch { v2TablesOk = false; stores = []; }
+
+    if (v2TablesOk) {
         try {
-            const [hRes, fRes] = await Promise.all([ fetch('./components/header.html'), fetch('./components/footer.html') ]);
-            if (hRes.ok) document.getElementById('global-header-container').innerHTML = await hRes.text();
-            if (fRes.ok) document.getElementById('global-footer-container').innerHTML = await fRes.text();
-        } catch(e) {}
-
-        const { data: { session }, error: authError } = await supabase.auth.getSession();
-        if (!authError && session) {
-            const loginBtn = document.getElementById('login-btn'), logoutBtn = document.getElementById('logout-btn');
-            const headerEmail = document.getElementById('header-email'), mainNav = document.getElementById('main-nav');
-            if(loginBtn) loginBtn.classList.add('hidden');
-            if(logoutBtn) logoutBtn.classList.remove('hidden');
-            if(mainNav) { mainNav.classList.remove('hidden'); mainNav.classList.add('flex'); }
-            if(headerEmail) {
-                headerEmail.classList.remove('hidden'); headerEmail.classList.add('flex');
-                const nameSpan = headerEmail.querySelector('span');
-                if(nameSpan) nameSpan.textContent = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
-            }
-            document.querySelectorAll('.nav-link').forEach(l => {
-                if (l.getAttribute('data-page') === 'inventory.html') l.classList.add('bg-indigo-50', 'text-indigo-700', '!text-indigo-700', 'border', 'border-indigo-100');
-            });
-            const { data: roleData } = await supabase.from('user_roles').select('role').eq('email', session.user.email).single();
-            if (roleData) {
-                if (roleData.role === 'admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
-                if (roleData.role === 'admin' || roleData.role === 'staff') document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
-            }
-        }
-
-        await loadInventoryItems();
-        setupFilters(); setupSearch(); setupForms(); setupFuelImporter(); setupFuelReport();
-        
-        const dateInput = document.getElementById('txn-date');
-        if (dateInput) dateInput.value = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Kathmandu' });
-        
-        const today = new Date();
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        document.getElementById('fr-start').value = firstDay.toLocaleDateString('sv-SE', { timeZone: 'Asia/Kathmandu' });
-        document.getElementById('fr-end').value = today.toLocaleDateString('sv-SE', { timeZone: 'Asia/Kathmandu' });
-    } catch (error) { console.error(error); }
-});
-
-async function loadInventoryItems() {
-    try {
-        const { data, error } = await fetchWithTimeout(supabase.from('inventory_items').select('*').order('item_name', { ascending: true }));
-        if (error) throw error;
-        allItems = data || [];
-        renderItems(allItems);
-        renderSummaryStats(allItems);   // ← update stats cards after every reload
-    } catch (err) { showToast(err.message, 'error'); }
-}
-
-// ─── RENDER SUMMARY STATS STRIP ───
-function renderSummaryStats(items) {
-    const total       = items.length;
-    const assets      = items.filter(i => i.category === 'Asset').length;
-    const consumables = items.filter(i => i.category === 'Consumable').length;
-    const fuelCount   = items.filter(i => i.category === 'Fuel').length;
-    const wkvCount    = items.filter(i => i.category === 'WKV').length;
-    const zeroStock   = items.filter(i => Number(i.current_stock) <= 0).length;
-
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    set('stat-total',       total);
-    set('stat-assets',      assets);
-    set('stat-consumables', consumables);
-    set('stat-zero',        zeroStock);
-
-    // Filter button counts
-    set('count-all',        total);
-    set('count-fuel',       fuelCount);
-    set('count-consumable', consumables);
-    set('count-asset',      assets);
-    set('count-wkv',        wkvCount);
-
-    // Alert card: pulse if anything is at zero
-    const alertCard = document.getElementById('alert-card');
-    const alertIcon = document.getElementById('alert-icon');
-    const alertLabel = document.getElementById('alert-label');
-    if (alertCard) {
-        if (zeroStock > 0) {
-            alertCard.classList.add('ring-2', 'ring-rose-200');
-            if (alertIcon) alertIcon.classList.add('alert-pulse');
-            if (alertLabel) alertLabel.textContent = zeroStock === 1 ? 'item needs restock' : 'items need restock';
-        } else {
-            alertCard.classList.remove('ring-2', 'ring-rose-200');
-            if (alertIcon) { alertIcon.classList.remove('alert-pulse'); alertIcon.textContent = '✅'; }
-            if (alertLabel) alertLabel.textContent = 'all items stocked';
-        }
-    }
-}
-
-function renderItems(itemsToRender) {
-    const tbody = document.getElementById('inventory-list');
-    tbody.innerHTML = '';
-
-    // Update the filtered-count badge
-    const countBadge = document.getElementById('list-count-badge');
-    if (countBadge) {
-        if (itemsToRender.length < allItems.length) {
-            countBadge.textContent = `${itemsToRender.length} result${itemsToRender.length !== 1 ? 's' : ''}`;
-            countBadge.classList.remove('hidden');
-        } else {
-            countBadge.classList.add('hidden');
-        }
+            const [{ data: pm }, { data: eq }] = await Promise.all([
+                fetchWithTimeout(supabase.from('inventory_fuel_pumps').select('*').eq('is_active', true).order('name'), 5000),
+                fetchWithTimeout(supabase.from('inventory_equipment').select('*, inventory_stores(name)').eq('is_active', true).order('name'), 5000)
+            ]);
+            pumps = pm || [];
+            equipment = eq || [];
+        } catch { pumps = []; equipment = []; }
     }
 
-    if (itemsToRender.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-bold text-xs">
-            <div class="text-3xl mb-2">🔍</div>
-            No items found. Try a different search term.
-        </td></tr>`;
+    const { data, error } = await fetchWithTimeout(
+        supabase.from('inventory_items').select('*').order('item_name', { ascending: true }),
+        8000
+    );
+    if (error) throw error;
+    allItems = data || [];
+}
+
+async function refreshInventory() {
+    await loadAllData();
+    renderStoreChips();
+    renderStats();
+    filterAndSearch(getActiveCategory(), document.getElementById('search-inventory')?.value || '');
+    populateSelects();
+}
+
+const loadInventoryItems = refreshInventory;
+
+function renderStats() {
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('stat-total', allItems.length);
+    set('stat-stores', stores.length || '—');
+    set('stat-zero', allItems.filter(i => Number(i.current_stock) <= 0).length);
+    set('stat-fuel', allItems.filter(i => i.category === 'Fuel').length);
+}
+
+function renderStoreChips() {
+    const wrap = document.getElementById('store-chips');
+    if (!wrap) return;
+    const chips = [{ id: '', name: 'All stores' }, ...stores.map(s => ({ id: s.id, name: s.short_code || s.name }))];
+    wrap.innerHTML = chips.map(c => {
+        const active = selectedStoreId === c.id;
+        return `<button type="button" data-store="${c.id}" class="store-chip shrink-0 px-3 py-2 rounded-xl text-xs font-bold border transition ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}">${c.name}</button>`;
+    }).join('');
+    wrap.querySelectorAll('.store-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            selectedStoreId = btn.getAttribute('data-store') || null;
+            renderStoreChips();
+            filterAndSearch(getActiveCategory(), document.getElementById('search-inventory')?.value || '');
+        });
+    });
+}
+
+function getActiveCategory() {
+    return document.querySelector('.filter-btn.bg-slate-800')?.getAttribute('data-cat') || 'All';
+}
+
+function getFilteredItems() {
+    let list = allItems;
+    if (selectedStoreId) list = list.filter(i => i.store_id === selectedStoreId);
+    const cat = getActiveCategory();
+    if (cat !== 'All') list = list.filter(i => i.category === cat);
+    const q = (document.getElementById('search-inventory')?.value || '').toLowerCase();
+    if (q) {
+        list = list.filter(i =>
+            i.item_name.toLowerCase().includes(q) ||
+            (i.store_location || '').toLowerCase().includes(q) ||
+            storeName(i.store_id).toLowerCase().includes(q)
+        );
+    }
+    return list;
+}
+
+function catBadge(cat) {
+    const map = { Fuel: 'bg-amber-100 text-amber-800', WKV: 'bg-purple-100 text-purple-800', Consumable: 'bg-emerald-100 text-emerald-800', Asset: 'bg-blue-100 text-blue-800' };
+    return map[cat] || 'bg-slate-100 text-slate-700';
+}
+
+function renderItemCards(items) {
+    const grid = document.getElementById('item-cards');
+    if (!grid) return;
+    if (!items.length) {
+        grid.innerHTML = '<p class="col-span-full text-center text-slate-400 py-12 font-semibold">No items in this view. Try another store or add a new item.</p>';
         return;
     }
-
-    itemsToRender.forEach(item => {
+    grid.innerHTML = items.map(item => {
         const stock = Number(item.current_stock);
-        const tr = document.createElement('tr');
-
-        // Row background: highlight zero-stock rows
-        const zeroClass = stock <= 0 ? 'stock-zero' : '';
-        tr.className = `cursor-pointer hover:bg-indigo-50/60 transition group ${currentItem?.id === item.id ? 'row-selected' : ''} ${zeroClass}`;
-        tr.onclick = () => selectItem(item, tr);
-
-        // Category badge colours
-        let catColor = 'bg-slate-100 text-slate-600';
-        if (item.category === 'Fuel')       catColor = 'bg-amber-100 text-amber-700';
-        if (item.category === 'WKV')        catColor = 'bg-purple-100 text-purple-700';
-        if (item.category === 'Consumable') catColor = 'bg-emerald-100 text-emerald-700';
-        if (item.category === 'Asset')      catColor = 'bg-blue-100 text-blue-700';
-
-        // Stock number colour
-        const stockColor = stock <= 0 ? 'text-rose-600 font-black' : 'text-indigo-600 font-black';
-
-        // Red dot indicator for zero stock
-        const zeroDot = stock <= 0
-            ? '<span class="inline-block w-1.5 h-1.5 bg-rose-500 rounded-full mr-1 mb-0.5 align-middle"></span>'
-            : '';
-
-        tr.innerHTML = `
-            <td class="px-3 py-2 border-b border-slate-100">
-                <div class="font-black text-slate-800 group-hover:text-indigo-600 transition truncate" title="${item.item_name}">
-                    ${zeroDot}${item.item_name}
-                </div>
-            </td>
-            <td class="px-2 py-2 border-b border-slate-100">
-                <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${catColor}">${item.category}</span>
-            </td>
-            <td class="px-2 py-2 border-b border-slate-100 text-[10px] text-slate-500 hidden md:table-cell truncate max-w-[100px]"
-                title="${item.store_location || '-'}">${item.store_location || '-'}</td>
-            <td class="px-2 py-2 border-b border-slate-100 text-center hidden sm:table-cell">
-                <span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide">${item.unit}</span>
-            </td>
-            <td class="px-3 py-2 border-b border-slate-100 text-right ${stockColor} text-xs">
-                ${Number(item.current_stock).toLocaleString()}
-                ${stock <= 0 ? '<span class="text-[8px] text-rose-400 font-bold block leading-none">OUT OF STOCK</span>' : ''}
-            </td>
-        `;
-        tbody.appendChild(tr);
+        const low = stock <= 0;
+        const loc = item.store_id ? storeName(item.store_id) : (item.store_location || '—');
+        return `<button type="button" data-item-id="${item.id}" class="item-card text-left glass-panel rounded-2xl p-4 border ${low ? 'border-rose-200' : 'border-slate-100'} hover:border-indigo-300 transition active:scale-[0.98]">
+          ${item.photo_url ? `<img src="${item.photo_url}" alt="" class="w-full h-24 object-cover rounded-xl mb-2 bg-slate-100" onerror="this.classList.add('hidden')">` : ''}
+          <div class="text-[10px] font-bold uppercase ${catBadge(item.category)} inline-block px-2 py-0.5 rounded mb-1">${item.category}</div>
+          <div class="font-black text-slate-800 leading-snug">${item.item_name}</div>
+          <div class="text-xs text-slate-500 mt-1 truncate">📍 ${loc}</div>
+          <div class="mt-3 flex justify-between items-end">
+            <span class="text-[10px] text-slate-400 font-semibold">${item.unit}</span>
+            <span class="text-lg font-black ${low ? 'text-rose-600' : 'text-indigo-600'} tabular-nums">${stock.toLocaleString()}</span>
+          </div>
+          ${low ? '<div class="text-[10px] font-bold text-rose-500 mt-1">Out of stock</div>' : ''}
+        </button>`;
+    }).join('');
+    grid.querySelectorAll('.item-card').forEach(card => {
+        card.addEventListener('click', () => openItemDetail(card.getAttribute('data-item-id')));
     });
+
+    const tbody = document.getElementById('inventory-list');
+    if (tbody) {
+        tbody.innerHTML = items.map(item => `<tr class="cursor-pointer hover:bg-indigo-50" data-item-id="${item.id}">
+          <td class="px-3 py-2 font-bold">${item.item_name}</td>
+          <td class="px-2 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${catBadge(item.category)}">${item.category}</span></td>
+          <td class="px-2 py-2 text-slate-500">${item.store_id ? storeName(item.store_id) : item.store_location || '—'}</td>
+          <td class="px-2 py-2 text-right font-black">${Number(item.current_stock).toLocaleString()}</td>
+        </tr>`).join('');
+        tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => openItemDetail(tr.getAttribute('data-item-id'))));
+    }
+}
+
+function filterAndSearch(category, searchTerm) {
+    if (category) { /* category from getActiveCategory */ }
+    renderItemCards(getFilteredItems());
 }
 
 function setupFilters() {
@@ -203,318 +285,517 @@ function setupFilters() {
             const clicked = e.currentTarget;
             document.querySelectorAll('.filter-btn').forEach(b => {
                 b.classList.remove('bg-slate-800', 'text-white', 'shadow-sm');
-                b.classList.add('bg-white', 'text-slate-600');
-                // Reset count span colour back to neutral for active button
-                const countSpan = b.querySelector('span');
-                if (countSpan) countSpan.classList.remove('bg-white/25', 'text-white');
+                b.classList.add('bg-white', 'text-slate-600', 'border', 'border-slate-200');
             });
-            clicked.classList.remove('bg-white', 'text-slate-600');
+            clicked.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200');
             clicked.classList.add('bg-slate-800', 'text-white', 'shadow-sm');
-            // Make count span white on active button
-            const activeCount = clicked.querySelector('span');
-            if (activeCount) activeCount.classList.add('bg-white/25', 'text-white');
-            filterAndSearch(clicked.getAttribute('data-cat'), document.getElementById('search-inventory').value);
+            filterAndSearch(clicked.getAttribute('data-cat'), document.getElementById('search-inventory')?.value || '');
         });
     });
 }
 
 function setupSearch() {
-    document.getElementById('search-inventory').addEventListener('input', (e) => {
-        filterAndSearch(document.querySelector('.filter-btn.bg-slate-800').getAttribute('data-cat'), e.target.value);
+    document.getElementById('search-inventory')?.addEventListener('input', (e) => {
+        filterAndSearch(getActiveCategory(), e.target.value);
     });
 }
 
-function filterAndSearch(category, searchTerm) {
-    let filtered = allItems;
-    if (category !== 'All') filtered = filtered.filter(i => i.category === category);
-    if (searchTerm) {
-        const lower = searchTerm.toLowerCase();
-        filtered = filtered.filter(i =>
-            i.item_name.toLowerCase().includes(lower) ||
-            (i.store_location && i.store_location.toLowerCase().includes(lower)) ||
-            (i.asset_code && i.asset_code.toLowerCase().includes(lower))
-        );
-    }
-    renderItems(filtered);
+function populateSelects() {
+    const storeOpts = stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    ['ni-store', 'ff-to-store', 'ff-from-store', 'ff-to-store-t', 'ff-store-consume', 'new-eq-store'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = storeOpts || '<option value="">No stores — run SQL migration</option>';
+    });
+    const pumpEl = document.getElementById('ff-pump');
+    if (pumpEl) pumpEl.innerHTML = pumps.map(p => `<option value="${p.id}">${p.name}</option>`).join('') || '<option value="">Add pumps in setup</option>';
+    const qt = document.getElementById('qt-item');
+    if (qt) qt.innerHTML = allItems.map(i => `<option value="${i.id}">${i.item_name} (${Number(i.current_stock)} ${i.unit})</option>`).join('');
+    refreshEquipmentSelect();
 }
 
-async function selectItem(item, rowElement) {
+function refreshEquipmentSelect(fuelType) {
+    const el = document.getElementById('ff-equipment');
+    if (!el) return;
+    let list = equipment;
+    if (fuelType) list = list.filter(e => e.fuel_type === fuelType);
+    el.innerHTML = list.map(e => `<option value="${e.id}">${e.name} (${e.fuel_type})</option>`).join('') || '<option value="">Add equipment in setup</option>';
+}
+
+async function openItemDetail(itemId) {
+    const item = allItems.find(i => i.id === itemId);
+    if (!item) return;
     currentItem = item;
-    document.querySelectorAll('#inventory-list tr').forEach(tr => tr.classList.remove('row-selected'));
-    if(rowElement) rowElement.classList.add('row-selected');
-    document.getElementById('empty-state').classList.add('hidden');
-    
-    document.getElementById('sc-title').textContent = item.item_name;
-    document.getElementById('sc-asset').textContent = item.asset_code || 'N/A';
-    document.getElementById('sc-unit').textContent  = item.unit;
-    document.getElementById('sc-stock').textContent = `${Number(item.current_stock).toLocaleString()} ${item.unit}`;
+    const modal = document.getElementById('detail-modal');
+    document.getElementById('detail-title').textContent = item.item_name;
+    const body = document.getElementById('detail-body');
+    body.innerHTML = '<p class="text-slate-400 text-center py-8">Loading history…</p>';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
 
-    // Colour the sc-stock based on zero stock
-    const scStockEl = document.getElementById('sc-stock');
-    if (Number(item.current_stock) <= 0) {
-        scStockEl.classList.remove('text-indigo-600');
-        scStockEl.classList.add('text-rose-600');
-    } else {
-        scStockEl.classList.remove('text-rose-600');
-        scStockEl.classList.add('text-indigo-600');
-    }
+    const [{ data: logs }, { data: audits }] = await Promise.all([
+        supabase.from('inventory_logs').select('*').eq('item_id', itemId).order('log_date', { ascending: false }).order('created_at', { ascending: false }).limit(100),
+        v2TablesOk ? supabase.from('inventory_audit').select('*').eq('entity_id', itemId).order('created_at', { ascending: false }).limit(20) : Promise.resolve({ data: [] })
+    ]);
 
-    const tbody = document.getElementById('stock-card-logs');
-    tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400 text-[10px]">Fetching ledger...</td></tr>`;
+    const loc = item.store_id ? storeName(item.store_id) : (item.store_location || '—');
+    let html = `
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-slate-50 rounded-xl p-3"><div class="text-[10px] font-bold text-slate-400 uppercase">In stock</div><div class="text-2xl font-black text-indigo-600">${Number(item.current_stock).toLocaleString()} ${item.unit}</div></div>
+        <div class="bg-slate-50 rounded-xl p-3"><div class="text-[10px] font-bold text-slate-400 uppercase">Store</div><div class="text-sm font-bold text-slate-800">${loc}</div></div>
+      </div>
+      ${item.photo_url ? `<img src="${item.photo_url}" class="w-full max-h-48 object-contain rounded-xl border bg-slate-50" alt="">` : ''}
+      ${item.description ? `<p class="text-sm text-slate-600">${item.description}</p>` : ''}
+      <div class="flex flex-wrap gap-2 staff-only role-hidden">
+        <button type="button" id="detail-in" class="flex-1 min-w-[120px] py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-black">Receive IN</button>
+        <button type="button" id="detail-out" class="flex-1 min-w-[120px] py-2.5 bg-rose-500 text-white rounded-xl text-xs font-black">Issue OUT</button>
+      </div>
+      ${isAdmin() ? `<div class="admin-only role-hidden border-t pt-3">
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Photo URL</label>
+        <div class="flex gap-2 mt-1"><input id="detail-photo-url" type="url" value="${item.photo_url || ''}" class="flex-grow p-2 border rounded-lg text-xs">
+        <button type="button" id="detail-save-photo" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black">Save</button></div></div>` : ''}
+      <h4 class="font-black text-slate-700 text-sm mt-2">Transaction history</h4>
+      <div class="space-y-2 max-h-64 overflow-y-auto custom-scroll">`;
 
-    try {
-        const { data: logs, error } = await supabase.from('inventory_logs').select('*').eq('item_id', item.id).order('log_date', { ascending: false }).order('created_at', { ascending: false }).limit(200);
-        if (error) throw error;
-        tbody.innerHTML = '';
-        if (!logs || logs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400 italic text-[10px]">No transactions recorded yet.</td></tr>`;
-            return;
-        }
-        
-        logs.forEach(log => {
-            const isOut = log.txn_type === 'OUT';
-            const typeColor = isOut
-                ? 'text-rose-600 bg-rose-50 border-rose-100'
-                : 'text-emerald-600 bg-emerald-50 border-emerald-100';
-            const typeLabel = isOut ? 'OUT ↓' : 'IN ↑';
-            
-            let details = [];
-            if (log.purpose) details.push(log.purpose);
-            if (log.used_location) details.push(`@${log.used_location}`);
-            if (log.requested_by) details.push(`Req: ${log.requested_by}`);
-            const detailText = details.length > 0 ? details.join(' | ') : '-';
+    (logs || []).forEach(log => {
+        const pump = pumps.find(p => p.id === log.pump_id);
+        const eq = equipment.find(e => e.id === log.equipment_id);
+        const who = log.created_by_name || log.created_by_email || '—';
+        const when = log.created_at ? new Date(log.created_at).toLocaleString('en-NP', { timeZone: 'Asia/Kathmandu' }) : log.log_date;
+        const canEdit = canEditLog(log);
+        html += `<div class="border rounded-xl p-3 text-xs ${log.txn_type === 'IN' ? 'border-emerald-100 bg-emerald-50/50' : 'border-rose-100 bg-rose-50/50'}">
+          <div class="flex justify-between gap-2">
+            <span class="font-black ${log.txn_type === 'IN' ? 'text-emerald-700' : 'text-rose-700'}">${log.txn_type} ${Number(log.quantity).toLocaleString()}</span>
+            <span class="text-slate-500">${log.log_date}</span>
+          </div>
+          <p class="text-slate-600 mt-1">${log.purpose || log.notes || log.txn_subtype || '—'}</p>
+          ${pump ? `<p>⛽ Pump: <b>${pump.name}</b></p>` : ''}
+          ${eq ? `<p>🔧 Equipment: <b>${eq.name}</b></p>` : ''}
+          ${log.from_store_id || log.to_store_id ? `<p>↔ ${log.from_store_id ? 'From ' + storeName(log.from_store_id) : ''} ${log.to_store_id ? '→ ' + storeName(log.to_store_id) : ''}</p>` : ''}
+          <p class="text-slate-400 mt-1">By ${who} · ${when}${log.geo_label ? ' · 📍 ' + log.geo_label : ''}</p>
+          ${log.modified_by_email ? `<p class="text-amber-700">Edited by ${log.modified_by_name || log.modified_by_email}</p>` : ''}
+          ${canEdit ? `<button type="button" class="edit-log-btn mt-2 text-indigo-600 font-bold" data-log-id="${log.id}">Edit</button>` : ''}
+        </div>`;
+    });
+    if (!logs?.length) html += '<p class="text-slate-400 italic">No transactions yet.</p>';
+    html += '</div>';
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="px-2 py-1.5 border-b border-slate-100 font-bold text-[9px] text-slate-500">${log.log_date}</td>
-                <td class="px-2 py-1.5 border-b border-slate-100">
-                    <span class="px-1 py-0.5 rounded text-[8px] font-black border ${typeColor}">${typeLabel}</span>
-                </td>
-                <td class="px-2 py-1.5 border-b border-slate-100 text-slate-500 truncate max-w-[150px] lg:max-w-[280px]" title="${detailText}">${detailText}</td>
-                <td class="px-2 py-1.5 border-b border-slate-100 text-right font-black ${isOut ? 'text-rose-600' : 'text-emerald-600'} text-[11px]">
-                    ${isOut ? '−' : '+'} ${Number(log.quantity).toLocaleString()}
-                </td>
-            `;
-            tbody.appendChild(tr);
+    if (audits?.length) {
+        html += '<h4 class="font-black text-slate-700 text-sm mt-4">Change log</h4><ul class="text-xs space-y-1 text-slate-500">';
+        audits.forEach(a => {
+            html += `<li>${new Date(a.created_at).toLocaleString('en-NP', { timeZone: 'Asia/Kathmandu' })} — <b>${a.user_name || a.user_email}</b>: ${a.summary}</li>`;
         });
-    } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-rose-500 text-[10px]">Error: ${err.message}</td></tr>`;
+        html += '</ul>';
     }
+
+    body.innerHTML = html;
+    document.getElementById('detail-in')?.addEventListener('click', () => { closeModal('detail-modal'); openTxnModal('IN'); });
+    document.getElementById('detail-out')?.addEventListener('click', () => { closeModal('detail-modal'); openTxnModal('OUT'); });
+    body.querySelectorAll('.edit-log-btn').forEach(b => b.addEventListener('click', () => { closeModal('detail-modal'); editTxn(b.getAttribute('data-log-id')); }));
+    document.getElementById('detail-save-photo')?.addEventListener('click', async () => {
+        const url = document.getElementById('detail-photo-url').value.trim();
+        const geo = await captureGeo();
+        const { error } = await supabase.from('inventory_items').update({ photo_url: url || null, updated_at: new Date().toISOString(), updated_by_email: currentUser.email }).eq('id', item.id);
+        if (error) return showToast(error.message, 'error');
+        await writeAudit('item', item.id, 'update', 'Photo URL updated', { photo_url: url }, geo);
+        showToast('Photo saved');
+        await refreshInventory();
+        openItemDetail(item.id);
+    });
 }
 
-// ─── MODALS & FORMS ───
-window.openTxnModal = function(type) {
-    if (!currentItem) return showToast('Please select an item first!', 'error');
+window.openTxnModal = function (type) {
+    if (!currentItem) return showToast('Select an item first', 'warning');
     document.getElementById('txn-modal').classList.remove('hidden');
     document.getElementById('txn-modal').classList.add('flex');
-    document.getElementById('txn-item-id').value = currentItem.id; 
+    document.getElementById('txn-item-id').value = currentItem.id;
     document.getElementById('txn-type').value = type;
     document.getElementById('txn-log-id').value = '';
     document.getElementById('txn-unit').textContent = currentItem.unit;
-    
-    ['txn-qty','txn-purpose','txn-req','txn-app','txn-ref','txn-location'].forEach(id => {
-        const el = document.getElementById(id); if(el) el.value = '';
+    document.getElementById('txn-date').value = todayNPT();
+    ['txn-qty', 'txn-purpose', 'txn-req', 'txn-app', 'txn-ref', 'txn-location'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
     });
-
-    // Show current stock in banner
     const banner = document.getElementById('txn-stock-banner');
     const stockEl = document.getElementById('txn-current-stock');
     if (banner && stockEl) {
         stockEl.textContent = `${Number(currentItem.current_stock).toLocaleString()} ${currentItem.unit}`;
         banner.classList.remove('hidden');
     }
-
-    const delBtn = document.getElementById('txn-delete-btn');
-    if(delBtn) delBtn.classList.add('hidden');
-
+    document.getElementById('txn-delete-btn')?.classList.add('hidden');
     const t = document.getElementById('txn-title'), h = document.getElementById('txn-header'), b = document.getElementById('txn-submit');
     const inF = document.getElementById('in-fields'), outF = document.getElementById('out-fields');
-
-    const actionWord = type === 'IN' ? '✅ RECEIVE STOCK' : '📤 ISSUE / USE STOCK';
-    t.textContent = `${actionWord}: ${currentItem.item_name}`;
-
+    t.textContent = `${type === 'IN' ? 'Receive' : 'Issue'}: ${currentItem.item_name}`;
     if (type === 'IN') {
-        h.className = 'px-5 py-3 border-b border-emerald-100 flex justify-between items-center bg-emerald-50';
-        b.className = 'flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition text-[11px] uppercase tracking-widest';
-        b.textContent = '💾 Save – Add to Stock';
+        h.className = 'px-5 py-3 border-b bg-emerald-50 flex justify-between items-center';
+        b.className = 'flex-[2] py-3 bg-emerald-600 text-white font-black rounded-xl';
+        b.textContent = 'Save – Add stock';
         inF.classList.remove('hidden'); outF.classList.add('hidden');
     } else {
-        h.className = 'px-5 py-3 border-b border-rose-100 flex justify-between items-center bg-rose-50';
-        b.className = 'flex-[2] py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl shadow-md transition text-[11px] uppercase tracking-widest';
-        b.textContent = '💾 Save – Remove from Stock';
+        h.className = 'px-5 py-3 border-b bg-rose-50 flex justify-between items-center';
+        b.className = 'flex-[2] py-3 bg-rose-600 text-white font-black rounded-xl';
+        b.textContent = 'Save – Remove stock';
         inF.classList.add('hidden'); outF.classList.remove('hidden');
     }
-}
+};
 
-window.openFuelTxnModal = async function(type, itemName) {
+window.openFuelTxnModal = async function (type, itemName) {
     const item = allItems.find(i => i.item_name.toLowerCase() === itemName.toLowerCase());
-    if(!item) return showToast("Item not found. Syncing...", "warning");
+    if (!item) return showToast('Item not found', 'warning');
     currentItem = item;
-    window.openTxnModal(type);
-}
+    openTxnModal(type);
+};
 
-// Open existing log for editing
-window.editTxn = async function(logId) {
+window.editTxn = async function (logId) {
     try {
         const { data: log, error } = await supabase.from('inventory_logs').select('*, inventory_items(item_name, unit, current_stock)').eq('id', logId).single();
-        if(error) throw error;
-
+        if (error) throw error;
+        if (!canEditLog(log)) return showToast('You can only edit your own entries', 'error');
         currentItem = { id: log.item_id, item_name: log.inventory_items.item_name, current_stock: log.inventory_items.current_stock, unit: log.inventory_items.unit };
-        
         document.getElementById('txn-modal').classList.remove('hidden');
         document.getElementById('txn-modal').classList.add('flex');
-        document.getElementById('txn-item-id').value = log.item_id; 
+        document.getElementById('txn-item-id').value = log.item_id;
         document.getElementById('txn-type').value = log.txn_type;
-        document.getElementById('txn-log-id').value = log.id; 
-        document.getElementById('txn-unit').textContent = currentItem.unit;
-
-        // Show current stock in banner
-        const banner = document.getElementById('txn-stock-banner');
-        const stockEl = document.getElementById('txn-current-stock');
-        if (banner && stockEl) {
-            stockEl.textContent = `${Number(currentItem.current_stock).toLocaleString()} ${currentItem.unit}`;
-            banner.classList.remove('hidden');
-        }
-        
+        document.getElementById('txn-log-id').value = log.id;
         document.getElementById('txn-date').value = log.log_date;
         document.getElementById('txn-qty').value = log.quantity;
-        if(document.getElementById('txn-location')) document.getElementById('txn-location').value = log.used_location || '';
-        if(document.getElementById('txn-purpose')) document.getElementById('txn-purpose').value = log.purpose || '';
-        if(document.getElementById('txn-ref')) document.getElementById('txn-ref').value = log.reference_no || '';
-        if(document.getElementById('txn-req')) document.getElementById('txn-req').value = log.requested_by || '';
-        if(document.getElementById('txn-app')) document.getElementById('txn-app').value = log.approved_by || '';
+        if (document.getElementById('txn-location')) document.getElementById('txn-location').value = log.used_location || '';
+        if (document.getElementById('txn-purpose')) document.getElementById('txn-purpose').value = log.purpose || '';
+        if (document.getElementById('txn-ref')) document.getElementById('txn-ref').value = log.reference_no || '';
+        if (document.getElementById('txn-req')) document.getElementById('txn-req').value = log.requested_by || '';
+        if (document.getElementById('txn-app')) document.getElementById('txn-app').value = log.approved_by || '';
+        document.getElementById('txn-delete-btn')?.classList.remove('hidden');
+        document.getElementById('txn-title').textContent = `Edit: ${currentItem.item_name}`;
+    } catch (e) { showToast(e.message, 'error'); }
+};
 
-        const delBtn = document.getElementById('txn-delete-btn');
-        if(delBtn) delBtn.classList.remove('hidden');
-
-        const t = document.getElementById('txn-title'), h = document.getElementById('txn-header'), b = document.getElementById('txn-submit');
-        const inF = document.getElementById('in-fields'), outF = document.getElementById('out-fields');
-
-        t.textContent = `✏️ EDIT: ${currentItem.item_name}`;
-
-        if (log.txn_type === 'IN') {
-            h.className = 'px-5 py-3 border-b border-emerald-100 flex justify-between items-center bg-emerald-50';
-            b.className = 'flex-[2] py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md transition text-[11px] uppercase tracking-widest';
-            b.textContent = '💾 Update Entry';
-            inF.classList.remove('hidden'); outF.classList.add('hidden');
-        } else {
-            h.className = 'px-5 py-3 border-b border-rose-100 flex justify-between items-center bg-rose-50';
-            b.className = 'flex-[2] py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl shadow-md transition text-[11px] uppercase tracking-widest';
-            b.textContent = '💾 Update Entry';
-            inF.classList.add('hidden'); outF.classList.remove('hidden');
-        }
-    } catch(e) { showToast("Error loading transaction: " + e.message, "error"); }
-}
-
-// Delete a log directly from the table or modal
-window.deleteTxn = async function(logId) {
-    if(!confirm("Are you sure you want to permanently delete this transaction? The inventory stock will automatically adjust.")) return;
-    
+window.deleteTxn = async function (logId) {
+    const { data: log } = await supabase.from('inventory_logs').select('*').eq('id', logId).single();
+    if (!canEditLog(log)) return showToast('You can only delete your own entries', 'error');
+    if (!confirm('Delete this transaction? Stock will adjust automatically.')) return;
     try {
+        const geo = await captureGeo();
         const { error } = await supabase.from('inventory_logs').delete().eq('id', logId);
-        if(error) throw error;
-        
-        showToast('Transaction deleted successfully!');
-        window.closeModal('txn-modal');
-        
-        await loadInventoryItems();
-        
-        if(!document.getElementById('fuel-report-modal').classList.contains('hidden')) {
-            document.getElementById('fr-generate-btn').click();
+        if (error) throw error;
+        await writeAudit('log', logId, 'delete', `Deleted ${log.txn_type} ${log.quantity}`, log, geo);
+        showToast('Deleted');
+        closeModal('txn-modal');
+        await refreshInventory();
+        if (currentItem) openItemDetail(currentItem.id);
+        if (!document.getElementById('fuel-report-modal')?.classList.contains('hidden')) {
+            document.getElementById('fr-generate-btn')?.click();
         }
-    } catch(e) { showToast(e.message, 'error'); }
-}
+    } catch (e) { showToast(e.message, 'error'); }
+};
 
-window.openNewItemModal   = () => { document.getElementById('item-modal').classList.remove('hidden'); document.getElementById('item-modal').classList.add('flex'); }
-window.openImportModal    = () => { document.getElementById('import-modal').classList.remove('hidden'); document.getElementById('import-modal').classList.add('flex'); }
+window.openNewItemModal = () => {
+    document.getElementById('item-modal').classList.remove('hidden');
+    document.getElementById('item-modal').classList.add('flex');
+};
+window.openImportModal = () => {
+    document.getElementById('import-modal').classList.remove('hidden');
+    document.getElementById('import-modal').classList.add('flex');
+};
 window.openFuelImportModal = () => {
     document.getElementById('fuel-import-modal').classList.remove('hidden');
     document.getElementById('fuel-import-modal').classList.add('flex');
-    document.getElementById('fi-setup-section').classList.remove('hidden');
-    document.getElementById('fi-review-section').classList.add('hidden');
-}
+    document.getElementById('fi-setup-section')?.classList.remove('hidden');
+    document.getElementById('fi-review-section')?.classList.add('hidden');
+};
 window.openFuelReportModal = () => {
     document.getElementById('fuel-report-modal').classList.remove('hidden');
     document.getElementById('fuel-report-modal').classList.add('flex');
-}
+};
+window.openQuickTxn = () => {
+    populateSelects();
+    document.getElementById('qt-date').value = todayNPT();
+    document.getElementById('quick-txn-modal').classList.remove('hidden');
+    document.getElementById('quick-txn-modal').classList.add('flex');
+};
 
-window.closeModals = () => {
-    ['txn-modal', 'item-modal', 'import-modal', 'fuel-import-modal', 'fuel-report-modal'].forEach(id => {
-        const m = document.getElementById(id); if(m) { m.classList.add('hidden'); m.classList.remove('flex'); }
+function setupFuelFlowModal() {
+    document.getElementById('btn-fuel-flow')?.addEventListener('click', () => {
+        document.getElementById('ff-date').value = todayNPT();
+        populateSelects();
+        document.getElementById('fuel-flow-modal').classList.remove('hidden');
+        document.getElementById('fuel-flow-modal').classList.add('flex');
+    });
+    const subtype = document.getElementById('ff-subtype');
+    const toggle = () => {
+        const v = subtype?.value;
+        document.getElementById('ff-purchase-fields')?.classList.toggle('hidden', v !== 'purchase');
+        document.getElementById('ff-transfer-fields')?.classList.toggle('hidden', v !== 'transfer');
+        document.getElementById('ff-consume-fields')?.classList.toggle('hidden', v !== 'consumption');
+    };
+    subtype?.addEventListener('change', toggle);
+    document.getElementById('ff-fuel-type')?.addEventListener('change', (e) => refreshEquipmentSelect(e.target.value));
+    toggle();
+
+    document.getElementById('fuel-flow-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const geo = await captureGeo();
+        const subtypeVal = document.getElementById('ff-subtype').value;
+        const fuelType = document.getElementById('ff-fuel-type').value;
+        const date = document.getElementById('ff-date').value;
+        const qty = parseFloat(document.getElementById('ff-qty').value);
+        const notes = document.getElementById('ff-notes').value;
+        try {
+            if (subtypeVal === 'purchase') {
+                const storeId = document.getElementById('ff-to-store').value;
+                const pumpId = document.getElementById('ff-pump').value;
+                const tank = await ensureFuelTank(storeId, fuelType);
+                const pump = pumps.find(p => p.id === pumpId);
+                await insertLog({
+                    item_id: tank.id, log_date: date, txn_type: 'IN', quantity: qty,
+                    txn_subtype: 'purchase', pump_id: pumpId || null, to_store_id: storeId,
+                    purpose: `Purchase${pump ? ' at ' + pump.name : ''}${notes ? ' – ' + notes : ''}`,
+                    reference_no: notes || null
+                }, geo);
+            } else if (subtypeVal === 'transfer') {
+                const fromId = document.getElementById('ff-from-store').value;
+                const toId = document.getElementById('ff-to-store-t').value;
+                const fromTank = await ensureFuelTank(fromId, fuelType);
+                const toTank = await ensureFuelTank(toId, fuelType);
+                await insertLog({
+                    item_id: fromTank.id, log_date: date, txn_type: 'OUT', quantity: qty,
+                    txn_subtype: 'transfer', from_store_id: fromId, to_store_id: toId,
+                    purpose: `Transfer to ${storeName(toId)}${notes ? ' – ' + notes : ''}`
+                }, geo);
+                await insertLog({
+                    item_id: toTank.id, log_date: date, txn_type: 'IN', quantity: qty,
+                    txn_subtype: 'transfer', from_store_id: fromId, to_store_id: toId,
+                    purpose: `Transfer from ${storeName(fromId)}${notes ? ' – ' + notes : ''}`
+                }, geo);
+            } else {
+                const storeId = document.getElementById('ff-store-consume').value;
+                const eqId = document.getElementById('ff-equipment').value;
+                const tank = await ensureFuelTank(storeId, fuelType);
+                const eq = equipment.find(x => x.id === eqId);
+                await insertLog({
+                    item_id: tank.id, log_date: date, txn_type: 'OUT', quantity: qty,
+                    txn_subtype: 'consumption', equipment_id: eqId || null, used_location: storeName(storeId),
+                    purpose: eq ? `Used on ${eq.name}` : (notes || 'Consumption')
+                }, geo);
+            }
+            showToast('Fuel entry saved');
+            closeModal('fuel-flow-modal');
+            await refreshInventory();
+        } catch (err) { showToast(err.message, 'error'); }
     });
 }
 
+function setupAdminSetup() {
+    document.getElementById('btn-admin-setup')?.addEventListener('click', () => {
+        renderSetupLists();
+        document.getElementById('admin-setup-modal').classList.remove('hidden');
+        document.getElementById('admin-setup-modal').classList.add('flex');
+    });
+    document.querySelectorAll('.setup-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const t = tab.getAttribute('data-tab');
+            document.querySelectorAll('.setup-tab').forEach(x => x.classList.remove('bg-slate-100', 'text-indigo-700'));
+            tab.classList.add('bg-slate-100', 'text-indigo-700');
+            ['stores', 'pumps', 'equipment'].forEach(p => {
+                document.getElementById(`setup-panel-${p}`)?.classList.toggle('hidden', p !== t);
+            });
+        });
+    });
+    document.getElementById('form-add-store')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!isAdmin()) return;
+        const name = document.getElementById('new-store-name').value.trim();
+        const geo = await captureGeo();
+        const { data, error } = await supabase.from('inventory_stores').insert([{ name, created_by_email: currentUser.email, is_temporary: true }]).select().single();
+        if (error) return showToast(error.message, 'error');
+        await writeAudit('store', data.id, 'create', `Store added: ${name}`, null, geo);
+        document.getElementById('new-store-name').value = '';
+        await refreshInventory();
+        renderSetupLists();
+    });
+    document.getElementById('form-add-pump')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!isAdmin()) return;
+        const name = document.getElementById('new-pump-name').value.trim();
+        const { data, error } = await supabase.from('inventory_fuel_pumps').insert([{ name }]).select().single();
+        if (error) return showToast(error.message, 'error');
+        await writeAudit('pump', data.id, 'create', `Pump added: ${name}`);
+        document.getElementById('new-pump-name').value = '';
+        await loadAllData();
+        populateSelects();
+        renderSetupLists();
+    });
+    document.getElementById('form-add-equipment')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!isAdmin()) return;
+        const name = document.getElementById('new-eq-name').value.trim();
+        const fuel_type = document.getElementById('new-eq-fuel').value;
+        const store_id = document.getElementById('new-eq-store').value || null;
+        const { data, error } = await supabase.from('inventory_equipment').insert([{ name, fuel_type, store_id }]).select().single();
+        if (error) return showToast(error.message, 'error');
+        await writeAudit('equipment', data.id, 'create', `Equipment: ${name}`);
+        document.getElementById('new-eq-name').value = '';
+        await loadAllData();
+        populateSelects();
+        renderSetupLists();
+    });
+}
+
+function renderSetupLists() {
+    const sl = document.getElementById('setup-store-list');
+    if (sl) sl.innerHTML = stores.map(s => `<li class="flex justify-between border-b py-2"><span>${s.name}${s.is_temporary ? ' <span class="text-amber-600 text-[10px]">(temp)</span>' : ''}</span>${isAdmin() ? `<button type="button" class="text-rose-600 text-[10px] font-bold del-store" data-id="${s.id}">Remove</button>` : ''}</li>`).join('');
+    sl?.querySelectorAll('.del-store').forEach(btn => btn.addEventListener('click', async () => {
+        if (!confirm('Deactivate this store?')) return;
+        await supabase.from('inventory_stores').update({ is_active: false }).eq('id', btn.getAttribute('data-id'));
+        await refreshInventory();
+        renderSetupLists();
+    }));
+    document.getElementById('setup-pump-list').innerHTML = pumps.map(p => `<li class="border-b py-2">${p.name}</li>`).join('');
+    document.getElementById('setup-equipment-list').innerHTML = equipment.map(e => `<li class="border-b py-2">${e.name} <span class="text-slate-400">(${e.fuel_type})</span></li>`).join('');
+}
+
 function setupForms() {
-    document.getElementById('txn-delete-btn')?.addEventListener('click', async () => {
+    document.getElementById('txn-delete-btn')?.addEventListener('click', () => {
         const logId = document.getElementById('txn-log-id').value;
-        if(!logId) return;
-        window.deleteTxn(logId);
+        if (logId) deleteTxn(logId);
     });
 
     document.getElementById('txn-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = document.getElementById('txn-submit'); const origText = btn.textContent;
-        btn.textContent = 'Saving...'; btn.disabled = true;
+        const btn = document.getElementById('txn-submit');
+        const orig = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
         try {
-            const { data: u } = await supabase.auth.getUser(); if(!u.user) throw new Error("Must log in.");
-            
             const logIdToEdit = document.getElementById('txn-log-id').value;
+            if (logIdToEdit) {
+                const { data: oldLog } = await supabase.from('inventory_logs').select('*').eq('id', logIdToEdit).single();
+                if (!canEditLog(oldLog)) throw new Error('You can only edit your own entries');
+            }
             const type = document.getElementById('txn-type').value;
             const qty = parseFloat(document.getElementById('txn-qty').value);
-            
-            if (!logIdToEdit && type === 'OUT' && qty > currentItem.current_stock && !confirm(`⚠️ You are issuing more than the current stock (${currentItem.current_stock} ${currentItem.unit}). Do you want to continue?`)) return; 
-            
-            const payload = {
-                item_id: document.getElementById('txn-item-id').value, 
-                log_date: document.getElementById('txn-date').value,
-                txn_type: type, 
-                quantity: qty, 
-                used_location: document.getElementById('txn-location') ? document.getElementById('txn-location').value : null,
-                purpose: document.getElementById('txn-purpose') ? document.getElementById('txn-purpose').value : null, 
-                reference_no: document.getElementById('txn-ref') ? document.getElementById('txn-ref').value : null,
-                requested_by: document.getElementById('txn-req') ? document.getElementById('txn-req').value : null, 
-                approved_by: document.getElementById('txn-app') ? document.getElementById('txn-app').value : null, 
-                operator_uid: u.user.id
-            };
+            if (!logIdToEdit && type === 'OUT' && qty > currentItem.current_stock && !confirm('Issue more than current stock?')) return;
 
+            const geo = await captureGeo();
             if (logIdToEdit) {
-                const { error: delErr } = await supabase.from('inventory_logs').delete().eq('id', logIdToEdit);
-                if (delErr) throw delErr;
+                const { data: oldLog } = await supabase.from('inventory_logs').select('*').eq('id', logIdToEdit).single();
+                await supabase.from('inventory_logs').delete().eq('id', logIdToEdit);
+                await writeAudit('log', logIdToEdit, 'delete', 'Replaced during edit', oldLog, geo);
             }
-
-            const { error } = await supabase.from('inventory_logs').insert([payload]);
-            if (error) throw error;
-            
-            showToast('✅ Saved Successfully!'); 
-            window.closeModal('txn-modal');
-            
-            await loadInventoryItems();
-            const up = allItems.find(i => i.id === currentItem.id);
-            if(up) selectItem(up, Array.from(document.querySelectorAll('#inventory-list tr')).find(r => r.innerText.includes(up.item_name)));
-
-            if(!document.getElementById('fuel-report-modal').classList.contains('hidden')) {
-                document.getElementById('fr-generate-btn').click();
-            }
-
-        } catch(err) { showToast(err.message, 'error'); } finally { btn.textContent = origText; btn.disabled = false; }
+            await insertLog({
+                item_id: document.getElementById('txn-item-id').value,
+                log_date: document.getElementById('txn-date').value,
+                txn_type: type,
+                quantity: qty,
+                used_location: document.getElementById('txn-location')?.value || null,
+                purpose: document.getElementById('txn-purpose')?.value || null,
+                reference_no: document.getElementById('txn-ref')?.value || null,
+                requested_by: document.getElementById('txn-req')?.value || null,
+                approved_by: document.getElementById('txn-app')?.value || null
+            }, geo);
+            showToast('Saved');
+            closeModal('txn-modal');
+            await refreshInventory();
+            if (currentItem) openItemDetail(currentItem.id);
+        } catch (err) { showToast(err.message, 'error'); }
+        finally { btn.textContent = orig; btn.disabled = false; }
     });
 
     document.getElementById('new-item-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
-            const { error } = await supabase.from('inventory_items').insert([{
+            const storeId = document.getElementById('ni-store')?.value || null;
+            const sn = storeId ? storeName(storeId) : null;
+            const row = {
                 item_name: document.getElementById('ni-name').value,
                 category: document.getElementById('ni-cat').value,
                 unit: document.getElementById('ni-unit').value,
-                current_stock: 0
-            }]);
+                current_stock: 0,
+                store_id: storeId || null,
+                store_location: sn,
+                photo_url: document.getElementById('ni-photo')?.value || null,
+                fuel_type: document.getElementById('ni-cat').value === 'Fuel' ? 'diesel' : null
+            };
+            const { data, error } = await supabase.from('inventory_items').insert([row]).select().single();
             if (error) throw error;
-            showToast('✅ Item created successfully!');
-            window.closeModal('item-modal');
-            await loadInventoryItems();
-        } catch(err) { showToast(err.message, 'error'); } 
+            const geo = await captureGeo();
+            await writeAudit('item', data.id, 'create', `Item created: ${row.item_name}`, row, geo);
+            showToast('Item created');
+            closeModal('item-modal');
+            await refreshInventory();
+        } catch (err) { showToast(err.message, 'error'); }
     });
+
+    document.querySelectorAll('.qt-type-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.qt-type-btn').forEach(b => {
+                b.classList.remove('bg-emerald-500', 'bg-rose-500', 'text-white');
+                b.classList.add('bg-slate-200', 'text-slate-600');
+            });
+            const t = btn.getAttribute('data-qt');
+            document.getElementById('qt-type').value = t;
+            btn.classList.remove('bg-slate-200', 'text-slate-600');
+            btn.classList.add(t === 'IN' ? 'bg-emerald-500' : 'bg-rose-500', 'text-white');
+        });
+    });
+    document.getElementById('quick-txn-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = document.getElementById('qt-item').value;
+        currentItem = allItems.find(i => i.id === itemId);
+        const geo = await captureGeo();
+        await insertLog({
+            item_id: itemId,
+            log_date: document.getElementById('qt-date').value,
+            txn_type: document.getElementById('qt-type').value,
+            quantity: parseFloat(document.getElementById('qt-qty').value),
+            purpose: document.getElementById('qt-purpose').value || null
+        }, geo);
+        showToast('Entry saved');
+        closeModal('quick-txn-modal');
+        await refreshInventory();
+    });
+    document.getElementById('fab-quick')?.addEventListener('click', openQuickTxn);
 }
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const session = await initializeApplication(true);
+        if (!session?.user) {
+            showToast('Please sign in to use inventory', 'warning');
+            window.location.href = 'signin.html';
+            return;
+        }
+        currentUser = session.user;
+        userRole = session.role || 'operator';
+
+        const [hRes, fRes] = await Promise.all([
+            fetch('./components/header.html'),
+            fetch('./components/footer.html')
+        ]);
+        if (hRes.ok) document.getElementById('global-header-container').innerHTML = await hRes.text();
+        if (fRes.ok) document.getElementById('global-footer-container').innerHTML = await fRes.text();
+        initHeaderUI();
+
+        if (userRole === 'admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
+        if (['admin', 'staff', 'operator'].includes(userRole)) {
+            document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
+        }
+
+        await refreshInventory();
+        setupFilters();
+        setupSearch();
+        setupForms();
+        setupFuelFlowModal();
+        setupAdminSetup();
+        setupFuelImporter();
+        setupFuelReport();
+
+        document.getElementById('fr-start').value = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('sv-SE', { timeZone: 'Asia/Kathmandu' });
+        document.getElementById('fr-end').value = todayNPT();
+        if (!v2TablesOk) showToast('Run supabase/inventory-v2-schema.sql for stores & audit', 'warning');
+    } catch (error) {
+        console.error(error);
+        showToast(error.message, 'error');
+    }
+});
 
 // ─── DEDICATED FUEL IMPORTER WITH DEDUPLICATION ───
 function setupFuelImporter() {

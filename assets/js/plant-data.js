@@ -2380,12 +2380,8 @@ async function initAuth() {
                 console.warn("Could not load user role:", err);
             }
 
-            if (currentUser.email.toLowerCase() === 'upenjyo@gmail.com') {
-                userRole = 'admin';
-            }
-            
             try {
-                const headerRes = await fetch('components/header.html'); // <-- CHANGED THIS LINE
+                const headerRes = await fetch('components/header.html');
                 if (headerRes.ok) {
                    const globalHeader = document.getElementById('global-header-container') || document.getElementById('global-header');
                     if(globalHeader) globalHeader.innerHTML = await headerRes.text();
@@ -2394,18 +2390,24 @@ async function initAuth() {
                 console.warn("Failed to load header.html", err);
             }
 
+            const { initHeaderUI } = await import('./core-app.js');
+            initHeaderUI();
+
             const emailElement = document.getElementById('header-email');
             if (emailElement) {
-                emailElement.innerText = currentUser.email.split('@')[0];
+                const span = emailElement.querySelector('span');
+                const label = currentUser.email.split('@')[0];
+                if (span) span.textContent = label;
             }
-            
+
+            const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.onclick = async () => {
-                    await supabase.auth.signOut();
-                    window.location.href = "signin.html";
-                };
-            }
+            const mainNav = document.getElementById('main-nav');
+            const mobileBtn = document.getElementById('mobile-menu-btn');
+            if (loginBtn) loginBtn.classList.add('hidden');
+            if (logoutBtn) logoutBtn.classList.remove('hidden');
+            if (mainNav) { mainNav.classList.remove('hidden'); mainNav.classList.add('flex'); }
+            if (mobileBtn) mobileBtn.classList.remove('hidden');
             
             applyPermissions();
 

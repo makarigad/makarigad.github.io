@@ -9,11 +9,25 @@ export let userRole = 'operator';
 
 const ROLE_CACHE_KEY = 'makarigad_offline_role';
 const SYNC_QUEUE_KEY = 'makarigad_sync_queue';
-const ADMIN_EMAIL    = 'upenjyo@gmail.com';
+/** Offline-only bootstrap when DB role cache is empty (online role always comes from user_roles). */
+const OFFLINE_ADMIN_EMAILS = ['upenjyo@gmail.com'];
 
 // ============================================================
 // Notification toast
 // ============================================================
+export function openProfileModal() {
+    if (!navigator.onLine) {
+        showNotification('You must be online to edit your profile.', true);
+        return;
+    }
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const pw = document.getElementById('prof-password');
+    if (pw) pw.value = '';
+}
+
 export function showNotification(msg, isError = false) {
     const modal   = document.getElementById('notification-modal');
     const msgEl   = document.getElementById('notification-message');
@@ -129,13 +143,6 @@ async function resolveUserRole() {
 
     const email = currentUser.email.toLowerCase();
 
-    // Super-admin shortcut
-    if (email === ADMIN_EMAIL) {
-        userRole = 'admin';
-        localStorage.setItem(ROLE_CACHE_KEY, 'admin');
-        return;
-    }
-
     if (navigator.onLine) {
         try {
             const { data, error } = await fetchWithTimeout(
@@ -152,8 +159,14 @@ async function resolveUserRole() {
         }
     }
 
-    // Use cached role when offline or DB unreachable
-    userRole = localStorage.getItem(ROLE_CACHE_KEY) || 'operator';
+    const cached = localStorage.getItem(ROLE_CACHE_KEY);
+    userRole = cached || 'operator';
+
+    // Offline bootstrap for designated admins when cache is missing (e.g. first offline session)
+    if (!cached && OFFLINE_ADMIN_EMAILS.includes(email) && !navigator.onLine) {
+        userRole = 'admin';
+        localStorage.setItem(ROLE_CACHE_KEY, 'admin');
+    }
 }
 
 // ============================================================
@@ -162,7 +175,7 @@ async function resolveUserRole() {
 function enforcePageAccess() {
     const href = window.location.pathname.toLowerCase();
 
-    const OPERATOR_BLOCKED = ['/energy-summary.html', '/nepali-calendar.html', '/user-management.html', '/attendance.html'];
+    const OPERATOR_BLOCKED = ['/energy-summary.html', '/monthly_report.html', '/nepali-calendar.html', '/user-management.html', '/attendance.html'];
     const STAFF_BLOCKED    = ['/nepali-calendar.html', '/user-management.html'];
 
     const blocked =
@@ -195,6 +208,46 @@ async function loadGlobalUI() {
             console.warn(`Could not load ${url}`);
         }
     }));
+
+    initHeaderUI();
+}
+
+export function initHeaderUI() {
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    document.querySelectorAll('.nav-link').forEach(link => {
+        if (link.getAttribute('data-page') === currentPage) {
+            link.classList.add('bg-indigo-50', 'text-indigo-700', '!text-indigo-700', 'shadow-sm');
+            if (!link.classList.contains('mobile-nav-link')) {
+                link.classList.add('border', 'border-indigo-100/50');
+            }
+        }
+    });
+
+    const mobileBtn  = document.getElementById('mobile-menu-btn');
+    const mobileNav  = document.getElementById('mobile-nav');
+    const iconOpen   = document.getElementById('menu-icon-open');
+    const iconClose  = document.getElementById('menu-icon-close');
+
+    if (mobileBtn && mobileNav && !mobileBtn.dataset.bound) {
+        mobileBtn.dataset.bound = 'true';
+        mobileBtn.addEventListener('click', () => {
+            const isOpen = !mobileNav.classList.contains('hidden');
+            mobileNav.classList.toggle('hidden', isOpen);
+            iconOpen?.classList.toggle('hidden', !isOpen);
+            iconClose?.classList.toggle('hidden', isOpen);
+            mobileBtn.setAttribute('aria-expanded', String(!isOpen));
+        });
+
+        mobileNav.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileNav.classList.add('hidden');
+                iconOpen?.classList.remove('hidden');
+                iconClose?.classList.add('hidden');
+                mobileBtn.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
+
 }
 
 // ============================================================
@@ -280,8 +333,12 @@ function applyRoleBasedUI() {
         document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden'));
     }
 
-    const nameEl = document.getElementById('display-user-name');
-    if (nameEl) nameEl.textContent = currentUser?.email?.split('@')[0] ?? '';
+    const headerEmail = document.getElementById('header-email');
+    if (headerEmail && currentUser?.email) {
+        const span = headerEmail.querySelector('span');
+        const label = currentUser.email.split('@')[0];
+        if (span) span.textContent = label;
+    }
 
     const roleEl = document.getElementById('display-user-role');
     if (roleEl) roleEl.textContent = userRole.toUpperCase();
@@ -451,6 +508,13 @@ export async function performAutoAttendance(userEmail, actionType) {
 // ── GLOBAL LOGOUT LISTENER ──
 // This uses event delegation so it works even after the header is injected
 document.addEventListener('click', async (e) => {
+    const profileTrigger = e.target.closest('#header-email');
+    if (profileTrigger) {
+        e.preventDefault();
+        openProfileModal();
+        return;
+    }
+
     const logoutBtn = e.target.closest('#logout-btn');
     if (!logoutBtn) return;
 

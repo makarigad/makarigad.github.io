@@ -1,4 +1,4 @@
-const CACHE_VERSION   = 'v8';
+const CACHE_VERSION   = 'v9';
 const CACHE_NAME      = `makarigad-cache-${CACHE_VERSION}`;
 const API_CACHE_NAME  = 'makarigad-api-cache-v2';
 

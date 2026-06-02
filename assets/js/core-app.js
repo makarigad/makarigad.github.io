@@ -506,7 +506,6 @@ export async function performAutoAttendance(userEmail, actionType) {
 }
 
 // ── GLOBAL LOGOUT LISTENER ──
-// This uses event delegation so it works even after the header is injected
 document.addEventListener('click', async (e) => {
     const profileTrigger = e.target.closest('#header-email');
     if (profileTrigger) {
@@ -519,19 +518,20 @@ document.addEventListener('click', async (e) => {
     if (!logoutBtn) return;
 
     e.preventDefault();
+    logoutBtn.textContent = 'Checking out...';
+    logoutBtn.disabled = true;
     
-    // 1. Grab user before logging out
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-        logoutBtn.textContent = 'Checking out...';
-        logoutBtn.disabled = true;
-        
-        // 2. Auto Check-Out
-        await performAutoAttendance(user.email, 'OUT');
+    // 1. Grab user and attempt Auto Check-Out safely
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            await performAutoAttendance(user.email, 'OUT');
+        }
+    } catch (err) {
+        console.warn('Could not process auto check-out (likely offline):', err.message);
     }
 
-    // 3. Log out of Supabase and refresh
+    // 2. Log out of Supabase and refresh (Guaranteed to run)
     await supabase.auth.signOut();
     localStorage.removeItem(ROLE_CACHE_KEY);
     window.location.href = 'index.html';
@@ -540,6 +540,14 @@ document.addEventListener('click', async (e) => {
 // ============================================================
 // Periodic sync every 15 seconds when online
 // ============================================================
-setInterval(() => {
-    if (navigator.onLine) processSyncQueue();
+let isSyncing = false;
+setInterval(async () => {
+    if (navigator.onLine && !isSyncing) {
+        isSyncing = true;
+        try {
+            await processSyncQueue();
+        } finally {
+            isSyncing = false;
+        }
+    }
 }, 15_000);

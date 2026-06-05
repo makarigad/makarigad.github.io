@@ -41,6 +41,10 @@
     .stat-card { transition: transform 0.15s, box-shadow 0.15s; }
     .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px 0 rgba(31, 38, 135, 0.10); }
 
+    /* Pulse animation for zero-stock alert */
+    @keyframes soft-pulse { 0%,100% { opacity:1; } 50% { opacity:.7; } }
+    .alert-pulse { animation: soft-pulse 2.2s ease-in-out infinite; }
+
     /* Print styling */
     .print-show { display: none !important; }
     @media print {
@@ -117,9 +121,31 @@
   </div>
   </main>
 
-  <button type="button" id="fab-quick" class="staff-only role-hidden hidden fixed bottom-20 right-4 z-40 md:hidden w-14 h-14 rounded-full bg-indigo-600 text-white text-2xl font-black shadow-lg">+</button>
-
   <div id="global-footer-container" class="shrink-0"></div>
+
+  <nav class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-50 pb-safe">
+      <div class="flex justify-around items-center p-2">
+          <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center p-2 text-indigo-600">
+              <span class="text-xl mb-1">📦</span>
+              <span class="text-[9px] font-black uppercase tracking-wider">Items</span>
+          </button>
+          <button onclick="openFuelReportModal()" class="flex flex-col items-center p-2 text-slate-500 hover:text-indigo-600 transition">
+              <span class="text-xl mb-1">📊</span>
+              <span class="text-[9px] font-bold uppercase tracking-wider">Report</span>
+          </button>
+          <button id="mobile-quick-entry" class="staff-only role-hidden hidden -mt-6 bg-indigo-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg border-4 border-slate-50 active:scale-95 transition">
+              <span class="text-2xl font-black">+</span>
+          </button>
+          <button onclick="document.getElementById('btn-fuel-flow').click()" class="flex flex-col items-center p-2 text-slate-500 hover:text-amber-600 transition">
+              <span class="text-xl mb-1">⛽</span>
+              <span class="text-[9px] font-bold uppercase tracking-wider">Fuel</span>
+          </button>
+          <button onclick="document.getElementById('mobile-menu-btn').click()" class="flex flex-col items-center p-2 text-slate-500 hover:text-indigo-600 transition">
+              <span class="text-xl mb-1">☰</span>
+              <span class="text-[9px] font-bold uppercase tracking-wider">Menu</span>
+          </button>
+      </div>
+  </nav>
 
   <div id="fuel-report-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] hidden items-start justify-center p-4 overflow-y-auto print:p-0">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col my-auto border border-slate-200 print:my-0 print:border-none print:shadow-none min-h-[50vh]">
@@ -137,7 +163,10 @@
             </div>
             <button type="submit" id="fr-generate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-black transition">Generate</button>
           </form>
-          <button type="button" onclick="window.print()" class="ml-auto bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-slate-300"><span class="text-base">🖨️</span> Print</button>
+          <div class="flex gap-2 ml-auto">
+              <button type="button" onclick="exportFuelReportToExcel()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-emerald-200"><span class="text-base">📗</span> Export</button>
+              <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-slate-300"><span class="text-base">🖨️</span> Print</button>
+          </div>
         </div>
         <button type="button" onclick="closeModal('fuel-report-modal')" class="text-slate-400 hover:text-rose-600 text-3xl leading-none transition font-light">&times;</button>
       </div>
@@ -325,7 +354,7 @@
           <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Store</label>
           <select id="ni-store" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"></select>
         </div>
-        <div class="admin-only role-hidden">
+        <div class="admin-only role-hidden hidden">
           <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Photo URL (optional)</label>
           <input type="url" id="ni-photo" placeholder="https://…" class="w-full p-3 bg-slate-50 border rounded-xl text-sm">
         </div>
@@ -513,7 +542,7 @@ let activeCategory = 'All';
 let fuelWorkbookSheets = [];
 let currentSheetIdx = 0;
 let fuelMasterIds = {};
-window.userOpeningOverrides = {}; // Stores manual overrides for Fuel Report opening stock
+window.userOpeningOverrides = {}; 
 window.toastTimer = null;
 
 const todayNPT = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Kathmandu' });
@@ -820,18 +849,36 @@ function renderItemCards(items) {
     
     grid.innerHTML = items.map(item => {
         const stock = Number(item.current_stock);
-        const low = stock <= 0;
+        const isZero = stock <= 0;
+        const isLow = stock > 0 && stock <= 20; 
+
+        let statusColors = 'text-emerald-600 bg-emerald-50 border-emerald-100';
+        let statusDot = '🟢';
+        if (isZero) {
+            statusColors = 'text-rose-600 bg-rose-50 border-rose-200 alert-pulse';
+            statusDot = '🔴';
+        } else if (isLow) {
+            statusColors = 'text-amber-600 bg-amber-50 border-amber-200';
+            statusDot = '🟡';
+        }
+
         const loc = item.store_id ? storeName(item.store_id) : (item.store_location || '—');
-        return `<button type="button" data-item-id="${item.id}" class="item-card text-left glass-panel rounded-2xl p-4 border ${low ? 'border-rose-200' : 'border-slate-100'} hover:border-indigo-300 transition active:scale-[0.98]">
+        
+        return `<button type="button" data-item-id="${item.id}" class="item-card text-left glass-panel rounded-2xl p-4 border transition active:scale-[0.98] ${isZero ? 'border-rose-400 shadow-[0_0_15px_rgba(225,29,72,0.15)]' : 'border-slate-100 hover:border-indigo-300'}">
           ${item.photo_url ? `<img src="${item.photo_url}" alt="" class="w-full h-24 object-cover rounded-xl mb-2 bg-slate-100" onerror="this.classList.add('hidden')">` : ''}
-          <div class="text-[10px] font-bold uppercase ${catBadge(item.category)} inline-block px-2 py-0.5 rounded mb-1">${item.category}</div>
-          <div class="font-black text-slate-800 leading-snug">${item.item_name}</div>
-          <div class="text-xs text-slate-500 mt-1 truncate">📍 ${loc}</div>
-          <div class="mt-3 flex justify-between items-end">
-            <span class="text-[10px] text-slate-400 font-semibold">${item.unit}</span>
-            <span class="text-lg font-black ${low ? 'text-rose-600' : 'text-indigo-600'} tabular-nums">${stock.toLocaleString()}</span>
+          
+          <div class="flex justify-between items-start mb-1">
+            <div class="text-[10px] font-bold uppercase ${catBadge(item.category)} inline-block px-2 py-0.5 rounded">${item.category}</div>
+            <div class="text-[10px] font-black px-1.5 py-0.5 rounded border ${statusColors}">${statusDot} ${isZero ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'IN STOCK')}</div>
           </div>
-          ${low ? '<div class="text-[10px] font-bold text-rose-500 mt-1">Out of stock</div>' : ''}
+          
+          <div class="font-black text-slate-800 leading-snug text-lg">${item.item_name}</div>
+          <div class="text-xs text-slate-500 mt-1 truncate">📍 ${loc}</div>
+          
+          <div class="mt-4 flex justify-between items-end">
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">${item.unit}</span>
+            <span class="text-2xl font-black ${isZero ? 'text-rose-600' : 'text-slate-800'} tabular-nums leading-none">${stock.toLocaleString()}</span>
+          </div>
         </button>`;
     }).join('');
     
@@ -931,7 +978,7 @@ async function openItemDetail(itemId) {
         <button type="button" id="detail-out" class="flex-1 min-w-[120px] py-2.5 bg-rose-500 text-white rounded-xl text-xs font-black">Issue OUT</button>
       </div>
       
-      ${isAdmin() ? `<div class="admin-only border-t pt-3 mt-3">
+      ${isAdmin() ? `<div class="admin-only role-hidden hidden border-t pt-3 mt-3">
         <div>
             <label class="text-[10px] font-bold text-slate-500 uppercase">Photo URL</label>
             <div class="flex gap-2 mt-1">
@@ -988,7 +1035,7 @@ async function openItemDetail(itemId) {
 
     body.innerHTML = html;
     
-    // Attach Listeners via Event Delegation on the body to avoid leaks
+    // Attach Listeners securely without re-triggering randomly
     body.addEventListener('click', async (e) => {
         const btn = e.target.closest('button');
         if (!btn) return;
@@ -1028,7 +1075,6 @@ async function openItemDetail(itemId) {
         }
     });
     
-    // Reveal correct role permissions
     if (userRole === 'admin') body.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
     if (['admin', 'staff'].includes(userRole)) body.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
 }
@@ -1136,7 +1182,9 @@ window.openFuelImportModal = () => {
     $('fi-review-section')?.classList.remove('flex');
 };
 window.openFuelReportModal = () => openModal('fuel-report-modal');
+
 window.openQuickTxn = async () => {
+    if (!currentUser) return showToast('Please sign in first', 'warning');
     await refreshInventory();
     populateSelects();
     $('qt-date').value = todayNPT();
@@ -1323,8 +1371,9 @@ function renderSetupLists() {
 }
 
 function setupForms() {
-    $('header-quick-entry')?.addEventListener('click', openQuickTxn);
-    $('fab-quick')?.addEventListener('click', openQuickTxn);
+    $('header-quick-entry')?.addEventListener('click', () => openQuickTxn().catch(e => showToast(e.message, 'error')));
+    $('mobile-quick-entry')?.addEventListener('click', () => openQuickTxn().catch(e => showToast(e.message, 'error')));
+    $('fab-quick')?.addEventListener('click', () => openQuickTxn().catch(e => showToast(e.message, 'error')));
 
     $('txn-delete-btn')?.addEventListener('click', () => {
         const logId = $('txn-log-id').value;
@@ -1348,7 +1397,6 @@ function setupForms() {
             const type = $('txn-type').value;
             const qty = parseFloat($('txn-qty').value);
             
-            // Precise logic: What is actually available if we reverse the old transaction?
             let adjustedStock = Number(currentItem.current_stock);
             if (oldLog) adjustedStock += (oldLog.txn_type === 'OUT' ? Number(oldLog.quantity) : -Number(oldLog.quantity));
             
@@ -1466,6 +1514,37 @@ function setupForms() {
         finally { btn.disabled = false; btn.textContent = origText; }
     });
 }
+
+// --- EXCEL EXPORT (Fuel Report) ---
+window.exportFuelReportToExcel = function() {
+    const container = document.getElementById('fr-generated-tables');
+    if (!container || container.classList.contains('hidden') || container.innerHTML === '') {
+        return showToast('Generate a report first before exporting.', 'warning');
+    }
+
+    try {
+        showToast('Preparing Excel file...', 'success');
+        const wb = XLSX.utils.book_new();
+        
+        const tables = container.querySelectorAll('.report-table');
+        
+        tables.forEach((table, index) => {
+            let sheetName = index === tables.length - 1 ? "Overall Summary" : `Tank Ledger ${index + 1}`;
+            const header = table.closest('.bg-white').querySelector('h4');
+            if (header && index !== tables.length - 1) {
+                sheetName = header.textContent.replace('Consumption Ledger: ', '').substring(0, 31);
+            }
+            const ws = XLSX.utils.table_to_sheet(table);
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        });
+
+        const fileName = `Fuel_Report_${document.getElementById('fr-start').value}_to_${document.getElementById('fr-end').value}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        
+    } catch (err) {
+        showToast('Error exporting to Excel: ' + err.message, 'error');
+    }
+};
 
 // --- IMPORTER & REPORT TOOLS ---
 function setupFuelImporter() {
@@ -1637,7 +1716,6 @@ function setupFuelImporter() {
                         
                         if (!parsedDate) continue;
 
-                        // Ensure blank descriptions never false-positive against each other or DB rows
                         const signature = `${parsedDate}_${fType}_${rec>0?'IN':'OUT'}_${rec||iss}_${desc.toLowerCase() || Math.random().toString()}`;
                         
                         result[activeTable].push({
@@ -1673,13 +1751,23 @@ function setupFuelImporter() {
         if (validDates.length > 0) {
             const minD = validDates[0], maxD = validDates[validDates.length - 1];
             try {
-                const { data: exLogs } = await supabase.from('inventory_logs').select('log_date, txn_type, quantity, purpose, inventory_items(item_name)').gte('log_date', minD).lte('log_date', maxD);
-                if(exLogs) {
-                    exLogs.forEach(l => {
+                let offset = 0;
+                while(true) {
+                    const { data: exLogs, error } = await supabase.from('inventory_logs')
+                        .select('log_date, txn_type, quantity, purpose, inventory_items(item_name)')
+                        .gte('log_date', minD).lte('log_date', maxD)
+                        .range(offset, offset + 999);
+                        
+                    if (error || !exLogs || exLogs.length === 0) break;
+                    
+                    exLogs.forEach((l, idx) => {
                         const iname = l.inventory_items?.item_name || '';
-                        const descPart = l.purpose ? l.purpose.toLowerCase() : Math.random().toString();
+                        const descPart = l.purpose ? l.purpose.toLowerCase() : idx.toString();
                         existingSigs.add(`${l.log_date}_${iname}_${l.txn_type}_${l.quantity}_${descPart}`);
                     });
+                    
+                    if (exLogs.length < 1000) break;
+                    offset += 1000;
                 }
             } catch(e) {}
         }
@@ -1861,7 +1949,6 @@ function setupFuelReport() {
             const idsMap = {}; 
             itemData.forEach(i => idsMap[i.item_name] = i.id);
 
-            // Supabase API Pagination to bypass 1000-row limit for large databases
             let allLogs = [];
             let offset = 0;
             while(true) {
@@ -1884,7 +1971,6 @@ function setupFuelReport() {
                 let computedOpenBal = 0;
                 let tableRows = [], totRec = 0, totIss = 0;
                 
-                // 1. Calculate computed opening balance
                 itemLogs.forEach(log => {
                     if (log.log_date < start) {
                         if(log.txn_type === 'IN') computedOpenBal += Number(log.quantity);
@@ -1892,11 +1978,9 @@ function setupFuelReport() {
                     }
                 });
                 
-                // 2. Override if manual edit exists
                 let openBal = window.userOpeningOverrides[itemName] !== undefined ? window.userOpeningOverrides[itemName] : computedOpenBal;
                 let currentBal = openBal;
 
-                // 3. Process in-range rows
                 itemLogs.forEach(log => {
                     if (log.log_date >= start && log.log_date <= end) {
                         const q = Number(log.quantity);
@@ -1987,7 +2071,7 @@ function setupFuelReport() {
 
             let rightHtml = `
             <div class="w-full lg:w-1/3 space-y-6 sticky top-0">
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 break-inside-avoid">
                     <h4 class="text-sm font-black text-indigo-900 mb-3">Overall Fuel Inventory</h4>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left report-table">
@@ -2025,7 +2109,6 @@ function setupFuelReport() {
             container.innerHTML = `<div class="flex flex-col lg:flex-row items-start gap-6 w-full">` + leftHtml + rightHtml + `</div>`;
             container.classList.remove('hidden');
 
-            // Attach listener for manual opening balance edits
             container.querySelectorAll('.opening-override').forEach(input => {
                 input.addEventListener('change', (evt) => {
                     const val = parseFloat(evt.target.value);
@@ -2060,10 +2143,11 @@ async function startInventoryApp() {
         if (fRes.ok) document.getElementById('global-footer-container').innerHTML = await fRes.text();
         initHeaderUI();
 
-        // Precise Roles
-        if (userRole === 'admin') $$('.admin-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
-        if (['admin', 'staff'].includes(userRole)) {
-            $$('.staff-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
+        if (userRole === 'admin') {
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
+            document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
+        } else if (userRole === 'staff') {
+            document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden', 'hidden'));
         }
 
         await refreshInventory();

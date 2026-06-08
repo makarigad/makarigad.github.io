@@ -1657,6 +1657,7 @@ window.exportReportToExcel = function() {
 };
 
 // --- FUEL IMPORTER ---
+// --- FUEL IMPORTER ---
 function setupFuelImporter() {
     $('fi-wipe-btn')?.addEventListener('click', async () => {
         if(!confirm("DANGER: This will delete ALL Fuel Items and Logs from the database. Are you absolutely sure?")) return;
@@ -1708,9 +1709,12 @@ function setupFuelImporter() {
                 try {
                     const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
                     workbook.SheetNames.forEach(name => {
+                        // Skip the summary/stock report sheet
+                        if (name.toLowerCase().includes('stock report') || name.toLowerCase().includes('summary')) return;
+                        
                         const data2D = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1, raw: false});
                         const parsed = parseFuelTables(data2D, name);
-                        if (parsed.ph.length > 0 || parsed.ropeway.length > 0 || parsed.dam.length > 0 || parsed.petrol.length > 0 || parsed.generic.length > 0) {
+                        if (parsed.ph.length > 0 || parsed.ropeway.length > 0 || parsed.dam.length > 0 || parsed.petrol.length > 0) {
                             fuelWorkbookSheets.push({ name: name, data: parsed });
                         }
                     });
@@ -1731,20 +1735,23 @@ function setupFuelImporter() {
 
         for (let r = 0; r < data2D.length; r++) {
             if (!data2D[r] || data2D[r].length === 0) continue;
-            let rawRow = Array.from(data2D[r] || []).map(c => String(c||'').trim());
+            // The monthly reports usually have the core data in the first 10 columns
+            let rawRow = Array.from(data2D[r]).slice(0, 10).map(c => String(c||'').trim());
             let rowLower = rawRow.map(c => c.toLowerCase());
             let rowStr = rowLower.join(' ');
 
-            if (rowStr.includes('diesel consumption') && rowStr.includes('at ph')) { activeTable = 'ph'; continue; }
-            if (rowStr.includes('diesel consumption') && rowStr.includes('at ropeway')) { activeTable = 'ropeway'; continue; }
-            if (rowStr.includes('diesel consumption') && rowStr.includes('at dam')) { activeTable = 'dam'; continue; }
-            if (rowStr.includes('petrol consumption') && rowStr.includes('at ph')) { activeTable = 'petrol'; continue; }
+            // Detect which table block we are currently inside
+            if (rowStr.includes('diesel consumption details at ph')) { activeTable = 'ph'; dateIdx=-1; continue; }
+            if (rowStr.includes('petrol consumption details at ph')) { activeTable = 'petrol'; dateIdx=-1; continue; }
+            if (rowStr.includes('diesel consumption details at ropeway')) { activeTable = 'ropeway'; dateIdx=-1; continue; }
+            if (rowStr.includes('diesel consumption details at dam')) { activeTable = 'dam'; dateIdx=-1; continue; }
 
+            // Find headers for the active table
             if (rowLower.includes('date') || rowLower.includes('date ')) {
                 if (rowLower.includes('received') || rowLower.includes('issued')) {
-                    if (!activeTable) activeTable = 'generic';
+                    if (!activeTable) activeTable = 'ph'; // default fallback
 
-                    dateIdx = rowLower.findIndex(c => c === 'date' || c === 'date ');
+                    dateIdx = rowLower.findIndex(c => c === 'date' || c.startsWith('date'));
                     descIdx = rowLower.findIndex(c => c.includes('description') || c.includes('particulars'));
                     recIdx = rowLower.findIndex(c => c.includes('received') || c.includes('purchased'));
                     issIdx = rowLower.findIndex(c => c.includes('issued') || c.includes('consumed'));
@@ -1755,15 +1762,18 @@ function setupFuelImporter() {
                 }
             }
 
+            // Extract data if we are inside a table and found the headers
             if (activeTable && dateIdx > -1) {
                 let dateStr = rawRow[dateIdx] || '';
                 let desc = descIdx > -1 ? (rawRow[descIdx] || '') : '';
                 let remarks = remIdx > -1 ? (rawRow[remIdx] || '') : '';
                 
-                if (dateStr.toLowerCase().includes('total') || desc.toLowerCase().includes('total')) {
-                    activeTable = null; continue;
+                // Skip summary/total lines at the bottom of tables
+                if (dateStr.toLowerCase().includes('total') || desc.toLowerCase().includes('total') || rowStr.includes('total shifted diesel')) {
+                    continue; 
                 }
 
+                // Check if it's a valid date string
                 if (dateStr.match(/\d{1,4}[\.\-\/]\d{1,2}[\.\-\/]\d{1,4}/) || (!isNaN(Date.parse(dateStr)) && dateStr.length > 5) || /^\d{4,5}$/.test(dateStr.trim())) {
                     let recStr = recIdx > -1 && rawRow[recIdx] ? rawRow[recIdx].toString() : '';
                     let issStr = issIdx > -1 && rawRow[issIdx] ? rawRow[issIdx].toString() : '';
@@ -1910,9 +1920,9 @@ function setupFuelImporter() {
 
         container.innerHTML = [
             buildTableHTML('Diesel - PH', sheet.data.ph, 'ph'),
+            buildTableHTML('Petrol - PH', sheet.data.petrol, 'petrol'),
             buildTableHTML('Diesel - Ropeway', sheet.data.ropeway, 'ropeway'),
             buildTableHTML('Diesel - Dam', sheet.data.dam, 'dam'),
-            buildTableHTML('Petrol - PH', sheet.data.petrol, 'petrol'),
             buildTableHTML('Diesel - PH', sheet.data.generic, 'generic')
         ].join('');
 
@@ -2008,9 +2018,9 @@ function setupFuelImporter() {
             };
 
             processGroup(sheet.data.ph, 'ph');
+            processGroup(sheet.data.petrol, 'petrol');
             processGroup(sheet.data.ropeway, 'ropeway');
             processGroup(sheet.data.dam, 'dam');
-            processGroup(sheet.data.petrol, 'petrol');
             processGroup(sheet.data.generic, 'generic');
 
             if(payloads.length > 0) {

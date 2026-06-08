@@ -5,14 +5,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#4f46e5" />
   <title>Inventory Hub | Makari Gad 10MW</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    tailwind.config = {
+      corePlugins: { preflight: true }
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
   <link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/css/index.css">
+  
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -49,9 +59,9 @@
     .print-show { display: none !important; }
     @media print {
         body * { visibility: hidden; }
-        #fuel-report-modal, #fuel-report-modal * { visibility: visible; }
-        #fuel-report-modal { position: absolute; left: 0; top: 0; width: 100%; height: auto; background: white; z-index: 9999; display: block !important; padding: 0 !important; overflow: visible !important; }
-        #fuel-report-modal > div { border: none !important; box-shadow: none !important; max-width: 100% !important; margin: 0 !important; }
+        #report-modal, #report-modal * { visibility: visible; }
+        #report-modal { position: absolute; left: 0; top: 0; width: 100%; height: auto; background: white; z-index: 9999; display: block !important; padding: 0 !important; overflow: visible !important; }
+        #report-modal > div { border: none !important; box-shadow: none !important; max-width: 100% !important; margin: 0 !important; }
         .print-hide { display: none !important; }
         .print-show { display: inline !important; }
         #fr-generated-tables { width: 100% !important; max-width: none !important; padding-bottom: 0 !important; }
@@ -62,7 +72,23 @@
 <body class="text-slate-800 min-h-screen w-full flex flex-col bg-slate-50 relative pb-20 md:pb-4">
 
   <div class="absolute top-0 left-0 w-full h-[30vh] bg-gradient-to-b from-indigo-100/50 to-transparent -z-10 pointer-events-none"></div>
-  <div id="global-header-container" class="shrink-0 z-50 relative"></div>
+  
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shrink-0">
+    <div class="max-w-[1920px] mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-indigo-600 text-xl font-black">▣</span>
+        <span class="font-black text-slate-800 tracking-tight">Makari Gad 10MW</span>
+      </div>
+      <div id="auth-user-info" class="hidden items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <div class="text-xs font-black text-slate-700 leading-none" id="auth-name">User</div>
+          <div class="text-[9px] font-bold text-slate-400 uppercase mt-0.5" id="auth-role">Role</div>
+        </div>
+        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-black border border-indigo-200" id="auth-avatar">U</div>
+        <button id="btn-signout-static" class="ml-2 text-xs font-black text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-500 border border-rose-200 hover:border-rose-500 px-3 py-1.5 rounded-lg transition-all shadow-sm">Sign Out</button>
+      </div>
+    </div>
+  </header>
 
   <main class="flex-grow p-3 md:p-4 mx-auto w-full max-w-[1920px] flex flex-col gap-3">
 
@@ -74,10 +100,12 @@
       </div>
       <div class="flex flex-wrap gap-2">
         <button type="button" id="btn-fuel-flow" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-black shadow-sm">⛽ Fuel entry</button>
-        <button type="button" onclick="openFuelReportModal()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-2 rounded-xl text-xs font-black">📊 Fuel report</button>
+        <button type="button" onclick="window.openReportModal('Fuel')" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-2 rounded-xl text-xs font-black">📊 Fuel report</button>
+        <button type="button" onclick="window.openReportModal('Materials')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-3 py-2 rounded-xl text-xs font-black">📊 Materials report</button>
         <button type="button" id="header-quick-entry" class="staff-only role-hidden hidden bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-xs font-black">➕ Quick entry</button>
         <button type="button" id="btn-admin-setup" class="admin-only role-hidden hidden bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-xl text-xs font-black">⚙️ Stores &amp; setup</button>
         <button type="button" onclick="openFuelImportModal()" class="admin-only role-hidden hidden bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl text-xs font-black">Import fuel</button>
+        <button type="button" onclick="openMaterialsImportModal()" class="admin-only role-hidden hidden bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-black">Import materials</button>
         <button type="button" onclick="openNewItemModal()" class="admin-only role-hidden hidden bg-indigo-100 hover:bg-indigo-200 text-indigo-900 px-3 py-2 rounded-xl text-xs font-black">New item</button>
       </div>
     </div>
@@ -123,36 +151,17 @@
 
   <div id="global-footer-container" class="shrink-0"></div>
 
-  <nav class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-50 pb-safe">
-      <div class="flex justify-around items-center p-2">
-          <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="flex flex-col items-center p-2 text-indigo-600">
-              <span class="text-xl mb-1">📦</span>
-              <span class="text-[9px] font-black uppercase tracking-wider">Items</span>
-          </button>
-          <button onclick="openFuelReportModal()" class="flex flex-col items-center p-2 text-slate-500 hover:text-indigo-600 transition">
-              <span class="text-xl mb-1">📊</span>
-              <span class="text-[9px] font-bold uppercase tracking-wider">Report</span>
-          </button>
-          <button id="mobile-quick-entry" class="staff-only role-hidden hidden -mt-6 bg-indigo-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg border-4 border-slate-50 active:scale-95 transition">
-              <span class="text-2xl font-black">+</span>
-          </button>
-          <button onclick="document.getElementById('btn-fuel-flow').click()" class="flex flex-col items-center p-2 text-slate-500 hover:text-amber-600 transition">
-              <span class="text-xl mb-1">⛽</span>
-              <span class="text-[9px] font-bold uppercase tracking-wider">Fuel</span>
-          </button>
-          <button onclick="document.getElementById('mobile-menu-btn').click()" class="flex flex-col items-center p-2 text-slate-500 hover:text-indigo-600 transition">
-              <span class="text-xl mb-1">☰</span>
-              <span class="text-[9px] font-bold uppercase tracking-wider">Menu</span>
-          </button>
-      </div>
-  </nav>
-
-  <div id="fuel-report-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] hidden items-start justify-center p-4 overflow-y-auto print:p-0">
+  <div id="report-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] hidden items-start justify-center p-4 overflow-y-auto print:p-0">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col my-auto border border-slate-200 print:my-0 print:border-none print:shadow-none min-h-[50vh]">
       <div class="px-6 py-4 border-b border-slate-200 bg-white flex justify-between items-center shrink-0 shadow-sm z-10 print-hide rounded-t-2xl">
         <div class="flex items-center gap-4 flex-wrap">
-          <h3 class="text-xl font-black text-indigo-900 uppercase tracking-wide">⛽ Fuel Ledger &amp; Summary</h3>
-          <form id="fuel-report-form" class="flex items-center gap-3 ml-4 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 shadow-inner">
+          <h3 class="text-xl font-black text-indigo-900 uppercase tracking-wide flex items-center gap-2">
+            <select id="report-category" class="bg-transparent outline-none cursor-pointer border-b-2 border-indigo-900 focus:ring-0 appearance-none pb-1">
+              <option value="Fuel">⛽ FUEL LEDGER</option>
+              <option value="Materials">📦 MATERIALS LEDGER</option>
+            </select>
+          </h3>
+          <form id="report-form" class="flex items-center gap-3 ml-4 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 shadow-inner">
             <div class="flex items-center gap-2">
               <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">From:</label>
               <input type="date" id="fr-start" required class="p-1 border border-slate-200 rounded text-xs font-bold outline-none bg-white focus:border-indigo-400">
@@ -164,13 +173,13 @@
             <button type="submit" id="fr-generate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-black transition">Generate</button>
           </form>
           <div class="flex gap-2 ml-auto">
-              <button type="button" onclick="exportFuelReportToExcel()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-emerald-200"><span class="text-base">📗</span> Export</button>
+              <button type="button" onclick="exportReportToExcel()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-emerald-200"><span class="text-base">📗</span> Export</button>
               <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-slate-300"><span class="text-base">🖨️</span> Print</button>
           </div>
         </div>
-        <button type="button" onclick="closeModal('fuel-report-modal')" class="text-slate-400 hover:text-rose-600 text-3xl leading-none transition font-light">&times;</button>
+        <button type="button" onclick="closeModal('report-modal')" class="text-slate-400 hover:text-rose-600 text-3xl leading-none transition font-light">&times;</button>
       </div>
-      <div class="flex-grow p-4 md:p-6 overflow-y-auto custom-scroll" id="fuel-report-content">
+      <div class="flex-grow p-4 md:p-6 overflow-y-auto custom-scroll" id="report-content">
         <div id="fr-empty-state" class="h-full flex flex-col items-center justify-center text-slate-400 py-12">
           <p class="font-bold text-sm tracking-wide mb-2">Select date range and click Generate to view the ledger.</p>
           <p class="text-xs text-indigo-600 font-medium">💡 Tip: If you imported older data, make sure your "From" date goes back far enough!</p>
@@ -184,8 +193,7 @@
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden border border-slate-200 flex flex-col max-h-[95vh]">
       <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-rose-600 shrink-0">
         <h3 class="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-          Fuel Master Importer (Sheet-by-Sheet)
+          ⛽ Fuel Master Importer (Sheet-by-Sheet)
         </h3>
         <button type="button" onclick="closeModal('fuel-import-modal')" class="text-rose-200 hover:text-white text-xl leading-none transition">&times;</button>
       </div>
@@ -194,10 +202,9 @@
         <div class="bg-rose-50 border border-rose-100 rounded-lg p-4 mb-4 text-xs text-rose-800 font-medium">
           <p class="font-black mb-2 uppercase tracking-widest text-[10px] text-rose-900">Setup Instructions</p>
           <ul class="list-decimal pl-4 space-y-1 mb-2">
-            <li>You can upload <b>multiple CSV files</b> at once by highlighting them, or a single Excel workbook.</li>
-            <li>The system will extract the tables sheet by sheet for you to review and save.</li>
-            <li>You can explicitly choose which fuel tank the data gets imported into.</li>
-            <li>Duplicates will be automatically highlighted and unchecked.</li>
+            <li>Upload your <b>Fuel Summary</b> Excel workbook.</li>
+            <li>The system will extract tables sheet by sheet for you to review.</li>
+            <li>Duplicates are matched tightly by Date + Quantity + Type + Purpose.</li>
           </ul>
           <button id="fi-wipe-btn" class="mt-2 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-md shadow-md text-[11px] uppercase tracking-widest transition">
             ⚠️ Wipe All Fuel Data &amp; Initialize Clean Slate
@@ -205,11 +212,11 @@
         </div>
         <form id="fi-form" class="space-y-3 mt-6">
           <div>
-            <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Select CSV/Excel Files</label>
-            <input type="file" id="fi-file" multiple accept=".csv, .xlsx, .xls" required class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+            <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Select Fuel Workbook</label>
+            <input type="file" id="fi-file" accept=".xlsx, .xls" required class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none">
           </div>
           <button type="submit" id="fi-submit-btn" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-lg shadow-md transition text-[11px] uppercase tracking-widest flex items-center justify-center gap-2">
-            Read Data Files
+            Read Fuel Data
           </button>
         </form>
       </div>
@@ -230,6 +237,75 @@
           </div>
         </div>
         <div class="flex-grow overflow-y-auto custom-scroll grid grid-cols-1 md:grid-cols-2 gap-4 pb-4" id="fi-tables-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="materials-import-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden border border-slate-200 flex flex-col max-h-[95vh]">
+      <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-emerald-600 shrink-0">
+        <h3 class="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
+          📦 Materials Master Importer
+        </h3>
+        <button type="button" onclick="closeModal('materials-import-modal')" class="text-emerald-200 hover:text-white text-xl leading-none transition">&times;</button>
+      </div>
+
+      <div class="p-6 overflow-y-auto custom-scroll" id="mi-setup-section">
+        <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-4 mb-4 text-xs text-emerald-800 font-medium">
+          <p class="font-black mb-2 uppercase tracking-widest text-[10px] text-emerald-900">Setup Instructions</p>
+          <ul class="list-decimal pl-4 space-y-1 mb-2">
+            <li>Upload your <b>Stock card of consumable materials</b> Excel workbook.</li>
+            <li>The system will automatically read the "List and Summary" sheet and extract all numbered transaction sheets.</li>
+            <li>You can review the detected items and assign default stores before importing.</li>
+          </ul>
+        </div>
+        <form id="mi-form" class="space-y-3 mt-6">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Select Materials Workbook</label>
+            <input type="file" id="mi-file" accept=".xlsx, .xls" required class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none">
+          </div>
+          <button type="submit" id="mi-submit-btn" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-lg shadow-md transition text-[11px] uppercase tracking-widest flex items-center justify-center gap-2">
+            Read Materials Data
+          </button>
+        </form>
+      </div>
+
+      <div class="p-4 hidden flex-col h-full min-h-0 bg-slate-50" id="mi-review-section">
+        <div class="bg-white border border-slate-200 p-3 rounded-lg mb-3 flex justify-between items-center shrink-0 shadow-sm flex-wrap gap-3">
+          <div>
+            <h4 class="font-black text-indigo-900 text-base">Review Detected Materials</h4>
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5" id="mi-progress">Found 0 items</p>
+          </div>
+          <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+            <span class="text-[10px] font-bold uppercase text-slate-500">Apply to all:</span>
+            <select id="mi-global-store" class="text-xs border border-slate-300 rounded p-1.5 bg-white font-bold"></select>
+            <select id="mi-global-cat" class="text-xs border border-slate-300 rounded p-1.5 bg-white font-bold">
+                <option value="Consumable">Consumable</option>
+                <option value="Asset">Asset</option>
+                <option value="WKV">WKV</option>
+            </select>
+            <button id="mi-apply-global" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-md text-xs font-black transition">Set All</button>
+          </div>
+          <button id="mi-save-btn" class="px-5 py-2.5 bg-emerald-600 border border-emerald-700 font-black rounded-lg shadow-sm text-white hover:bg-emerald-700 text-xs transition uppercase tracking-widest">
+             💾 Save Selected Materials
+          </button>
+        </div>
+        <div class="flex-grow overflow-y-auto custom-scroll bg-white rounded-lg border border-slate-200 shadow-sm">
+             <table class="w-full text-left text-xs">
+                 <thead class="bg-slate-100 sticky top-0 text-slate-500 uppercase font-black text-[10px] shadow-sm z-10">
+                     <tr>
+                         <th class="px-3 py-2 w-8"><input type="checkbox" id="mi-toggle-all" checked class="accent-indigo-600 w-3.5 h-3.5"></th>
+                         <th class="px-3 py-2 w-12">SN</th>
+                         <th class="px-3 py-2">Item Name</th>
+                         <th class="px-3 py-2 w-16">Unit</th>
+                         <th class="px-3 py-2 w-20 text-center">Logs</th>
+                         <th class="px-3 py-2 w-48">Store Location</th>
+                         <th class="px-3 py-2 w-32">Category</th>
+                     </tr>
+                 </thead>
+                 <tbody id="mi-tbody" class="divide-y divide-slate-100"></tbody>
+             </table>
+        </div>
       </div>
     </div>
   </div>
@@ -520,7 +596,7 @@
     </div>
   </div>
 
-  <script type="module">
+<script type="module">
 import { supabase, fetchWithTimeout, initHeaderUI, initializeApplication } from './assets/js/core-app.js';
 
 // --- DOM Helpers ---
@@ -542,6 +618,8 @@ let activeCategory = 'All';
 let fuelWorkbookSheets = [];
 let currentSheetIdx = 0;
 let fuelMasterIds = {};
+let materialsWorkbookData = [];
+
 window.userOpeningOverrides = {}; 
 window.toastTimer = null;
 
@@ -926,9 +1004,12 @@ function setupSearch() { $('search-inventory')?.addEventListener('input', filter
 
 function populateSelects() {
     const storeOpts = stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    ['ni-store', 'ff-to-store', 'ff-from-store', 'ff-to-store-t', 'ff-store-consume', 'new-eq-store'].forEach(id => {
+    ['ni-store', 'ff-to-store', 'ff-from-store', 'ff-to-store-t', 'ff-store-consume', 'new-eq-store', 'mi-global-store'].forEach(id => {
         const el = $(id);
-        if (el) el.innerHTML = storeOpts || '<option value="">No stores — run SQL migration</option>';
+        if (el) {
+            if(id === 'mi-global-store') el.innerHTML = `<option value="">-- No specific store --</option>` + storeOpts;
+            else el.innerHTML = storeOpts || '<option value="">No stores — run SQL migration</option>';
+        }
     });
     
     const pumpEl = $('ff-pump');
@@ -946,6 +1027,27 @@ function refreshEquipmentSelect(fuelType) {
     let list = equipment;
     if (fuelType) list = list.filter(e => e.fuel_type === fuelType);
     el.innerHTML = list.map(e => `<option value="${e.id}">${e.name} (${e.fuel_type})</option>`).join('') || '<option value="">Add equipment in setup</option>';
+}
+
+// --- Shared Utility ---
+function parseDateFlexible(dStr) {
+    if(!dStr) return null;
+    let s = String(dStr).trim().split(' ')[0];
+    
+    // Excel numeric dates
+    if (/^\d{4,5}$/.test(s)) {
+        const jsDate = new Date(Math.round((parseInt(s) - 25569) * 86400 * 1000));
+        return jsDate.toISOString().split('T')[0];
+    }
+    
+    let p = s.replace(/\//g, '.').replace(/-/g, '.').split('.');
+    if (p.length === 3) {
+        let y = p[2], m = p[1], d = p[0];
+        if(p[0].length === 4) { y = p[0]; m = p[1]; d = p[2]; }
+        if(y.length === 2) y = '20' + y;
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    return null;
 }
 
 // --- Item Details ---
@@ -1035,7 +1137,6 @@ async function openItemDetail(itemId) {
 
     body.innerHTML = html;
     
-    // Attach Listeners securely without re-triggering randomly
     body.addEventListener('click', async (e) => {
         const btn = e.target.closest('button');
         if (!btn) return;
@@ -1166,7 +1267,7 @@ window.deleteTxn = async function (logId) {
         closeModal('txn-modal');
         await refreshInventory();
         if (currentItem) openItemDetail(currentItem.id);
-        if (!$('fuel-report-modal')?.classList.contains('hidden')) {
+        if (!$('report-modal')?.classList.contains('hidden')) {
             $('fr-generate-btn')?.click();
         }
     } catch (e) { showToast(e.message, 'error'); }
@@ -1174,14 +1275,23 @@ window.deleteTxn = async function (logId) {
 
 // Global Toggles
 window.openNewItemModal = () => openModal('item-modal');
-window.openImportModal = () => openModal('import-modal');
 window.openFuelImportModal = () => {
     openModal('fuel-import-modal');
     $('fi-setup-section')?.classList.remove('hidden');
     $('fi-review-section')?.classList.add('hidden');
     $('fi-review-section')?.classList.remove('flex');
 };
-window.openFuelReportModal = () => openModal('fuel-report-modal');
+window.openMaterialsImportModal = () => {
+    openModal('materials-import-modal');
+    $('mi-setup-section')?.classList.remove('hidden');
+    $('mi-review-section')?.classList.add('hidden');
+    $('mi-review-section')?.classList.remove('flex');
+};
+
+window.openReportModal = (category = 'Fuel') => {
+    $('report-category').value = category;
+    openModal('report-modal');
+};
 
 window.openQuickTxn = async () => {
     if (!currentUser) return showToast('Please sign in first', 'warning');
@@ -1373,7 +1483,6 @@ function renderSetupLists() {
 function setupForms() {
     $('header-quick-entry')?.addEventListener('click', () => openQuickTxn().catch(e => showToast(e.message, 'error')));
     $('mobile-quick-entry')?.addEventListener('click', () => openQuickTxn().catch(e => showToast(e.message, 'error')));
-    $('fab-quick')?.addEventListener('click', () => openQuickTxn().catch(e => showToast(e.message, 'error')));
 
     $('txn-delete-btn')?.addEventListener('click', () => {
         const logId = $('txn-log-id').value;
@@ -1515,8 +1624,8 @@ function setupForms() {
     });
 }
 
-// --- EXCEL EXPORT (Fuel Report) ---
-window.exportFuelReportToExcel = function() {
+// --- EXCEL EXPORT ---
+window.exportReportToExcel = function() {
     const container = document.getElementById('fr-generated-tables');
     if (!container || container.classList.contains('hidden') || container.innerHTML === '') {
         return showToast('Generate a report first before exporting.', 'warning');
@@ -1527,9 +1636,10 @@ window.exportFuelReportToExcel = function() {
         const wb = XLSX.utils.book_new();
         
         const tables = container.querySelectorAll('.report-table');
+        const cat = document.getElementById('report-category').value;
         
         tables.forEach((table, index) => {
-            let sheetName = index === tables.length - 1 ? "Overall Summary" : `Tank Ledger ${index + 1}`;
+            let sheetName = index === tables.length - 1 ? "Overall Summary" : `Ledger ${index + 1}`;
             const header = table.closest('.bg-white').querySelector('h4');
             if (header && index !== tables.length - 1) {
                 sheetName = header.textContent.replace('Consumption Ledger: ', '').substring(0, 31);
@@ -1538,7 +1648,7 @@ window.exportFuelReportToExcel = function() {
             XLSX.utils.book_append_sheet(wb, ws, sheetName);
         });
 
-        const fileName = `Fuel_Report_${document.getElementById('fr-start').value}_to_${document.getElementById('fr-end').value}.xlsx`;
+        const fileName = `${cat}_Report_${document.getElementById('fr-start').value}_to_${document.getElementById('fr-end').value}.xlsx`;
         XLSX.writeFile(wb, fileName);
         
     } catch (err) {
@@ -1546,7 +1656,7 @@ window.exportFuelReportToExcel = function() {
     }
 };
 
-// --- IMPORTER & REPORT TOOLS ---
+// --- FUEL IMPORTER ---
 function setupFuelImporter() {
     $('fi-wipe-btn')?.addEventListener('click', async () => {
         if(!confirm("DANGER: This will delete ALL Fuel Items and Logs from the database. Are you absolutely sure?")) return;
@@ -1571,7 +1681,7 @@ function setupFuelImporter() {
     $('fi-form')?.addEventListener('submit', (e) => {
         e.preventDefault();
         const files = $('fi-file').files;
-        if (!files.length) return showToast('Select file(s).', 'error');
+        if (!files.length) return showToast('Select file.', 'error');
         
         const btn = $('fi-submit-btn');
         btn.textContent = 'Reading Data...'; btn.disabled = true;
@@ -1579,20 +1689,20 @@ function setupFuelImporter() {
 
         const finishLoadingSheets = () => {
             if(fuelWorkbookSheets.length === 0) {
-                btn.textContent = 'Read Data Files'; btn.disabled = false;
-                return showToast('No fuel tables found in the uploaded files.', 'error');
+                btn.textContent = 'Read Fuel Data'; btn.disabled = false;
+                return showToast('No fuel tables found in the uploaded file.', 'error');
             }
             supabase.from('inventory_items').select('id, item_name').eq('category', 'Fuel').then(({data}) => {
                 fuelMasterIds = {};
                 if(data) data.forEach(d => fuelMasterIds[d.item_name] = d.id);
                 currentSheetIdx = 0;
                 renderFuelSheet();
-                btn.textContent = 'Read Data Files'; btn.disabled = false;
+                btn.textContent = 'Read Fuel Data'; btn.disabled = false;
             });
         };
 
         const file0 = files[0];
-        if (files.length === 1 && (file0.name.endsWith('.xlsx') || file0.name.endsWith('.xls'))) {
+        if (file0.name.endsWith('.xlsx') || file0.name.endsWith('.xls')) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -1606,52 +1716,13 @@ function setupFuelImporter() {
                     });
                     finishLoadingSheets();
                 } catch(err) { 
-                    btn.textContent = 'Read Data Files'; btn.disabled = false;
-                    showToast(`Excel Error: ${err.message}. Try selecting your CSV files instead!`, 'error'); 
+                    btn.textContent = 'Read Fuel Data'; btn.disabled = false;
+                    showToast(`Excel Error: ${err.message}`, 'error'); 
                 }
             };
             reader.readAsArrayBuffer(file0);
-        } else {
-            let filesProcessed = 0;
-            Array.from(files).forEach(file => {
-                Papa.parse(file, {
-                    header: false, skipEmptyLines: false,
-                    complete: function(results) {
-                        let sheetName = file.name.replace('.csv', '').split(' - ').pop();
-                        const parsed = parseFuelTables(results.data, sheetName);
-                        if (parsed.ph.length > 0 || parsed.ropeway.length > 0 || parsed.dam.length > 0 || parsed.petrol.length > 0 || parsed.generic.length > 0) {
-                            fuelWorkbookSheets.push({ name: sheetName, data: parsed });
-                        }
-                        filesProcessed++;
-                        if(filesProcessed === files.length) finishLoadingSheets();
-                    },
-                    error: function() {
-                        filesProcessed++;
-                        if(filesProcessed === files.length) finishLoadingSheets();
-                    }
-                });
-            });
         }
     });
-
-    function parseDateFlexible(dStr) {
-        if(!dStr) return null;
-        let s = String(dStr).trim().split(' ')[0];
-        
-        if (/^\d{4,5}$/.test(s)) {
-            const jsDate = new Date(Math.round((parseInt(s) - 25569) * 86400 * 1000));
-            return jsDate.toISOString().split('T')[0];
-        }
-        
-        let p = s.replace(/\//g, '.').replace(/-/g, '.').split('.');
-        if (p.length === 3) {
-            let y = p[2], m = p[1], d = p[0];
-            if(p[0].length === 4) { y = p[0]; m = p[1]; d = p[2]; }
-            if(y.length === 2) y = '20' + y;
-            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-        }
-        return null;
-    }
 
     function parseFuelTables(data2D, sheetName) {
         let result = { ph: [], ropeway: [], dam: [], petrol: [], generic: [] };
@@ -1660,7 +1731,7 @@ function setupFuelImporter() {
 
         for (let r = 0; r < data2D.length; r++) {
             if (!data2D[r] || data2D[r].length === 0) continue;
-            let rawRow = data2D[r].map(c => (c || '').toString().trim());
+            let rawRow = Array.from(data2D[r] || []).map(c => String(c||'').trim());
             let rowLower = rawRow.map(c => c.toLowerCase());
             let rowStr = rowLower.join(' ');
 
@@ -1693,7 +1764,7 @@ function setupFuelImporter() {
                     activeTable = null; continue;
                 }
 
-                if (dateStr.match(/\d{2,4}[\.\-\/]\d{2}[\.\-\/]\d{2,4}/) || (!isNaN(Date.parse(dateStr)) && dateStr.length > 5) || /^\d{4,5}$/.test(dateStr.trim())) {
+                if (dateStr.match(/\d{1,4}[\.\-\/]\d{1,2}[\.\-\/]\d{1,4}/) || (!isNaN(Date.parse(dateStr)) && dateStr.length > 5) || /^\d{4,5}$/.test(dateStr.trim())) {
                     let recStr = recIdx > -1 && rawRow[recIdx] ? rawRow[recIdx].toString() : '';
                     let issStr = issIdx > -1 && rawRow[issIdx] ? rawRow[issIdx].toString() : '';
                     let rec = parseFloat(recStr.replace(/,/g,'')) || 0;
@@ -1754,28 +1825,36 @@ function setupFuelImporter() {
                 let offset = 0;
                 while(true) {
                     const { data: exLogs, error } = await supabase.from('inventory_logs')
-                        .select('log_date, txn_type, quantity, purpose, inventory_items(item_name)')
+                        .select('log_date, txn_type, quantity, purpose')
                         .gte('log_date', minD).lte('log_date', maxD)
                         .range(offset, offset + 999);
                         
                     if (error || !exLogs || exLogs.length === 0) break;
                     
-                    exLogs.forEach((l, idx) => {
-                        const iname = l.inventory_items?.item_name || '';
-                        const descPart = l.purpose ? l.purpose.toLowerCase() : idx.toString();
-                        existingSigs.add(`${l.log_date}_${iname}_${l.txn_type}_${l.quantity}_${descPart}`);
+                    exLogs.forEach((l) => {
+                        let descPart = l.purpose ? l.purpose.toLowerCase().trim() : '';
+                        existingSigs.add(`${l.log_date}_${l.txn_type}_${Number(l.quantity)}_${descPart}`);
                     });
                     
                     if (exLogs.length < 1000) break;
                     offset += 1000;
                 }
-            } catch(e) {}
+            } catch(e) { console.error(e); }
         }
 
         let internalSigs = new Set();
         const checkDupe = (r) => {
-            if (existingSigs.has(r.sig) || internalSigs.has(r.sig)) { r.isDupe = true; }
-            else { r.isDupe = false; internalSigs.add(r.sig); }
+            const type = r.rec > 0 ? 'IN' : 'OUT';
+            const qty = r.rec || r.iss;
+            const descPart = r.desc ? r.desc.toLowerCase().trim() : '';
+            const strictSig = `${r.date}_${type}_${qty}_${descPart}`;
+            
+            if (existingSigs.has(strictSig) || internalSigs.has(strictSig)) { 
+                r.isDupe = true; 
+            } else { 
+                r.isDupe = false; 
+                internalSigs.add(strictSig); 
+            }
         };
         sheet.data.ph.forEach(checkDupe); sheet.data.ropeway.forEach(checkDupe); sheet.data.dam.forEach(checkDupe); sheet.data.petrol.forEach(checkDupe); sheet.data.generic.forEach(checkDupe);
 
@@ -1785,33 +1864,45 @@ function setupFuelImporter() {
         const buildTableHTML = (defaultTitle, data, internalKey) => {
             if(data.length === 0) return '';
             const fuelOptions = fuelItems.map(i => `<option value="${i.id}" ${i.item_name === defaultTitle ? 'selected' : ''}>${i.item_name}</option>`).join('');
+            const storeOptions = stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
             let html = `
             <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col min-h-[250px] mb-4">
-                <div class="bg-slate-100 px-3 py-2 font-black text-xs text-indigo-900 border-b border-slate-200 flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <span>Importing to:</span>
-                        <select class="import-tank-select text-xs font-bold border border-slate-300 rounded px-2 py-1 bg-white text-indigo-700" data-key="${internalKey}">
-                            ${fuelOptions}
-                            <option value="CREATE_NEW" class="text-indigo-600">+ Create New Tank</option>
-                        </select>
+                <div class="bg-slate-100 px-3 py-3 font-black text-xs text-indigo-900 border-b border-slate-200 flex flex-col gap-3">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2 w-full">
+                            <span class="w-16">Tank:</span>
+                            <select class="import-tank-select flex-grow text-xs font-bold border border-slate-300 rounded px-2 py-1.5 bg-white text-indigo-700" data-key="${internalKey}">
+                                ${fuelOptions}
+                                <option value="CREATE_NEW" class="text-indigo-600">+ Create New Tank</option>
+                            </select>
+                        </div>
                     </div>
-                    <label class="cursor-pointer font-bold text-[9px] text-slate-500"><input type="checkbox" class="toggle-all" checked> All</label>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2 w-full pr-4">
+                            <span class="w-16">Store:</span>
+                            <select class="import-store-select flex-grow text-xs font-bold border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700" data-key="${internalKey}">
+                                <option value="">-- No specific store --</option>
+                                ${storeOptions}
+                            </select>
+                        </div>
+                        <label class="cursor-pointer font-bold text-[9px] text-slate-500 flex items-center gap-1 shrink-0"><input type="checkbox" class="toggle-all" checked> Check All</label>
+                    </div>
                 </div>
                 <div class="overflow-y-auto flex-grow custom-scroll">
                 <table class="w-full text-left text-[10px] whitespace-nowrap">
                     <thead class="bg-slate-50 sticky top-0 shadow-sm text-slate-500 uppercase font-bold text-[9px]">
-                        <tr><th class="px-2 py-1">Inc</th><th class="px-2 py-1">Date</th><th class="px-2 py-1 w-full">Description</th><th class="px-2 py-1">Req By</th><th class="px-2 py-1">App By</th><th class="px-2 py-1">Remarks</th><th class="px-2 py-1 text-right text-emerald-600">IN</th><th class="px-2 py-1 text-right text-rose-600">OUT</th></tr>
+                        <tr><th class="px-2 py-1">Inc</th><th class="px-2 py-1">Date</th><th class="px-2 py-1 w-full">Description</th><th class="px-2 py-1 text-right text-emerald-600">IN</th><th class="px-2 py-1 text-right text-rose-600">OUT</th></tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">`;
             
             data.forEach(r => {
                 const isOp = r.isOpening ? "is-opening opacity-60 italic " : "";
                 const isDup = r.isDupe ? "bg-amber-50" : "";
-                const badge = r.isDupe ? `<span class="ml-1 text-[7px] bg-amber-200 text-amber-800 px-1 rounded">Dup</span>` : '';
+                const badge = r.isDupe ? `<span class="ml-1 text-[7px] bg-amber-200 text-amber-800 px-1 rounded">Skip (Exists)</span>` : '';
                 const checkedStr = r.isDupe ? '' : 'checked';
                 
-                html += `<tr class="${isOp} ${isDup} hover:bg-slate-50 transition"><td class="px-2 py-1 border-r border-slate-100"><input type="checkbox" class="row-cb accent-indigo-600" data-id="${r.id}" ${checkedStr}></td><td class="px-2 py-1">${r.rawDate}</td><td class="px-2 py-1 truncate max-w-[100px]" title="${r.desc}">${r.desc} ${badge}</td><td class="px-2 py-1 truncate max-w-[60px] text-slate-500">${r.req}</td><td class="px-2 py-1 truncate max-w-[60px] text-slate-500">${r.app}</td><td class="px-2 py-1 truncate max-w-[60px] text-slate-500">${r.rem || ''}</td><td class="px-2 py-1 text-right font-bold">${r.rec || ''}</td><td class="px-2 py-1 text-right font-bold">${r.iss || ''}</td></tr>`;
+                html += `<tr class="${isOp} ${isDup} hover:bg-slate-50 transition"><td class="px-2 py-1 border-r border-slate-100"><input type="checkbox" class="row-cb accent-indigo-600" data-id="${r.id}" ${checkedStr}></td><td class="px-2 py-1">${r.rawDate}</td><td class="px-2 py-1 truncate max-w-[120px]" title="${r.desc}">${r.desc} ${badge}</td><td class="px-2 py-1 text-right font-bold">${r.rec || ''}</td><td class="px-2 py-1 text-right font-bold">${r.iss || ''}</td></tr>`;
             });
             html += `</tbody></table></div></div>`;
             return html;
@@ -1894,9 +1985,13 @@ function setupFuelImporter() {
             let payloads = [];
             const processGroup = (dataArray, internalKey) => {
                 if(dataArray.length === 0) return;
-                const selectEl = document.querySelector(`.import-tank-select[data-key="${internalKey}"]`);
-                if (!selectEl) return;
-                const itemId = selectEl.value;
+                const selectTankEl = document.querySelector(`.import-tank-select[data-key="${internalKey}"]`);
+                const selectStoreEl = document.querySelector(`.import-store-select[data-key="${internalKey}"]`);
+                
+                if (!selectTankEl) return;
+                const itemId = selectTankEl.value;
+                const storeId = selectStoreEl ? selectStoreEl.value : null;
+                const storeLoc = storeId ? storeName(storeId) : null;
                 
                 if (!itemId && dataArray.some(row => selectedIds.has(row.id))) {
                     throw new Error(`Please select a destination tank for all imported tables.`);
@@ -1906,8 +2001,9 @@ function setupFuelImporter() {
                 dataArray.forEach(row => {
                     if(!selectedIds.has(row.id)) return; 
                     if(row.isOpening && !includeOpening) return;
-                    if(row.rec > 0) payloads.push({ item_id: itemId, log_date: row.date, txn_type: 'IN', quantity: row.rec, purpose: row.desc, requested_by: row.req, approved_by: row.app, notes: row.rem, operator_uid: u.user.id });
-                    if(row.iss > 0) payloads.push({ item_id: itemId, log_date: row.date, txn_type: 'OUT', quantity: row.iss, purpose: row.desc, requested_by: row.req, approved_by: row.app, notes: row.rem, operator_uid: u.user.id });
+                    
+                    if(row.rec > 0) payloads.push({ item_id: itemId, to_store_id: storeId || null, log_date: row.date, txn_type: 'IN', quantity: row.rec, purpose: row.desc, requested_by: row.req, approved_by: row.app, notes: row.rem, operator_uid: u.user.id });
+                    if(row.iss > 0) payloads.push({ item_id: itemId, used_location: storeLoc || null, log_date: row.date, txn_type: 'OUT', quantity: row.iss, purpose: row.desc, requested_by: row.req, approved_by: row.app, notes: row.rem, operator_uid: u.user.id });
                 });
             };
 
@@ -1931,23 +2027,284 @@ function setupFuelImporter() {
     });
 }
 
-function setupFuelReport() {
-    $('fuel-report-form').addEventListener('submit', async (e) => {
+// --- MATERIALS IMPORTER ---
+function setupMaterialsImporter() {
+    $('mi-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const files = $('mi-file').files;
+        if (!files.length) return showToast('Select file.', 'error');
+        
+        const btn = $('mi-submit-btn');
+        btn.textContent = 'Reading Data...'; btn.disabled = true;
+        materialsWorkbookData = [];
+
+        const file0 = files[0];
+        if (file0.name.endsWith('.xlsx') || file0.name.endsWith('.xls')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                    
+                    let sumSheetName = workbook.SheetNames.find(n => n.toLowerCase().includes('list') || n.toLowerCase().includes('summary'));
+                    if(!sumSheetName) sumSheetName = workbook.SheetNames[0]; 
+                    
+                    let summaryData = XLSX.utils.sheet_to_json(workbook.Sheets[sumSheetName], {header: 1});
+                    let items = [];
+                    
+                    let headerIdx = summaryData.findIndex(row => row && row.some(c => c && String(c).toLowerCase().includes('description')));
+                    if (headerIdx === -1) headerIdx = 0;
+
+                    for (let i = headerIdx + 1; i < summaryData.length; i++) {
+                        let row = summaryData[i];
+                        if(!row || !row.length) continue;
+                        let sn = parseInt(row[0]);
+                        let name = row[1];
+                        let unit = row[2]; // Size / Live column
+                        
+                        if (!isNaN(sn) && name) {
+                            items.push({ sn, name: String(name).trim(), unit: String(unit || 'nos').trim(), txns: [] });
+                        }
+                    }
+
+                    workbook.SheetNames.forEach(sheetName => {
+                        let sn = parseInt(sheetName.trim());
+                        if (isNaN(sn)) return;
+                        let item = items.find(x => x.sn === sn);
+                        if (!item) return;
+
+                        let sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: 1, raw: false});
+                        item.txns = extractMaterialsTxns(sheetData);
+                    });
+
+                    materialsWorkbookData = items.filter(i => i.txns.length > 0);
+                    
+                    if(materialsWorkbookData.length === 0) {
+                        throw new Error('No valid transactions found for any listed items.');
+                    }
+                    
+                    renderMaterialsReviewTable();
+                } catch(err) { 
+                    showToast(`Excel Error: ${err.message}`, 'error'); 
+                } finally {
+                    btn.textContent = 'Read Materials Data'; btn.disabled = false;
+                }
+            };
+            reader.readAsArrayBuffer(file0);
+        } else {
+             showToast('Please upload the Excel workbook.', 'error');
+             btn.textContent = 'Read Materials Data'; btn.disabled = false;
+        }
+    });
+
+    function extractMaterialsTxns(data2D) {
+        let txns = [];
+        let headerFound = false;
+        let cols = {};
+
+        for (let i=0; i<data2D.length; i++) {
+            if(!data2D[i]) continue;
+            let row = Array.from(data2D[i] || []).map(c => String(c||'').trim().toLowerCase());
+            
+            if (!headerFound && row.some(c => c && c.includes('date')) && (row.some(c => c && c.includes('received')) || row.some(c => c && c.includes('issued')))) {
+                headerFound = true;
+                cols.date = row.findIndex(c => c && (c === 'date' || c.includes('date ')));
+                cols.desc = row.findIndex(c => c && c.includes('description'));
+                cols.rec = row.findIndex(c => c && c.includes('received'));
+                cols.iss = row.findIndex(c => c && c.includes('issued'));
+                cols.ret = row.findIndex(c => c && c.includes('return'));
+                cols.bill = row.findIndex(c => c && (c.includes('gate pass') || c.includes('bill')));
+                continue;
+            }
+            if (headerFound && cols.date > -1) {
+                let dStr = data2D[i][cols.date];
+                if (!dStr) continue;
+                let date = parseDateFlexible(dStr);
+                if (!date) continue;
+
+                let desc = cols.desc > -1 ? String(data2D[i][cols.desc] || '').trim() : '';
+                if(desc.toLowerCase().includes('total') || desc.toLowerCase().includes('balance')) continue;
+
+                let recStr = cols.rec > -1 ? String(data2D[i][cols.rec] || '') : '';
+                let issStr = cols.iss > -1 ? String(data2D[i][cols.iss] || '') : '';
+                let retStr = cols.ret > -1 ? String(data2D[i][cols.ret] || '') : '';
+
+                let rec = parseFloat(recStr.replace(/,/g,'')) || 0;
+                let iss = parseFloat(issStr.replace(/,/g,'')) || 0;
+                let ret = parseFloat(retStr.replace(/,/g,'')) || 0;
+
+                let bill = cols.bill > -1 ? String(data2D[i][cols.bill] || '') : '';
+
+                if (rec > 0 || iss > 0 || ret > 0) {
+                    txns.push({ date, rawDate: dStr, desc, rec, iss, ret, bill });
+                }
+            }
+        }
+        return txns;
+    }
+
+    function renderMaterialsReviewTable() {
+        $('mi-setup-section').classList.add('hidden');
+        $('mi-review-section').classList.remove('hidden');
+        $('mi-review-section').classList.add('flex');
+        
+        $('mi-progress').textContent = `Found ${materialsWorkbookData.length} items with data`;
+        
+        let html = '';
+        materialsWorkbookData.forEach(item => {
+            html += `<tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                <td class="px-3 py-2"><input type="checkbox" class="mat-row-cb accent-indigo-600 w-3.5 h-3.5" data-sn="${item.sn}" checked></td>
+                <td class="px-3 py-2 font-bold text-slate-500">${item.sn}</td>
+                <td class="px-3 py-2 truncate max-w-[200px] font-bold" title="${item.name}">${item.name}</td>
+                <td class="px-3 py-2 text-slate-500">${item.unit}</td>
+                <td class="px-3 py-2 font-black text-indigo-600 text-center">${item.txns.length}</td>
+                <td class="px-3 py-2">
+                    <select class="mat-store-select border border-slate-300 rounded p-1 text-[10px] w-full" data-sn="${item.sn}">
+                        <option value="">-- No specific store --</option>
+                        ${stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                    </select>
+                </td>
+                <td class="px-3 py-2">
+                    <select class="mat-cat-select border border-slate-300 rounded p-1 text-[10px] w-full" data-sn="${item.sn}">
+                        <option value="Consumable" selected>Consumable</option>
+                        <option value="Asset">Asset</option>
+                        <option value="WKV">WKV</option>
+                    </select>
+                </td>
+            </tr>`;
+        });
+        
+        $('mi-tbody').innerHTML = html;
+
+        $('mi-toggle-all').addEventListener('change', (e) => {
+            document.querySelectorAll('.mat-row-cb').forEach(cb => cb.checked = e.target.checked);
+        });
+
+        $('mi-apply-global').addEventListener('click', () => {
+            const gStore = $('mi-global-store').value;
+            const gCat = $('mi-global-cat').value;
+            document.querySelectorAll('.mat-store-select').forEach(s => s.value = gStore);
+            document.querySelectorAll('.mat-cat-select').forEach(s => s.value = gCat);
+        });
+    }
+
+    $('mi-save-btn')?.addEventListener('click', async (e) => {
+        const btn = e.target; btn.disabled = true; btn.textContent = 'Saving...';
+        try {
+            const { data: u } = await supabase.auth.getUser();
+            
+            const selectedRows = Array.from(document.querySelectorAll('.mat-row-cb:checked'));
+            if(selectedRows.length === 0) throw new Error("No items selected.");
+
+            let payloads = [];
+
+            const { data: existingItems } = await supabase.from('inventory_items').select('id, item_name, category');
+            const itemsMap = new Map(existingItems.map(i => [i.item_name.toLowerCase(), i]));
+
+            for (const row of selectedRows) {
+                const sn = parseInt(row.dataset.sn);
+                const itemData = materialsWorkbookData.find(i => i.sn === sn);
+                if(!itemData) continue;
+
+                const storeSelect = document.querySelector(`.mat-store-select[data-sn="${sn}"]`);
+                const storeId = storeSelect ? storeSelect.value : null;
+                const storeLoc = storeId ? storeName(storeId) : null;
+                const catSelect = document.querySelector(`.mat-cat-select[data-sn="${sn}"]`);
+                const category = catSelect ? catSelect.value : 'Consumable';
+
+                let dbItem = itemsMap.get(itemData.name.toLowerCase());
+                
+                if (!dbItem) {
+                    const { data: newItem, error } = await supabase.from('inventory_items').insert([{
+                        item_name: itemData.name,
+                        category: category,
+                        unit: itemData.unit,
+                        current_stock: 0,
+                        store_id: storeId || null,
+                        store_location: storeLoc
+                    }]).select().single();
+                    if(error) throw error;
+                    dbItem = newItem;
+                    itemsMap.set(dbItem.item_name.toLowerCase(), dbItem);
+                }
+
+                const { data: exLogs } = await supabase.from('inventory_logs').select('log_date, txn_type, quantity, purpose').eq('item_id', dbItem.id);
+                const existingSigs = new Set();
+                if(exLogs) {
+                    exLogs.forEach(l => existingSigs.add(`${l.log_date}_${l.txn_type}_${Number(l.quantity)}_${l.purpose ? l.purpose.toLowerCase().trim() : ''}`));
+                }
+
+                itemData.txns.forEach(t => {
+                    const descPart = t.desc ? t.desc.toLowerCase().trim() : '';
+                    
+                    if (t.rec > 0) {
+                        const sig = `${t.date}_IN_${t.rec}_${descPart}`;
+                        if(!existingSigs.has(sig)) {
+                            payloads.push({ item_id: dbItem.id, to_store_id: storeId || null, log_date: t.date, txn_type: 'IN', quantity: t.rec, purpose: t.desc, reference_no: t.bill, operator_uid: u.user.id });
+                            existingSigs.add(sig);
+                        }
+                    }
+                    if (t.ret > 0) {
+                        const sig = `${t.date}_IN_${t.ret}_${descPart}`;
+                        if(!existingSigs.has(sig)) {
+                            payloads.push({ item_id: dbItem.id, to_store_id: storeId || null, log_date: t.date, txn_type: 'IN', quantity: t.ret, purpose: `Return: ${t.desc}`, reference_no: t.bill, operator_uid: u.user.id });
+                            existingSigs.add(sig);
+                        }
+                    }
+                    if (t.iss > 0) {
+                        const sig = `${t.date}_OUT_${t.iss}_${descPart}`;
+                        if(!existingSigs.has(sig)) {
+                            payloads.push({ item_id: dbItem.id, used_location: storeLoc || null, log_date: t.date, txn_type: 'OUT', quantity: t.iss, purpose: t.desc, reference_no: t.bill, operator_uid: u.user.id });
+                            existingSigs.add(sig);
+                        }
+                    }
+                });
+            }
+
+            if(payloads.length > 0) {
+                const chunkSize = 500;
+                for (let i = 0; i < payloads.length; i += chunkSize) {
+                    const chunk = payloads.slice(i, i + chunkSize);
+                    const { error } = await supabase.from('inventory_logs').insert(chunk);
+                    if (error) throw error;
+                }
+            }
+            
+            showToast(`Imported materials successfully!`);
+            closeModal('materials-import-modal');
+            await loadInventoryItems();
+        } catch(err) {
+            showToast(err.message, 'error');
+        } finally {
+            btn.disabled = false; btn.textContent = '💾 Save Selected Materials';
+        }
+    });
+}
+
+// --- UNIFIED REPORTS ---
+function setupReports() {
+    $('report-form').addEventListener('submit', async (e) => {
         if (e) e.preventDefault();
         const btn = $('fr-generate-btn');
         const start = $('fr-start').value;
         const end = $('fr-end').value;
+        const reportCat = $('report-category').value;
         const container = $('fr-generated-tables');
         const emptyState = $('fr-empty-state');
 
         btn.innerHTML = '...'; btn.disabled = true;
 
         try {
-            const { data: itemData } = await supabase.from('inventory_items').select('id, item_name').eq('category', 'Fuel');
-            if(!itemData || itemData.length === 0) throw new Error("No Fuel tanks found in inventory.");
+            let filteredItems = allItems;
+            if (reportCat === 'Fuel') {
+                filteredItems = allItems.filter(i => i.category === 'Fuel');
+            } else {
+                filteredItems = allItems.filter(i => ['Consumable', 'Asset', 'WKV'].includes(i.category));
+            }
+
+            if(!filteredItems || filteredItems.length === 0) throw new Error(`No ${reportCat} items found in inventory.`);
             
             const idsMap = {}; 
-            itemData.forEach(i => idsMap[i.item_name] = i.id);
+            filteredItems.forEach(i => idsMap[i.item_name] = i.id);
 
             let allLogs = [];
             let offset = 0;
@@ -1966,7 +2323,7 @@ function setupFuelReport() {
                 offset += 1000;
             }
 
-            const processFuelData = (itemName) => {
+            const processItemData = (itemName) => {
                 const itemLogs = allLogs.filter(l => l.item_id === idsMap[itemName]);
                 let computedOpenBal = 0;
                 let tableRows = [], totRec = 0, totIss = 0;
@@ -1994,7 +2351,10 @@ function setupFuelReport() {
 
             const formatNum = (num) => num !== null && num !== undefined ? Number(num).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:2}) : '';
             
-            const buildHTML = (title, itemName, data) => {
+            const buildHTML = (title, itemObj, data) => {
+                const itemName = itemObj.item_name;
+                const unitStr = `(${itemObj.unit})`;
+                
                 let html = `
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 break-inside-avoid">
                     <div class="flex justify-between items-center mb-3">
@@ -2009,7 +2369,7 @@ function setupFuelReport() {
                             <thead>
                                 <tr>
                                     ${isAdmin() ? `<th class="w-20 text-center print-hide">Admin</th>` : ''}
-                                    <th>No</th><th>Date</th><th class="w-full">Description</th><th class="text-right">Received</th><th class="text-right">Issued</th><th class="text-right">Balance</th><th>Requested by</th><th>Approved by</th><th>Remarks</th>
+                                    <th>No</th><th>Date</th><th class="w-full">Description</th><th class="text-right">Received ${unitStr}</th><th class="text-right">Issued ${unitStr}</th><th class="text-right">Balance ${unitStr}</th><th>Requested by</th><th>Approved by</th><th>Remarks</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2046,17 +2406,18 @@ function setupFuelReport() {
                 return html;
             };
 
-            let leftHtml = `<div class="w-full lg:w-2/3 space-y-6">`;
+            let leftHtml = `<div class="w-full ${reportCat === 'Fuel' ? 'lg:w-2/3' : ''} space-y-6">`;
             let summaryRows = [];
             let grandOpen = 0, grandRec = 0, grandIss = 0, grandClose = 0;
 
-            itemData.forEach(tank => {
-                const processed = processFuelData(tank.item_name);
+            filteredItems.forEach(item => {
+                const processed = processItemData(item.item_name);
                 if (processed.tableRows.length > 0 || processed.openBal !== 0) {
-                    leftHtml += buildHTML(`Consumption Ledger: ${tank.item_name}`, tank.item_name, processed);
+                    leftHtml += buildHTML(`Consumption Ledger: ${item.item_name}`, item, processed);
                 }
                 summaryRows.push({
-                    name: tank.item_name,
+                    name: item.item_name,
+                    unit: item.unit,
                     opening: processed.openBal,
                     received: processed.totRec,
                     consumed: processed.totIss,
@@ -2069,41 +2430,45 @@ function setupFuelReport() {
             });
             leftHtml += `</div>`;
 
-            let rightHtml = `
-            <div class="w-full lg:w-1/3 space-y-6 sticky top-0">
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 break-inside-avoid">
-                    <h4 class="text-sm font-black text-indigo-900 mb-3">Overall Fuel Inventory</h4>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left report-table">
-                            <thead>
-                                <tr><th>Tank Location</th><th class="text-right">Opening</th><th class="text-right">Received</th><th class="text-right">Consumed</th><th class="text-right">Closing</th></tr>
-                            </thead>
-                            <tbody>`;
-            
-            summaryRows.forEach(row => {
-                rightHtml += `
-                    <tr>
-                        <td class="font-bold whitespace-nowrap">${row.name}</td>
-                        <td class="text-right text-indigo-600">${formatNum(row.opening)}</td>
-                        <td class="text-right text-emerald-600">${formatNum(row.received)}</td>
-                        <td class="text-right text-rose-600">${formatNum(row.consumed)}</td>
-                        <td class="text-right font-black">${formatNum(row.closing)}</td>
-                    </tr>`;
-            });
+            // Only show the sidebar overall volume tracker for Fuel
+            let rightHtml = '';
+            if (reportCat === 'Fuel') {
+                rightHtml = `
+                <div class="w-full lg:w-1/3 space-y-6 sticky top-0">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 break-inside-avoid">
+                        <h4 class="text-sm font-black text-indigo-900 mb-3">Overall Fuel Inventory</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left report-table">
+                                <thead>
+                                    <tr><th>Tank Location</th><th class="text-right">Opening</th><th class="text-right">Received</th><th class="text-right">Consumed</th><th class="text-right">Closing</th></tr>
+                                </thead>
+                                <tbody>`;
+                
+                summaryRows.forEach(row => {
+                    rightHtml += `
+                        <tr>
+                            <td class="font-bold whitespace-nowrap">${row.name}</td>
+                            <td class="text-right text-indigo-600">${formatNum(row.opening)}</td>
+                            <td class="text-right text-emerald-600">${formatNum(row.received)}</td>
+                            <td class="text-right text-rose-600">${formatNum(row.consumed)}</td>
+                            <td class="text-right font-black">${formatNum(row.closing)}</td>
+                        </tr>`;
+                });
 
-            rightHtml += `
-                                <tr class="total-row">
-                                    <td>GRAND TOTAL</td>
-                                    <td class="text-right">${formatNum(grandOpen)}</td>
-                                    <td class="text-right text-emerald-700">${formatNum(grandRec)}</td>
-                                    <td class="text-right text-rose-700">${formatNum(grandIss)}</td>
-                                    <td class="text-right text-indigo-900">${formatNum(grandClose)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                rightHtml += `
+                                    <tr class="total-row">
+                                        <td>GRAND TOTAL</td>
+                                        <td class="text-right">${formatNum(grandOpen)}</td>
+                                        <td class="text-right text-emerald-700">${formatNum(grandRec)}</td>
+                                        <td class="text-right text-rose-700">${formatNum(grandIss)}</td>
+                                        <td class="text-right text-indigo-900">${formatNum(grandClose)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
-            </div>`;
+                </div>`;
+            }
 
             emptyState.classList.add('hidden');
             container.innerHTML = `<div class="flex flex-col lg:flex-row items-start gap-6 w-full">` + leftHtml + rightHtml + `</div>`;
@@ -2114,7 +2479,7 @@ function setupFuelReport() {
                     const val = parseFloat(evt.target.value);
                     if (!isNaN(val)) {
                         window.userOpeningOverrides[evt.target.dataset.tank] = val;
-                        $('fuel-report-form').dispatchEvent(new Event('submit'));
+                        $('report-form').dispatchEvent(new Event('submit'));
                     }
                 });
             });
@@ -2135,11 +2500,25 @@ async function startInventoryApp() {
         currentUser = session.user;
         userRole = session.role || 'operator';
 
+        const authContainer = document.getElementById('auth-user-info');
+        if (authContainer && currentUser) {
+            authContainer.classList.remove('hidden');
+            authContainer.classList.add('flex');
+            const name = currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'User';
+            document.getElementById('auth-name').textContent = name;
+            document.getElementById('auth-role').textContent = userRole;
+            document.getElementById('auth-avatar').textContent = name.charAt(0).toUpperCase();
+            
+            document.getElementById('btn-signout-static').addEventListener('click', async () => {
+                await supabase.auth.signOut();
+                window.location.reload();
+            });
+        }
+
         const [hRes, fRes] = await Promise.all([
             fetch('./components/header.html').catch(() => ({ok: false})),
             fetch('./components/footer.html').catch(() => ({ok: false}))
         ]);
-        if (hRes.ok) document.getElementById('global-header-container').innerHTML = await hRes.text();
         if (fRes.ok) document.getElementById('global-footer-container').innerHTML = await fRes.text();
         initHeaderUI();
 
@@ -2157,7 +2536,8 @@ async function startInventoryApp() {
         setupFuelFlowModal();
         setupAdminSetup();
         setupFuelImporter();
-        setupFuelReport();
+        setupMaterialsImporter();
+        setupReports();
 
         const frStart = document.getElementById('fr-start');
         if (frStart) frStart.value = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('sv-SE', { timeZone: 'Asia/Kathmandu' });

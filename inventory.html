@@ -193,7 +193,8 @@
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden border border-slate-200 flex flex-col max-h-[95vh]">
       <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-rose-600 shrink-0">
         <h3 class="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
-          ⛽ Fuel Master Importer (Sheet-by-Sheet)
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Fuel Master Importer (Sheet-by-Sheet)
         </h3>
         <button type="button" onclick="closeModal('fuel-import-modal')" class="text-rose-200 hover:text-white text-xl leading-none transition">&times;</button>
       </div>
@@ -213,7 +214,7 @@
         <form id="fi-form" class="space-y-3 mt-6">
           <div>
             <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Select Fuel Workbook</label>
-            <input type="file" id="fi-file" accept=".xlsx, .xls" required class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none">
+            <input type="file" id="fi-file" accept=".xlsx, .xls" required class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
           </div>
           <button type="submit" id="fi-submit-btn" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-lg shadow-md transition text-[11px] uppercase tracking-widest flex items-center justify-center gap-2">
             Read Fuel Data
@@ -262,7 +263,7 @@
         <form id="mi-form" class="space-y-3 mt-6">
           <div>
             <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Select Materials Workbook</label>
-            <input type="file" id="mi-file" accept=".xlsx, .xls" required class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none">
+            <input type="file" id="mi-file" accept=".xlsx, .xls" required class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
           </div>
           <button type="submit" id="mi-submit-btn" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-lg shadow-md transition text-[11px] uppercase tracking-widest flex items-center justify-center gap-2">
             Read Materials Data
@@ -430,10 +431,6 @@
           <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Store</label>
           <select id="ni-store" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"></select>
         </div>
-        <div class="admin-only role-hidden hidden">
-          <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase">Photo URL (optional)</label>
-          <input type="url" id="ni-photo" placeholder="https://…" class="w-full p-3 bg-slate-50 border rounded-xl text-sm">
-        </div>
         
         <div class="grid grid-cols-2 gap-4">
           <div>
@@ -493,106 +490,6 @@
         <button type="button" onclick="closeModal('detail-modal')" class="text-2xl text-slate-400">&times;</button>
       </div>
       <div id="detail-body" class="p-4 overflow-y-auto custom-scroll flex-grow text-sm space-y-4"></div>
-    </div>
-  </div>
-
-  <div id="fuel-flow-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scroll border border-slate-200">
-      <div class="px-5 py-3 border-b bg-amber-50 flex justify-between items-center sticky top-0 z-10">
-        <h3 class="text-sm font-black text-amber-900 uppercase">⛽ Fuel movement</h3>
-        <button type="button" onclick="closeModal('fuel-flow-modal')" class="text-2xl text-slate-400">&times;</button>
-      </div>
-      <form id="fuel-flow-form" class="p-5 space-y-4">
-        <div>
-          <label class="text-[10px] font-bold text-slate-500 uppercase">What are you recording?</label>
-          <select id="ff-subtype" class="w-full mt-1 p-3 border rounded-xl font-bold text-sm">
-            <option value="purchase">Purchase at pump (fuel arrives)</option>
-            <option value="transfer">Transfer between stores</option>
-            <option value="consumption">Use on machine / equipment</option>
-          </select>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="text-[10px] font-bold text-slate-500 uppercase">Fuel type</label>
-            <select id="ff-fuel-type" class="w-full mt-1 p-2.5 border rounded-xl font-bold text-sm"><option value="diesel">Diesel</option><option value="petrol">Petrol</option></select></div>
-          <div><label class="text-[10px] font-bold text-slate-500 uppercase">Date</label>
-            <input type="date" id="ff-date" required class="w-full mt-1 p-2.5 border rounded-xl font-bold text-sm"></div>
-        </div>
-        <div id="ff-purchase-fields" class="space-y-3">
-          <div><label class="text-[10px] font-bold text-slate-500 uppercase">Pump (where purchased)</label>
-            <select id="ff-pump" class="w-full mt-1 p-2.5 border rounded-xl text-sm"></select></div>
-          <div><label class="text-[10px] font-bold text-slate-500 uppercase">Delivered to store</label>
-            <select id="ff-to-store" class="w-full mt-1 p-2.5 border rounded-xl text-sm"></select></div>
-        </div>
-        <div id="ff-transfer-fields" class="space-y-3 hidden">
-          <div><label class="text-[10px] font-bold text-slate-500 uppercase">From store</label>
-            <select id="ff-from-store" class="w-full mt-1 p-2.5 border rounded-xl text-sm"></select></div>
-          <div><label class="text-[10px] font-bold text-slate-500 uppercase">To store</label>
-            <select id="ff-to-store-t" class="w-full mt-1 p-2.5 border rounded-xl text-sm"></select></div>
-        </div>
-        <div id="ff-consume-fields" class="space-y-3 hidden">
-          <div><label class="text-[10px] font-bold text-slate-500 uppercase">Store (tank)</label>
-            <select id="ff-store-consume" class="w-full mt-1 p-2.5 border rounded-xl text-sm"></select></div>
-          <div><label class="text-[10px] font-bold text-slate-500 uppercase">Equipment / machine</label>
-            <select id="ff-equipment" class="w-full mt-1 p-2.5 border rounded-xl text-sm"></select></div>
-        </div>
-        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Litres</label>
-          <input type="number" id="ff-qty" step="0.01" min="0.01" required class="w-full mt-1 p-3 border rounded-xl font-black text-lg"></div>
-        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Notes / bill no.</label>
-          <input type="text" id="ff-notes" class="w-full mt-1 p-2.5 border rounded-xl text-sm" placeholder="Optional"></div>
-        <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl">Save fuel entry</button>
-      </form>
-    </div>
-  </div>
-
-  <div id="admin-setup-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col border border-slate-200">
-      <div class="px-5 py-3 border-b bg-slate-800 text-white flex justify-between shrink-0">
-        <h3 class="text-sm font-black uppercase">Stores, pumps &amp; equipment</h3>
-        <button type="button" onclick="closeModal('admin-setup-modal')" class="text-2xl opacity-70">&times;</button>
-      </div>
-      <div class="flex border-b text-xs font-bold">
-        <button type="button" data-tab="stores" class="setup-tab flex-1 py-2 bg-slate-100 text-indigo-700">Stores</button>
-        <button type="button" data-tab="pumps" class="setup-tab flex-1 py-2">Pumps</button>
-        <button type="button" data-tab="equipment" class="setup-tab flex-1 py-2">Equipment</button>
-      </div>
-      <div id="setup-panel-stores" class="p-4 overflow-y-auto custom-scroll space-y-3 flex-grow">
-        <ul id="setup-store-list" class="text-sm space-y-2"></ul>
-        <form id="form-add-store" class="flex gap-2"><input id="new-store-name" placeholder="New store name" class="flex-grow p-2 border rounded-lg text-sm" required>
-          <button type="submit" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black">Add</button></form>
-      </div>
-      <div id="setup-panel-pumps" class="p-4 overflow-y-auto hidden space-y-3 flex-grow">
-        <ul id="setup-pump-list" class="text-sm space-y-2"></ul>
-        <form id="form-add-pump" class="flex gap-2"><input id="new-pump-name" placeholder="Pump name" class="flex-grow p-2 border rounded-lg text-sm" required>
-          <button type="submit" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black">Add</button></form>
-      </div>
-      <div id="setup-panel-equipment" class="p-4 overflow-y-auto hidden space-y-3 flex-grow">
-        <ul id="setup-equipment-list" class="text-sm space-y-2"></ul>
-        <form id="form-add-equipment" class="grid gap-2">
-          <input id="new-eq-name" placeholder="Equipment name" class="p-2 border rounded-lg text-sm" required>
-          <select id="new-eq-fuel" class="p-2 border rounded-lg text-sm"><option value="diesel">Diesel</option><option value="petrol">Petrol</option></select>
-          <select id="new-eq-store" class="p-2 border rounded-lg text-sm"></select>
-          <button type="submit" class="py-2 bg-indigo-600 text-white rounded-lg text-xs font-black">Add equipment</button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <div id="quick-txn-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200">
-      <div class="px-5 py-3 border-b flex justify-between"><h3 class="font-black text-indigo-900">Quick stock entry</h3>
-        <button type="button" onclick="closeModal('quick-txn-modal')" class="text-2xl text-slate-400">&times;</button></div>
-      <form id="quick-txn-form" class="p-5 space-y-3">
-        <select id="qt-item" class="w-full p-3 border rounded-xl text-sm font-semibold" required></select>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" data-qt="IN" class="qt-type-btn py-3 rounded-xl font-black bg-emerald-500 text-white">Receive IN</button>
-          <button type="button" data-qt="OUT" class="qt-type-btn py-3 rounded-xl font-black bg-slate-200 text-slate-600">Issue OUT</button>
-        </div>
-        <input type="hidden" id="qt-type" value="IN">
-        <input type="date" id="qt-date" required class="w-full p-2.5 border rounded-xl">
-        <input type="number" id="qt-qty" step="any" min="0.01" required placeholder="Quantity" class="w-full p-3 border rounded-xl font-bold">
-        <input type="text" id="qt-purpose" placeholder="Purpose / who took it" class="w-full p-2.5 border rounded-xl text-sm">
-        <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-black rounded-xl">Save</button>
-      </form>
     </div>
   </div>
 
@@ -664,7 +561,12 @@ window.closeModal = (id) => {
 
 window.openModal = (id) => {
     const m = $(id);
-    if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+    if (m) { 
+        m.classList.remove('hidden'); 
+        m.classList.add('flex'); 
+        m.scrollTo(0,0);
+        m.querySelectorAll('.custom-scroll, .overflow-y-auto').forEach(s => s.scrollTo(0,0));
+    }
 };
 
 // --- Auth & Geo ---
@@ -691,7 +593,7 @@ async function captureGeo() {
                 geo_label: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`
             }),
             () => resolve({ latitude: null, longitude: null, geo_label: 'Location not shared' }),
-            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+            { enableHighAccuracy: true, timeout: 3000, maximumAge: 300000 }
         );
     });
 }
@@ -726,7 +628,7 @@ function getFuelTankItem(storeId, fuelType) {
     return allItems.find(i =>
         i.category === 'Fuel' &&
         (i.item_name.toLowerCase().includes(fuelType)) && 
-        (i.store_id === storeId || (i.store_location && i.store_location.includes(sn)) || !i.store_location)
+        (i.store_id === storeId || (i.store_location && i.store_location.toLowerCase() === sn.toLowerCase()))
     );
 }
 
@@ -792,12 +694,20 @@ async function loadAllData() {
         } catch { pumps = []; equipment = []; }
     }
 
-    const { data, error } = await fetchWithTimeout(
-        supabase.from('inventory_items').select('*').order('item_name', { ascending: true }),
-        8000
-    );
-    if (error) throw error;
-    allItems = data || [];
+    let allItemsTemp = [];
+    let offset = 0;
+    while(true) {
+        const { data, error } = await fetchWithTimeout(
+            supabase.from('inventory_items').select('*').order('item_name', { ascending: true }).range(offset, offset + 999),
+            8000
+        );
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allItemsTemp = allItemsTemp.concat(data);
+        if (data.length < 1000) break;
+        offset += 1000;
+    }
+    allItems = allItemsTemp;
 }
 
 async function refreshInventory() {
@@ -818,7 +728,6 @@ function renderStats() {
     set('stat-stores', stores.length || '—');
     set('stat-zero', allItems.filter(i => Number(i.current_stock) <= 0).length);
     
-    // Total Volume for Fuel
     const fuelItems = allItems.filter(i => i.category === 'Fuel');
     const totalFuelLiters = fuelItems.reduce((sum, i) => sum + Number(i.current_stock || 0), 0);
     set('stat-fuel', `${totalFuelLiters.toLocaleString()} L`);
@@ -927,8 +836,9 @@ function renderItemCards(items) {
     
     grid.innerHTML = items.map(item => {
         const stock = Number(item.current_stock);
+        const minStock = Number(item.min_stock || 20);
         const isZero = stock <= 0;
-        const isLow = stock > 0 && stock <= 20; 
+        const isLow = stock > 0 && stock <= minStock; 
 
         let statusColors = 'text-emerald-600 bg-emerald-50 border-emerald-100';
         let statusDot = '🟢';
@@ -1034,9 +944,10 @@ function parseDateFlexible(dStr) {
     if(!dStr) return null;
     let s = String(dStr).trim().split(' ')[0];
     
-    // Excel numeric dates
     if (/^\d{4,5}$/.test(s)) {
-        const jsDate = new Date(Math.round((parseInt(s) - 25569) * 86400 * 1000));
+        let serial = parseInt(s);
+        let offset = serial >= 60 ? 25569 : 25568; 
+        const jsDate = new Date(Math.round((serial - offset) * 86400 * 1000));
         return jsDate.toISOString().split('T')[0];
     }
     
@@ -1057,7 +968,12 @@ async function openItemDetail(itemId) {
     currentItem = item;
     
     $('detail-title').textContent = item.item_name;
-    const body = $('detail-body');
+    
+    let body = $('detail-body');
+    const newBody = body.cloneNode(false);
+    body.parentNode.replaceChild(newBody, body);
+    body = newBody;
+    
     body.innerHTML = '<p class="text-slate-400 text-center py-8">Loading history…</p>';
     openModal('detail-modal');
 
@@ -1081,6 +997,16 @@ async function openItemDetail(itemId) {
       </div>
       
       ${isAdmin() ? `<div class="admin-only role-hidden hidden border-t pt-3 mt-3">
+        <div class="mb-3">
+            <label class="text-[10px] font-bold text-slate-500 uppercase">Change Store Location</label>
+            <div class="flex gap-2 mt-1">
+                <select id="detail-store-select" class="flex-grow p-2 border rounded-lg text-xs font-bold text-slate-700 bg-slate-50">
+                    <option value="">-- No specific store --</option>
+                    ${stores.map(s => `<option value="${s.id}" ${item.store_id === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+                </select>
+                <button type="button" id="detail-save-store" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black">Update</button>
+            </div>
+        </div>
         <div>
             <label class="text-[10px] font-bold text-slate-500 uppercase">Photo URL</label>
             <div class="flex gap-2 mt-1">
@@ -1145,6 +1071,24 @@ async function openItemDetail(itemId) {
         if (btn.id === 'detail-out') { closeModal('detail-modal'); openTxnModal('OUT'); }
         if (btn.classList.contains('edit-log-btn')) { closeModal('detail-modal'); editTxn(btn.getAttribute('data-log-id')); }
         
+        if (btn.id === 'detail-save-store') {
+            const newStoreId = $('detail-store-select').value || null;
+            const newStoreLoc = newStoreId ? storeName(newStoreId) : null;
+            const geo = await captureGeo();
+            const { error } = await supabase.from('inventory_items').update({ 
+                store_id: newStoreId, 
+                store_location: newStoreLoc,
+                updated_at: new Date().toISOString(), 
+                updated_by_email: currentUser.email 
+            }).eq('id', item.id);
+            
+            if (error) return showToast(error.message, 'error');
+            await writeAudit('item', item.id, 'update', `Store updated to ${newStoreLoc || 'None'}`, { store_id: newStoreId }, geo);
+            showToast('Store updated!');
+            await refreshInventory();
+            openItemDetail(item.id);
+        }
+
         if (btn.id === 'detail-save-photo') {
             const url = $('detail-photo-url').value.trim();
             const geo = await captureGeo();
@@ -1255,9 +1199,9 @@ window.editTxn = async function (logId) {
 };
 
 window.deleteTxn = async function (logId) {
+    if (!confirm('Delete this transaction? Stock will adjust automatically.')) return;
     const { data: log } = await supabase.from('inventory_logs').select('*').eq('id', logId).single();
     if (!canEditLog(log)) return showToast('You can only delete your own entries', 'error');
-    if (!confirm('Delete this transaction? Stock will adjust automatically.')) return;
     try {
         const geo = await captureGeo();
         const { error } = await supabase.from('inventory_logs').delete().eq('id', logId);
@@ -1506,11 +1450,11 @@ function setupForms() {
             const type = $('txn-type').value;
             const qty = parseFloat($('txn-qty').value);
             
-            let adjustedStock = Number(currentItem.current_stock);
-            if (oldLog) adjustedStock += (oldLog.txn_type === 'OUT' ? Number(oldLog.quantity) : -Number(oldLog.quantity));
+            let checkStock = Number(currentItem.current_stock);
+            if (oldLog && oldLog.txn_type === 'OUT') checkStock += Number(oldLog.quantity);
+            if (oldLog && oldLog.txn_type === 'IN') checkStock -= Number(oldLog.quantity);
             
-            if (!logIdToEdit && type === 'OUT' && qty > currentItem.current_stock && !confirm('Issue more than current stock?')) return;
-            if (logIdToEdit && type === 'OUT' && qty > adjustedStock && !confirm('Issue more than adjusted stock?')) return;
+            if (type === 'OUT' && qty > checkStock && !confirm('Issue more than adjusted stock?')) return;
 
             const geo = await captureGeo();
             if (logIdToEdit && oldLog) {
@@ -1657,7 +1601,6 @@ window.exportReportToExcel = function() {
 };
 
 // --- FUEL IMPORTER ---
-// --- FUEL IMPORTER ---
 function setupFuelImporter() {
     $('fi-wipe-btn')?.addEventListener('click', async () => {
         if(!confirm("DANGER: This will delete ALL Fuel Items and Logs from the database. Are you absolutely sure?")) return;
@@ -1709,12 +1652,10 @@ function setupFuelImporter() {
                 try {
                     const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
                     workbook.SheetNames.forEach(name => {
-                        // Skip the summary/stock report sheet
                         if (name.toLowerCase().includes('stock report') || name.toLowerCase().includes('summary')) return;
-                        
                         const data2D = XLSX.utils.sheet_to_json(workbook.Sheets[name], {header: 1, raw: false});
                         const parsed = parseFuelTables(data2D, name);
-                        if (parsed.ph.length > 0 || parsed.ropeway.length > 0 || parsed.dam.length > 0 || parsed.petrol.length > 0) {
+                        if (parsed.ph.length > 0 || parsed.ropeway.length > 0 || parsed.dam.length > 0 || parsed.petrol.length > 0 || parsed.generic.length > 0) {
                             fuelWorkbookSheets.push({ name: name, data: parsed });
                         }
                     });
@@ -1735,21 +1676,18 @@ function setupFuelImporter() {
 
         for (let r = 0; r < data2D.length; r++) {
             if (!data2D[r] || data2D[r].length === 0) continue;
-            // The monthly reports usually have the core data in the first 10 columns
-            let rawRow = Array.from(data2D[r]).slice(0, 10).map(c => String(c||'').trim());
+            let rawRow = Array.from(data2D[r] || []).slice(0, 10).map(c => String(c||'').trim());
             let rowLower = rawRow.map(c => c.toLowerCase());
             let rowStr = rowLower.join(' ');
 
-            // Detect which table block we are currently inside
             if (rowStr.includes('diesel consumption details at ph')) { activeTable = 'ph'; dateIdx=-1; continue; }
             if (rowStr.includes('petrol consumption details at ph')) { activeTable = 'petrol'; dateIdx=-1; continue; }
             if (rowStr.includes('diesel consumption details at ropeway')) { activeTable = 'ropeway'; dateIdx=-1; continue; }
             if (rowStr.includes('diesel consumption details at dam')) { activeTable = 'dam'; dateIdx=-1; continue; }
 
-            // Find headers for the active table
             if (rowLower.includes('date') || rowLower.includes('date ')) {
                 if (rowLower.includes('received') || rowLower.includes('issued')) {
-                    if (!activeTable) activeTable = 'ph'; // default fallback
+                    if (!activeTable) activeTable = 'ph';
 
                     dateIdx = rowLower.findIndex(c => c === 'date' || c.startsWith('date'));
                     descIdx = rowLower.findIndex(c => c.includes('description') || c.includes('particulars'));
@@ -1762,18 +1700,15 @@ function setupFuelImporter() {
                 }
             }
 
-            // Extract data if we are inside a table and found the headers
             if (activeTable && dateIdx > -1) {
                 let dateStr = rawRow[dateIdx] || '';
                 let desc = descIdx > -1 ? (rawRow[descIdx] || '') : '';
                 let remarks = remIdx > -1 ? (rawRow[remIdx] || '') : '';
                 
-                // Skip summary/total lines at the bottom of tables
                 if (dateStr.toLowerCase().includes('total') || desc.toLowerCase().includes('total') || rowStr.includes('total shifted diesel')) {
                     continue; 
                 }
 
-                // Check if it's a valid date string
                 if (dateStr.match(/\d{1,4}[\.\-\/]\d{1,2}[\.\-\/]\d{1,4}/) || (!isNaN(Date.parse(dateStr)) && dateStr.length > 5) || /^\d{4,5}$/.test(dateStr.trim())) {
                     let recStr = recIdx > -1 && rawRow[recIdx] ? rawRow[recIdx].toString() : '';
                     let issStr = issIdx > -1 && rawRow[issIdx] ? rawRow[issIdx].toString() : '';
@@ -1797,13 +1732,11 @@ function setupFuelImporter() {
                         
                         if (!parsedDate) continue;
 
-                        const signature = `${parsedDate}_${fType}_${rec>0?'IN':'OUT'}_${rec||iss}_${desc.toLowerCase() || Math.random().toString()}`;
-                        
                         result[activeTable].push({
                             id: Math.random().toString(36).substring(2, 11),
                             date: parsedDate, rawDate: dateStr, desc: desc,
                             rec: rec, iss: iss, req: req, app: app, rem: remarks, isOpening: isOpening,
-                            sig: signature, item_name: fType
+                            item_name: fType
                         });
                     }
                 }
@@ -1825,7 +1758,7 @@ function setupFuelImporter() {
         $('fi-sheet-progress').textContent = `File ${currentSheetIdx + 1} of ${fuelWorkbookSheets.length}`;
         $('fi-is-opening').checked = false; 
 
-        let existingSigs = new Set();
+        let existingSigCounts = new Map();
         let allSheetLogs = [...sheet.data.ph, ...sheet.data.ropeway, ...sheet.data.dam, ...sheet.data.petrol, ...sheet.data.generic];
         let validDates = allSheetLogs.map(l => l.date).filter(Boolean).sort();
         
@@ -1842,8 +1775,9 @@ function setupFuelImporter() {
                     if (error || !exLogs || exLogs.length === 0) break;
                     
                     exLogs.forEach((l) => {
-                        let descPart = l.purpose ? l.purpose.toLowerCase().trim() : '';
-                        existingSigs.add(`${l.log_date}_${l.txn_type}_${Number(l.quantity)}_${descPart}`);
+                        let descPart = l.purpose ? String(l.purpose).toLowerCase().trim() : '';
+                        let sig = `${l.log_date}_${l.txn_type}_${Number(l.quantity)}_${descPart}`;
+                        existingSigCounts.set(sig, (existingSigCounts.get(sig) || 0) + 1);
                     });
                     
                     if (exLogs.length < 1000) break;
@@ -1852,18 +1786,19 @@ function setupFuelImporter() {
             } catch(e) { console.error(e); }
         }
 
-        let internalSigs = new Set();
         const checkDupe = (r) => {
             const type = r.rec > 0 ? 'IN' : 'OUT';
             const qty = r.rec || r.iss;
-            const descPart = r.desc ? r.desc.toLowerCase().trim() : '';
+            const descPart = r.desc ? String(r.desc).toLowerCase().trim() : '';
             const strictSig = `${r.date}_${type}_${qty}_${descPart}`;
             
-            if (existingSigs.has(strictSig) || internalSigs.has(strictSig)) { 
+            let availableInDb = existingSigCounts.get(strictSig) || 0;
+            
+            if (availableInDb > 0) { 
                 r.isDupe = true; 
+                existingSigCounts.set(strictSig, availableInDb - 1); 
             } else { 
                 r.isDupe = false; 
-                internalSigs.add(strictSig); 
             }
         };
         sheet.data.ph.forEach(checkDupe); sheet.data.ropeway.forEach(checkDupe); sheet.data.dam.forEach(checkDupe); sheet.data.petrol.forEach(checkDupe); sheet.data.generic.forEach(checkDupe);
@@ -1976,12 +1911,8 @@ function setupFuelImporter() {
         });
     }
 
-    const skipBtn = $('fi-skip-btn');
-    skipBtn?.replaceWith(skipBtn.cloneNode(true));
     $('fi-skip-btn')?.addEventListener('click', () => { currentSheetIdx++; renderFuelSheet(); });
     
-    const saveBtn = $('fi-save-btn');
-    saveBtn?.replaceWith(saveBtn.cloneNode(true));
     $('fi-save-btn')?.addEventListener('click', async (e) => {
         const btn = e.target; btn.disabled = true; btn.textContent = 'Saving...';
         try {
@@ -2069,7 +2000,7 @@ function setupMaterialsImporter() {
                         if(!row || !row.length) continue;
                         let sn = parseInt(row[0]);
                         let name = row[1];
-                        let unit = row[2]; // Size / Live column
+                        let unit = row[2];
                         
                         if (!isNaN(sn) && name) {
                             items.push({ sn, name: String(name).trim(), unit: String(unit || 'nos').trim(), txns: [] });
@@ -2164,7 +2095,7 @@ function setupMaterialsImporter() {
             html += `<tr class="hover:bg-slate-50 transition border-b border-slate-100">
                 <td class="px-3 py-2"><input type="checkbox" class="mat-row-cb accent-indigo-600 w-3.5 h-3.5" data-sn="${item.sn}" checked></td>
                 <td class="px-3 py-2 font-bold text-slate-500">${item.sn}</td>
-                <td class="px-3 py-2 truncate max-w-[200px] font-bold" title="${item.name}">${item.name}</td>
+                <td class="px-3 py-2 truncate max-w-[200px] font-bold" title="${item.name.replace(/"/g, '&quot;')}">${item.name}</td>
                 <td class="px-3 py-2 text-slate-500">${item.unit}</td>
                 <td class="px-3 py-2 font-black text-indigo-600 text-center">${item.txns.length}</td>
                 <td class="px-3 py-2">
@@ -2210,6 +2141,35 @@ function setupMaterialsImporter() {
             const { data: existingItems } = await supabase.from('inventory_items').select('id, item_name, category');
             const itemsMap = new Map(existingItems.map(i => [i.item_name.toLowerCase(), i]));
 
+            const dbItemIdsToFetch = Array.from(new Set(selectedRows.map(row => {
+                const sn = parseInt(row.dataset.sn);
+                const itemData = materialsWorkbookData.find(i => i.sn === sn);
+                return itemsMap.get(itemData.name.toLowerCase())?.id;
+            }).filter(Boolean)));
+
+            const existingSigCounts = new Map();
+            if (dbItemIdsToFetch.length > 0) {
+                for (let i = 0; i < dbItemIdsToFetch.length; i += 50) {
+                    const chunkIds = dbItemIdsToFetch.slice(i, i + 50);
+                    let offset = 0;
+                    while(true) {
+                        const { data: exLogs, error } = await supabase.from('inventory_logs')
+                            .select('item_id, log_date, txn_type, quantity, purpose')
+                            .in('item_id', chunkIds)
+                            .range(offset, offset + 999);
+
+                        if (error || !exLogs || exLogs.length === 0) break;
+                        exLogs.forEach(l => {
+                            const descPart = l.purpose ? String(l.purpose).toLowerCase().trim() : '';
+                            const sig = `${l.item_id}_${l.log_date}_${l.txn_type}_${Number(l.quantity)}_${descPart}`;
+                            existingSigCounts.set(sig, (existingSigCounts.get(sig) || 0) + 1);
+                        });
+                        if (exLogs.length < 1000) break;
+                        offset += 1000;
+                    }
+                }
+            }
+
             for (const row of selectedRows) {
                 const sn = parseInt(row.dataset.sn);
                 const itemData = materialsWorkbookData.find(i => i.sn === sn);
@@ -2237,34 +2197,34 @@ function setupMaterialsImporter() {
                     itemsMap.set(dbItem.item_name.toLowerCase(), dbItem);
                 }
 
-                const { data: exLogs } = await supabase.from('inventory_logs').select('log_date, txn_type, quantity, purpose').eq('item_id', dbItem.id);
-                const existingSigs = new Set();
-                if(exLogs) {
-                    exLogs.forEach(l => existingSigs.add(`${l.log_date}_${l.txn_type}_${Number(l.quantity)}_${l.purpose ? l.purpose.toLowerCase().trim() : ''}`));
-                }
-
                 itemData.txns.forEach(t => {
-                    const descPart = t.desc ? t.desc.toLowerCase().trim() : '';
+                    const descPart = t.desc ? String(t.desc).toLowerCase().trim() : '';
                     
                     if (t.rec > 0) {
-                        const sig = `${t.date}_IN_${t.rec}_${descPart}`;
-                        if(!existingSigs.has(sig)) {
+                        const sig = `${dbItem.id}_${t.date}_IN_${t.rec}_${descPart}`;
+                        const available = existingSigCounts.get(sig) || 0;
+                        if(available > 0) {
+                            existingSigCounts.set(sig, available - 1);
+                        } else {
                             payloads.push({ item_id: dbItem.id, to_store_id: storeId || null, log_date: t.date, txn_type: 'IN', quantity: t.rec, purpose: t.desc, reference_no: t.bill, operator_uid: u.user.id });
-                            existingSigs.add(sig);
                         }
                     }
                     if (t.ret > 0) {
-                        const sig = `${t.date}_IN_${t.ret}_${descPart}`;
-                        if(!existingSigs.has(sig)) {
+                        const sig = `${dbItem.id}_${t.date}_IN_${t.ret}_${descPart}`;
+                        const available = existingSigCounts.get(sig) || 0;
+                        if(available > 0) {
+                            existingSigCounts.set(sig, available - 1);
+                        } else {
                             payloads.push({ item_id: dbItem.id, to_store_id: storeId || null, log_date: t.date, txn_type: 'IN', quantity: t.ret, purpose: `Return: ${t.desc}`, reference_no: t.bill, operator_uid: u.user.id });
-                            existingSigs.add(sig);
                         }
                     }
                     if (t.iss > 0) {
-                        const sig = `${t.date}_OUT_${t.iss}_${descPart}`;
-                        if(!existingSigs.has(sig)) {
+                        const sig = `${dbItem.id}_${t.date}_OUT_${t.iss}_${descPart}`;
+                        const available = existingSigCounts.get(sig) || 0;
+                        if(available > 0) {
+                            existingSigCounts.set(sig, available - 1);
+                        } else {
                             payloads.push({ item_id: dbItem.id, used_location: storeLoc || null, log_date: t.date, txn_type: 'OUT', quantity: t.iss, purpose: t.desc, reference_no: t.bill, operator_uid: u.user.id });
-                            existingSigs.add(sig);
                         }
                     }
                 });
@@ -2292,13 +2252,22 @@ function setupMaterialsImporter() {
 
 // --- UNIFIED REPORTS ---
 function setupReports() {
+    const container = $('fr-generated-tables');
+    container.addEventListener('click', (e) => {
+        const txnBtn = e.target.closest('.report-txn-btn');
+        if (txnBtn) openFuelTxnModal(txnBtn.dataset.type, txnBtn.dataset.item);
+    });
+
     $('report-form').addEventListener('submit', async (e) => {
+        if (e && e.isTrusted) {
+            window.userOpeningOverrides = {};
+        }
         if (e) e.preventDefault();
+        
         const btn = $('fr-generate-btn');
         const start = $('fr-start').value;
         const end = $('fr-end').value;
         const reportCat = $('report-category').value;
-        const container = $('fr-generated-tables');
         const emptyState = $('fr-empty-state');
 
         btn.innerHTML = '...'; btn.disabled = true;
@@ -2363,6 +2332,7 @@ function setupReports() {
             
             const buildHTML = (title, itemObj, data) => {
                 const itemName = itemObj.item_name;
+                const safeName = itemName.replace(/"/g, '&quot;');
                 const unitStr = `(${itemObj.unit})`;
                 
                 let html = `
@@ -2370,8 +2340,8 @@ function setupReports() {
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="text-sm font-black text-indigo-900">${title}</h4>
                         <div class="flex gap-2 print-hide">
-                            <button type="button" onclick="openFuelTxnModal('IN', '${itemName}')" class="px-2.5 py-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded text-[9px] font-bold shadow-sm transition">+ IN</button>
-                            <button type="button" onclick="openFuelTxnModal('OUT', '${itemName}')" class="px-2.5 py-1 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded text-[9px] font-bold shadow-sm transition">+ OUT</button>
+                            <button type="button" class="report-txn-btn px-2.5 py-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded text-[9px] font-bold shadow-sm transition" data-type="IN" data-item="${safeName}">+ IN</button>
+                            <button type="button" class="report-txn-btn px-2.5 py-1 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded text-[9px] font-bold shadow-sm transition" data-type="OUT" data-item="${safeName}">+ OUT</button>
                         </div>
                     </div>
                     <div class="overflow-x-auto pb-2">
@@ -2387,7 +2357,7 @@ function setupReports() {
                                     ${isAdmin() ? `<td class="print-hide"></td>` : ''}
                                     <td></td><td>${start}</td><td class="font-bold">Opening Stock</td>
                                     <td class="text-right font-bold text-indigo-600">
-                                        <input type="number" step="any" value="${data.openBal}" data-tank="${itemName}" class="opening-override text-right w-20 border-b border-indigo-200 bg-transparent outline-none focus:border-indigo-600 print-hide" title="Edit Opening Stock">
+                                        <input type="number" step="any" value="${data.openBal}" data-tank="${safeName}" class="opening-override text-right w-20 border-b border-indigo-200 bg-transparent outline-none focus:border-indigo-600 print-hide" title="Edit Opening Stock">
                                         <span class="print-show">${formatNum(data.openBal)}</span>
                                     </td>
                                     <td></td><td class="text-right font-black">${formatNum(data.openBal)}</td><td></td><td></td><td></td>
@@ -2440,7 +2410,6 @@ function setupReports() {
             });
             leftHtml += `</div>`;
 
-            // Only show the sidebar overall volume tracker for Fuel
             let rightHtml = '';
             if (reportCat === 'Fuel') {
                 rightHtml = `

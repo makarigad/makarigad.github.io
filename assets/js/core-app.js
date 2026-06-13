@@ -175,7 +175,7 @@ async function resolveUserRole() {
 function enforcePageAccess() {
     const href = window.location.pathname.toLowerCase();
 
-    const OPERATOR_BLOCKED = ['/energy-summary.html', '/monthly_report.html', '/nepali-calendar.html', '/user-management.html', '/attendance.html'];
+    const OPERATOR_BLOCKED = ['/energy-summary.html', '/monthly_report.html', '/nepali-calendar.html', '/user-management.html'];
     const STAFF_BLOCKED    = ['/nepali-calendar.html', '/user-management.html'];
 
     const blocked =

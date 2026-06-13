@@ -233,194 +233,162 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
     }
 });
 
-
 // ── Dashboard data loader ──
 async function loadDashboardData() {
     try {
         const nepalNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
-        const CUTOFF_HOUR = 12;
+        const todayStr = nepalNow.toISOString().split('T')[0];
 
-        const displayDate = new Date(nepalNow);
-        if (nepalNow.getHours() < CUTOFF_HOUR) {
-            displayDate.setDate(displayDate.getDate() - 1);
-        }
-
-        const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const todayStr = fmt(displayDate);
-
-        const yesterday = new Date(displayDate);
-        yesterday.setDate(displayDate.getDate() - 1);
-        const yesterdayStr = fmt(yesterday);
+        const yesterday = new Date(nepalNow);
+        yesterday.setDate(nepalNow.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
 
         if (!navigator.onLine) throw new Error('Offline');
 
-        fetchNoonToNoonData();
-
         const { data: calData } = await fetchWithTimeout(
-            supabase.from('calendar_mappings').select('nep_date_str, nep_year, nep_month').eq('eng_date', todayStr).maybeSingle(),
+            supabase.from('calendar_mappings').select('*').eq('eng_date', todayStr).maybeSingle(),
             4000
         );
 
         const badge = document.getElementById('card-update');
         if (badge) {
             let dateLabel = calData?.nep_date_str ?? todayStr;
-            let rangeText = '';
-
-            if (calData?.nep_year && calData?.nep_month) {
-                try {
-                    const { data: monthRows } = await fetchWithTimeout(
-                        supabase.from('calendar_mappings')
-                            .select('eng_date')
-                            .eq('nep_year', calData.nep_year)
-                            .eq('nep_month', calData.nep_month)
-                            .order('eng_date', { ascending: true }),
-                        3000
-                    );
-                    if (monthRows?.length) {
-                        const fmtDisplay = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-                        rangeText = ` (${fmtDisplay(monthRows[0].eng_date)} – ${fmtDisplay(monthRows[monthRows.length - 1].eng_date)})`;
-                    }
-                } catch { /* non-critical */ }
-            }
-
             const span = badge.querySelector('span') ?? badge;
-            span.textContent = 'Today: ' + dateLabel + rangeText;
+            span.textContent = 'Today: ' + dateLabel;
         }
 
-        const [{ data: todayData }, { data: prevData }] = await Promise.all([
-            fetchWithTimeout(supabase.from('plant_data').select('*').eq('id', todayStr).maybeSingle(), 4000),
-            fetchWithTimeout(supabase.from('plant_data').select('*').eq('id', yesterdayStr).maybeSingle(), 4000),
+        let rainId = null;
+        if (calData) {
+            rainId = `${calData.nep_year}_${calData.nep_month}_${parseInt(calData.nep_day)}`;
+        }
+
+        const [
+            { data: todayLogs },
+            { data: yesterdayLogs },
+            { data: tBalanch },
+            { data: yBalanch },
+            { data: todayOutages },
+            { data: todayRainfall }
+        ] = await Promise.all([
+            fetchWithTimeout(supabase.from('hourly_logs').select('*').eq('log_date', todayStr).order('log_time'), 4000),
+            fetchWithTimeout(supabase.from('hourly_logs').select('*').eq('log_date', yesterdayStr).order('log_time'), 4000),
+            fetchWithTimeout(supabase.from('balanch_readings').select('*').eq('eng_date', todayStr).maybeSingle(), 4000),
+            fetchWithTimeout(supabase.from('balanch_readings').select('*').eq('eng_date', yesterdayStr).maybeSingle(), 4000),
+            fetchWithTimeout(supabase.from('outages').select('*').eq('id', todayStr).maybeSingle(), 4000),
+            rainId ? fetchWithTimeout(supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle(), 4000) : Promise.resolve({ data: null })
         ]);
 
-        let grossGen = 0, netExport = 0;
-        let u1 = 0, u2 = 0, stationCons = 0, gridImport = 0;
+        // --- CALENDAR DAY (00:00 to 23:59) ---
+        let calGross = 0, calExport = 0, calStation = 0;
+        let powers = [];
 
-        if (todayData && prevData) {
-            u1 = Math.max(0, (todayData.unit1_gen ?? 0) - (prevData.unit1_gen ?? 0));
-            u2 = Math.max(0, (todayData.unit2_gen ?? 0) - (prevData.unit2_gen ?? 0));
-            stationCons = Math.max(0, (todayData.station_trans ?? 0) - (prevData.station_trans ?? 0));
-            gridImport = Math.max(0, (todayData.import_substation ?? 0) - (prevData.import_substation ?? 0));
+        if (todayLogs && todayLogs.length > 0) {
+            const first = todayLogs[0];
+            const last = todayLogs[todayLogs.length - 1];
 
-            grossGen = u1 + u2;
-            netExport = Math.max(0, (todayData.export_substation ?? 0) - (prevData.export_substation ?? 0));
+            const getDelta = (key) => Math.max(0, (parseFloat(last[key]) || 0) - (parseFloat(first[key]) || 0));
 
-            setText('card-u1-hrs', prevData.unit1_counter != null && todayData.unit1_counter != null
-                ? Math.max(0, todayData.unit1_counter - prevData.unit1_counter).toFixed(1) + ' h' : '0.0 h');
-            setText('card-u2-hrs', prevData.unit2_counter != null && todayData.unit2_counter != null
-                ? Math.max(0, todayData.unit2_counter - prevData.unit2_counter).toFixed(1) + ' h' : '0.0 h');
+            calGross = (getDelta('e_u1_gwh') + getDelta('e_u2_gwh')) * 1000;
+            calExport = getDelta('e_out_mwh');
+            calStation = getDelta('sst');
+
+            todayLogs.forEach(log => {
+                const u1 = parseFloat(log.e_u1_mw) || 0;
+                const u2 = parseFloat(log.e_u2_mw) || 0;
+                const totalMw = u1 + u2;
+                if (totalMw > 0) powers.push(totalMw);
+            });
+        }
+
+        let minPower = 0, maxPower = 0, avgPower = 0;
+        if (powers.length > 0) {
+            minPower = Math.min(...powers);
+            maxPower = Math.max(...powers);
+            avgPower = powers.reduce((a,b) => a+b, 0) / powers.length;
+        }
+
+        setText('cal-gross', calGross > 0 ? calGross.toFixed(2) : '0.00');
+        setText('cal-export', calExport > 0 ? calExport.toFixed(2) : '0.00');
+        setText('cal-station', calStation > 0 ? calStation.toFixed(1) : '0.0');
+        setText('cal-avg-pwr', avgPower > 0 ? avgPower.toFixed(2) : '0.00');
+        setText('cal-minmax-pwr', minPower > 0 || maxPower > 0 ? `${minPower.toFixed(1)} / ${maxPower.toFixed(1)}` : '0.0 / 0.0');
+
+        let rainText = '— / —';
+        if (todayRainfall) {
+            const dam = todayRainfall.headworks ?? 0;
+            const ph = todayRainfall.powerhouse ?? 0;
+            rainText = `${dam} / ${ph}`;
+        }
+        setText('cal-rain', rainText);
+
+        // --- NOON-TO-NOON (12:00 Yesterday to 12:00 Today) ---
+        let noonGross = 0, noonExport = 0;
+        let noonPowers = [];
+
+        const noonLogs = [
+            ...(yesterdayLogs || []).filter(l => l.log_time >= '12:00:00'),
+            ...(todayLogs || []).filter(l => l.log_time <= '12:00:00')
+        ];
+
+        if (noonLogs.length > 0) {
+            const first = noonLogs[0] || {};
+            const last = noonLogs[noonLogs.length - 1] || {};
+
+            const getDelta = (key) => Math.max(0, (parseFloat(last[key]) || 0) - (parseFloat(first[key]) || 0));
+
+            noonGross = (getDelta('e_u1_gwh') + getDelta('e_u2_gwh')) * 1000;
+            noonExport = getDelta('e_out_mwh');
+
+            noonLogs.forEach(log => {
+                const u1 = parseFloat(log.e_u1_mw) || 0;
+                const u2 = parseFloat(log.e_u2_mw) || 0;
+                const totalMw = u1 + u2;
+                if (totalMw > 0) noonPowers.push(totalMw);
+            });
+        }
+
+        let noonAvgPower = 0;
+        if (noonPowers.length > 0) {
+            noonAvgPower = noonPowers.reduce((a,b) => a+b, 0) / noonPowers.length;
+        }
+
+        let balanchExport = 0, isPredicted = false, transLoss = 0, transLossPct = 0;
+        const yBal = yBalanch?.main_export;
+        const tBal = tBalanch?.main_export;
+
+        if (yBal != null && tBal != null && nepalNow.getHours() >= 12) {
+            balanchExport = Math.max(0, tBal - yBal);
+            transLoss = Math.max(0, noonExport - balanchExport);
+            transLossPct = noonExport > 0 ? (transLoss / noonExport) * 100 : 0;
         } else {
-            setText('card-u1-hrs', '0.0 h');
-            setText('card-u2-hrs', '0.0 h');
+            isPredicted = true;
+            let lossFactor = 0.02 + (noonAvgPower / 10) * 0.03; 
+            if (lossFactor > 0.05) lossFactor = 0.05;
+            if (lossFactor < 0.02) lossFactor = 0.02;
+            if (noonAvgPower >= 10) lossFactor = 0.05;
+
+            transLoss = noonExport * lossFactor;
+            balanchExport = noonExport - transLoss;
+            transLossPct = lossFactor * 100;
         }
 
-        const toMWh = (kwh) => kwh > 1000 ? kwh / 1000 : kwh;
-        const grossMWh  = toMWh(grossGen);
-        const exportMWh = toMWh(netExport);
-        const plantFactor = (grossMWh / 240) * 100;
+        const gridFaults = todayOutages?.energy_loss_line_trip || 0;
+        const plantFactor = (noonGross / 240) * 100;
 
-        const u1MWh = toMWh(u1);
-        const u2MWh = toMWh(u2);
+        setText('noon-gross', noonGross > 0 ? noonGross.toFixed(2) : '0.00');
+        setText('noon-export', noonExport > 0 ? noonExport.toFixed(2) : '0.00');
+        setText('noon-balanch', balanchExport > 0 ? balanchExport.toFixed(2) : '0.00');
+        
+        const badgeEl = document.getElementById('noon-balanch-badge');
+        if (badgeEl) badgeEl.style.display = isPredicted ? 'block' : 'none';
 
-        setText('card-gen',    grossMWh  > 0 ? grossMWh.toLocaleString('en-US',  { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
-        setText('card-export', exportMWh > 0 ? exportMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
-        setText('card-pf',     grossMWh  > 0 ? plantFactor.toFixed(1) + '%' : '0.0%');
-
-        setText('card-u1-gen', u1MWh > 0 ? u1MWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
-        setText('card-u2-gen', u2MWh > 0 ? u2MWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
-        setText('card-station-cons', stationCons > 0 ? stationCons.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kWh' : '0.0 kWh');
-        setText('card-import', gridImport > 0 ? gridImport.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh');
-
-        const { data: oData } = await fetchWithTimeout(
-            supabase.from('outages').select('loss_time_min').eq('id', todayStr).maybeSingle(), 3000
-        );
-        setText('card-outages', oData?.loss_time_min ? (oData.loss_time_min / 60).toFixed(1) + ' h' : '0.0 h');
-
-        if (calData?.nep_year && calData?.nep_month) {
-            const mceKey = `${calData.nep_year}_${calData.nep_month}`;
-            const { data: mce } = await fetchWithTimeout(
-                supabase.from('contract_energy').select('contract_energy, total_ad').eq('id', mceKey).maybeSingle(), 3000
-            );
-            if (mce) {
-                setText('card-mce', mce.contract_energy ? mce.contract_energy.toLocaleString('en-US') + ' MWh' : '—');
-                setText('card-ad',  mce.total_ad        ? mce.total_ad.toLocaleString('en-US')        + ' MWh' : '—');
-            }
-        }
+        setText('noon-loss', transLoss > 0 ? `${transLoss.toFixed(2)}` : '0.00');
+        setText('noon-loss-pct', `(${transLossPct.toFixed(1)}%)`);
+        setText('noon-faults', gridFaults > 0 ? gridFaults.toFixed(2) : '0.00');
+        setText('noon-pf', plantFactor > 0 ? plantFactor.toFixed(1) + '%' : '0.0%');
 
     } catch (err) {
         console.warn('[dashboard] Error:', err.message);
-        ['card-gen', 'card-export', 'card-pf', 'card-outages', 'card-u1-hrs', 'card-u2-hrs', 'card-mce', 'card-ad', 'card-u1-gen', 'card-u2-gen', 'card-station-cons', 'card-import'].forEach(id => setText(id, '—'));
-    }
-}
-
-async function fetchNoonToNoonData() {
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
-    const currentHour = now.getHours();
-
-    let startDate = new Date(now);
-    if (currentHour < 12) {
-        startDate.setDate(startDate.getDate() - 1);
-    }
-
-    const startEnglishDate = startDate.toISOString().split('T')[0];
-    const endEnglishDate = now.toISOString().split('T')[0];
-
-    try {
-        let nepaliStartDate = startEnglishDate;
-        const { data: calData } = await supabase
-            .from('calendar_mappings')
-            .select('nep_date_str')
-            .eq('eng_date', startEnglishDate)
-            .maybeSingle();
-
-        if (calData && calData.nep_date_str) {
-            nepaliStartDate = calData.nep_date_str;
-        }
-
-        const dateLabel = document.getElementById('noon-start-date');
-        if (dateLabel) dateLabel.textContent = nepaliStartDate;
-
-        const { data: logs, error } = await supabase
-            .from('hourly_logs')
-            .select('e_u1_gwh, e_u2_gwh, log_date, log_time')
-            .gte('log_date', startEnglishDate)
-            .lte('log_date', endEnglishDate)
-            .order('log_date', { ascending: true })
-            .order('log_time', { ascending: true });
-
-        if (error) throw error;
-
-        let totalGenMWh = 0;
-
-        if (logs && logs.length > 0) {
-            const windowLogs = logs.filter(log => {
-                const isStartDay = log.log_date === startEnglishDate;
-                const logHour = parseInt(log.log_time.split(':')[0], 10);
-                if (isStartDay) return logHour >= 12;
-                return logHour < 12;
-            });
-
-            if (windowLogs.length > 0) {
-                const firstLog = windowLogs[0];
-                const startU1 = parseFloat(firstLog.e_u1_gwh) || 0;
-                const startU2 = parseFloat(firstLog.e_u2_gwh) || 0;
-
-                const lastLog = windowLogs[windowLogs.length - 1];
-                const latestU1 = parseFloat(lastLog.e_u1_gwh) || 0;
-                const latestU2 = parseFloat(lastLog.e_u2_gwh) || 0;
-
-                const genU1 = Math.max(0, latestU1 - startU1);
-                const genU2 = Math.max(0, latestU2 - startU2);
-
-                totalGenMWh = (genU1 + genU2) * 1000;
-            }
-        }
-
-        const formattedTotal = totalGenMWh > 0 ? totalGenMWh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MWh' : '0.00 MWh';
-        setText('card-noon-gen', formattedTotal);
-
-    } catch (err) {
-        console.error('Error fetching Noon-to-Noon data:', err);
-        setText('card-noon-gen', '—');
     }
 }
 

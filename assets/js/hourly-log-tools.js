@@ -14,7 +14,14 @@ window.generateTableHTML = function(logs, nepD, dateEng, monthName, isPdf = fals
     });
 
     const monthSelect = document.getElementById('export-month');
-    const monthNum = monthSelect ? parseInt(monthSelect.value || 1) : 1;
+    let monthNum = 1;
+    if (monthSelect && monthSelect.value) {
+        monthNum = parseInt(monthSelect.value);
+        if (isNaN(monthNum)) {
+            const bsMonthNames = ["baisakh", "jestha", "ashadh", "shrawan", "bhadra", "ashoj", "kartik", "mangsir", "poush", "magh", "falgun", "chaitra"];
+            monthNum = bsMonthNames.indexOf(monthSelect.value.toLowerCase()) + 1 || 1;
+        }
+    }
     const yearEl = document.getElementById('export-year');
     const yearNum = yearEl && yearEl.value ? parseInt(yearEl.value) : new Date().getFullYear() + 57;
     const fyString = monthNum >= 4 ? `${yearNum}/${yearNum + 1}` : `${yearNum - 1}/${yearNum}`;

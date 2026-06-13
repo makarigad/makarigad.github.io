@@ -15,6 +15,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,6 +80,10 @@
       <div class="flex items-center gap-2">
         <span class="text-indigo-600 text-xl font-black">▣</span>
         <span class="font-black text-slate-800 tracking-tight">Makari Gad 10MW</span>
+        <a href="index.html" class="hidden sm:inline-flex items-center gap-1.5 ml-4 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all shadow-sm">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          Hub Dashboard
+        </a>
       </div>
       <div id="auth-user-info" class="hidden items-center gap-3">
         <div class="text-right hidden sm:block">
@@ -173,8 +179,8 @@
             <button type="submit" id="fr-generate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-black transition">Generate</button>
           </form>
           <div class="flex gap-2 ml-auto">
-              <button type="button" onclick="exportReportToExcel()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-emerald-200"><span class="text-base">📗</span> Export</button>
-              <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-slate-300"><span class="text-base">🖨️</span> Print</button>
+              <button type="button" onclick="exportReportToExcel()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-emerald-200"><span class="text-base">📗</span> Excel</button>
+              <button type="button" onclick="downloadReportPDF()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 border border-rose-200"><span class="text-base">📄</span> PDF</button>
           </div>
         </div>
         <button type="button" onclick="closeModal('report-modal')" class="text-slate-400 hover:text-rose-600 text-3xl leading-none transition font-light">&times;</button>
@@ -347,8 +353,16 @@
             </div>
           </div>
 
-          <div id="out-fields" class="space-y-3 hidden">
+          <div id="transfer-fields" class="space-y-3 hidden">
             <div>
+              <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">🏢 To Store</label>
+              <select id="txn-to-store" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+              </select>
+            </div>
+          </div>
+
+          <div id="out-fields" class="space-y-3 hidden">
+            <div id="txn-location-container">
               <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">📍 Where Was It Used?</label>
               <select id="txn-location" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
                 <option value="">-- Select a Location --</option>
@@ -493,12 +507,178 @@
     </div>
   </div>
 
+  <div id="quick-txn-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
+        <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
+            <h3 class="text-sm font-black text-indigo-900 uppercase tracking-wide">Quick Entry</h3>
+            <button type="button" onclick="closeModal('quick-txn-modal')" class="text-slate-400 hover:text-slate-600 text-2xl leading-none font-light">&times;</button>
+        </div>
+        <form id="quick-txn-form" class="p-5 space-y-4">
+            <div class="flex gap-2">
+                <button type="button" data-qt="IN" class="qt-type-btn flex-1 py-2 rounded-lg text-xs font-bold bg-emerald-500 text-white transition">IN</button>
+                <button type="button" data-qt="OUT" class="qt-type-btn flex-1 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-600 transition">OUT</button>
+                <button type="button" data-qt="TRANSFER" class="qt-type-btn flex-1 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-600 transition">TRANSFER</button>
+                <input type="hidden" id="qt-type" value="IN">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Item</label>
+                <select id="qt-item" required class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"></select>
+            </div>
+            <div id="qt-transfer-fields" class="hidden">
+                <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">To Store</label>
+                <select id="qt-to-store" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Date</label>
+                    <input type="date" id="qt-date" required class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Qty</label>
+                    <input type="number" id="qt-qty" step="any" min="0.01" required class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-indigo-700">
+                </div>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Purpose</label>
+                <input type="text" id="qt-purpose" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+            </div>
+            <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-md transition text-xs uppercase tracking-widest">Save</button>
+        </form>
+    </div>
+  </div>
+
+  <div id="fuel-flow-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+        <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-amber-500">
+            <h3 class="text-sm font-black text-white uppercase tracking-wide">⛽ Fuel Flow</h3>
+            <button type="button" onclick="closeModal('fuel-flow-modal')" class="text-amber-100 hover:text-white text-2xl leading-none font-light">&times;</button>
+        </div>
+        <form id="fuel-flow-form" class="p-5 space-y-4 max-h-[80vh] overflow-y-auto custom-scroll">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Date</label>
+                    <input type="date" id="ff-date" required class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Action</label>
+                    <select id="ff-subtype" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-indigo-700">
+                        <option value="purchase">Purchase (IN)</option>
+                        <option value="transfer">Transfer (Store to Store)</option>
+                        <option value="consumption">Consumption (OUT)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Fuel Type</label>
+                    <select id="ff-fuel-type" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold">
+                        <option value="diesel">Diesel</option>
+                        <option value="petrol">Petrol</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Qty (Liters)</label>
+                    <input type="number" id="ff-qty" step="any" min="0.01" required class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-indigo-700">
+                </div>
+            </div>
+
+            <div id="ff-purchase-fields" class="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">To Store/Tank</label>
+                    <select id="ff-to-store" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Pump/Supplier</label>
+                    <select id="ff-pump" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"></select>
+                </div>
+            </div>
+
+            <div id="ff-transfer-fields" class="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200 hidden">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">From Store/Tank</label>
+                    <select id="ff-from-store" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">To Store/Tank</label>
+                    <select id="ff-to-store-t" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"></select>
+                </div>
+            </div>
+
+            <div id="ff-consume-fields" class="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200 hidden">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">From Store/Tank</label>
+                    <select id="ff-store-consume" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"></select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Equipment/Vehicle</label>
+                    <select id="ff-equipment" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs"></select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-widest">Notes / Reference</label>
+                <input type="text" id="ff-notes" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl shadow-md transition text-xs uppercase tracking-widest">Save Fuel Entry</button>
+        </form>
+    </div>
+  </div>
+
+  <div id="admin-setup-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-800 shrink-0">
+            <h3 class="text-base font-black text-white uppercase tracking-wide flex items-center gap-2">⚙️ Admin Setup</h3>
+            <button type="button" onclick="closeModal('admin-setup-modal')" class="text-slate-400 hover:text-white text-2xl leading-none font-light">&times;</button>
+        </div>
+        <div class="flex border-b border-slate-200 bg-slate-50 shrink-0">
+            <button type="button" data-tab="stores" class="setup-tab flex-1 py-3 text-xs font-bold text-indigo-700 bg-slate-100 border-b-2 border-transparent transition">Stores</button>
+            <button type="button" data-tab="pumps" class="setup-tab flex-1 py-3 text-xs font-bold text-slate-600 hover:bg-slate-100 border-b-2 border-transparent transition">Fuel Pumps</button>
+            <button type="button" data-tab="equipment" class="setup-tab flex-1 py-3 text-xs font-bold text-slate-600 hover:bg-slate-100 border-b-2 border-transparent transition">Equipment</button>
+        </div>
+        <div class="p-6 overflow-y-auto custom-scroll flex-grow">
+            <div id="setup-panel-stores" class="space-y-4">
+                <form id="form-add-store" class="flex gap-2">
+                    <input type="text" id="new-store-name" required placeholder="New store name..." class="flex-grow p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-400">
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold">Add</button>
+                </form>
+                <ul id="setup-store-list" class="text-sm text-slate-600 divide-y divide-slate-100"></ul>
+            </div>
+            <div id="setup-panel-pumps" class="hidden space-y-4">
+                <form id="form-add-pump" class="flex gap-2">
+                    <input type="text" id="new-pump-name" required placeholder="New pump name..." class="flex-grow p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-400">
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold">Add</button>
+                </form>
+                <ul id="setup-pump-list" class="text-sm text-slate-600 divide-y divide-slate-100"></ul>
+            </div>
+            <div id="setup-panel-equipment" class="hidden space-y-4">
+                <form id="form-add-equipment" class="grid grid-cols-1 md:grid-cols-4 gap-2">
+                    <input type="text" id="new-eq-name" required placeholder="Equip name..." class="md:col-span-2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-400">
+                    <select id="new-eq-fuel" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"><option value="diesel">Diesel</option><option value="petrol">Petrol</option></select>
+                    <select id="new-eq-store" class="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold hidden"></select>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold">Add</button>
+                </form>
+                <ul id="setup-equipment-list" class="text-sm text-slate-600 divide-y divide-slate-100"></ul>
+            </div>
+        </div>
+    </div>
+  </div>
+
 <script type="module">
 import { supabase, fetchWithTimeout, initHeaderUI, initializeApplication } from './assets/js/core-app.js';
 
 // --- DOM Helpers ---
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
+
+// --- Security Helpers ---
+const escapeHTML = str => 
+    String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 
 // --- State ---
 let allItems = [];
@@ -860,8 +1040,8 @@ function renderItemCards(items) {
             <div class="text-[10px] font-black px-1.5 py-0.5 rounded border ${statusColors}">${statusDot} ${isZero ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'IN STOCK')}</div>
           </div>
           
-          <div class="font-black text-slate-800 leading-snug text-lg">${item.item_name}</div>
-          <div class="text-xs text-slate-500 mt-1 truncate">📍 ${loc}</div>
+          <div class="font-black text-slate-800 leading-snug text-lg">${escapeHTML(item.item_name)}</div>
+          <div class="text-xs text-slate-500 mt-1 truncate">📍 ${escapeHTML(loc)}</div>
           
           <div class="mt-4 flex justify-between items-end">
             <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">${item.unit}</span>
@@ -875,9 +1055,9 @@ function renderItemCards(items) {
     const tbody = $('inventory-list');
     if (tbody) {
         tbody.innerHTML = items.map(item => `<tr class="cursor-pointer hover:bg-indigo-50" data-item-id="${item.id}">
-          <td class="px-3 py-2 font-bold">${item.item_name}</td>
+          <td class="px-3 py-2 font-bold">${escapeHTML(item.item_name)}</td>
           <td class="px-2 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${catBadge(item.category)}">${item.category}</span></td>
-          <td class="px-2 py-2 text-slate-500">${item.store_id ? storeName(item.store_id) : item.store_location || '—'}</td>
+          <td class="px-2 py-2 text-slate-500">${escapeHTML(item.store_id ? storeName(item.store_id) : item.store_location || '—')}</td>
           <td class="px-2 py-2 text-right font-black">${Number(item.current_stock).toLocaleString()}</td>
         </tr>`).join('');
         $$('#inventory-list tr').forEach(tr => tr.addEventListener('click', () => openItemDetail(tr.getAttribute('data-item-id'))));
@@ -914,10 +1094,11 @@ function setupSearch() { $('search-inventory')?.addEventListener('input', filter
 
 function populateSelects() {
     const storeOpts = stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    ['ni-store', 'ff-to-store', 'ff-from-store', 'ff-to-store-t', 'ff-store-consume', 'new-eq-store', 'mi-global-store'].forEach(id => {
+    ['ni-store', 'ff-to-store', 'ff-from-store', 'ff-to-store-t', 'ff-store-consume', 'new-eq-store', 'mi-global-store', 'txn-to-store', 'qt-to-store'].forEach(id => {
         const el = $(id);
         if (el) {
             if(id === 'mi-global-store') el.innerHTML = `<option value="">-- No specific store --</option>` + storeOpts;
+            else if(id === 'txn-to-store' || id === 'qt-to-store') el.innerHTML = `<option value="">-- Select Destination Store --</option>` + storeOpts;
             else el.innerHTML = storeOpts || '<option value="">No stores — run SQL migration</option>';
         }
     });
@@ -926,7 +1107,7 @@ function populateSelects() {
     if (pumpEl) pumpEl.innerHTML = pumps.map(p => `<option value="${p.id}">${p.name}</option>`).join('') || '<option value="">Add pumps in setup</option>';
     
     const qt = $('qt-item');
-    if (qt) qt.innerHTML = allItems.map(i => `<option value="${i.id}">${i.item_name} (${Number(i.current_stock)} ${i.unit})</option>`).join('');
+    if (qt) qt.innerHTML = allItems.map(i => `<option value="${i.id}">${escapeHTML(i.item_name)} (${Number(i.current_stock)} ${escapeHTML(i.unit)}) - ${escapeHTML(i.store_location || 'No Store')}</option>`).join('');
     
     refreshEquipmentSelect();
 }
@@ -994,6 +1175,7 @@ async function openItemDetail(itemId) {
       <div class="flex flex-wrap gap-2 staff-only role-hidden hidden">
         <button type="button" id="detail-in" class="flex-1 min-w-[120px] py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-black">Receive IN</button>
         <button type="button" id="detail-out" class="flex-1 min-w-[120px] py-2.5 bg-rose-500 text-white rounded-xl text-xs font-black">Issue OUT</button>
+        <button type="button" id="detail-transfer" class="flex-1 min-w-[120px] py-2.5 bg-amber-500 text-white rounded-xl text-xs font-black">Transfer</button>
       </div>
       
       ${isAdmin() ? `<div class="admin-only role-hidden hidden border-t pt-3 mt-3">
@@ -1069,6 +1251,7 @@ async function openItemDetail(itemId) {
 
         if (btn.id === 'detail-in') { closeModal('detail-modal'); openTxnModal('IN'); }
         if (btn.id === 'detail-out') { closeModal('detail-modal'); openTxnModal('OUT'); }
+        if (btn.id === 'detail-transfer') { closeModal('detail-modal'); openTxnModal('TRANSFER'); }
         if (btn.classList.contains('edit-log-btn')) { closeModal('detail-modal'); editTxn(btn.getAttribute('data-log-id')); }
         
         if (btn.id === 'detail-save-store') {
@@ -1134,7 +1317,7 @@ window.openTxnModal = function (type) {
     $('txn-unit').textContent = currentItem.unit;
     $('txn-date').value = todayNPT();
     
-    ['txn-qty', 'txn-purpose', 'txn-notes', 'txn-req', 'txn-app', 'txn-ref', 'txn-location'].forEach(id => {
+    ['txn-qty', 'txn-purpose', 'txn-notes', 'txn-req', 'txn-app', 'txn-ref', 'txn-location', 'txn-to-store'].forEach(id => {
         const el = $(id); if (el) el.value = '';
     });
     
@@ -1147,20 +1330,27 @@ window.openTxnModal = function (type) {
     
     $('txn-delete-btn')?.classList.add('hidden');
     const t = $('txn-title'), h = $('txn-header'), b = $('txn-submit');
-    const inF = $('in-fields'), outF = $('out-fields');
+    const inF = $('in-fields'), outF = $('out-fields'), transF = $('transfer-fields'), locCont = $('txn-location-container');
     
-    t.textContent = `${type === 'IN' ? 'Receive' : 'Issue'}: ${currentItem.item_name}`;
+    t.textContent = `${type === 'IN' ? 'Receive' : type === 'OUT' ? 'Issue' : 'Transfer'}: ${currentItem.item_name}`;
     
     if (type === 'IN') {
         h.className = 'px-5 py-3 border-b bg-emerald-50 flex justify-between items-center';
         b.className = 'flex-[2] py-3 bg-emerald-600 text-white font-black rounded-xl';
         b.textContent = 'Save – Add stock';
-        inF?.classList.remove('hidden'); outF?.classList.add('hidden');
-    } else {
+        inF?.classList.remove('hidden'); outF?.classList.add('hidden'); transF?.classList.add('hidden');
+    } else if (type === 'OUT') {
         h.className = 'px-5 py-3 border-b bg-rose-50 flex justify-between items-center';
         b.className = 'flex-[2] py-3 bg-rose-600 text-white font-black rounded-xl';
         b.textContent = 'Save – Remove stock';
-        inF?.classList.add('hidden'); outF?.classList.remove('hidden');
+        inF?.classList.add('hidden'); outF?.classList.remove('hidden'); transF?.classList.add('hidden');
+        locCont?.classList.remove('hidden');
+    } else if (type === 'TRANSFER') {
+        h.className = 'px-5 py-3 border-b bg-amber-50 flex justify-between items-center';
+        b.className = 'flex-[2] py-3 bg-amber-600 text-white font-black rounded-xl';
+        b.textContent = 'Save – Transfer stock';
+        inF?.classList.add('hidden'); outF?.classList.remove('hidden'); transF?.classList.remove('hidden');
+        locCont?.classList.add('hidden');
     }
 };
 
@@ -1454,25 +1644,46 @@ function setupForms() {
             if (oldLog && oldLog.txn_type === 'OUT') checkStock += Number(oldLog.quantity);
             if (oldLog && oldLog.txn_type === 'IN') checkStock -= Number(oldLog.quantity);
             
-            if (type === 'OUT' && qty > checkStock && !confirm('Issue more than adjusted stock?')) return;
+            if ((type === 'OUT' || type === 'TRANSFER') && qty > checkStock && !confirm('Issue more than adjusted stock?')) return;
 
             const geo = await captureGeo();
             if (logIdToEdit && oldLog) {
                 await supabase.from('inventory_logs').delete().eq('id', logIdToEdit);
                 await writeAudit('log', logIdToEdit, 'delete', 'Replaced during edit', oldLog, geo);
             }
-            await insertLog({
-                item_id: $('txn-item-id').value,
-                log_date: $('txn-date').value,
-                txn_type: type,
-                quantity: qty,
-                used_location: $('txn-location')?.value || null,
-                purpose: $('txn-purpose')?.value || null,
-                notes: $('txn-notes')?.value || null,
-                reference_no: $('txn-ref')?.value || null,
-                requested_by: $('txn-req')?.value || null,
-                approved_by: $('txn-app')?.value || null
-            }, geo);
+            
+            if (type === 'TRANSFER') {
+                const toStoreId = $('txn-to-store').value;
+                if (!toStoreId) throw new Error("Please select a destination store.");
+                if (toStoreId === currentItem.store_id) throw new Error("Cannot transfer to the same store.");
+                
+                let destItem = allItems.find(i => i.item_name.toLowerCase() === currentItem.item_name.toLowerCase() && i.store_id === toStoreId);
+                
+                if (!destItem) {
+                    const { data, error } = await supabase.from('inventory_items').insert([{
+                        item_name: currentItem.item_name, category: currentItem.category, unit: currentItem.unit,
+                        current_stock: 0, store_id: toStoreId, store_location: storeName(toStoreId)
+                    }]).select().single();
+                    if (error) throw error;
+                    destItem = data;
+                    allItems.push(data);
+                }
+
+                await insertLog({
+                    item_id: currentItem.id, log_date: $('txn-date').value, txn_type: 'OUT', txn_subtype: 'transfer', quantity: qty, to_store_id: toStoreId,
+                    purpose: $('txn-purpose')?.value || `Transfer to ${storeName(toStoreId)}`, notes: $('txn-notes')?.value || null, requested_by: $('txn-req')?.value || null, approved_by: $('txn-app')?.value || null
+                }, geo);
+
+                await insertLog({
+                    item_id: destItem.id, log_date: $('txn-date').value, txn_type: 'IN', txn_subtype: 'transfer', quantity: qty, from_store_id: currentItem.store_id,
+                    purpose: $('txn-purpose')?.value || `Transfer from ${storeName(currentItem.store_id)}`, notes: $('txn-notes')?.value || null, requested_by: $('txn-req')?.value || null, approved_by: $('txn-app')?.value || null
+                }, geo);
+            } else {
+                await insertLog({
+                    item_id: $('txn-item-id').value, log_date: $('txn-date').value, txn_type: type, quantity: qty, used_location: $('txn-location')?.value || null,
+                    purpose: $('txn-purpose')?.value || null, notes: $('txn-notes')?.value || null, reference_no: $('txn-ref')?.value || null, requested_by: $('txn-req')?.value || null, approved_by: $('txn-app')?.value || null
+                }, geo);
+            }
             
             showToast('Saved');
             closeModal('txn-modal');
@@ -1578,27 +1789,89 @@ window.exportReportToExcel = function() {
     try {
         showToast('Preparing Excel file...', 'success');
         const wb = XLSX.utils.book_new();
+        const cat = document.getElementById('report-category').value;
+        const start = document.getElementById('fr-start').value;
+        const end = document.getElementById('fr-end').value;
         
         const tables = container.querySelectorAll('.report-table');
-        const cat = document.getElementById('report-category').value;
         
         tables.forEach((table, index) => {
             let sheetName = index === tables.length - 1 ? "Overall Summary" : `Ledger ${index + 1}`;
             const header = table.closest('.bg-white').querySelector('h4');
+            let title = header ? header.textContent : `${cat} Ledger`;
             if (header && index !== tables.length - 1) {
-                sheetName = header.textContent.replace('Consumption Ledger: ', '').substring(0, 31);
+                sheetName = title.replace('Consumption Ledger: ', '').substring(0, 31);
             }
-            const ws = XLSX.utils.table_to_sheet(table);
-            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            
+            const wsData = [
+                [ `Makari Gad 10MW - ${title}` ],
+                [ `Period: ${start} to ${end}` ],
+                [ `Generated on: ${new Date().toLocaleString()}` ],
+                []
+            ];
+            
+            const tempSheet = XLSX.utils.table_to_sheet(table);
+            const sheetData = XLSX.utils.sheet_to_json(tempSheet, { header: 1 });
+            wsData.push(...sheetData);
+            
+            const finalWs = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, finalWs, sheetName);
         });
 
-        const fileName = `${cat}_Report_${document.getElementById('fr-start').value}_to_${document.getElementById('fr-end').value}.xlsx`;
+        const fileName = `MakariGad_${cat}_Report_${start}_to_${end}.xlsx`;
         XLSX.writeFile(wb, fileName);
         
     } catch (err) {
         showToast('Error exporting to Excel: ' + err.message, 'error');
     }
 };
+
+window.downloadReportPDF = function() {
+    const container = document.getElementById('fr-generated-tables');
+    if (!container || container.classList.contains('hidden') || container.innerHTML === '') {
+        return showToast('Generate a report first before exporting.', 'warning');
+    }
+
+    try {
+        showToast('Preparing PDF file...', 'success');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'pt', 'a4');
+        const cat = document.getElementById('report-category').value;
+        const start = document.getElementById('fr-start').value;
+        const end = document.getElementById('fr-end').value;
+
+        const tables = container.querySelectorAll('.report-table');
+        
+        tables.forEach((table, index) => {
+            if (index > 0) doc.addPage();
+            
+            const headerEl = table.closest('.bg-white').querySelector('h4');
+            let title = headerEl ? headerEl.textContent : `${cat} Ledger`;
+            
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text(`Makari Gad 10MW - ${title}`, 40, 40);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Period: ${start} to ${end}`, 40, 55);
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, 40, 70);
+
+            doc.autoTable({
+                html: table,
+                startY: 85,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 3 },
+                headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
+                footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold' },
+                margin: { top: 85, right: 40, bottom: 40, left: 40 }
+            });
+        });
+
+        doc.save(`MakariGad_${cat}_Report_${start}_to_${end}.pdf`);
+    } catch (err) {
+        showToast('Error exporting to PDF: ' + err.message, 'error');
+    }
+}
 
 // --- FUEL IMPORTER ---
 function setupFuelImporter() {

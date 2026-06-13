@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#4f46e5" />
   <title>User & HR Management - Makari Gad</title>
+  <link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -72,6 +73,7 @@
                                 <option value="operator">Operator (Plant Staff)</option>
                                 <option value="staff">Staff (Management)</option>
                                 <option value="admin">Admin (Full Control)</option>
+                                <option value="management">Admin (Management) - Read Only</option>
                             </select>
                         </div>
                     </div>
@@ -106,6 +108,27 @@
 
                             <span class="text-xs font-bold text-slate-700">Attendance</span>
                             <select id="perm-attendance" class="perm-select text-slate-700">
+                                <option value="none">🚫 No Access</option>
+                                <option value="read">👁️ View Only</option>
+                                <option value="edit" selected>✏️ Can Edit</option>
+                            </select>
+
+                            <span class="text-xs font-bold text-slate-700">Operator Log</span>
+                            <select id="perm-operator_log" class="perm-select text-slate-700">
+                                <option value="none">🚫 No Access</option>
+                                <option value="read">👁️ View Only</option>
+                                <option value="edit" selected>✏️ Can Edit</option>
+                            </select>
+
+                            <span class="text-xs font-bold text-slate-700">Energy Summary</span>
+                            <select id="perm-energy_summary" class="perm-select text-slate-700">
+                                <option value="none">🚫 No Access</option>
+                                <option value="read">👁️ View Only</option>
+                                <option value="edit" selected>✏️ Can Edit</option>
+                            </select>
+
+                            <span class="text-xs font-bold text-slate-700">AD Prediction</span>
+                            <select id="perm-ad_prediction" class="perm-select text-slate-700">
                                 <option value="none">🚫 No Access</option>
                                 <option value="read">👁️ View Only</option>
                                 <option value="edit" selected>✏️ Can Edit</option>
@@ -190,8 +213,8 @@
             if (user.role === 'admin') roleColor = 'bg-red-100 text-red-700';
             if (user.role === 'operator') roleColor = 'bg-indigo-100 text-indigo-700';
             if (user.role === 'staff') roleColor = 'bg-emerald-100 text-emerald-700';
+            if (user.role === 'management') roleColor = 'bg-purple-100 text-purple-700';
 
-            const isMaster = user.role === 'admin';
             const tr = document.createElement('tr');
             tr.className = "hover:bg-slate-50";
 
@@ -223,27 +246,21 @@
 
             const td4 = document.createElement('td');
             td4.className = 'text-center';
-            if (isMaster) {
-                const masterSpan = document.createElement('span');
-                masterSpan.className = 'text-xs text-slate-400 font-bold';
-                masterSpan.textContent = 'MASTER';
-                td4.appendChild(masterSpan);
-            } else {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'text-indigo-600 hover:underline font-bold text-xs mr-3';
-                editBtn.textContent = 'Edit';
-                editBtn.dataset.email = user.email;
-                editBtn.addEventListener('click', () => editUser(user.email));
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'text-indigo-600 hover:underline font-bold text-xs mr-3';
+            editBtn.textContent = 'Edit';
+            editBtn.dataset.email = user.email;
+            editBtn.addEventListener('click', () => editUser(user.email));
 
-                const delBtn = document.createElement('button');
-                delBtn.className = 'text-red-600 hover:underline font-bold text-xs';
-                delBtn.textContent = 'Del';
-                delBtn.dataset.email = user.email;
-                delBtn.addEventListener('click', () => deleteUser(user.email));
+            const delBtn = document.createElement('button');
+            delBtn.className = 'text-red-600 hover:underline font-bold text-xs';
+            delBtn.textContent = 'Del';
+            delBtn.dataset.email = user.email;
+            delBtn.addEventListener('click', () => deleteUser(user.email));
 
-                td4.appendChild(editBtn);
-                td4.appendChild(delBtn);
-            }
+            td4.appendChild(editBtn);
+            td4.appendChild(delBtn);
 
             tr.appendChild(td1);
             tr.appendChild(td2);
@@ -271,6 +288,9 @@
             document.getElementById('perm-hourly_log').value = perms.hourly_log || 'edit';
             document.getElementById('perm-inventory').value = perms.inventory || 'edit';
             document.getElementById('perm-attendance').value = perms.attendance || 'edit';
+            document.getElementById('perm-operator_log').value = perms.operator_log || 'edit';
+            document.getElementById('perm-energy_summary').value = perms.energy_summary || 'edit';
+            document.getElementById('perm-ad_prediction').value = perms.ad_prediction || 'edit';
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -295,7 +315,10 @@
                 plant_data: document.getElementById('perm-plant_data').value,
                 hourly_log: document.getElementById('perm-hourly_log').value,
                 inventory: document.getElementById('perm-inventory').value,
-                attendance: document.getElementById('perm-attendance').value
+                attendance: document.getElementById('perm-attendance').value,
+                operator_log: document.getElementById('perm-operator_log').value,
+                energy_summary: document.getElementById('perm-energy_summary').value,
+                ad_prediction: document.getElementById('perm-ad_prediction').value
             };
 
             const { error: dbError } = await supabase.from('user_roles').upsert({
@@ -308,7 +331,7 @@
                 dob: document.getElementById('u-dob').value || null,
                 company: document.getElementById('u-company').value.trim() || null,
                 updated_at: new Date().toISOString()
-            });
+            }, { onConflict: 'email' });
 
             if (dbError) throw dbError;
             

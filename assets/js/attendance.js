@@ -30,7 +30,7 @@ export async function initAttendance() {
     updateLiveStatus();
     setInterval(updateLiveStatus, 30000);
 
-    if (userRole === 'admin' || userRole === 'staff') {
+    if (userRole === 'admin' || userRole === 'staff' || userRole === 'management') {
         initAdminFeatures();
     }
 }

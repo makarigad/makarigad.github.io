@@ -40,7 +40,7 @@
       <span id="od-user-badge" class="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">Loading…</span>
       <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all shadow-sm">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Hub
+        Hub Dashboard
       </a>
     </div>
   </header>
@@ -678,7 +678,7 @@ async function loadMyComplaints() {
   if (!currentUser) { list.innerHTML = '<p class="text-slate-400 italic">Please log in to view your complaints.</p>'; return; }
   try {
     let query = supabase.from('operator_complaints').select('*').order('created_at', { ascending: false }).limit(20);
-    if (userRole !== 'admin') query = query.eq('submitted_by_uid', currentUser.id);
+    if (userRole !== 'admin' && userRole !== 'management') query = query.eq('submitted_by_uid', currentUser.id);
     const { data, error } = await query;
     if (error) throw error;
     renderComplaintList(list, data || []);
@@ -868,7 +868,7 @@ async function startPage() {
     document.getElementById('entry-operator').value = currentUserName;
 
     // Show admin tabs
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || userRole === 'management') {
       document.getElementById('all-complaints-panel').classList.remove('hidden');
       document.querySelector('.admin-notice-tab')?.classList.remove('hidden');
       loadAllComplaints();

@@ -6,6 +6,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export let currentUser = null;
 export let userRole = 'operator';
+export let userPermissions = {};
 
 const ROLE_CACHE_KEY = 'makarigad_offline_role';
 const SYNC_QUEUE_KEY = 'makarigad_sync_queue';
@@ -146,12 +147,14 @@ async function resolveUserRole() {
     if (navigator.onLine) {
         try {
             const { data, error } = await fetchWithTimeout(
-                supabase.from('user_roles').select('role').eq('email', email).maybeSingle(),
+                supabase.from('user_roles').select('role, permissions').eq('email', email).maybeSingle(),
                 8000, 1
             );
             if (!error && data?.role) {
                 userRole = data.role;
+                userPermissions = data.permissions || {};
                 localStorage.setItem(ROLE_CACHE_KEY, userRole);
+                localStorage.setItem('makarigad_perms', JSON.stringify(userPermissions));
                 return;
             }
         } catch {
@@ -161,6 +164,7 @@ async function resolveUserRole() {
 
     const cached = localStorage.getItem(ROLE_CACHE_KEY);
     userRole = cached || 'operator';
+    try { userPermissions = JSON.parse(localStorage.getItem('makarigad_perms')) || {}; } catch(e) { userPermissions = {}; }
 
     // Offline bootstrap for designated admins when cache is missing (e.g. first offline session)
     if (!cached && OFFLINE_ADMIN_EMAILS.includes(email) && !navigator.onLine) {
@@ -177,10 +181,30 @@ function enforcePageAccess() {
 
     const OPERATOR_BLOCKED = ['/energy-summary.html', '/monthly_report.html', '/nepali-calendar.html', '/user-management.html'];
     const STAFF_BLOCKED    = ['/nepali-calendar.html', '/user-management.html'];
+    const MANAGEMENT_BLOCKED = ['/nepali-calendar.html', '/user-management.html'];
 
-    const blocked =
+    let blocked =
         (userRole === 'operator' && OPERATOR_BLOCKED.some(p => href.endsWith(p))) ||
+        (userRole === 'management' && MANAGEMENT_BLOCKED.some(p => href.endsWith(p))) ||
         (userRole === 'staff'    && STAFF_BLOCKED.some(p => href.endsWith(p)));
+
+    if (userPermissions && Object.keys(userPermissions).length > 0) {
+        const pageMap = {
+            'plant-data.html': 'plant_data',
+            'hourly-log.html': 'hourly_log',
+            'inventory.html': 'inventory',
+            'attendance.html': 'attendance',
+            'operator-daily.html': 'operator_log',
+            'energy-summary.html': 'energy_summary',
+            'ad-prediction.html': 'ad_prediction'
+        };
+        for (const [page, permKey] of Object.entries(pageMap)) {
+            if (href.endsWith(page)) {
+                if (userPermissions[permKey] === 'none') blocked = true;
+                else if (userPermissions[permKey] === 'read' || userPermissions[permKey] === 'edit') blocked = false;
+            }
+        }
+    }
 
     if (blocked) {
         window.location.replace('index.html');
@@ -327,10 +351,23 @@ function handleUnauthenticated(requireAuth) {
 function applyRoleBasedUI() {
     document.querySelectorAll('.admin-only, .staff-only').forEach(el => el.classList.add('role-hidden'));
 
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || userRole === 'management') {
         document.querySelectorAll('.admin-only, .staff-only').forEach(el => el.classList.remove('role-hidden'));
     } else if (userRole === 'staff') {
         document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden'));
+    }
+
+    if (userRole === 'management') {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            button[onclick*="edit"], button[onclick*="delete"], button[onclick*="save"], button[onclick*="update"], button[onclick*="Delete"], button[onclick*="Save"],
+            button[id*="save"], button[id*="upload"], button[id*="add"], button[id*="del"], button[id*="submit"], button[id*="clear"], button[id*="wipe"],
+            .edit-btn, .delete-btn, .update-btn, .cancel-btn {
+                display: none !important;
+            }
+            input[type="file"] { display: none !important; }
+        `;
+        document.head.appendChild(style);
     }
 
     const headerEmail = document.getElementById('header-email');

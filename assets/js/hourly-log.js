@@ -134,7 +134,7 @@ async function checkMissingHourlyData() {
             // Find Nepali Date ID for Rainfall
             const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', todayEng).maybeSingle();
             if (cal) {
-                const rainId = `${cal.nep_year}_${cal.nep_month}_${parseInt(cal.nep_day)}`;
+                const rainId = `${cal.nep_year}_${cal.nep_month}_${String(cal.nep_day).padStart(2, '0')}`;
                 const { data: rData } = await supabase.from('rainfall_data').select('headworks').eq('id', rainId).maybeSingle();
                 if (!rData || rData.headworks === null) {
                     window.ActionModals.add(
@@ -1043,7 +1043,7 @@ async function startPage() {
                 banner.innerText = '⚠️ READ-ONLY MODE: Management Staff cannot edit Hourly Logs.'; document.body.appendChild(banner);
             }
 
-            if (sessionData.role === 'admin' || sessionData.role === 'staff') {
+        if (sessionData.role === 'admin' || sessionData.role === 'staff' || sessionData.role === 'management') {
                 document.getElementById('scada-audit-btn')?.classList.remove('role-hidden');
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden'));
             }
@@ -1079,13 +1079,12 @@ document.getElementById('dd-entry-time')?.addEventListener('change', async (e) =
                 
             let rainId = '';
             if (calMap) {
-                // Exact database match without leading zeros
-                rainId = `${calMap.nep_year}_${calMap.nep_month}_${parseInt(calMap.nep_day)}`;
+                rainId = `${calMap.nep_year}_${calMap.nep_month}_${String(calMap.nep_day).padStart(2, '0')}`;
             } else {
                 const fallbackStr = document.getElementById('nepali-date-display')?.innerText || '';
                 const nums = fallbackStr.match(/\d+/g) || [2081, 1, 1];
                 const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-                rainId = `${parseInt(nums[0])}_${bsMonthNames[parseInt(nums[1]) - 1]}_${parseInt(nums[2])}`;
+                rainId = `${parseInt(nums[0])}_${bsMonthNames[parseInt(nums[1]) - 1]}_${String(nums[2]).padStart(2, '0')}`;
             }
 
             // Fetch the data including the new rain_events column
@@ -1337,7 +1336,7 @@ if(btnRain) {
                 nYear = calMap.nep_year;
                 monthName = calMap.nep_month;
                 nDay = parseInt(calMap.nep_day);
-                rainId = `${nYear}_${monthName}_${nDay}`;
+                rainId = `${nYear}_${monthName}_${String(nDay).padStart(2, '0')}`;
             } else {
                 const fallbackStr = document.getElementById('nepali-date-display')?.innerText || ''; 
                 const nums = fallbackStr.match(/\d+/g) || [2081, 1, 1];
@@ -1345,7 +1344,7 @@ if(btnRain) {
                 nDay = parseInt(nums[2]);
                 const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
                 monthName = bsMonthNames[parseInt(nums[1]) - 1] || '';
-                rainId = `${nYear}_${monthName}_${nDay}`;
+                rainId = `${nYear}_${monthName}_${String(nDay).padStart(2, '0')}`;
             }
 
             const { data: curRain } = await supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle();
@@ -1450,7 +1449,7 @@ if(btnNoon) {
             if (!isNaN(rainDam) || !isNaN(rainPh)) {
                 const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', targetDate).maybeSingle();
                 if (cal) {
-                    const rainId = `${cal.nep_year}_${cal.nep_month}_${cal.nep_day}`;
+                    const rainId = `${cal.nep_year}_${cal.nep_month}_${String(cal.nep_day).padStart(2, '0')}`;
                     await supabase.from('rainfall_data').upsert({
                         id: rainId,
                         nepali_year: cal.nep_year,
@@ -1742,14 +1741,13 @@ if(btnLoadSum) {
                     
                 let rainfallId = '';
                 if (calMap) {
-                    // Use the database mapping directly to ensure a 100% exact match
-                    rainfallId = `${calMap.nep_year}_${calMap.nep_month}_${parseInt(calMap.nep_day)}`;
+                    rainfallId = `${calMap.nep_year}_${calMap.nep_month}_${String(calMap.nep_day).padStart(2, '0')}`;
                 } else {
                     // Failsafe fallback
                     const fallbackStr = document.getElementById('nepali-date-display')?.innerText || '';
                     const nums = fallbackStr.match(/\d+/g) || [2081, 1, 1];
                     const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-                    rainfallId = `${parseInt(nums[0])}_${bsMonthNames[parseInt(nums[1]) - 1]}_${parseInt(nums[2])}`;
+                    rainfallId = `${parseInt(nums[0])}_${bsMonthNames[parseInt(nums[1]) - 1]}_${String(nums[2]).padStart(2, '0')}`;
                 }
                 // --------------------------------------------------------------------------
 

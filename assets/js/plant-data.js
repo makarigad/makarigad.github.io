@@ -2438,7 +2438,7 @@ function applyPermissions() {
     document.getElementById('user-profile')?.classList.remove('hidden');
     document.getElementById('user-profile')?.classList.add('flex');
 
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || userRole === 'management') {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden'));
         document.querySelectorAll('.staff-only').forEach(el => el.classList.remove('role-hidden'));
     } else if (userRole === 'staff') {

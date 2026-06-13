@@ -259,7 +259,7 @@ async function loadDashboardData() {
 
         let rainId = null;
         if (calData) {
-            rainId = `${calData.nep_year}_${calData.nep_month}_${parseInt(calData.nep_day)}`;
+            rainId = `${calData.nep_year}_${calData.nep_month}_${String(calData.nep_day).padStart(2, '0')}`;
         }
 
         const [

@@ -613,7 +613,7 @@ async function startPage() {
         setupToggles(); 
         
         // Hide actions if they are just regular staff
-        if (sessionData.role === 'staff' || sessionData.role === 'operator') {
+        if (sessionData.role === 'staff' || sessionData.role === 'operator' || sessionData.role === 'management') {
             document.querySelectorAll('.col-actions').forEach(el => el.classList.add('role-hidden')); 
         }
         
@@ -1060,8 +1060,8 @@ let totalPlantFm = fm33kv + fmPenstock + fmEquip;
                 u1Hrs, u2Hrs
             };
 
-            const reconEditBtn = userRole === 'admin' ? `<button onclick='openEdit("${row.id}", "recon")' class="${row.is_virtual ? 'bg-indigo-600' : 'bg-slate-800'} text-white px-3 py-1 rounded text-[10px] font-bold w-full">${row.is_virtual ? '+ INIT' : 'EDIT'}</button>` : `<span class="text-xs text-slate-400">LOCKED</span>`;
-            const opsEditBtn = userRole === 'admin' ? `<button onclick='openEdit("${row.id}", "ops")' class="${row.is_virtual ? 'bg-indigo-600' : 'bg-slate-800'} text-white px-3 py-1 rounded text-[10px] font-bold w-full">${row.is_virtual ? '+ INIT' : 'EDIT'}</button>` : `<span class="text-xs text-slate-400">LOCKED</span>`;
+        const reconEditBtn = (userRole === 'admin') ? `<button onclick='openEdit("${row.id}", "recon")' class="${row.is_virtual ? 'bg-indigo-600' : 'bg-slate-800'} text-white px-3 py-1 rounded text-[10px] font-bold w-full">${row.is_virtual ? '+ INIT' : 'EDIT'}</button>` : `<span class="text-xs text-slate-400">LOCKED</span>`;
+        const opsEditBtn = (userRole === 'admin') ? `<button onclick='openEdit("${row.id}", "ops")' class="${row.is_virtual ? 'bg-indigo-600' : 'bg-slate-800'} text-white px-3 py-1 rounded text-[10px] font-bold w-full">${row.is_virtual ? '+ INIT' : 'EDIT'}</button>` : `<span class="text-xs text-slate-400">LOCKED</span>`;
 
             const trRecon = document.createElement("tr");
             trRecon.innerHTML = `<td class="sticky-col font-bold"><div class="${row.is_virtual ? 'text-indigo-600' : 'text-slate-800'}">${canonicalMonths[mIdx]} ${y}</div></td>

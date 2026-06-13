@@ -710,8 +710,7 @@ document.getElementById('hourly-form').addEventListener('submit', async function
         if (existingLog && existingLog.id) { logData.id = existingLog.id; }
 
         // 3. MAIN SAVE: HOURLY LOGS
-        const { error: hErr } = await supabase.from('hourly_logs').upsert([logData]);
-        if (hErr) throw new Error("Hourly Save Failed: " + hErr.message);
+        await safeUpsert('hourly_logs', logData);
 
         // 4. TRIGGER 12:00 PM 3-WAY SMART SYNC
         if (logTime.startsWith('12:00')) {
@@ -755,7 +754,7 @@ document.getElementById('hourly-form').addEventListener('submit', async function
                 updated_at: new Date().toISOString()
             };
             
-            await supabase.from('plant_data').upsert(plantPayload);
+            await safeUpsert('plant_data', plantPayload);
 
             // SYNC TO SUBSTATION METERING (balanch_readings table)
             const balanchPayload = { 
@@ -784,7 +783,7 @@ document.getElementById('hourly-form').addEventListener('submit', async function
             }
             
             if (needsBalanchSync || (nepDateStr && (!curBalanch || !curBalanch.nep_date))) {
-                await supabase.from('balanch_readings').upsert(balanchPayload);
+                await safeUpsert('balanch_readings', balanchPayload);
             }
             console.log("✅ 12:00 PM Smart Sync Complete!");
         }
@@ -824,14 +823,8 @@ document.getElementById('hourly-form').addEventListener('submit', async function
                 
                 if (!curRain || curRain.powerhouse == null) rainPayload.powerhouse = 0; 
 
-                const { error: rErr } = await supabase.from('rainfall_data').upsert(rainPayload);
-                
-                if (rErr) {
-                    alert("Database Error syncing Rainfall:\n" + rErr.message);
-                    console.error("Rainfall Sync Error: ", rErr);
-                } else {
-                    console.log("✅ 08:00 AM Rainfall Synced to Database!");
-                }
+                await safeUpsert('rainfall_data', rainPayload);
+                console.log("✅ 08:00 AM Rainfall Synced to Database!");
             }
         }
 
@@ -1428,8 +1421,7 @@ if(btnNoon) {
                 operator_email: window.currentUser?.email || null,
                 operator_uid: window.currentUser?.id || null,
             };
-            const { error: balErr } = await supabase.from('balanch_readings').upsert(balPayload);
-            if (balErr) throw new Error("Substation Save Error: " + balErr.message);
+            await safeUpsert('balanch_readings', balPayload);
 
             // Safely Sync these Balanch readings to the Daily Metering (plant_data) table
             const { data: curPlant } = await supabase.from('plant_data').select('*').eq('id', targetDate).maybeSingle();
@@ -1440,8 +1432,7 @@ if(btnNoon) {
                 export_substation: balPayload.main_export,
                 import_substation: balPayload.main_import
             };
-            const { error: plantSyncErr } = await supabase.from('plant_data').upsert(plantSyncPayload);
-            if (plantSyncErr) throw new Error("Daily Metering Sync Error: " + plantSyncErr.message);
+            await safeUpsert('plant_data', plantSyncPayload);
 
             // SYNC RAINFALL (From 8:00 AM section if available)
             const rainDam = parseFloat(document.getElementById('inp-rain-dam')?.value);
@@ -1450,7 +1441,7 @@ if(btnNoon) {
                 const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', targetDate).maybeSingle();
                 if (cal) {
                     const rainId = `${cal.nep_year}_${cal.nep_month}_${String(cal.nep_day).padStart(2, '0')}`;
-                    await supabase.from('rainfall_data').upsert({
+                    await safeUpsert('rainfall_data', {
                         id: rainId,
                         nepali_year: cal.nep_year,
                         nepali_month: cal.nep_month,
@@ -1625,8 +1616,7 @@ if(btnNoon) {
                     updated_at: new Date().toISOString()
                 };
 
-                const { error: outErr } = await supabase.from('outages').upsert(outagePayload);
-                if(outErr) throw new Error("Outages Save Error for date " + cDate + ": " + outErr.message);
+                await safeUpsert('outages', outagePayload);
                 
                 if (cDate === targetDate) {
                     updatedOutagePayloadForUI = outagePayload;

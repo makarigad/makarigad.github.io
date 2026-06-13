@@ -1,4 +1,4 @@
-import { supabase } from './core-app.js';
+import { supabase, safeUpsert } from './core-app.js';
 import {
     showNotification,
     showConfirmation,
@@ -706,8 +706,7 @@ async function saveCellData(y, m, d, field, value) {
         updated_at:     new Date().toISOString(),
     };
     try {
-        const { error } = await supabase.from('rainfall_data').upsert(payload);
-        if (error) throw error;
+        await safeUpsert('rainfall_data', payload);
         await refreshDashboard();
     } catch (err) {
         showNotification('Save error: ' + err.message, true);
@@ -723,7 +722,6 @@ function buildId(y, m, d) {
 
 async function upsertInChunks(rows, chunkSize = 500) {
     for (let i = 0; i < rows.length; i += chunkSize) {
-        const { error } = await supabase.from('rainfall_data').upsert(rows.slice(i, i + chunkSize));
-        if (error) throw error;
+        await safeUpsert('rainfall_data', rows.slice(i, i + chunkSize));
     }
 }

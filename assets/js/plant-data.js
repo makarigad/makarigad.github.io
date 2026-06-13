@@ -1,4 +1,4 @@
-import { supabase } from './core-app.js';   
+import { supabase, safeUpsert } from './core-app.js';   
 import { loadRainfallData, initRainfallEvents } from './rainfall.js';
 
 // --- Global Variables ---
@@ -423,8 +423,8 @@ expensesContainer?.addEventListener('click', async (e) => {
         };
 
         try {
-            const { error } = await supabase.from('site_expense_items').insert([payload]);
-            if (error) throw error;
+            payload.id = crypto.randomUUID();
+            await safeUpsert('site_expense_items', payload);
             showNotification("Expense added!"); 
             loadExpensesData();
         } catch(err) {
@@ -745,8 +745,7 @@ async function handleAddOrUpdateEntry(docId, isUpdate = false) {
     };
 
     try {
-        const { error: pErr } = await supabase.from('plant_data').upsert(data);
-        if (pErr) throw pErr;
+        await safeUpsert('plant_data', data);
 
         const { data: currentBalanch } = await supabase.from('balanch_readings').select('*').eq('eng_date', dateVal).maybeSingle();
         const balanchSync = { eng_date: dateVal, updated_at: new Date().toISOString() };
@@ -763,7 +762,7 @@ async function handleAddOrUpdateEntry(docId, isUpdate = false) {
         }
 
         if (needsSync) {
-            await supabase.from('balanch_readings').upsert({ ...(currentBalanch || {}), ...balanchSync });
+            await safeUpsert('balanch_readings', { ...(currentBalanch || {}), ...balanchSync });
         }
 
         showNotification(`✅ Daily Data saved & Substation smart-synced!`);
@@ -1145,8 +1144,7 @@ async function handleAddOrUpdateBalanch(docId, isUpdate = false) {
     balanchCols.forEach(c => payload[c] = parseFloat(document.getElementById(prefix + c)?.value) || null);
 
    try {
-        const { error: bErr } = await supabase.from('balanch_readings').upsert(payload);
-        if (bErr) throw bErr;
+        await safeUpsert('balanch_readings', payload);
 
         const plantSync = { 
             id: targetDate, 
@@ -1156,7 +1154,7 @@ async function handleAddOrUpdateBalanch(docId, isUpdate = false) {
             nepali_date: payload.nep_date           
         };
 
-        await supabase.from('plant_data').upsert(plantSync, { onConflict: 'id' });
+        await safeUpsert('plant_data', plantSync);
 
         showNotification(`✅ Substation saved & Daily Metering updated!`);
         editingBalanchId = null;
@@ -1438,8 +1436,7 @@ async function handleAddOrUpdateOutage(docId, isUpdate = false) {
     });
 
     try {
-        const { error } = await supabase.from('outages').upsert(data);
-        if (error) throw error;
+        await safeUpsert('outages', data);
         showNotification(`Outage log ${isUpdate ? 'updated' : 'added'} successfully!`);
         editingOutageId = null;
         loadOutagesData();
@@ -1755,7 +1752,7 @@ async function handleAddOrUpdateMCE(docId, isUpd = false) {
     });
 
     try {
-        await supabase.from('contract_energy').upsert(data);
+        await safeUpsert('contract_energy', data);
         showNotification("Saved!");
         editingMCEId = null;
         loadMCEData();

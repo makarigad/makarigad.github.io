@@ -665,7 +665,7 @@
   </div>
 
 <script type="module">
-import { supabase, fetchWithTimeout, initHeaderUI, initializeApplication } from './assets/js/core-app.js';
+import { supabase, fetchWithTimeout, initHeaderUI, initializeApplication, safeUpsert } from './assets/js/core-app.js';
 
 // --- DOM Helpers ---
 const $ = id => document.getElementById(id);
@@ -782,7 +782,8 @@ async function captureGeo() {
 async function writeAudit(entityType, entityId, action, summary, payload = null, geo = null) {
     if (!v2TablesOk) return;
     try {
-        await supabase.from('inventory_audit').insert([{
+        await safeUpsert('inventory_audit', {
+            id: crypto.randomUUID(),
             entity_type: entityType,
             entity_id: entityId,
             action,
@@ -794,7 +795,7 @@ async function writeAudit(entityType, entityId, action, summary, payload = null,
             latitude: geo?.latitude ?? null,
             longitude: geo?.longitude ?? null,
             geo_label: geo?.geo_label ?? null
-        }]);
+        });
     } catch (e) { console.warn('[audit]', e.message); }
 }
 
@@ -819,6 +820,7 @@ async function ensureFuelTank(storeId, fuelType) {
     const sn = storeName(storeId);
     const name = `${fuelType === 'petrol' ? 'Petrol' : 'Diesel'} – ${sn}`;
     const row = {
+        id: crypto.randomUUID(),
         item_name: name,
         category: 'Fuel',
         unit: 'Ltr',
@@ -828,17 +830,17 @@ async function ensureFuelTank(storeId, fuelType) {
         store_location: sn
     };
     
-    const { data, error } = await supabase.from('inventory_items').insert([row]).select().single();
-    if (error) throw error;
+    await safeUpsert('inventory_items', row);
     
-    await writeAudit('item', data.id, 'create', `Auto-created fuel tank: ${name}`);
-    allItems.push(data);
-    return data;
+    await writeAudit('item', row.id, 'create', `Auto-created fuel tank: ${name}`);
+    allItems.push(row);
+    return row;
 }
 
 async function insertLog(payload, geo) {
     const base = {
         ...payload,
+        id: crypto.randomUUID(),
         created_by_email: currentUser?.email,
         created_by_name: displayName(),
         latitude: geo?.latitude,
@@ -846,10 +848,9 @@ async function insertLog(payload, geo) {
         geo_label: geo?.geo_label,
         operator_uid: currentUser?.id
     };
-    const { data, error } = await supabase.from('inventory_logs').insert([base]).select().single();
-    if (error) throw error;
-    await writeAudit('log', data.id, 'create', `${payload.txn_type} ${payload.quantity} – ${payload.purpose || payload.txn_subtype || ''}`, base, geo);
-    return data;
+    await safeUpsert('inventory_logs', base);
+    await writeAudit('log', base.id, 'create', `${payload.txn_type} ${payload.quantity} – ${payload.purpose || payload.txn_subtype || ''}`, base, geo);
+    return base;
 }
 
 // --- Data Fetching ---
@@ -1559,9 +1560,9 @@ function setupAdminSetup() {
         if (!isAdmin()) return;
         const name = $('new-store-name').value.trim();
         const geo = await captureGeo();
-        const { data, error } = await supabase.from('inventory_stores').insert([{ name, created_by_email: currentUser.email, is_temporary: true }]).select().single();
-        if (error) return showToast(error.message, 'error');
-        await writeAudit('store', data.id, 'create', `Store added: ${name}`, null, geo);
+        const row = { id: crypto.randomUUID(), name, created_by_email: currentUser.email, is_temporary: true };
+        await safeUpsert('inventory_stores', row);
+        await writeAudit('store', row.id, 'create', `Store added: ${name}`, null, geo);
         $('new-store-name').value = '';
         await refreshInventory();
         renderSetupLists();
@@ -1571,9 +1572,9 @@ function setupAdminSetup() {
         e.preventDefault();
         if (!isAdmin()) return;
         const name = $('new-pump-name').value.trim();
-        const { data, error } = await supabase.from('inventory_fuel_pumps').insert([{ name }]).select().single();
-        if (error) return showToast(error.message, 'error');
-        await writeAudit('pump', data.id, 'create', `Pump added: ${name}`);
+        const row = { id: crypto.randomUUID(), name };
+        await safeUpsert('inventory_fuel_pumps', row);
+        await writeAudit('pump', row.id, 'create', `Pump added: ${name}`);
         $('new-pump-name').value = '';
         await loadAllData();
         populateSelects();
@@ -1586,9 +1587,9 @@ function setupAdminSetup() {
         const name = $('new-eq-name').value.trim();
         const fuel_type = $('new-eq-fuel').value;
         const store_id = $('new-eq-store').value || null;
-        const { data, error } = await supabase.from('inventory_equipment').insert([{ name, fuel_type, store_id }]).select().single();
-        if (error) return showToast(error.message, 'error');
-        await writeAudit('equipment', data.id, 'create', `Equipment: ${name}`);
+        const row = { id: crypto.randomUUID(), name, fuel_type, store_id };
+        await safeUpsert('inventory_equipment', row);
+        await writeAudit('equipment', row.id, 'create', `Equipment: ${name}`);
         $('new-eq-name').value = '';
         await loadAllData();
         populateSelects();
@@ -1660,13 +1661,14 @@ function setupForms() {
                 let destItem = allItems.find(i => i.item_name.toLowerCase() === currentItem.item_name.toLowerCase() && i.store_id === toStoreId);
                 
                 if (!destItem) {
-                    const { data, error } = await supabase.from('inventory_items').insert([{
+                    const newRow = {
+                        id: crypto.randomUUID(),
                         item_name: currentItem.item_name, category: currentItem.category, unit: currentItem.unit,
                         current_stock: 0, store_id: toStoreId, store_location: storeName(toStoreId)
-                    }]).select().single();
-                    if (error) throw error;
-                    destItem = data;
-                    allItems.push(data);
+                    };
+                    await safeUpsert('inventory_items', newRow);
+                    destItem = newRow;
+                    allItems.push(newRow);
                 }
 
                 await insertLog({
@@ -1711,6 +1713,7 @@ function setupForms() {
             const sn = storeId ? storeName(storeId) : null;
             const category = $('ni-cat').value;
             const row = {
+                id: crypto.randomUUID(),
                 item_name: $('ni-name').value,
                 category: category,
                 unit: $('ni-unit').value,
@@ -1720,10 +1723,9 @@ function setupForms() {
                 photo_url: $('ni-photo')?.value || null,
                 fuel_type: category === 'Fuel' ? $('ni-fuel-type').value : null
             };
-            const { data, error } = await supabase.from('inventory_items').insert([row]).select().single();
-            if (error) throw error;
+            await safeUpsert('inventory_items', row);
             const geo = await captureGeo();
-            await writeAudit('item', data.id, 'create', `Item created: ${row.item_name}`, row, geo);
+            await writeAudit('item', row.id, 'create', `Item created: ${row.item_name}`, row, geo);
             showToast('Item created successfully');
             closeModal('item-modal');
             await refreshInventory();

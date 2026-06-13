@@ -1,4 +1,4 @@
-const CACHE_VERSION   = 'v9';
+const CACHE_VERSION   = 'v11';
 const CACHE_NAME      = `makarigad-cache-${CACHE_VERSION}`;
 const API_CACHE_NAME  = 'makarigad-api-cache-v2';
 
@@ -30,6 +30,10 @@ const ASSETS_TO_PRECACHE = [
     './assets/css/index.css',
     './assets/css/plant-data.css',
     './assets/css/hourly-log.css',
+    './assets/css/user-management.css',
+    './assets/css/nepali-calendar.css',
+    './assets/js/user-management.js',
+    './assets/js/nepali-calendar.js',
     './assets/icons/icon.svg',
     './manifest.json',
 ];

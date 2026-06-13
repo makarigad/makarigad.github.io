@@ -218,7 +218,7 @@ async function loadMonthlyData() {
     ]);
 
     // Index rainfall records by day for O(1) lookups
-    rainfallIndex = new Map((rainData ?? []).map(r => [r.day, r]));
+    rainfallIndex = new Map((rainData ?? []).map(r => [parseInt(r.day), r]));
     allHourlyLogs = hourData ?? [];
 
     // Determine English date window for API fetch
@@ -342,6 +342,13 @@ const GRID_THEAD = `
     </tr>
 </thead>`;
 
+function getEventsForIntensity(events, intensity) {
+    if (!events || !Array.isArray(events)) return null;
+    const filtered = events.filter(e => e.intensity === intensity);
+    if (filtered.length === 0) return null;
+    return filtered.map(e => `${e.start}-${e.end}`).join(', ');
+}
+
 function formatTimeCell(txt) {
     if (!txt) return '<span class="text-slate-300">-</span>';
     return txt.split(',')
@@ -367,15 +374,19 @@ function buildDayRow(y, m, day) {
     const avgOut = avgHourlyTemp(nepDateStr, 't_temp_out');
     const avgInt = avgHourlyTemp(nepDateStr, 't_temp_intake');
 
+    const heavyTimes = getEventsForIntensity(rec.rain_events, 'Heavy Rain') || rec.heavy_rain_time;
+    const normalTimes = getEventsForIntensity(rec.rain_events, 'Rain') || rec.normal_rain_time;
+    const showerTimes = getEventsForIntensity(rec.rain_events, 'Shower') || rec.shower_rain_time;
+
     return `
     <tr class="hover:bg-slate-50 transition">
         <td class="p-2 border font-bold text-slate-600 bg-slate-50 z-30 left-0 sticky outline outline-1 outline-slate-200">${day}</td>
         <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top"
-            onclick="editRainfallTextCell('${y}','${m}',${day},'heavy_rain_time','${rec.heavy_rain_time ?? ''}')">${formatTimeCell(rec.heavy_rain_time)}</td>
+            onclick="editRainfallTextCell('${y}','${m}',${day},'Heavy Rain','${heavyTimes ?? ''}')">${formatTimeCell(heavyTimes)}</td>
         <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top"
-            onclick="editRainfallTextCell('${y}','${m}',${day},'normal_rain_time','${rec.normal_rain_time ?? ''}')">${formatTimeCell(rec.normal_rain_time)}</td>
+            onclick="editRainfallTextCell('${y}','${m}',${day},'Rain','${normalTimes ?? ''}')">${formatTimeCell(normalTimes)}</td>
         <td class="p-1 border cursor-pointer hover:bg-indigo-50 align-top"
-            onclick="editRainfallTextCell('${y}','${m}',${day},'shower_rain_time','${rec.shower_rain_time ?? ''}')">${formatTimeCell(rec.shower_rain_time)}</td>
+            onclick="editRainfallTextCell('${y}','${m}',${day},'Shower','${showerTimes ?? ''}')">${formatTimeCell(showerTimes)}</td>
         <td class="p-2 border text-amber-700 font-bold bg-amber-50/40">${api.catPrecip}</td>
         <td class="p-2 border text-amber-700 font-bold bg-amber-50/40">${api.catTemp}</td>
         ${measCell(rec.headworks, 'indigo', y, m, day, 'headworks')}
@@ -641,11 +652,16 @@ function generateExactExcelExport() {
         const rows = Array.from({ length: maxDay }, (_, i) => {
             const day = i + 1;
             const rec = rainfallIndex.get(day) ?? {};
+            
+            const heavyTimes = getEventsForIntensity(rec.rain_events, 'Heavy Rain') || rec.heavy_rain_time;
+            const normalTimes = getEventsForIntensity(rec.rain_events, 'Rain') || rec.normal_rain_time;
+            const showerTimes = getEventsForIntensity(rec.rain_events, 'Shower') || rec.shower_rain_time;
+            
             return [
                 day,
-                rec.heavy_rain_time  ?? '', '',
-                rec.normal_rain_time ?? '', '',
-                rec.shower_rain_time ?? '', '',
+                heavyTimes  ?? '', '',
+                normalTimes ?? '', '',
+                showerTimes ?? '', '',
                 rec.powerhouse ?? '',
                 rec.headworks  ?? '',
             ];

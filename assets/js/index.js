@@ -243,6 +243,14 @@ async function loadDashboardData() {
         yesterday.setDate(nepalNow.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
 
+        const tomorrow = new Date(nepalNow);
+        tomorrow.setDate(nepalNow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+        const dbYesterday = new Date(nepalNow);
+        dbYesterday.setDate(nepalNow.getDate() - 2);
+        const dbYesterdayStr = dbYesterday.toISOString().split('T')[0];
+
         if (!navigator.onLine) throw new Error('Offline');
 
         const { data: calData } = await fetchWithTimeout(
@@ -263,38 +271,47 @@ async function loadDashboardData() {
         }
 
         const [
-            { data: todayLogs },
-            { data: yesterdayLogs },
-            { data: tBalanch },
-            { data: yBalanch },
-            { data: todayOutages },
+            { data: allLogs },
+            { data: allBalanch },
+            { data: allOutages },
+            { data: allCal },
             { data: todayRainfall }
         ] = await Promise.all([
-            fetchWithTimeout(supabase.from('hourly_logs').select('*').eq('log_date', todayStr).order('log_time'), 4000),
-            fetchWithTimeout(supabase.from('hourly_logs').select('*').eq('log_date', yesterdayStr).order('log_time'), 4000),
-            fetchWithTimeout(supabase.from('balanch_readings').select('*').eq('eng_date', todayStr).maybeSingle(), 4000),
-            fetchWithTimeout(supabase.from('balanch_readings').select('*').eq('eng_date', yesterdayStr).maybeSingle(), 4000),
-            fetchWithTimeout(supabase.from('outages').select('*').eq('id', todayStr).maybeSingle(), 4000),
+            fetchWithTimeout(supabase.from('hourly_logs').select('*').gte('log_date', dbYesterdayStr).lte('log_date', tomorrowStr).order('log_date').order('log_time'), 4000),
+            fetchWithTimeout(supabase.from('balanch_readings').select('*').gte('eng_date', dbYesterdayStr).lte('eng_date', tomorrowStr), 4000),
+            fetchWithTimeout(supabase.from('outages').select('*').gte('id', dbYesterdayStr).lte('id', todayStr), 4000),
+            fetchWithTimeout(supabase.from('calendar_mappings').select('*').gte('eng_date', dbYesterdayStr).lte('eng_date', tomorrowStr), 4000),
             rainId ? fetchWithTimeout(supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle(), 4000) : Promise.resolve({ data: null })
         ]);
+
+        const todayLogs = (allLogs || []).filter(l => l.log_date === todayStr);
 
         // --- CALENDAR DAY (00:00 to 23:59) ---
         let calGross = 0, calExport = 0, calStation = 0;
         let powers = [];
 
         if (todayLogs && todayLogs.length > 0) {
-            const first = todayLogs[0];
-            const last = todayLogs[todayLogs.length - 1];
+            const getDelta = (k1, k2) => {
+                let firstVal = null, lastVal = null;
+                for (let i = 0; i < todayLogs.length; i++) {
+                    const v = parseFloat(todayLogs[i][k1]) || parseFloat(todayLogs[i][k2]);
+                    if (v > 0) { firstVal = v; break; }
+                }
+                for (let i = todayLogs.length - 1; i >= 0; i--) {
+                    const v = parseFloat(todayLogs[i][k1]) || parseFloat(todayLogs[i][k2]);
+                    if (v > 0) { lastVal = v; break; }
+                }
+                if (firstVal !== null && lastVal !== null) return Math.max(0, lastVal - firstVal);
+                return 0;
+            };
 
-            const getDelta = (key) => Math.max(0, (parseFloat(last[key]) || 0) - (parseFloat(first[key]) || 0));
-
-            calGross = (getDelta('e_u1_gwh') + getDelta('e_u2_gwh')) * 1000;
-            calExport = getDelta('e_out_mwh');
-            calStation = getDelta('sst');
+            calGross = (getDelta('u1_pmu_reading', 'e_u1_gwh') + getDelta('u2_pmu_reading', 'e_u2_gwh')) * 1000;
+            calExport = getDelta('outgoing', 'e_out_mwh');
+            calStation = getDelta('sst', 'sst');
 
             todayLogs.forEach(log => {
-                const u1 = parseFloat(log.e_u1_mw) || 0;
-                const u2 = parseFloat(log.e_u2_mw) || 0;
+                const u1 = parseFloat(log.e_u1_mw) || parseFloat(log.u1_load) || 0;
+                const u2 = parseFloat(log.e_u2_mw) || parseFloat(log.u2_load) || 0;
                 const totalMw = u1 + u2;
                 if (totalMw > 0) powers.push(totalMw);
             });
@@ -321,71 +338,119 @@ async function loadDashboardData() {
         }
         setText('cal-rain', rainText);
 
-        // --- NOON-TO-NOON (12:00 Yesterday to 12:00 Today) ---
-        let noonGross = 0, noonExport = 0;
-        let noonPowers = [];
-
-        const noonLogs = [
-            ...(yesterdayLogs || []).filter(l => l.log_time >= '12:00:00'),
-            ...(todayLogs || []).filter(l => l.log_time <= '12:00:00')
-        ];
-
-        if (noonLogs.length > 0) {
-            const first = noonLogs[0] || {};
-            const last = noonLogs[noonLogs.length - 1] || {};
-
-            const getDelta = (key) => Math.max(0, (parseFloat(last[key]) || 0) - (parseFloat(first[key]) || 0));
-
-            noonGross = (getDelta('e_u1_gwh') + getDelta('e_u2_gwh')) * 1000;
-            noonExport = getDelta('e_out_mwh');
-
-            noonLogs.forEach(log => {
-                const u1 = parseFloat(log.e_u1_mw) || 0;
-                const u2 = parseFloat(log.e_u2_mw) || 0;
-                const totalMw = u1 + u2;
-                if (totalMw > 0) noonPowers.push(totalMw);
+        // --- BILLING CYCLES (ACTIVE AND COMPLETED) ---
+        function computeCycleData(startStr, endStr, cycleDateForOutages) {
+            const cycleLogs = (allLogs || []).filter(l => {
+                if (l.log_date === startStr) return l.log_time >= '12:00:00';
+                if (l.log_date === endStr) return l.log_time <= '12:00:00';
+                return false;
             });
+
+            let gross = 0, exportPlant = 0;
+            let powers = [];
+            
+            if (cycleLogs.length > 0) {
+                const getDelta = (k1, k2) => {
+                    let firstVal = null, lastVal = null;
+                    for (let i = 0; i < cycleLogs.length; i++) {
+                        const v = parseFloat(cycleLogs[i][k1]) || parseFloat(cycleLogs[i][k2]);
+                        if (v > 0) { firstVal = v; break; }
+                    }
+                    for (let i = cycleLogs.length - 1; i >= 0; i--) {
+                        const v = parseFloat(cycleLogs[i][k1]) || parseFloat(cycleLogs[i][k2]);
+                        if (v > 0) { lastVal = v; break; }
+                    }
+                    if (firstVal !== null && lastVal !== null) return Math.max(0, lastVal - firstVal);
+                    return 0;
+                };
+                
+                gross = (getDelta('u1_pmu_reading', 'e_u1_gwh') + getDelta('u2_pmu_reading', 'e_u2_gwh')) * 1000;
+                exportPlant = getDelta('outgoing', 'e_out_mwh');
+                
+                cycleLogs.forEach(log => {
+                    const u1 = parseFloat(log.e_u1_mw) || parseFloat(log.u1_load) || 0;
+                    const u2 = parseFloat(log.e_u2_mw) || parseFloat(log.u2_load) || 0;
+                    const totalMw = u1 + u2;
+                    if (totalMw > 0) powers.push(totalMw);
+                });
+            }
+            
+            let avgPower = 0;
+            if (powers.length > 0) avgPower = powers.reduce((a,b) => a+b, 0) / powers.length;
+            
+            const bS = (allBalanch || []).find(b => b.eng_date === startStr)?.main_export;
+            const bE = (allBalanch || []).find(b => b.eng_date === endStr)?.main_export;
+            
+            let balanchExport = 0, isPredicted = false, transLoss = 0, transLossPct = 0;
+            
+            if (bS != null && bE != null) {
+                balanchExport = Math.max(0, bE - bS);
+                transLoss = Math.max(0, exportPlant - balanchExport);
+                transLossPct = exportPlant > 0 ? (transLoss / exportPlant) * 100 : 0;
+            } else {
+                isPredicted = true;
+                let lossFactor = 0.02 + (avgPower / 10) * 0.03; 
+                if (lossFactor > 0.05) lossFactor = 0.05;
+                if (lossFactor < 0.02) lossFactor = 0.02;
+                if (avgPower >= 10) lossFactor = 0.05;
+
+                transLoss = exportPlant * lossFactor;
+                balanchExport = exportPlant - transLoss;
+                transLossPct = lossFactor * 100;
+            }
+            
+            const outData = (allOutages || []).find(o => o.id === cycleDateForOutages);
+            const gridFaults = outData?.energy_loss_line_trip || 0;
+            
+            const calMap = (allCal || []).find(c => c.eng_date === endStr);
+            const nepaliDateStr = calMap?.nep_date_str || endStr;
+            
+            return { gross, exportPlant, balanchExport, isPredicted, transLoss, transLossPct, gridFaults, pf: (gross / 240) * 100, nepaliDateStr };
         }
 
-        let noonAvgPower = 0;
-        if (noonPowers.length > 0) {
-            noonAvgPower = noonPowers.reduce((a,b) => a+b, 0) / noonPowers.length;
-        }
-
-        let balanchExport = 0, isPredicted = false, transLoss = 0, transLossPct = 0;
-        const yBal = yBalanch?.main_export;
-        const tBal = tBalanch?.main_export;
-
-        if (yBal != null && tBal != null && nepalNow.getHours() >= 12) {
-            balanchExport = Math.max(0, tBal - yBal);
-            transLoss = Math.max(0, noonExport - balanchExport);
-            transLossPct = noonExport > 0 ? (transLoss / noonExport) * 100 : 0;
-        } else {
-            isPredicted = true;
-            let lossFactor = 0.02 + (noonAvgPower / 10) * 0.03; 
-            if (lossFactor > 0.05) lossFactor = 0.05;
-            if (lossFactor < 0.02) lossFactor = 0.02;
-            if (noonAvgPower >= 10) lossFactor = 0.05;
-
-            transLoss = noonExport * lossFactor;
-            balanchExport = noonExport - transLoss;
-            transLossPct = lossFactor * 100;
-        }
-
-        const gridFaults = todayOutages?.energy_loss_line_trip || 0;
-        const plantFactor = (noonGross / 240) * 100;
-
-        setText('noon-gross', noonGross > 0 ? noonGross.toFixed(2) : '0.00');
-        setText('noon-export', noonExport > 0 ? noonExport.toFixed(2) : '0.00');
-        setText('noon-balanch', balanchExport > 0 ? balanchExport.toFixed(2) : '0.00');
+        let activeStart, activeEnd, activeCycleDate;
+        let compStart, compEnd, compCycleDate;
         
-        const badgeEl = document.getElementById('noon-balanch-badge');
-        if (badgeEl) badgeEl.style.display = isPredicted ? 'block' : 'none';
+        if (nepalNow.getHours() >= 12) {
+            activeStart = todayStr; activeEnd = tomorrowStr; activeCycleDate = todayStr;
+            compStart = yesterdayStr; compEnd = todayStr; compCycleDate = yesterdayStr;
+        } else {
+            activeStart = yesterdayStr; activeEnd = todayStr; activeCycleDate = yesterdayStr;
+            compStart = dbYesterdayStr; compEnd = yesterdayStr; compCycleDate = dbYesterdayStr;
+        }
 
-        setText('noon-loss', transLoss > 0 ? `${transLoss.toFixed(2)}` : '0.00');
-        setText('noon-loss-pct', `(${transLossPct.toFixed(1)}%)`);
-        setText('noon-faults', gridFaults > 0 ? gridFaults.toFixed(2) : '0.00');
-        setText('noon-pf', plantFactor > 0 ? plantFactor.toFixed(1) + '%' : '0.0%');
+        const activeData = computeCycleData(activeStart, activeEnd, activeCycleDate);
+        const compData = computeCycleData(compStart, compEnd, compCycleDate);
+
+        setText('active-gross', activeData.gross > 0 ? activeData.gross.toFixed(2) : '0.00');
+        setText('active-export', activeData.exportPlant > 0 ? activeData.exportPlant.toFixed(2) : '0.00');
+        setText('active-balanch', activeData.balanchExport > 0 ? activeData.balanchExport.toFixed(2) : '0.00');
+        
+        const actBadgeEl = document.getElementById('active-balanch-badge');
+        if (actBadgeEl) actBadgeEl.style.display = activeData.isPredicted ? 'block' : 'none';
+
+        setText('active-loss', activeData.transLoss > 0 ? `${activeData.transLoss.toFixed(2)}` : '0.00');
+        setText('active-loss-pct', `(${activeData.transLossPct.toFixed(1)}%)`);
+        setText('active-faults', activeData.gridFaults > 0 ? activeData.gridFaults.toFixed(2) : '0.00');
+        setText('active-pf', activeData.pf > 0 ? activeData.pf.toFixed(1) + '%' : '0.0%');
+        
+        const actCycleBadge = document.getElementById('active-cycle-badge');
+        if (actCycleBadge) actCycleBadge.textContent = 'Live (Ends ' + activeData.nepaliDateStr + ')';
+
+        setText('comp-gross', compData.gross > 0 ? compData.gross.toFixed(2) : '0.00');
+        setText('comp-export', compData.exportPlant > 0 ? compData.exportPlant.toFixed(2) : '0.00');
+        setText('comp-balanch', compData.balanchExport > 0 ? compData.balanchExport.toFixed(2) : '0.00');
+        
+        const compBadgeEl = document.getElementById('comp-balanch-badge');
+        if (compBadgeEl) compBadgeEl.style.display = compData.isPredicted ? 'block' : 'none';
+
+        setText('comp-loss', compData.transLoss > 0 ? `${compData.transLoss.toFixed(2)}` : '0.00');
+        setText('comp-loss-pct', `(${compData.transLossPct.toFixed(1)}%)`);
+        setText('comp-faults', compData.gridFaults > 0 ? compData.gridFaults.toFixed(2) : '0.00');
+        setText('comp-pf', compData.pf > 0 ? compData.pf.toFixed(1) + '%' : '0.0%');
+        
+        const compCycleBadge = document.getElementById('completed-cycle-badge');
+        if (compCycleBadge) compCycleBadge.textContent = 'Ended ' + compData.nepaliDateStr;
 
     } catch (err) {
         console.warn('[dashboard] Error:', err.message);

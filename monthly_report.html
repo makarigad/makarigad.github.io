@@ -553,7 +553,7 @@
 <div id="report-container" class="hidden"></div>
 
 <script type="module">
-import { supabase, initializeApplication } from './assets/js/core-app.js';
+import { supabase, initializeApplication, safeUpsert } from './assets/js/core-app.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const CANONICAL_MONTHS = ["Baisakh","Jestha","Ashar","Shrawan","Bhadra","Ashoj","Kartik","Mangshir","Poush","Magh","Falgun","Chaitra"];
@@ -675,14 +675,14 @@ async function saveNarrative() {
     const m = document.getElementById('sel-month').value;
     const btn = document.getElementById('btn-save-narrative');
     btn.textContent = 'Saving…'; btn.disabled = true;
-    await supabase.from(NARRATIVE_TABLE).upsert({
+    await safeUpsert(NARRATIVE_TABLE, {
         id:`${y}_${m}`, nepali_year:y, nepali_month:m,
         key_highlights: document.getElementById('inp-hi').value,
         problems:       document.getElementById('inp-pr').value,
         maintenance:    document.getElementById('inp-mt').value,
         hse:            document.getElementById('inp-hse').value,
         updated_at:     new Date().toISOString()
-    }, { onConflict:'id' });
+    });
     btn.textContent = '✓ Saved!';
     setTimeout(() => { btn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg> Save to Database'; btn.disabled = false; }, 2000);
 }

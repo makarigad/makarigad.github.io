@@ -1877,9 +1877,10 @@ let totalPlantFm = fm33kv + fmPenstock + fmEquip;
         grid_fault_mwh: parseFloat(document.getElementById('inp-grid-fault').value) || 0, line_132kv_mwh: parseFloat(document.getElementById('inp-132kv').value) || 0, fm_33kv_mwh: fm33, fm_penstock_mwh: fmPen, fm_equipment_mwh: fmEq, forced_outage_mwh: fm33 + fmPen + fmEq,
         dispatch_mwh: parseFloat(document.getElementById('inp-dispatch').value) || 0, bay_control_nrs: parseFloat(document.getElementById('inp-bay').value) || 0, refunded_amount_nrs: parseFloat(document.getElementById('inp-refunded').value) || 0, extra_adjustment_nrs: parseFloat(document.getElementById('inp-extra-adj').value) || 0, adjustment_remarks: document.getElementById('inp-adj-notes').value || null, cheque_amount_nrs: document.getElementById('inp-cheque').value !== '' ? parseFloat(document.getElementById('inp-cheque').value) : null,
       };
-      const { error } = await supabase.from('contract_energy').upsert(data);
-      if (error) alert("Save Error: " + error.message);
-      closeModal(); btn.innerText = "Save Data"; loadData();
+      try {
+          await safeUpsert('contract_energy', data);
+          closeModal(); btn.innerText = "Save Data"; loadData();
+      } catch (error) { alert("Save Error: " + error.message); }
     };
 
 

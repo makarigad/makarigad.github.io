@@ -44,7 +44,7 @@
         <span>📅</span> Calendar Day 
         <span class="text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded ml-2 uppercase tracking-widest">Midnight to Midnight</span>
       </h2>
-      <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div class="grid grid-cols-2 lg:grid-cols-7 gap-4">
         <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-all">
           <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Gross Gen</div>
           <div class="flex items-baseline gap-1 z-10"><div id="cal-gross" class="text-2xl font-black text-indigo-600 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
@@ -69,76 +69,38 @@
           <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Rainfall (Dam/PH)</div>
           <div class="flex items-baseline gap-1 z-10"><div id="cal-rain" class="text-xl font-black text-sky-600 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">mm</div></div>
         </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-slate-400 transition-all">
+          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Run Hrs (U1 / U2)</div>
+          <div class="flex items-baseline gap-1 z-10"><div id="cal-run-hrs" class="text-xl font-black text-slate-700 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">hrs</div></div>
+        </div>
       </div>
     </div>
 
-    <!-- Active Billing Cycle Section -->
+    <!-- Unified Billing Cycles Overview Table -->
     <div class="mb-8 card-fade flex-shrink-0" style="animation-delay:0.2s">
       <h2 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-        <span>⚡</span> Active Billing Cycle 
-        <span id="active-cycle-badge" class="text-[10px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded ml-2 uppercase tracking-widest">Live</span>
+        <span>⚡</span> Billing Cycles
+        <span class="text-[10px] font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded ml-2 uppercase tracking-widest">12:00 PM → 12:00 PM</span>
       </h2>
-      <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Gross Gen</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="active-gross" class="text-2xl font-black text-indigo-600 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-emerald-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Net Export (Plant)</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="active-export" class="text-2xl font-black text-emerald-600 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-amber-400 transition-all">
-          <div id="active-balanch-badge" class="absolute top-3 right-3 text-[9px] font-black text-amber-600 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-widest hidden z-20">Predicted</div>
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Balanch Meter</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="active-balanch" class="text-2xl font-black text-amber-500 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-rose-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Trans. Loss</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="active-loss" class="text-2xl font-black text-rose-500 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh <span id="active-loss-pct" class="text-rose-400 ml-1"></span></div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-rose-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Grid Faults Loss</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="active-faults" class="text-2xl font-black text-rose-600 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-blue-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Plant Factor</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="active-pf" class="text-2xl font-black text-blue-600 tracking-tight skeleton-text">—</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Completed Billing Cycle Section -->
-    <div class="mb-4 card-fade flex-shrink-0" style="animation-delay:0.3s">
-      <h2 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-        <span>✅</span> Completed Billing Cycle 
-        <span id="completed-cycle-badge" class="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded ml-2 uppercase tracking-widest">Loading...</span>
-      </h2>
-      <div class="grid grid-cols-2 lg:grid-cols-6 gap-4">
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Gross Gen</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="comp-gross" class="text-2xl font-black text-indigo-600 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-emerald-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Net Export (Plant)</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="comp-export" class="text-2xl font-black text-emerald-600 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-amber-400 transition-all">
-          <div id="comp-balanch-badge" class="absolute top-3 right-3 text-[9px] font-black text-amber-600 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-widest hidden z-20">Predicted</div>
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Balanch Meter</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="comp-balanch" class="text-2xl font-black text-amber-500 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-rose-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Trans. Loss</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="comp-loss" class="text-2xl font-black text-rose-500 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh <span id="comp-loss-pct" class="text-rose-400 ml-1"></span></div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-rose-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Grid Faults Loss</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="comp-faults" class="text-2xl font-black text-rose-600 tracking-tight skeleton-text">—</div><div class="text-[10px] font-bold text-slate-400">MWh</div></div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden group hover:border-blue-300 transition-all">
-          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 z-10">Plant Factor</div>
-          <div class="flex items-baseline gap-1 z-10"><div id="comp-pf" class="text-2xl font-black text-blue-600 tracking-tight skeleton-text">—</div></div>
-        </div>
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-x-auto custom-scroll">
+        <table class="w-full text-left whitespace-nowrap">
+          <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
+            <tr>
+              <th class="px-5 py-4 border-r border-slate-200">Cycle Status</th>
+              <th class="px-4 py-4 text-right">Gross Gen</th>
+              <th class="px-4 py-4 text-right">Plant Export</th>
+              <th class="px-4 py-4 text-right bg-emerald-50 text-emerald-700">Substation</th>
+              <th class="px-4 py-4 text-right text-rose-600">Trans. Loss</th>
+              <th class="px-4 py-4 text-right">Stn. Cons</th>
+              <th class="px-4 py-4 text-center">U1 / U2 Hrs</th>
+              <th class="px-4 py-4 text-right">Grid Faults</th>
+              <th class="px-4 py-4 text-right">PF</th>
+            </tr>
+          </thead>
+          <tbody id="billing-cycles-body" class="divide-y divide-slate-100 text-sm font-medium text-slate-700">
+             <tr><td colspan="9" class="p-6 text-center text-slate-400 font-semibold animate-pulse">Computing predictive model and rendering cycles...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 

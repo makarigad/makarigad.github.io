@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
-    .tab-btn { padding: 10px 18px; font-weight: 700; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s; font-size: 0.875rem; }
+    .tab-btn { color: #64748b; cursor: pointer; white-space: nowrap; }
     .tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; background: white; }
     .form-label { display: block; font-size: 0.7rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
     .form-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-size: 0.875rem; outline: none; background: #fff; transition: border-color .15s, box-shadow .15s; }
@@ -26,25 +26,6 @@
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
   <div id="global-header-container" class="shrink-0"></div>
 
-  <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 no-print">
-    <div class="flex items-center gap-4">
-      <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-100">
-        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 11h8M8 15h5M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
-      </div>
-      <div>
-        <h1 class="text-xl font-black text-slate-900 tracking-tight">Operator Daily Log</h1>
-        <p class="text-xs text-slate-500 font-medium mt-0.5">Shift entries, weather, maintenance, and complaint management.</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3">
-      <span id="od-user-badge" class="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">Loading…</span>
-      <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all shadow-sm">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Hub Dashboard
-      </a>
-    </div>
-  </header>
-
   <!-- ADMIN NOTICE BANNER (visible to operators only) -->
   <div id="admin-notice-bar" class="hidden bg-indigo-600 text-white px-6 py-3 text-sm font-bold flex items-center gap-3">
     <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
@@ -52,12 +33,21 @@
   </div>
 
   <!-- TABS -->
-  <div class="flex px-6 border-b border-slate-200 bg-white overflow-x-auto shrink-0 shadow-sm">
-    <button class="tab-btn active" data-tab="tab-shift">📋 Shift Log</button>
-    <button class="tab-btn" data-tab="tab-maintenance">🔧 Maintenance Log</button>
-    <button class="tab-btn" data-tab="tab-weather">⛅ Weather Log</button>
-    <button class="tab-btn" data-tab="tab-complaints">📣 Complaints</button>
-    <button class="tab-btn admin-notice-tab hidden" data-tab="tab-admin-notice">📢 Admin Notice</button>
+  <div class="flex items-center px-4 border-b border-slate-200 bg-white shrink-0 overflow-x-auto custom-scroll no-print shadow-sm gap-2">
+    <div class="flex items-center gap-2 shrink-0 py-2 pr-4 border-r border-slate-200 mr-2">
+      <div class="w-6 h-6 bg-indigo-100 text-indigo-600 rounded flex items-center justify-center">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 11h8M8 15h5M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+      </div>
+      <h1 class="text-xs font-black text-slate-800 uppercase tracking-wider">Operator Log</h1>
+    </div>
+    <button class="tab-btn active px-3 py-3 text-xs font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-tab="tab-shift">📋 Shift Log</button>
+    <button class="tab-btn px-3 py-3 text-xs font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-tab="tab-maintenance">🔧 Maintenance Log</button>
+    <button class="tab-btn px-3 py-3 text-xs font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-tab="tab-weather">⛅ Weather Log</button>
+    <button class="tab-btn px-3 py-3 text-xs font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-tab="tab-complaints">📣 Complaints</button>
+    <button class="tab-btn admin-notice-tab hidden px-3 py-3 text-xs font-bold transition-all duration-200 border-b-2 border-transparent hover:text-indigo-600" data-tab="tab-admin-notice">📢 Admin Notice</button>
+    <div class="ml-auto py-2 pl-4">
+      <span id="od-user-badge" class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100 whitespace-nowrap">Loading…</span>
+    </div>
   </div>
 
   <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">

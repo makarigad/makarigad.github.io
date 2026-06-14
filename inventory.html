@@ -75,34 +75,19 @@
 
   <div class="absolute top-0 left-0 w-full h-[30vh] bg-gradient-to-b from-indigo-100/50 to-transparent -z-10 pointer-events-none"></div>
   
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shrink-0">
-    <div class="max-w-[1920px] mx-auto px-4 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span class="text-indigo-600 text-xl font-black">▣</span>
-        <span class="font-black text-slate-800 tracking-tight">Makari Gad 10MW</span>
-        <a href="index.html" class="hidden sm:inline-flex items-center gap-1.5 ml-4 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all shadow-sm">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-          Hub Dashboard
-        </a>
-      </div>
-      <div id="auth-user-info" class="hidden items-center gap-3">
-        <div class="text-right hidden sm:block">
-          <div class="text-xs font-black text-slate-700 leading-none" id="auth-name">User</div>
-          <div class="text-[9px] font-bold text-slate-400 uppercase mt-0.5" id="auth-role">Role</div>
-        </div>
-        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-black border border-indigo-200" id="auth-avatar">U</div>
-        <button id="btn-signout-static" class="ml-2 text-xs font-black text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-500 border border-rose-200 hover:border-rose-500 px-3 py-1.5 rounded-lg transition-all shadow-sm">Sign Out</button>
-      </div>
-    </div>
-  </header>
+  <!-- Inject global header here to match the rest of the application -->
+  <div id="global-header-container" class="shrink-0 z-50 sticky top-0 no-print"></div>
 
   <main class="flex-grow p-3 md:p-4 mx-auto w-full max-w-[1920px] flex flex-col gap-3">
 
-  <div class="glass-panel rounded-2xl p-3 md:p-4 space-y-3">
+  <div class="glass-panel rounded-xl p-3 md:p-4 space-y-3">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 class="text-lg md:text-xl font-black text-slate-800 tracking-tight">Inventory Hub</h1>
-        <p class="text-xs text-slate-500 font-medium mt-0.5">Tap a store, then an item for full history · Staff can add entries · Admin can edit anything</p>
+        <h1 class="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-6 h-6 bg-indigo-100 text-indigo-600 rounded flex items-center justify-center"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg></span>
+          Inventory Hub
+        </h1>
+        <p class="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-wider">Full history · Add entries · Admin controls</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button type="button" id="btn-fuel-flow" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-black shadow-sm">⛽ Fuel entry</button>

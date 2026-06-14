@@ -20,52 +20,22 @@
 
     <div id="global-header-container" class="shrink-0 no-print"></div>
 
-    <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 no-print">
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
-                <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            </div>
-            <div>
-                <h1 class="text-xl font-bold text-slate-900 tracking-tight">Shift Hourly Log</h1>
-                <p class="text-xs text-slate-500 font-medium mt-0.5">Comprehensive hourly tracking of generation and plant health.</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-3">
-            <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-semibold transition-all shadow-sm">
-                <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                Hub Dashboard
-            </a>
-        </div>
-    </header>
-
     <main class="flex-grow p-4 md:p-6 w-full flex flex-col gap-6 max-w-full mx-auto">
         
-        <div class="flex flex-wrap justify-between items-center bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-200 gap-4">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-indigo-50 border border-indigo-100/50 rounded-lg flex items-center justify-center shrink-0">
-                    <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                </div>
-                <div>
-                    <h1 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Hourly Log — Master Input</h1>
-                    <div class="flex items-center gap-2 mt-0.5">
-                        <span class="text-xs text-slate-500">Operator: <span id="hourly-user-name" class="font-semibold text-indigo-600">Authenticating...</span></span>
-                        <span id="hourly-user-role" class="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-[10px] font-bold uppercase tracking-wider">...</span>
-                    </div>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <div id="log-count-badge" class="hidden text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg uppercase tracking-wider"></div>
-                <button type="button" onclick="deleteAllLogsForDay()" class="admin-only role-hidden bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold py-1.5 px-3 rounded-lg text-xs shadow-sm transition">
-                    ⚠️ Delete Day Data
-                </button>
-            </div>
-        </div>
-
         <div id="validation-banner" class="hidden"></div>
 
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style="min-height:0;">
             
-            <div class="flex overflow-x-auto bg-slate-50/50 border-b border-slate-200 custom-scroll no-print" id="form-tabs">
+            <div class="flex items-center overflow-x-auto bg-white border-b border-slate-200 custom-scroll no-print px-4 gap-2 shadow-sm shrink-0" id="form-tabs">
+                <div class="flex items-center gap-2 shrink-0 py-2 pr-4 border-r border-slate-200 mr-2">
+                    <div class="w-6 h-6 bg-indigo-100 text-indigo-600 rounded flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xs font-black text-slate-800 uppercase tracking-wider">Hourly Log</h1>
+                        <div class="text-[9px] text-slate-500 font-bold mt-0.5"><span id="hourly-user-name">...</span> (<span id="hourly-user-role">...</span>)</div>
+                    </div>
+                </div>
                 <div class="section-tab active" data-target="hourly-form">📝 Master Inputs</div>
                 <div class="section-tab" data-target="tab-daily-data">📅 Daily Data Master</div>
                 <div class="section-tab" data-target="tab-gen">1. Gen Summary</div>
@@ -75,6 +45,12 @@
                 <div class="section-tab" data-target="tab-daily-summary">📊 View Daily Summary</div>
                 <div class="section-tab text-rose-600 admin-only role-hidden" data-target="tab-admin">⚙️ Admin Exports</div>
                 <div class="section-tab text-amber-600 admin-only role-hidden" data-target="tab-thresholds">🔧 Thresholds</div>
+                <div class="ml-auto flex items-center gap-3 shrink-0 py-2 pl-4">
+                    <div id="log-count-badge" class="hidden text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded uppercase tracking-wider"></div>
+                    <button type="button" onclick="deleteAllLogsForDay()" class="admin-only role-hidden bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold py-1 px-2 rounded text-[10px] shadow-sm transition">
+                        ⚠️ Del Day
+                    </button>
+                </div>
             </div>
 
             <div class="p-6 flex-grow relative">

@@ -275,19 +275,38 @@ async function loadDashboardData() {
             { data: allBalanch },
             { data: allOutages },
             { data: allCal },
-            { data: todayRainfall }
+            { data: todayRainfall },
+            { data: histPlant }
         ] = await Promise.all([
             fetchWithTimeout(supabase.from('hourly_logs').select('*').gte('log_date', dbYesterdayStr).lte('log_date', tomorrowStr).order('log_date').order('log_time'), 4000),
             fetchWithTimeout(supabase.from('balanch_readings').select('*').gte('eng_date', dbYesterdayStr).lte('eng_date', tomorrowStr), 4000),
             fetchWithTimeout(supabase.from('outages').select('*').gte('id', dbYesterdayStr).lte('id', todayStr), 4000),
             fetchWithTimeout(supabase.from('calendar_mappings').select('*').gte('eng_date', dbYesterdayStr).lte('eng_date', tomorrowStr), 4000),
-            rainId ? fetchWithTimeout(supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle(), 4000) : Promise.resolve({ data: null })
+            rainId ? fetchWithTimeout(supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle(), 4000) : Promise.resolve({ data: null }),
+            fetchWithTimeout(supabase.from('plant_data').select('unit1_gen, unit2_gen, export_plant, export_substation').not('export_substation', 'is', null).order('id', { ascending: false }).limit(45), 4000)
         ]);
+
+        // --- DYNAMIC AI PREDICTION LOGIC ---
+        function predictLossFactor(targetMw, historicalData) {
+            if (!historicalData || historicalData.length === 0) return 0.04;
+            let validDays = historicalData.filter(d => d.export_plant > 0 && d.export_substation > 0);
+            let points = validDays.map(d => {
+                const grossMwh = ((d.unit1_gen||0) + (d.unit2_gen||0)) / 1000;
+                const mw = grossMwh / 24; 
+                const loss = (d.export_plant - d.export_substation) / d.export_plant;
+                return { mw, loss };
+            }).filter(p => p.loss >= 0.01 && p.loss <= 0.12);
+            
+            if (points.length === 0) return 0.04;
+            points.sort((a, b) => Math.abs(a.mw - targetMw) - Math.abs(b.mw - targetMw));
+            const nearest = points.slice(0, 3);
+            return nearest.reduce((s, p) => s + p.loss, 0) / nearest.length;
+        }
 
         const todayLogs = (allLogs || []).filter(l => l.log_date === todayStr);
 
         // --- CALENDAR DAY (00:00 to 23:59) ---
-        let calGross = 0, calExport = 0, calStation = 0;
+        let calGross = 0, calExport = 0, calStation = 0, calU1Hrs = 0, calU2Hrs = 0;
         let powers = [];
 
         if (todayLogs && todayLogs.length > 0) {
@@ -308,6 +327,8 @@ async function loadDashboardData() {
             calGross = (getDelta('u1_pmu_reading', 'e_u1_gwh') + getDelta('u2_pmu_reading', 'e_u2_gwh')) * 1000;
             calExport = getDelta('outgoing', 'e_out_mwh');
             calStation = getDelta('sst', 'sst');
+            calU1Hrs = getDelta('u1_hour_counter', 'u1_hour_counter');
+            calU2Hrs = getDelta('u2_hour_counter', 'u2_hour_counter');
 
             todayLogs.forEach(log => {
                 const u1 = parseFloat(log.e_u1_mw) || parseFloat(log.u1_load) || 0;
@@ -329,6 +350,7 @@ async function loadDashboardData() {
         setText('cal-station', calStation > 0 ? calStation.toFixed(1) : '0.0');
         setText('cal-avg-pwr', avgPower > 0 ? avgPower.toFixed(2) : '0.00');
         setText('cal-minmax-pwr', minPower > 0 || maxPower > 0 ? `${minPower.toFixed(1)} / ${maxPower.toFixed(1)}` : '0.0 / 0.0');
+        setText('cal-run-hrs', (calU1Hrs > 0 || calU2Hrs > 0) ? `${calU1Hrs.toFixed(1)} / ${calU2Hrs.toFixed(1)}` : '0.0 / 0.0');
 
         let rainText = '— / —';
         if (todayRainfall) {
@@ -346,7 +368,7 @@ async function loadDashboardData() {
                 return false;
             });
 
-            let gross = 0, exportPlant = 0;
+            let gross = 0, exportPlant = 0, u1Hrs = 0, u2Hrs = 0, stationCons = 0;
             let powers = [];
             
             if (cycleLogs.length > 0) {
@@ -366,6 +388,9 @@ async function loadDashboardData() {
                 
                 gross = (getDelta('u1_pmu_reading', 'e_u1_gwh') + getDelta('u2_pmu_reading', 'e_u2_gwh')) * 1000;
                 exportPlant = getDelta('outgoing', 'e_out_mwh');
+                u1Hrs = getDelta('u1_hour_counter', 'u1_hour_counter');
+                u2Hrs = getDelta('u2_hour_counter', 'u2_hour_counter');
+                stationCons = getDelta('sst', 'sst');
                 
                 cycleLogs.forEach(log => {
                     const u1 = parseFloat(log.e_u1_mw) || parseFloat(log.u1_load) || 0;
@@ -389,11 +414,7 @@ async function loadDashboardData() {
                 transLossPct = exportPlant > 0 ? (transLoss / exportPlant) * 100 : 0;
             } else {
                 isPredicted = true;
-                let lossFactor = 0.02 + (avgPower / 10) * 0.03; 
-                if (lossFactor > 0.05) lossFactor = 0.05;
-                if (lossFactor < 0.02) lossFactor = 0.02;
-                if (avgPower >= 10) lossFactor = 0.05;
-
+                let lossFactor = predictLossFactor(avgPower, histPlant);
                 transLoss = exportPlant * lossFactor;
                 balanchExport = exportPlant - transLoss;
                 transLossPct = lossFactor * 100;
@@ -405,7 +426,7 @@ async function loadDashboardData() {
             const calMap = (allCal || []).find(c => c.eng_date === endStr);
             const nepaliDateStr = calMap?.nep_date_str || endStr;
             
-            return { gross, exportPlant, balanchExport, isPredicted, transLoss, transLossPct, gridFaults, pf: (gross / 240) * 100, nepaliDateStr };
+            return { gross, exportPlant, balanchExport, isPredicted, transLoss, transLossPct, gridFaults, pf: (gross / 240) * 100, nepaliDateStr, u1Hrs, u2Hrs, stationCons };
         }
 
         let activeStart, activeEnd, activeCycleDate;
@@ -422,35 +443,35 @@ async function loadDashboardData() {
         const activeData = computeCycleData(activeStart, activeEnd, activeCycleDate);
         const compData = computeCycleData(compStart, compEnd, compCycleDate);
 
-        setText('active-gross', activeData.gross > 0 ? activeData.gross.toFixed(2) : '0.00');
-        setText('active-export', activeData.exportPlant > 0 ? activeData.exportPlant.toFixed(2) : '0.00');
-        setText('active-balanch', activeData.balanchExport > 0 ? activeData.balanchExport.toFixed(2) : '0.00');
-        
-        const actBadgeEl = document.getElementById('active-balanch-badge');
-        if (actBadgeEl) actBadgeEl.style.display = activeData.isPredicted ? 'block' : 'none';
+        const tbody = document.getElementById('billing-cycles-body');
+        if (tbody) {
+            const renderRow = (data, title, badgeClass, badgeText) => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="px-5 py-4 border-r border-slate-200">
+                        <div class="font-bold text-slate-800">${title}</div>
+                        <div class="text-[10px] ${badgeClass} px-2 py-0.5 rounded-full inline-block mt-1 uppercase tracking-wider">${badgeText}</div>
+                    </td>
+                    <td class="px-4 py-4 text-right font-black text-indigo-600">${data.gross > 0 ? data.gross.toFixed(2) : '0.00'} <span class="text-[9px] text-slate-400 font-normal">MWh</span></td>
+                    <td class="px-4 py-4 text-right font-bold">${data.exportPlant > 0 ? data.exportPlant.toFixed(2) : '0.00'}</td>
+                    <td class="px-4 py-4 text-right font-black text-emerald-600 bg-emerald-50/30">
+                        ${data.balanchExport > 0 ? data.balanchExport.toFixed(2) : '0.00'}
+                        ${data.isPredicted ? '<span class="ml-1 text-[9px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded" title="Predicted using historical matching">EST</span>' : ''}
+                    </td>
+                    <td class="px-4 py-4 text-right font-bold text-rose-500">
+                        ${data.transLoss > 0 ? data.transLoss.toFixed(2) : '0.00'} 
+                        <span class="text-[10px] text-rose-400 font-medium">(${data.transLossPct.toFixed(1)}%)</span>
+                    </td>
+                    <td class="px-4 py-4 text-right text-slate-600">${data.stationCons > 0 ? data.stationCons.toFixed(1) : '0.0'} <span class="text-[9px] text-slate-400">kWh</span></td>
+                    <td class="px-4 py-4 text-center font-mono text-xs text-slate-500">${data.u1Hrs.toFixed(1)} / ${data.u2Hrs.toFixed(1)}</td>
+                    <td class="px-4 py-4 text-right text-slate-600">${data.gridFaults > 0 ? data.gridFaults.toFixed(2) : '0.00'}</td>
+                    <td class="px-4 py-4 text-right font-bold text-blue-600">${data.pf > 0 ? data.pf.toFixed(1) + '%' : '0.0%'}</td>
+                </tr>
+            `;
 
-        setText('active-loss', activeData.transLoss > 0 ? `${activeData.transLoss.toFixed(2)}` : '0.00');
-        setText('active-loss-pct', `(${activeData.transLossPct.toFixed(1)}%)`);
-        setText('active-faults', activeData.gridFaults > 0 ? activeData.gridFaults.toFixed(2) : '0.00');
-        setText('active-pf', activeData.pf > 0 ? activeData.pf.toFixed(1) + '%' : '0.0%');
-        
-        const actCycleBadge = document.getElementById('active-cycle-badge');
-        if (actCycleBadge) actCycleBadge.textContent = 'Live (Ends ' + activeData.nepaliDateStr + ')';
-
-        setText('comp-gross', compData.gross > 0 ? compData.gross.toFixed(2) : '0.00');
-        setText('comp-export', compData.exportPlant > 0 ? compData.exportPlant.toFixed(2) : '0.00');
-        setText('comp-balanch', compData.balanchExport > 0 ? compData.balanchExport.toFixed(2) : '0.00');
-        
-        const compBadgeEl = document.getElementById('comp-balanch-badge');
-        if (compBadgeEl) compBadgeEl.style.display = compData.isPredicted ? 'block' : 'none';
-
-        setText('comp-loss', compData.transLoss > 0 ? `${compData.transLoss.toFixed(2)}` : '0.00');
-        setText('comp-loss-pct', `(${compData.transLossPct.toFixed(1)}%)`);
-        setText('comp-faults', compData.gridFaults > 0 ? compData.gridFaults.toFixed(2) : '0.00');
-        setText('comp-pf', compData.pf > 0 ? compData.pf.toFixed(1) + '%' : '0.0%');
-        
-        const compCycleBadge = document.getElementById('completed-cycle-badge');
-        if (compCycleBadge) compCycleBadge.textContent = 'Ended ' + compData.nepaliDateStr;
+            tbody.innerHTML = 
+                renderRow(activeData, 'Active Cycle', 'bg-blue-100 text-blue-700', 'Live Ends ' + activeData.nepaliDateStr) +
+                renderRow(compData, 'Completed Cycle', 'bg-emerald-100 text-emerald-700', 'Ended ' + compData.nepaliDateStr);
+        }
 
     } catch (err) {
         console.warn('[dashboard] Error:', err.message);

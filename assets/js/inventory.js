@@ -2121,7 +2121,8 @@ async function startInventoryApp() {
             fetch('./components/header.html').catch(() => ({ok: false})),
             fetch('./components/footer.html').catch(() => ({ok: false}))
         ]);
-        if (fRes.ok) document.getElementById('global-footer-container').innerHTML = await fRes.text();
+        if (hRes.ok) { const hCont = document.getElementById('global-header-container'); if(hCont) hCont.innerHTML = await hRes.text(); }
+        if (fRes.ok) { const fCont = document.getElementById('global-footer-container'); if(fCont) fCont.innerHTML = await fRes.text(); }
         initHeaderUI();
 
         if (userRole === 'admin') {

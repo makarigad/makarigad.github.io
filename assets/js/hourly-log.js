@@ -815,12 +815,12 @@ document.getElementById('hourly-form').addEventListener('submit', async function
                     nepali_year: rYear,
                     nepali_month: safeMonthName,
                     day: rDay,
-                    headworks: p('water-level') || 0,
                     operator_email: window.currentUser?.email || null,
                     operator_uid: window.currentUser?.id || null,
                     updated_at: new Date().toISOString()
                 };
                 
+                if (!curRain || curRain.headworks == null) rainPayload.headworks = 0; 
                 if (!curRain || curRain.powerhouse == null) rainPayload.powerhouse = 0; 
 
                 await safeUpsert('rainfall_data', rainPayload);
@@ -1441,13 +1441,15 @@ if(btnNoon) {
                 const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', targetDate).maybeSingle();
                 if (cal) {
                     const rainId = `${cal.nep_year}_${cal.nep_month}_${String(cal.nep_day).padStart(2, '0')}`;
+                    const { data: exRain } = await supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle();
                     await safeUpsert('rainfall_data', {
+                        ...(exRain || {}),
                         id: rainId,
                         nepali_year: cal.nep_year,
                         nepali_month: cal.nep_month,
                         day: cal.nep_day,
-                        headworks: !isNaN(rainDam) ? rainDam : 0,
-                        powerhouse: !isNaN(rainPh) ? rainPh : 0,
+                        headworks: !isNaN(rainDam) ? rainDam : (exRain?.headworks || 0),
+                        powerhouse: !isNaN(rainPh) ? rainPh : (exRain?.powerhouse || 0),
                         operator_email: window.currentUser?.email || '',
                         updated_at: new Date().toISOString()
                     });

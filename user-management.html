@@ -15,24 +15,6 @@
     <span id="um-toast-msg"></span>
   </div>
 
-  <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 no-print">
-    <div class="flex items-center gap-4">
-      <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-100">
-        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-      </div>
-      <div>
-        <h1 class="text-xl font-black text-slate-900 tracking-tight">Team & HR Management</h1>
-        <p class="text-xs text-slate-500 font-medium mt-0.5">Manage operator accounts, access levels, and module permissions.</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3">
-      <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all shadow-sm">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        Hub Dashboard
-      </a>
-    </div>
-  </header>
-
   <div id="access-denied" class="hidden flex-grow flex items-center justify-center">
       <div class="text-center">
           <h2 class="text-3xl font-bold text-red-600 mb-2">Access Denied</h2>
@@ -41,6 +23,15 @@
   </div>
 
   <main id="admin-panel" class="p-6 hidden max-w-[1400px] mx-auto w-full flex-grow overflow-auto">
+    <div class="flex items-center gap-3 mb-6">
+        <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        </div>
+        <div>
+            <h1 class="text-lg font-black text-slate-800 uppercase tracking-tight leading-none">Team & HR Management</h1>
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Access & Permissions</p>
+        </div>
+    </div>
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
         <div class="xl:col-span-1">

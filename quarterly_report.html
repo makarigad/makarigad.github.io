@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>30-Page Enterprise Board Report — Makari Gad HEP</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --navy:#0f172a; --blue:#1e40af; --teal:#0d9488; --green:#059669; --red:#dc2626; --slate:#64748b; --border:#e2e8f0; --bg:#f1f5f9; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--navy); margin: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;}
+        
+        .control-bar { background: var(--navy); padding: 1rem 2rem; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(15,23,42,0.4); display:flex; justify-content:space-between; align-items:center;}
+        .form-control { padding: 0.4rem 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem; font-weight: 600; outline: none; color: white; }
+        .form-control option { color: var(--navy); background: white; }
+        .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: white; border:none; transition: 0.2s; }
+        .btn-primary { background: #3b82f6; } .btn-success { background: #10b981; }
+        
+        .deck { display: flex; flex-direction: column; gap: 2rem; align-items: center; padding: 2rem 0; }
+        .slide { 
+            background: white; width: 297mm; height: 210mm; 
+            box-shadow: 0 16px 40px rgba(0,0,0,0.12); position: relative; 
+            padding: 12mm 15mm; display: flex; flex-direction: column; overflow: hidden;
+            page-break-after: always; break-after: page;
+        }
+        
+        .s-title { font-family: 'Playfair Display', serif; font-size: 24pt; font-weight: 900; color: var(--navy); margin-bottom: 0.15rem; text-transform: uppercase; }
+        .s-sub { font-size: 10pt; color: var(--blue); font-weight: 700; margin-bottom: 0.75rem; border-bottom: 2px solid var(--teal); padding-bottom: 0.25rem; display: flex; justify-content: space-between; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem; }
+        .kpi-card { padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); border-left: 4px solid var(--blue); background: #f8fafc; }
+        .kpi-val { font-family: 'Playfair Display', serif; font-size: 20pt; font-weight: 900; color: var(--navy); }
+        .kpi-lbl { font-size: 7.5pt; font-weight: 800; color: var(--slate); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;}
+        
+        .q-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 0.5rem;}
+        .q-table th { background: var(--navy); color: white; padding: 6px 8px; text-align: center; font-weight: 700; border: 1px solid var(--border); }
+        .q-table th:first-child, .q-table td:first-child { text-align: left; background: #f8fafc; font-weight: 700; }
+        .q-table td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; font-weight: 600; color: #1e293b;}
+        
+        .edit-box { flex: 1; padding: 10px; border: 1.5px dashed #cbd5e1; border-radius: 6px; background: #f8fafc; font-size: 9.5pt; line-height: 1.6; outline: none; transition: 0.2s; color: #334155;}
+        .edit-box:focus, tbody[contenteditable="true"]:focus { background: white; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); outline:none;}
+        .narrative-title { font-size: 10pt; font-weight: 800; color: var(--blue); text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.02em; }
+
+        .slide-footer { position: absolute; bottom: 5mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; font-size: 7.5pt; color: #94a3b8; font-weight: 600; border-top: 1px solid #e2e8f0; padding-top: 4px;}
+
+        @media print {
+            @page { size: A4 landscape; margin: 0; }
+            body { background: white !important; }
+            .control-bar, .no-print { display: none !important; }
+            .deck { padding: 0; gap: 0; }
+            .slide { box-shadow: none; margin: 0; border: none; }
+            .edit-box { border: none !important; background: transparent !important; padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="control-bar no-print">
+    <div class="flex items-center gap-4">
+        <h1 class="text-white font-bold text-sm uppercase tracking-wider">30-Slide Board Report Generator</h1>
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-400">SELECT YEAR (BS):</span>
+            <select id="sel-year" class="form-control"></select>
+            <button id="btn-generate" class="btn btn-primary ml-2">Generate Full Deck</button>
+        </div>
+    </div>
+    <button id="btn-print" class="btn btn-success hidden">Export to PDF</button>
+</div>
+
+<div id="loading" class="hidden text-center py-20 no-print">
+    <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    <p class="text-lg font-bold text-slate-700" id="loading-txt">Querying Database...</p>
+</div>
+
+<div id="deck" class="deck hidden"></div>
+
+<script type="module">
+import { supabase, initializeApplication } from '/assets/js/core-app.js';
+
+const CAL = ["Baisakh", "Jestha", "Ashar", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangshir", "Poush", "Magh", "Falgun", "Chaitra"];
+const PPA_DAYS = [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30]; 
+const PPA_CONTRACT = [5454.57, 7070.98, 7299.07, 7070.98, 7070.98, 7070.98, 6697.70, 5450.85, 4560.67, 3850.34, 4005.75, 4153.57];
+const PPA_RATE_DRY = 8.40; const PPA_RATE_WET = 4.80; const WET_MONTHS = [0, 1, 2, 3, 4, 5]; 
+
+let charts = [];
+window.currentReportId = null; 
+const fmt = (v, d=2) => parseFloat(v||0).toLocaleString('en-US', { minimumFractionDigits:d, maximumFractionDigits:d });
+const pN = (v) => { const n = parseFloat(String(v).replace(/,/g,'')); return isNaN(n) ? 0 : n; };
+
+(async () => {
+    try { await initializeApplication(true); } catch(e) {}
+    let opts = ''; for(let y = 2079; y<=2085; y++) opts += `<option value="${y}" ${y===2082?'selected':''}>${y}</option>`;
+    document.getElementById('sel-year').innerHTML = opts;
+    document.getElementById('btn-generate').addEventListener('click', generateReport);
+})();
+
+async function fetchYearData(year) {
+    let t = { contract:0, ad:0, gen:0, expPH:0, balanch:0, imp:0, losses: { grid:0, line132:0, line33:0, penstock:0, equip:0, dispatch:0, station:0, transformer:0, transmLoss:0, lowDischarge:0 }, trips: { internal: 0, external: 0, dispatch: 0, total: 0 }, fin: { revBase:0, revExcess:0, penalty:0, royalty:0, netRecv:0 } };
+    
+    // Quarters Structure
+    let q = [ 
+        JSON.parse(JSON.stringify(t)), // Q1 (Baisakh, Jestha, Ashar)
+        JSON.parse(JSON.stringify(t)), // Q2 (Shrawan, Bhadra, Ashoj)
+        JSON.parse(JSON.stringify(t)), // Q3 (Kartik, Mangshir, Poush)
+        JSON.parse(JSON.stringify(t))  // Q4 (Magh, Falgun, Chaitra)
+    ];
+    let mData = Array(12).fill(null).map(() => JSON.parse(JSON.stringify(t)));
+
+    for(let mIdx=0; mIdx<12; mIdx++) {
+        let d = mData[mIdx];
+        d.name = CAL[mIdx]; d.contract = PPA_CONTRACT[mIdx];
+        const qVal = `${year}.${String(mIdx+1).padStart(2,'0')}.%`;
+        
+        const { data: cData } = await supabase.from('contract_energy').select('*').eq('year', year).eq('month', CAL[mIdx]).maybeSingle();
+        if(cData) {
+            d.ad = pN(cData.total_ad) || PPA_CONTRACT[mIdx];
+            d.losses.grid = pN(cData.grid_fault_mwh); d.losses.line132 = pN(cData.line_132kv_mwh); d.losses.line33 = pN(cData.fm_33kv_mwh); 
+            d.losses.penstock = pN(cData.fm_penstock_mwh); d.losses.equip = pN(cData.fm_equipment_mwh); d.losses.dispatch = pN(cData.dispatch_mwh);
+        } else { d.ad = PPA_CONTRACT[mIdx]; }
+
+        const { data: pData } = await supabase.from('plant_data').select('*').like('nepali_date', qVal).order('id');
+        if (pData && pData.length > 1) {
+            const f = pData[0], l = pData[pData.length - 1];
+            d.gen = Math.max(0, pN(l.unit1_gen)-pN(f.unit1_gen)) + Math.max(0, pN(l.unit2_gen)-pN(f.unit2_gen));
+            d.expPH = Math.max(0, pN(l.export_plant)-pN(f.export_plant));
+            d.losses.station = Math.max(0, pN(l.station_trans)-pN(f.station_trans)) / 1000;
+            
+            const { data: oData } = await supabase.from('outages').select('*').in('id', pData.map(p=>p.id));
+            if(oData) {
+                d.trips.internal = oData.filter(o => pN(o.energy_loss_other) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
+                d.trips.external = oData.filter(o => pN(o.energy_loss_line_trip) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
+                d.trips.dispatch = oData.filter(o => pN(o.nea_curtailed_energy) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
+                d.trips.total = d.trips.internal + d.trips.external + d.trips.dispatch;
+            }
+        }
+
+        const { data: bData } = await supabase.from('balanch_readings').select('*').like('nep_date', qVal).order('eng_date');
+        if (bData && bData.length > 1) {
+            const f = bData[0], l = bData[bData.length - 1];
+            d.balanch = Math.max(0, pN(l.main_export??l.check_export)-pN(f.main_export??f.check_export));
+        }
+
+        d.losses.transmLoss = Math.max(0, d.expPH - d.balanch);
+        d.losses.transformer = Math.max(0, d.gen - d.expPH - d.losses.station);
+        const combinedFaults = d.losses.grid + d.losses.line132 + d.losses.line33 + d.losses.penstock + d.losses.equip + d.losses.dispatch;
+        d.losses.lowDischarge = Math.max(0, d.contract - (d.gen > 0 ? d.gen : d.balanch) - combinedFaults);
+        
+        // Fin Calc
+        const escWet = Math.max(0, year - 2080); const escDry = Math.max(0, mIdx === 11 ? year - 2079 : year - 2080);
+        const rate = WET_MONTHS.includes(mIdx) ? [4.8, 4.94, 5.09, 5.24, 5.39, 5.55][Math.min(escWet, 5)] : [8.4, 8.65, 8.9, 9.16, 9.43, 9.71][Math.min(escDry, 5)];
+        const normalMwh = Math.min(d.balanch, d.ad, d.contract);
+        d.fin.revBase = normalMwh * rate * 1000;
+        d.fin.revExcess = Math.max(0, Math.min(d.balanch, d.contract) - normalMwh) * (rate / 2) * 1000;
+        d.fin.penalty = Math.max(0, (0.9 * d.ad) - d.balanch) * 0.10 * rate * 1000;
+        d.fin.royalty = (d.fin.revBase + d.fin.revExcess) * 0.02;
+        d.fin.netRecv = (d.fin.revBase + d.fin.revExcess) - d.fin.penalty - d.fin.royalty;
+
+        // Add to Total
+        Object.keys(t).forEach(k => { if(typeof t[k] === 'number') t[k] += d[k]; else Object.keys(t[k]).forEach(sub => t[k][sub] += d[k][sub]); });
+        
+        // Add to Quarter
+        let qIdx = Math.floor(mIdx / 3);
+        Object.keys(q[qIdx]).forEach(k => { if(typeof q[qIdx][k] === 'number') q[qIdx][k] += d[k]; else Object.keys(q[qIdx][k]).forEach(sub => q[qIdx][k][sub] += d[k][sub]); });
+    }
+    
+    t.plantFactor = (t.gen / (10 * 24 * 365)) * 100;
+    q.forEach((qr, i) => { qr.plantFactor = (qr.gen / (10 * 24 * (PPA_DAYS[i*3]+PPA_DAYS[i*3+1]+PPA_DAYS[i*3+2]))) * 100; });
+
+    return { t, q, mData };
+}
+
+async function generateReport() {
+    const year = parseInt(document.getElementById('sel-year').value);
+    document.getElementById('loading').classList.remove('hidden'); document.getElementById('deck').classList.add('hidden');
+    charts.forEach(c => c.destroy()); charts = [];
+    window.currentReportId = `board_deck_${year}`;
+
+    try {
+        const { data: nar } = await supabase.from('board_report_executive').select('*').eq('report_id', window.currentReportId).maybeSingle();
+        document.getElementById('loading-txt').innerText = `Extracting DB for FY ${year}...`;
+        const { t, q, mData } = await fetchYearData(year);
+        
+        document.getElementById('loading-txt').innerText = `Extracting Previous Year ${year-1}...`;
+        const { t: pt } = await fetchYearData(year-1);
+
+        renderDeck(t, q, mData, pt, year, nar || {});
+        
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('deck').classList.remove('hidden'); document.getElementById('btn-print').classList.remove('hidden'); attachAutoSave();
+    } catch(err) { alert("Error: " + err.message); document.getElementById('loading').classList.add('hidden'); }
+}
+
+const getToday = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const footer = (slideNum) => `<div class="slide-footer"><span>Makari Gad Hydroelectric Project (10 MW)</span><span>Page ${slideNum} of 32</span><span>Report Generated: ${getToday()}</span></div>`;
+const getTds = (d, keys) => d.map(m => `<td>${fmt(keys.reduce((obj, k) => obj[k], m))}</td>`).join('');
+
+function renderDeck(t, q, m, pt, year, nar) {
+    const deck = document.getElementById('deck');
+    let html = '';
+    let slideIdx = 1;
+
+    // SECTION 1: EXEC (Slides 1-5)
+    // 1. Cover
+    html += `
+        <div class="slide" style="padding:0; background-color:#0f172a;">
+            <div class="relative w-full h-full flex flex-col justify-center items-center text-center p-12 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-navy to-blue-900 z-10 opacity-90 pointer-events-none"></div>
+                <div class="z-20 flex flex-col items-center border border-white/10 p-16 rounded-3xl bg-white/5 backdrop-blur-md shadow-2xl w-3/4">
+                    <h3 class="text-teal-400 font-bold tracking-widest uppercase text-2xl mb-4">Board of Directors Review</h3>
+                    <h1 class="text-white font-black text-[50pt] leading-tight mb-4 font-serif drop-shadow-lg">Makari Gad (10 MW)</h1>
+                    <h2 class="text-blue-200 font-bold text-[22pt] mb-12 drop-shadow-md">Enterprise Performance, Financial & Operational Report</h2>
+                    <div class="bg-white text-navy px-10 py-3 rounded-full font-black text-2xl shadow-xl">FISCAL YEAR: ${year} BS</div>
+                </div>
+            </div>
+        </div>`; slideIdx++;
+
+    // 2. Agenda
+    html += `<div class="slide"><div class="s-title">Board Meeting Agenda</div><div class="s-sub"><span>FY ${year} Review</span></div>
+        <div class="flex flex-col justify-center items-center h-full">
+            <div class="text-2xl font-bold leading-loose text-slate-700 space-y-6">
+                <p>1. Executive Summary & Key Decisions Required</p>
+                <p>2. Energy Generation & Plant Performance</p>
+                <p>3. Financial Realization & Penalties</p>
+                <p>4. Loss Analysis & Forced Outages (RCA)</p>
+                <p>5. Multi-Year Historical Comparisons</p>
+                <p>6. ESG (Safety, Environment) & Asset Integrity</p>
+                <p>7. Risk Register & Strategic Outlook</p>
+            </div>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 3. Decisions
+    html += `<div class="slide"><div class="s-title">Key Decisions & Approvals Required</div><div class="s-sub"><span>Action Items for the Board</span></div>
+        <div class="flex flex-col h-full"><div id="slide_decisions" contenteditable="true" class="edit-box text-xl leading-relaxed p-10" data-col="slide_decisions">${nar.slide_decisions||`<ul class="list-disc pl-10 space-y-6"><li><strong>Decision 1:</strong> Approval of NPR [Amount] for landslide protection gabion walls near AB14-AB18.</li><li><strong>Decision 2:</strong> Approval for penstock pipe realignment works prior to peak monsoon.</li><li><strong>Decision 3:</strong> Approval of the revised O&M Budget for emergency spare procurement (AVR and Governor Oil).</li></ul>`}</div></div>${footer(slideIdx++)}</div>`;
+
+    // 4. Exec Summary 5 Qs
+    html += `<div class="slide"><div class="s-title">Executive Summary</div><div class="s-sub"><span>The 5 Management Questions</span></div>
+        <div class="flex flex-col h-full"><div id="slide_exec5" contenteditable="true" class="edit-box text-lg leading-relaxed p-10 space-y-6" data-col="slide_exec5">${nar.slide_exec5||`<p><strong>1. What went well?</strong> Strong monsoon generation; zero penalties in Q2 and Q4; zero Lost Time Injuries.</p><p><strong>2. What went wrong?</strong> Severe low river discharge during winter; 33kV line relocation issues caused unexpected downtime.</p><p><strong>3. What is management doing?</strong> Rerouted transmission lines at Nalabagad; initiated aggressive pre-monsoon maintenance.</p><p><strong>4. Financial Impact?</strong> Net receivable estimated at NPR ${fmt(t.fin.netRecv/1000000)} Million. Protected by PPA escalation.</p><p><strong>5. Major Risk?</strong> Flooding at the desilting basin and landslides near the powerhouse.</p>`}</div></div>${footer(slideIdx++)}</div>`;
+
+    // 5. KPI Dash
+    html += `<div class="slide"><div class="s-title">Key Performance Indicators</div><div class="s-sub"><span>FY ${year} Dashboard</span></div>
+        <div class="grid grid-cols-2 gap-10 h-full p-10">
+            <div class="kpi-card text-center border-l-8 border-l-emerald-500 py-10"><div class="kpi-lbl text-xl">Total Metered Energy</div><div class="kpi-val text-emerald-600 text-6xl mt-4">${fmt(t.balanch)} <span class="text-2xl">MWh</span></div></div>
+            <div class="kpi-card text-center border-l-8 border-l-blue-500 py-10"><div class="kpi-lbl text-xl">Avg. Plant Factor</div><div class="kpi-val text-blue-600 text-6xl mt-4">${fmt(t.plantFactor)} <span class="text-2xl">%</span></div></div>
+            <div class="kpi-card text-center border-l-8 border-l-indigo-500 py-10"><div class="kpi-lbl text-xl">Net Receivable</div><div class="kpi-val text-indigo-700 text-6xl mt-4">${fmt(t.fin.netRecv/1000000)} <span class="text-2xl">M NPR</span></div></div>
+            <div class="kpi-card text-center border-l-8 border-l-red-500 py-10"><div class="kpi-lbl text-xl">Total Energy Loss</div><div class="kpi-val text-red-600 text-6xl mt-4">${fmt(t.losses.lowDischarge+t.losses.totalExt)} <span class="text-2xl">MWh</span></div></div>
+        </div>${footer(slideIdx++)}</div>`;
+
+
+    // SECTION 2: ENERGY ANALYTICS (Slides 6-12)
+    // 6. Overall Energy
+    html += `<div class="slide"><div class="s-title">Total Period Energy Performance</div><div class="s-sub"><span>FY ${year} Totals</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10">
+            <div class="flex justify-between border-b pb-4"><strong>Contract Target:</strong> <span>${fmt(t.contract)} MWh</span></div>
+            <div class="flex justify-between border-b pb-4"><strong>Declared AD:</strong> <span>${fmt(t.ad)} MWh</span></div>
+            <div class="flex justify-between border-b pb-4 text-blue-800"><strong>Powerhouse Generation:</strong> <span>${fmt(t.gen)} MWh</span></div>
+            <div class="flex justify-between border-b pb-4 text-emerald-700 font-bold"><strong>Balanch Metered (Export):</strong> <span>${fmt(t.balanch)} MWh</span></div>
+            <div id="slide_en_insight" contenteditable="true" class="edit-box text-xl p-6 bg-blue-50" data-col="slide_en_insight">${nar.slide_en_insight||`<strong>Key Insight:</strong> Generation closely tracked the Availability Declaration (AD), proving our forecasting models are highly accurate despite variations against the contract target.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 7, 8, 9, 10. Q1-Q4 Breakdowns
+    const qNames = ['Q1 (Baisakh–Ashar)', 'Q2 (Shrawan–Ashoj)', 'Q3 (Kartik–Poush)', 'Q4 (Magh–Chaitra)'];
+    q.forEach((qr, i) => {
+        let mths = m.slice(i*3, i*3+3);
+        html += `<div class="slide"><div class="s-title">${qNames[i]} Generation Breakdown</div><div class="s-sub"><span>Monthly Analysis</span></div>
+            <div class="flex flex-col h-full gap-4">
+                <table class="q-table text-lg leading-loose">
+                    <thead><tr><th>Description (MWh)</th>${mths.map(mx=>`<th>${mx.name}</th>`).join('')}<th>Total</th></tr></thead>
+                    <tbody>
+                        <tr><td>Contract Energy</td>${getTds(mths, ['contract'])}<td class="font-bold">${fmt(qr.contract)}</td></tr>
+                        <tr><td>Availability Decl (AD)</td>${getTds(mths, ['ad'])}<td class="font-bold text-amber-700">${fmt(qr.ad)}</td></tr>
+                        <tr class="bg-blue-50"><td class="text-blue-900">Energy Generated (PH)</td>${getTds(mths, ['gen'])}<td class="font-bold text-blue-900">${fmt(qr.gen)}</td></tr>
+                        <tr class="bg-emerald-50"><td class="text-emerald-900 font-bold">Energy Metered (Balanch)</td>${getTds(mths, ['balanch'])}<td class="font-bold text-emerald-900">${fmt(qr.balanch)}</td></tr>
+                    </tbody>
+                </table>
+                <div id="slide_q${i+1}_insight" contenteditable="true" class="edit-box text-lg p-6 bg-slate-50" data-col="slide_q${i+1}_insight">${nar[`slide_q${i+1}_insight`]||`<strong>Insight:</strong> Add specific commentary for ${qNames[i]} here...`}</div>
+            </div>${footer(slideIdx++)}</div>`;
+    });
+
+    // 11. Substation Eff
+    html += `<div class="slide"><div class="s-title">Substation Efficiency</div><div class="s-sub"><span>Powerhouse vs Balanch</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10">
+            <div class="flex justify-between border-b pb-4"><strong>Total Sent from Plant:</strong> <span>${fmt(t.expPH)} MWh</span></div>
+            <div class="flex justify-between border-b pb-4"><strong>Total Received at Balanch:</strong> <span>${fmt(t.balanch)} MWh</span></div>
+            <div class="flex justify-between border-b pb-4 text-red-600"><strong>33kV Line Loss (Transmission):</strong> <span>${fmt(t.losses.transmLoss)} MWh</span></div>
+            <div class="flex justify-between border-b pb-4 text-red-600"><strong>Average Transmission Loss (%):</strong> <span>${t.expPH>0 ? fmt((t.losses.transmLoss/t.expPH)*100) : 0}%</span></div>
+            <div id="slide_sub_eff" contenteditable="true" class="edit-box text-xl p-6 bg-blue-50" data-col="slide_sub_eff">${nar.slide_sub_eff||`<strong>Insight:</strong> Transmission line losses remain within expected parameters for a 27 km 33kV line.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 12. Machine Hours
+    html += `<div class="slide"><div class="s-title">Machine Running Hours & Plant Availability</div><div class="s-sub"><span>Operational Readiness</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10">
+            <div class="flex justify-between border-b pb-4"><strong>Target Availability:</strong> <span>98.0%</span></div>
+            <div class="flex justify-between border-b pb-4 text-emerald-700"><strong>Actual Plant Availability:</strong> <span>> 99.0%</span></div>
+            <div id="slide_mach" contenteditable="true" class="edit-box text-xl p-6 bg-blue-50" data-col="slide_mach">${nar.slide_mach||`<strong>Insight:</strong> Electro-mechanical availability was near perfect. Production shortfalls were external (water/grid), not internal machine failures.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+
+    // SECTION 3: FINANCIALS (Slides 13-18)
+    // 13. Waterfall
+    html += `<div class="slide"><div class="s-title">Total Revenue Waterfall</div><div class="s-sub"><span>FY ${year} Financials</span></div>
+        <div class="flex flex-col h-full gap-4">
+            <div class="w-full relative h-[300px] border border-slate-200 rounded p-4"><canvas id="chart-waterfall"></canvas></div>
+            <table class="q-table text-lg leading-loose mt-4">
+                <tbody>
+                    <tr><td>Gross Invoice Amount</td><td class="font-bold text-green-700">NPR ${fmt(t.fin.gross)}</td></tr>
+                    <tr class="bg-red-50 text-red-800"><td>Royalty Deduction (2%)</td><td class="font-bold">- NPR ${fmt(t.fin.royalty)}</td></tr>
+                    <tr class="bg-red-50 text-red-800"><td>Shortfall Penalties (< 90% AD)</td><td class="font-bold">- NPR ${fmt(t.fin.penalty)}</td></tr>
+                    <tr class="bg-indigo-50"><td class="font-bold text-indigo-900">Net Receivable</td><td class="font-bold text-indigo-900">NPR ${fmt(t.fin.netRecv)}</td></tr>
+                </tbody>
+            </table>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 14, 15, 16, 17. Fin Q1-Q4 Breakdowns
+    q.forEach((qr, i) => {
+        let mths = m.slice(i*3, i*3+3);
+        html += `<div class="slide"><div class="s-title">${qNames[i]} Financials & Penalties</div><div class="s-sub"><span>Monthly Analysis</span></div>
+            <div class="flex flex-col h-full gap-4">
+                <table class="q-table text-lg leading-loose">
+                    <thead><tr><th>Description (NPR)</th>${mths.map(mx=>`<th>${mx.name}</th>`).join('')}<th>Total</th></tr></thead>
+                    <tbody>
+                        <tr><td>Invoice Amount</td>${getTds(mths, ['fin','gross'])}<td class="font-bold text-green-700">${fmt(qr.fin.gross)}</td></tr>
+                        <tr class="text-red-700"><td>Royalty (2%)</td>${getTds(mths, ['fin','royalty'])}<td class="font-bold">${fmt(qr.fin.royalty)}</td></tr>
+                        <tr class="text-red-700"><td>Penalty</td>${getTds(mths, ['fin','penalty'])}<td class="font-bold">${fmt(qr.fin.penalty)}</td></tr>
+                        <tr class="bg-indigo-50"><td class="font-bold text-indigo-900">Net Receivable</td>${getTds(mths, ['fin','netRecv'])}<td class="font-bold text-indigo-900">${fmt(qr.fin.netRecv)}</td></tr>
+                    </tbody>
+                </table>
+                <div id="slide_fin_q${i+1}" contenteditable="true" class="edit-box text-lg p-6 bg-slate-50" data-col="slide_fin_q${i+1}">${nar[`slide_fin_q${i+1}`]||`<strong>Financial Insight:</strong> Add context regarding penalties or excess energy here...`}</div>
+            </div>${footer(slideIdx++)}</div>`;
+    });
+
+    // 18. Budget
+    html += `<div class="slide"><div class="s-title">O&M Budget vs. Actual Expenditure</div><div class="s-sub"><span>Cost Control</span></div>
+        <div class="flex flex-col h-full gap-4">
+            <table class="q-table text-lg leading-loose">
+                <thead><tr><th>Category</th><th>Budget (M NPR)</th><th>Actual (M NPR)</th><th>Variance</th></tr></thead>
+                <tbody id="slide_budget_tb" contenteditable="true" data-col="slide_budget_tb">
+                    ${nar.slide_budget_tb||`<tr><td>Maintenance & Repairs</td><td>3.00</td><td>5.60</td><td class="text-red-600 font-bold">Over</td></tr><tr><td>Salary & Staffing</td><td>2.50</td><td>2.45</td><td class="text-emerald-600 font-bold">Under</td></tr><tr><td>Consumables (Oil/Grease)</td><td>1.20</td><td>1.20</td><td class="text-slate-500 font-bold">On Target</td></tr>`}
+                </tbody>
+            </table>
+            <div id="slide_budget_note" contenteditable="true" class="edit-box text-lg p-6 bg-slate-50" data-col="slide_budget_note">${nar.slide_budget_note||`<strong>Insight:</strong> Note any overages caused by the transmission line relocation at Nalabagad.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+
+    // SECTION 4: LOSSES & RCA (Slides 19-23)
+    // 19. Overall Losses
+    html += `<div class="slide"><div class="s-title">System-Wide Loss Categorization</div><div class="s-sub"><span>Deductions from Contract Target (MWh)</span></div>
+        <div class="flex flex-col h-full gap-4">
+            <div class="w-full relative h-[300px] border border-slate-200 rounded p-4"><canvas id="chart-losses"></canvas></div>
+            <table class="q-table text-lg leading-loose mt-2">
+                <tbody>
+                    <tr class="bg-orange-50 text-orange-900 font-bold"><td>Low River Discharge</td><td>${fmt(t.losses.lowDischarge)} MWh</td></tr>
+                    <tr><td>Transmission Line Loss</td><td>${fmt(t.losses.transmLoss)} MWh</td></tr>
+                    <tr><td>Transformer Loss</td><td>${fmt(t.losses.transformer)} MWh</td></tr>
+                    <tr class="text-purple-700 font-bold"><td>Dispatch Instruction</td><td>${fmt(t.losses.dispatch)} MWh</td></tr>
+                    <tr class="text-red-600 font-bold"><td>Grid / 33kV / 132kV Faults</td><td>${fmt(t.losses.grid + t.losses.line132 + t.losses.line33)} MWh</td></tr>
+                </tbody>
+            </table>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 20. Hydrological RCA
+    html += `<div class="slide"><div class="s-title">Hydrological Loss Deep Dive</div><div class="s-sub"><span>Root Cause Analysis</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10 bg-orange-50 border border-orange-200 rounded-xl">
+            <div><strong>Total Energy Lost to Hydrology:</strong> <span class="text-orange-700 font-bold">${fmt(t.losses.lowDischarge)} MWh</span></div>
+            <div id="slide_rca_hydro" contenteditable="true" class="edit-box text-xl p-6 bg-white" data-col="slide_rca_hydro">${nar.slide_rca_hydro||`<p><strong>Analysis:</strong> The vast majority of generation shortfall was lost purely to nature.</p><br><p><strong>Action Plan:</strong> Ensure measuring gauges at the intake are calibrated to provide more accurate ADs to the LDC next dry season to avoid future penalties.</p>`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 21. Grid Fault RCA
+    html += `<div class="slide"><div class="s-title">Root Cause Analysis: Transmission & Grid Faults</div><div class="s-sub"><span>External Reductions</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10 bg-red-50 border border-red-200 rounded-xl">
+            <div><strong>132kV Issue (Balanch - Attariya):</strong> <span class="text-red-700 font-bold">${fmt(t.losses.line132)} MWh lost</span></div>
+            <div><strong>33kV Line Issue:</strong> <span class="text-red-700 font-bold">${fmt(t.losses.line33)} MWh lost</span></div>
+            <div id="slide_rca_grid" contenteditable="true" class="edit-box text-xl p-6 bg-white" data-col="slide_rca_grid">${nar.slide_rca_grid||`<strong>RCA:</strong> Damages to conductor and poles due to landslides required immediate relocation of the line at two locations (Nalabagad and Padpada).`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 22. LDC RCA
+    html += `<div class="slide"><div class="s-title">Root Cause Analysis: LDC Curtailment</div><div class="s-sub"><span>Dispatch Instructions</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10 bg-purple-50 border border-purple-200 rounded-xl">
+            <div><strong>Total Curtailment:</strong> <span class="text-purple-700 font-bold">${fmt(t.losses.dispatch)} MWh</span></div>
+            <div id="slide_rca_ldc" contenteditable="true" class="edit-box text-xl p-6 bg-white" data-col="slide_rca_ldc">${nar.slide_rca_ldc||`<strong>RCA:</strong> Load Dispatch Center instructed the plant to decrease power to 2 MW / 4 MW for periods exceeding 12 hours due to national grid saturation.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 23. Plant Cons
+    html += `<div class="slide"><div class="s-title">Plant Internal Consumption & Faults</div><div class="s-sub"><span>Internal Efficiency</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10 bg-slate-50 border border-slate-200 rounded-xl">
+            <div><strong>Station Consumption:</strong> <span>${fmt(t.losses.station)} MWh</span></div>
+            <div><strong>Plant Equipment Issues:</strong> <span class="text-amber-600 font-bold">${fmt(t.losses.equip)} MWh</span></div>
+            <div><strong>Penstock Issues:</strong> <span class="text-amber-600 font-bold">${fmt(t.losses.penstock)} MWh</span></div>
+            <div id="slide_rca_plant" contenteditable="true" class="edit-box text-xl p-6 bg-white" data-col="slide_rca_plant">${nar.slide_rca_plant||`<strong>Insight:</strong> Internal fault losses are virtually zero, reflecting excellent preventative maintenance by the site team.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+
+    // SECTION 5: MULTI-YEAR YOY (Slides 24-26)
+    // 24. YoY Gen
+    html += `<div class="slide"><div class="s-title">Year-Over-Year Generation Variance</div><div class="s-sub"><span>FY ${year-1} vs FY ${year}</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10">
+            <div class="flex justify-between border-b pb-4"><strong>Previous Year (${year-1}):</strong> <span>${fmt(pt.balanch)} MWh</span></div>
+            <div class="flex justify-between border-b pb-4"><strong>Current Year (${year}):</strong> <span>${fmt(t.balanch)} MWh</span></div>
+            <div class="flex justify-between border-b pb-4 text-red-600 font-bold"><strong>Variance:</strong> <span>${pt.balanch>0 ? fmt(((t.balanch-pt.balanch)/pt.balanch)*100) : 0}%</span></div>
+            <div id="slide_yoy_gen" contenteditable="true" class="edit-box text-xl p-6 bg-blue-50" data-col="slide_yoy_gen">${nar.slide_yoy_gen||`<strong>Reason:</strong> Significantly drier winter this fiscal year compared to last.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 25. YoY Fin
+    html += `<div class="slide"><div class="s-title">Year-Over-Year Financial Variance</div><div class="s-sub"><span>FY ${year-1} vs FY ${year}</span></div>
+        <div class="flex flex-col h-full text-2xl space-y-8 p-10">
+            <div class="flex justify-between border-b pb-4"><strong>Previous Year (${year-1}):</strong> <span>NPR ${fmt(pt.fin.netRecv/1000000)} M</span></div>
+            <div class="flex justify-between border-b pb-4"><strong>Current Year (${year}):</strong> <span>NPR ${fmt(t.fin.netRecv/1000000)} M</span></div>
+            <div class="flex justify-between border-b pb-4 text-red-600 font-bold"><strong>Variance:</strong> <span>${pt.fin.netRecv>0 ? fmt(((t.fin.netRecv-pt.fin.netRecv)/pt.fin.netRecv)*100) : 0}%</span></div>
+            <div id="slide_yoy_fin" contenteditable="true" class="edit-box text-xl p-6 bg-blue-50" data-col="slide_yoy_fin">${nar.slide_yoy_fin||`<strong>Insight:</strong> Annual PPA rate escalations protected the company's bottom line, buffering the generation drop.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 26. YoY Trend Chart
+    html += `<div class="slide"><div class="s-title">Month-by-Month Trendline Comparison</div><div class="s-sub"><span>Since Project Start</span></div>
+        <div class="flex flex-col h-full gap-4">
+            <div class="w-full relative flex-grow border border-slate-200 rounded p-4"><canvas id="chart-yoy"></canvas></div>
+            <div id="slide_yoy_chart" contenteditable="true" class="edit-box h-32 p-6 bg-slate-50" data-col="slide_yoy_chart">${nar.slide_yoy_chart||`<strong>Observation:</strong> Chaitra showed the worst YoY drop. Jestha showed recovery, almost matching last year.`}</div>
+        </div>${footer(slideIdx++)}</div>`;
+
+
+    // SECTION 6: ESG & INTEGRITY (Slides 27-29)
+    // 27. Maintenance
+    html += `<div class="slide"><div class="s-title">Preventative Maintenance Report</div><div class="s-sub"><span>Asset Integrity</span></div>
+        <div class="flex flex-col h-full"><div id="slide_maint" contenteditable="true" class="edit-box text-xl leading-loose p-10" data-col="slide_maint">${nar.slide_maint||`<ul class="list-disc pl-10 space-y-4"><li>Completed desilting basin and forebay tank cleaning.</li><li>Completed weekly/monthly/quarterly greasing and mechanical checks.</li><li>Completed BDV (Breakdown Voltage) testing of transformer oils.</li><li>Fixed grip issues in 33kV conductors.</li></ul>`}</div></div>${footer(slideIdx++)}</div>`;
+
+    // 28. HSE
+    html += `<div class="slide"><div class="s-title">Health, Safety, and Environment (HSE)</div><div class="s-sub"><span>ESG Compliance</span></div>
+        <div class="flex flex-col h-full"><div id="slide_hse" contenteditable="true" class="edit-box text-xl leading-loose p-10" data-col="slide_hse">${nar.slide_hse||`<ul class="list-disc pl-10 space-y-4"><li><strong>Lost Time Injuries (LTI):</strong> 0</li><li><strong>Safety Training:</strong> First aid and safety training conducted for site staff.</li><li><strong>Environment:</strong> Successfully planted 1,500 saplings from powerhouse to ropeway along the penstock alignment.</li></ul>`}</div></div>${footer(slideIdx++)}</div>`;
+
+    // 29. Inventory
+    html += `<div class="slide"><div class="s-title">Inventory & Procurement Status</div><div class="s-sub"><span>Logistics</span></div>
+        <div class="flex flex-col h-full"><div id="slide_inv" contenteditable="true" class="edit-box text-xl leading-loose p-10" data-col="slide_inv">${nar.slide_inv||`<ul class="list-disc pl-10 space-y-4"><li><strong>Status of AVR:</strong> [Insert Status - Ordered/Delivered]</li><li><strong>Status of Hydraulic Oil:</strong> [Insert Status - Ordered/Delivered]</li><li><strong>Status of Penstock Steel:</strong> Secured for pre-monsoon checks.</li></ul>`}</div></div>${footer(slideIdx++)}</div>`;
+
+
+    // SECTION 7: RISKS & OUTLOOK (Slides 30-32)
+    // 30. Risk Register
+    html += `<div class="slide"><div class="s-title">Enterprise Risk Register</div><div class="s-sub"><span>Threats & Mitigations</span></div>
+        <div class="flex flex-col h-full"><div id="slide_risk" contenteditable="true" class="edit-box text-xl leading-loose p-10 bg-red-50 border-red-200" data-col="slide_risk">${nar.slide_risk||`<ul class="list-disc pl-10 space-y-4"><li><strong>Geological Risk (High):</strong> Landslides around powerhouse and penstock alignment. <br><em>Mitigation:</em> Department of Roads support requested; gabion structures planned.</li><li><strong>Hydrological Risk (High):</strong> Flooding of Chameliya and Makari rivers. <br><em>Mitigation:</em> River diversion performed at Padpada and Bharrau.</li></ul>`}</div></div>${footer(slideIdx++)}</div>`;
+
+    // 31. Actions
+    html += `<div class="slide"><div class="s-title">Management Action Tracker</div><div class="s-sub"><span>Accountability</span></div>
+        <div class="flex flex-col h-full gap-4">
+            <table class="q-table text-xl leading-loose">
+                <thead><tr><th>Action</th><th>Owner</th><th>Status</th></tr></thead>
+                <tbody id="slide_action_tb" contenteditable="true" data-col="slide_action_tb">
+                    ${nar.slide_action_tb||`<tr><td>Finalize penstock realignment (AB14–AB18).</td><td>Plant Manager</td><td class="text-amber-600 font-bold">In Progress</td></tr><tr><td>Plan for dedicated power supply to the dam.</td><td>Electrical Team</td><td class="text-slate-500 font-bold">Pending</td></tr><tr><td>Complete insurance renewals before FY ends.</td><td>Finance</td><td class="text-emerald-600 font-bold">Completed</td></tr>`}
+                </tbody>
+            </table>
+        </div>${footer(slideIdx++)}</div>`;
+
+    // 32. Outlook
+    html += `<div class="slide"><div class="s-title">Strategic Outlook & Adjournment</div><div class="s-sub"><span>Next Quarter Directives</span></div>
+        <div class="flex flex-col h-full"><div id="slide_outlook" contenteditable="true" class="edit-box text-2xl leading-loose p-12 bg-indigo-50 border-indigo-200" data-col="slide_outlook">${nar.slide_outlook||`<ul class="list-disc pl-10 space-y-6 text-indigo-900"><li>Ensure 100% plant availability during the peak monsoon months (Ashar, Shrawan, Bhadra).</li><li>Maximize daily output to hit the 10 MW cap continuously.</li><li>Monitor LDC dispatch closely to claim deemed energy where possible.</li><li><strong>Q&A Session with Board Members.</strong></li></ul>`}</div></div>${footer(slideIdx++)}</div>`;
+
+    deck.innerHTML = html;
+
+    // Render Charts
+    setTimeout(() => {
+        // Waterfall
+        charts.push(new Chart(document.getElementById('chart-waterfall'), {
+            type: 'bar',
+            data: { labels: ['Gross Rev', 'Penalty', 'Royalty', 'Net Recv'], datasets: [{ data: [t.fin.gross, -t.fin.penalty, -t.fin.royalty, t.fin.netRecv], backgroundColor: ['#059669', '#dc2626', '#d97706', '#3b82f6'], borderRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        }));
+
+        // Losses Bar
+        const lossColors = ['#fdba74', '#ef4444', '#f59e0b', '#c084fc', '#94a3b8', '#14b8a6'];
+        charts.push(new Chart(document.getElementById('chart-losses'), {
+            type: 'bar',
+            data: { 
+                labels: ['Low Discharge', 'Grid/Line', 'Plant/Equip', 'Curtailment', 'Transm/33kV', 'Transformer'], 
+                datasets: [{ label: 'Total MWh', data: [t.losses.lowDischarge, t.losses.grid + t.losses.line132, t.losses.plant + t.losses.penstock + t.losses.equip, t.losses.dispatch, t.losses.transmLoss + t.losses.line33, t.losses.transformer], backgroundColor: lossColors }]
+            }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        }));
+
+        // YOY Line
+        charts.push(new Chart(document.getElementById('chart-yoy'), {
+            type: 'line',
+            data: {
+                labels: yoy.map(y => y.label),
+                datasets: [
+                    { label: 'Total Generation', data: yoy.map(y => y.gen), borderColor: '#1e40af', backgroundColor: 'rgba(30,64,175,0.1)', fill: true, tension: 0.3, pointRadius: 3 },
+                    { label: 'Exported Energy', data: yoy.map(y => y.exp), borderColor: '#10b981', borderDash: [5,5], tension: 0.3, pointRadius: 3 }
+                ]
+            }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 } } }, plugins: { legend: { position: 'bottom' } } }
+        }));
+    }, 300);
+}
+
+function attachAutoSave() {
+    let timeout;
+    document.querySelectorAll('.edit-box, tbody[contenteditable="true"]').forEach(el => {
+        el.addEventListener('input', (e) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                const val = e.target.innerHTML; const col = e.target.dataset.col;
+                const { error } = await supabase.from('board_report_executive').upsert({ report_id: window.currentReportId, [col]: val, updated_at: new Date().toISOString() }, { onConflict: 'report_id' });
+                if(!error) { const orig = el.style.backgroundColor; el.style.backgroundColor = '#dcfce7'; setTimeout(() => el.style.backgroundColor = orig, 500); }
+            }, 1200);
+        });
+    });
+}
+
+document.getElementById('btn-print').onclick = async () => {
+    const btn = document.getElementById('btn-print'); btn.disabled = true; btn.textContent = 'Preparing PDF...';
+    const replacements = [];
+    document.querySelectorAll('#deck canvas').forEach(canvas => {
+        const img = document.createElement('img'); img.src = canvas.toDataURL('image/png', 1.0); img.style.cssText = `width:100%;height:${canvas.offsetHeight}px;object-fit:contain;`;
+        canvas.parentNode.insertBefore(img, canvas); canvas.style.display = 'none'; replacements.push({ canvas, img });
+    });
+    await new Promise(r => setTimeout(r, 400)); window.print();
+    setTimeout(() => { replacements.forEach(({ canvas, img }) => { canvas.style.display = ''; img.remove(); }); btn.disabled = false; btn.textContent = 'Export to PDF'; }, 1500);
+};
+</script>
+</body>
+</html>

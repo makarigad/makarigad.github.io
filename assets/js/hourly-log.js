@@ -485,13 +485,13 @@ window.validateForm = function() {
             } else if (!allZero) {
                 if (ry<lineVMin||ry>lineVMax || yb<lineVMin||yb>lineVMax || br<lineVMin||br>lineVMax) { errors.push(`Outgoing Voltages must be between ${lineVMin} and ${lineVMax}`); markErr(ryId); markErr(ybId); markErr(brId); }
                 const avg = (ry+yb+br)/3;
-                if (Math.abs(ry-avg) > avg*0.006 || Math.abs(yb-avg) > avg*0.006 || Math.abs(br-avg) > avg*0.006) { errors.push(`Outgoing Voltages vary by > 0.6% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
+                if (Math.abs(ry-avg) > avg*0.007 || Math.abs(yb-avg) > avg*0.007 || Math.abs(br-avg) > avg*0.007) { errors.push(`Outgoing Voltages vary by > 0.7% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
             }
         } else {
             if (!allZero) {
                 if (ry<genVMin||ry>genVMax || yb<genVMin||yb>genVMax || br<genVMin||br>genVMax) { errors.push(`${name} Voltages must be between ${genVMin} and ${genVMax}`); markErr(ryId); markErr(ybId); markErr(brId); }
                 const avg = (ry+yb+br)/3;
-                if (Math.abs(ry-avg) > avg*0.005 || Math.abs(yb-avg) > avg*0.005 || Math.abs(br-avg) > avg*0.005) { errors.push(`${name} Voltages vary by > 0.5% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
+                if (Math.abs(ry-avg) > avg*0.007 || Math.abs(yb-avg) > avg*0.007 || Math.abs(br-avg) > avg*0.007) { errors.push(`${name} Voltages vary by > 0.7% from average.`); markErr(ryId); markErr(ybId); markErr(brId); }
             }
         }
     };

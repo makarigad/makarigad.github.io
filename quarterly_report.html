@@ -16,8 +16,10 @@
         .control-bar { background: var(--navy); padding: 1rem 2rem; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(15,23,42,0.4); display:flex; justify-content:space-between; align-items:center;}
         .form-control { padding: 0.4rem 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85rem; font-weight: 600; outline: none; color: white; }
         .form-control option { color: var(--navy); background: white; }
-        .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: white; border:none; transition: 0.2s; }
+        .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: white; border:none; transition: 0.2s; }
         .btn-primary { background: #3b82f6; } .btn-success { background: #10b981; }
+        .btn-outline { background: transparent; border: 1.5px solid rgba(255,255,255,0.3); color: white; text-decoration: none; }
+        .btn-outline:hover { background: rgba(255,255,255,0.1); }
         
         .deck { display: flex; flex-direction: column; gap: 2rem; align-items: center; padding: 2rem 0; }
         .slide { 
@@ -65,6 +67,8 @@
             <span class="text-xs font-bold text-slate-400">SELECT YEAR (BS):</span>
             <select id="sel-year" class="form-control"></select>
             <button id="btn-generate" class="btn btn-primary ml-2">Generate Full Deck</button>
+            <a href="energy-summary.html" class="btn btn-outline">Back to Reports</a>
+            <a href="index.html" class="btn btn-outline" style="background: rgba(255,255,255,0.05);">Hub</a>
         </div>
     </div>
     <button id="btn-print" class="btn btn-success hidden">Export to PDF</button>
@@ -98,7 +102,7 @@ const pN = (v) => { const n = parseFloat(String(v).replace(/,/g,'')); return isN
 })();
 
 async function fetchYearData(year) {
-    let t = { contract:0, ad:0, gen:0, expPH:0, balanch:0, imp:0, losses: { grid:0, line132:0, line33:0, penstock:0, equip:0, dispatch:0, station:0, transformer:0, transmLoss:0, lowDischarge:0 }, trips: { internal: 0, external: 0, dispatch: 0, total: 0 }, fin: { revBase:0, revExcess:0, penalty:0, royalty:0, netRecv:0 } };
+    let t = { contract:0, ad:0, gen:0, expPH:0, balanch:0, imp:0, losses: { grid:0, line132:0, line33:0, penstock:0, equip:0, dispatch:0, station:0, transformer:0, transmLoss:0, lowDischarge:0 }, trips: { internal: 0, external: 0, dispatch: 0, total: 0 }, fin: { revBase:0, revExcess:0, penalty:0, royalty:0, netRecv:0 }, hourlyData: [], outagesData: [], historicalData: [], weatherData: [], rainfallData: [] };
     
     // Quarters Structure
     let q = [ 
@@ -108,6 +112,8 @@ async function fetchYearData(year) {
         JSON.parse(JSON.stringify(t))  // Q4 (Magh, Falgun, Chaitra)
     ];
     let mData = Array(12).fill(null).map(() => JSON.parse(JSON.stringify(t)));
+    let allPlantData = [];
+    let allEngDates = [];
 
     for(let mIdx=0; mIdx<12; mIdx++) {
         let d = mData[mIdx];
@@ -122,18 +128,25 @@ async function fetchYearData(year) {
         } else { d.ad = PPA_CONTRACT[mIdx]; }
 
         const { data: pData } = await supabase.from('plant_data').select('*').like('nepali_date', qVal).order('id');
-        if (pData && pData.length > 1) {
-            const f = pData[0], l = pData[pData.length - 1];
-            d.gen = Math.max(0, pN(l.unit1_gen)-pN(f.unit1_gen)) + Math.max(0, pN(l.unit2_gen)-pN(f.unit2_gen));
-            d.expPH = Math.max(0, pN(l.export_plant)-pN(f.export_plant));
-            d.losses.station = Math.max(0, pN(l.station_trans)-pN(f.station_trans)) / 1000;
-            
-            const { data: oData } = await supabase.from('outages').select('*').in('id', pData.map(p=>p.id));
-            if(oData) {
-                d.trips.internal = oData.filter(o => pN(o.energy_loss_other) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
-                d.trips.external = oData.filter(o => pN(o.energy_loss_line_trip) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
-                d.trips.dispatch = oData.filter(o => pN(o.nea_curtailed_energy) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
-                d.trips.total = d.trips.internal + d.trips.external + d.trips.dispatch;
+        if (pData && pData.length > 0) {
+            allPlantData = allPlantData.concat(pData);
+            if (pData.length > 1) {
+                const f = pData[0], l = pData[pData.length - 1];
+                d.gen = Math.max(0, pN(l.unit1_gen)-pN(f.unit1_gen)) + Math.max(0, pN(l.unit2_gen)-pN(f.unit2_gen));
+                d.expPH = Math.max(0, pN(l.export_plant)-pN(f.export_plant));
+                d.losses.station = Math.max(0, pN(l.station_trans)-pN(f.station_trans)) / 1000;
+                
+                const engDates = pData.map(p=>p.id).filter(Boolean);
+                allEngDates = allEngDates.concat(engDates);
+                
+                const { data: oData } = await supabase.from('outages').select('*').in('id', engDates);
+                if(oData) {
+                    d.trips.internal = oData.filter(o => pN(o.energy_loss_other) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
+                    d.trips.external = oData.filter(o => pN(o.energy_loss_line_trip) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
+                    d.trips.dispatch = oData.filter(o => pN(o.nea_curtailed_energy) > 0).reduce((s,o)=>s+pN(o.no_of_trippings),0);
+                    d.trips.total = d.trips.internal + d.trips.external + d.trips.dispatch;
+                    t.outagesData = t.outagesData.concat(oData);
+                }
             }
         }
 
@@ -159,12 +172,60 @@ async function fetchYearData(year) {
         d.fin.netRecv = (d.fin.revBase + d.fin.revExcess) - d.fin.penalty - d.fin.royalty;
 
         // Add to Total
-        Object.keys(t).forEach(k => { if(typeof t[k] === 'number') t[k] += d[k]; else Object.keys(t[k]).forEach(sub => t[k][sub] += d[k][sub]); });
+        Object.keys(t).forEach(k => { 
+            if (typeof t[k] === 'number') t[k] += d[k]; 
+            else if (Array.isArray(t[k])) { /* skip arrays */ } 
+            else Object.keys(t[k]).forEach(sub => t[k][sub] += d[k][sub]); 
+        });
         
         // Add to Quarter
         let qIdx = Math.floor(mIdx / 3);
-        Object.keys(q[qIdx]).forEach(k => { if(typeof q[qIdx][k] === 'number') q[qIdx][k] += d[k]; else Object.keys(q[qIdx][k]).forEach(sub => q[qIdx][k][sub] += d[k][sub]); });
+        Object.keys(q[qIdx]).forEach(k => { 
+            if (typeof q[qIdx][k] === 'number') q[qIdx][k] += d[k]; 
+            else if (Array.isArray(q[qIdx][k])) { /* skip arrays */ } 
+            else Object.keys(q[qIdx][k]).forEach(sub => q[qIdx][k][sub] += d[k][sub]); 
+        });
     }
+    
+    // Fetch hourly logs, historical data, and weather data for the year
+    if (allEngDates.length > 0) {
+        const { data: hData } = await supabase.from('hourly_logs').select('log_date,log_time,e_out_mw,e_out_cos,t_temp_out,t_temp_in,t_temp_intake').in('log_date', allEngDates);
+        t.hourlyData = hData || [];
+        
+        // Fetch historical data
+        const minDate = allEngDates[0];
+        const maxDate = allEngDates[allEngDates.length - 1];
+        const endObj = new Date(maxDate); endObj.setHours(23, 59, 59, 999);
+        const startIso = new Date(minDate).toISOString();
+        const endIso = endObj.toISOString();
+        let histData = [];
+        let page = 0, more = true;
+        const MAX_PAGES = 50;
+        while(more && page < MAX_PAGES) {
+            const { data, error } = await supabase.from('historical_data')
+                .select('timestamp, active_power_kw')
+                .gte('timestamp', startIso).lte('timestamp', endIso)
+                .order('timestamp').range(page*1000, (page+1)*1000 - 1);
+            if (error) break;
+            if (data && data.length > 0) histData = histData.concat(data);
+            more = (data && data.length === 1000);
+            page++;
+        }
+        t.historicalData = histData;
+        
+        // Weather data from Open-Meteo
+        try {
+            const res = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=29.744&longitude=80.964&elevation=4200&start_date=${minDate}&end_date=${maxDate}&daily=temperature_2m_mean,precipitation_sum&timezone=Asia%2FKathmandu`);
+            const wData = await res.json();
+            t.weatherData = wData.daily || null;
+        } catch(e) { console.warn("Weather fetch failed", e); }
+    }
+    
+    // Fetch rainfall data
+    try {
+        const { data: rData } = await supabase.from('rainfall_data').select('*');
+        t.rainfallData = rData || [];
+    } catch(e) { console.warn("Rainfall data fetch failed", e); }
     
     t.plantFactor = (t.gen / (10 * 24 * 365)) * 100;
     q.forEach((qr, i) => { qr.plantFactor = (qr.gen / (10 * 24 * (PPA_DAYS[i*3]+PPA_DAYS[i*3+1]+PPA_DAYS[i*3+2]))) * 100; });

@@ -1,4 +1,4 @@
-const CACHE_VERSION   = 'v11';
+const CACHE_VERSION   = 'v12';
 const CACHE_NAME      = `makarigad-cache-${CACHE_VERSION}`;
 const API_CACHE_NAME  = 'makarigad-api-cache-v2';
 
@@ -15,6 +15,7 @@ const ASSETS_TO_PRECACHE = [
     './operator-daily.html',
     './inventory.html',
     './monthly_report.html',
+    './quarterly_report.html',
     './ad-prediction.html',
     './components/header.html',
     './components/footer.html',
@@ -27,6 +28,7 @@ const ASSETS_TO_PRECACHE = [
     './assets/js/attendance.js',
     './assets/js/ad-prediction-init.js',
     './assets/js/rainfall.js',
+    './assets/js/inventory.js',
     './assets/css/index.css',
     './assets/css/plant-data.css',
     './assets/css/hourly-log.css',

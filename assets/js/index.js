@@ -251,12 +251,16 @@ async function loadDashboardData() {
         dbYesterday.setDate(nepalNow.getDate() - 2);
         const dbYesterdayStr = dbYesterday.toISOString().split('T')[0];
 
-        if (!navigator.onLine) throw new Error('Offline');
-
-        const { data: calData } = await fetchWithTimeout(
-            supabase.from('calendar_mappings').select('*').eq('eng_date', todayStr).maybeSingle(),
-            4000
-        );
+        let calData = null;
+        try {
+            const result = await fetchWithTimeout(
+                supabase.from('calendar_mappings').select('*').eq('eng_date', todayStr).maybeSingle(),
+                4000
+            );
+            calData = result.data;
+        } catch (e) {
+            console.warn('[dashboard] Could not load calendar data (offline?):', e.message);
+        }
 
         const badge = document.getElementById('card-update');
         if (badge) {
@@ -278,12 +282,54 @@ async function loadDashboardData() {
             { data: todayRainfall },
             { data: histPlant }
         ] = await Promise.all([
-            fetchWithTimeout(supabase.from('hourly_logs').select('*').gte('log_date', dbYesterdayStr).lte('log_date', tomorrowStr).order('log_date').order('log_time'), 4000),
-            fetchWithTimeout(supabase.from('balanch_readings').select('*').gte('eng_date', dbYesterdayStr).lte('eng_date', tomorrowStr), 4000),
-            fetchWithTimeout(supabase.from('outages').select('*').gte('id', dbYesterdayStr).lte('id', todayStr), 4000),
-            fetchWithTimeout(supabase.from('calendar_mappings').select('*').gte('eng_date', dbYesterdayStr).lte('eng_date', tomorrowStr), 4000),
-            rainId ? fetchWithTimeout(supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle(), 4000) : Promise.resolve({ data: null }),
-            fetchWithTimeout(supabase.from('plant_data').select('unit1_gen, unit2_gen, export_plant, export_substation').not('export_substation', 'is', null).order('id', { ascending: false }).limit(45), 4000)
+            (async () => {
+                try {
+                    return await fetchWithTimeout(supabase.from('hourly_logs').select('*').gte('log_date', dbYesterdayStr).lte('log_date', tomorrowStr).order('log_date').order('log_time'), 4000);
+                } catch (e) {
+                    console.warn('[dashboard] Could not load hourly logs:', e.message);
+                    return { data: [] };
+                }
+            })(),
+            (async () => {
+                try {
+                    return await fetchWithTimeout(supabase.from('balanch_readings').select('*').gte('eng_date', dbYesterdayStr).lte('eng_date', tomorrowStr), 4000);
+                } catch (e) {
+                    console.warn('[dashboard] Could not load balanch readings:', e.message);
+                    return { data: [] };
+                }
+            })(),
+            (async () => {
+                try {
+                    return await fetchWithTimeout(supabase.from('outages').select('*').gte('id', dbYesterdayStr).lte('id', todayStr), 4000);
+                } catch (e) {
+                    console.warn('[dashboard] Could not load outages:', e.message);
+                    return { data: [] };
+                }
+            })(),
+            (async () => {
+                try {
+                    return await fetchWithTimeout(supabase.from('calendar_mappings').select('*').gte('eng_date', dbYesterdayStr).lte('eng_date', tomorrowStr), 4000);
+                } catch (e) {
+                    console.warn('[dashboard] Could not load calendar mappings:', e.message);
+                    return { data: [] };
+                }
+            })(),
+            rainId ? (async () => {
+                try {
+                    return await fetchWithTimeout(supabase.from('rainfall_data').select('*').eq('id', rainId).maybeSingle(), 4000);
+                } catch (e) {
+                    console.warn('[dashboard] Could not load rainfall data:', e.message);
+                    return { data: null };
+                }
+            })() : Promise.resolve({ data: null }),
+            (async () => {
+                try {
+                    return await fetchWithTimeout(supabase.from('plant_data').select('unit1_gen, unit2_gen, export_plant, export_substation').not('export_substation', 'is', null).order('id', { ascending: false }).limit(45), 4000);
+                } catch (e) {
+                    console.warn('[dashboard] Could not load plant data:', e.message);
+                    return { data: [] };
+                }
+            })()
         ]);
 
         // --- DYNAMIC AI PREDICTION LOGIC ---

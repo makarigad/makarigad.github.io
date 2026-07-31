@@ -183,19 +183,21 @@ const numFmt = (val) => {
 function getStandardMonth(m) {
     if (!m) return '';
     const norm = m.toLowerCase().trim();
-    if (norm.includes('bais')) return 'Baisakh';
-    if (norm.includes('jesh') || norm.includes('jest')) return 'Jestha';
-    if (norm.includes('ashad') || norm.includes('ashar')) return 'Ashadh';
-    if (norm.includes('shraw') || norm.includes('sawan')) return 'Shrawan';
-    if (norm.includes('bhad')) return 'Bhadra';
-    if (norm.includes('asho') || norm.includes('asoj')) return 'Ashoj';
-    if (norm.includes('kart')) return 'Kartik';
-    if (norm.includes('mangs') || norm.includes('mangsh')) return 'Mangsir';
-    if (norm.includes('pous')) return 'Poush';
-    if (norm.includes('magh')) return 'Magh';
-    if (norm.includes('falg') || norm.includes('fagun')) return 'Falgun';
-    if (norm.includes('chai')) return 'Chaitra';
-    return m.charAt(0).toUpperCase() + m.slice(1).toLowerCase();
+    const monthMap = {
+        bais: 'Baisakh', jesh: 'Jestha', jest: 'Jestha',
+        ashad: 'Ashadh', ashar: 'Ashadh',
+        shraw: 'Shrawan', sawan: 'Shrawan',
+        bhad: 'Bhadra',
+        asho: 'Ashoj', asoj: 'Ashoj',
+        kart: 'Kartik',
+        mangs: 'Mangsir', mangsh: 'Mangsir',
+        pous: 'Poush',
+        magh: 'Magh',
+        falg: 'Falgun', fagun: 'Falgun',
+        chai: 'Chaitra'
+    };
+    const key = Object.keys(monthMap).find(k => norm.includes(k));
+    return key ? monthMap[key] : m.charAt(0).toUpperCase() + m.slice(1).toLowerCase();
 }
 
 window.toggleExpInputFields = function() {

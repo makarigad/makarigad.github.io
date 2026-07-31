@@ -589,9 +589,8 @@ async function populateEmployeeDropdown() {
 async function loadAdminAttendance() {
     const tbody = document.getElementById('admin-table-body');
     const year = document.getElementById('admin-nep-year').value;
-    
-    // 👉 FIX: Get the actual name (e.g., "Falgun") instead of the number ("11")
     const monthSelect = document.getElementById('admin-nep-month');
+    // Use the selected option's text (name) not its value (number)
     const monthName = monthSelect.options[monthSelect.selectedIndex].text; 
     
     const selectedEmail = document.getElementById('admin-emp-select').value;

@@ -1393,6 +1393,25 @@ if(btnRain) {
     });
 }
 
+function getCycleDateForFault(startDate) {
+    // CYCLE DATE LOGIC: Noon to Noon. A fault belongs to the cycle of the *previous* English day if it occurs before noon.
+    let cycleDateObj = new Date(startDate);
+    if (startDate.getHours() < 12) {
+        cycleDateObj.setDate(cycleDateObj.getDate() - 1);
+    }
+    const cYear = cycleDateObj.getFullYear();
+    const cMonth = String(cycleDateObj.getMonth() + 1).padStart(2, '0');
+    const cDay = String(cycleDateObj.getDate()).padStart(2, '0');
+    return `${cYear}-${cMonth}-${cDay}`;
+}
+
+function getNepaliDateInfoFromDisplay() {
+    const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
+    const nums = nepaliDateStr.match(/\d+/g);
+    if (!nums || nums.length < 2) return null;
+    return { year: parseInt(nums[0]), monthIndex: parseInt(nums[1]) - 1 };
+}
+
 const btnNoon = document.getElementById('btn-save-noon');
 if(btnNoon) {
     btnNoon.replaceWith(btnNoon.cloneNode(true));
@@ -1481,16 +1500,7 @@ if(btnNoon) {
                 const end = new Date(`${endD}T${endT}`);
                 const durMins = (end - start) / 60000;
                 if(durMins <= 0) throw new Error("End time must be after Start time.");
-                
-                // CYCLE DATE LOGIC: Noon to Noon
-                let cycleDateObj = new Date(start);
-                if (start.getHours() < 12) {
-                    cycleDateObj.setDate(cycleDateObj.getDate() - 1);
-                }
-                const cYear = cycleDateObj.getFullYear();
-                const cMonth = String(cycleDateObj.getMonth() + 1).padStart(2, '0');
-                const cDay = String(cycleDateObj.getDate()).padStart(2, '0');
-                const cycleDateStr = `${cYear}-${cMonth}-${cDay}`;
+                const cycleDateStr = getCycleDateForFault(start);
 
                 const plantMw = parseFloat(row.querySelector('.f-power').value) || 0;
                 let lossMw = type === 'Dispatch instruction' ? Math.max(0, plantMw - (parseFloat(row.querySelector('.f-dispatch-power').value) || 0)) : plantMw;
@@ -1637,14 +1647,11 @@ if(btnNoon) {
                         else if (f.type === 'plant equipment issue') newAgg.eq += f.mwh;
                     });
 
-                    const nepaliDateStr = document.getElementById('nepali-date-display')?.innerText || ''; 
-                    const nums = nepaliDateStr.match(/\d+/g);
-                    
-                    if(nums && nums.length >= 2) {
-                        const nYear = parseInt(nums[0]);
-                        const nMonth = parseInt(nums[1]);
+                    const nepDateInfo = getNepaliDateInfoFromDisplay();
+                    if (nepDateInfo) {
+                        const nYear = nepDateInfo.year;
                         const bsMonthNames = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
-                        const monthName = bsMonthNames[nMonth - 1];
+                        const monthName = bsMonthNames[nepDateInfo.monthIndex];
 
                         const { data: ext } = await supabase.from('contract_energy').select('*').eq('year', nYear).eq('month', monthName).maybeSingle();
                         

@@ -79,16 +79,22 @@ function parseExcelDate(dv) {
 const notificationModal = document.getElementById('notification-modal');
 const notificationMessage = document.getElementById('notification-message');
 
+/**
+ * Gets the current Nepali date object from the verified calendar map.
+ * Falls back to an approximation if the map is unavailable.
+ * @returns {{year: number, month: string, day: number, nep_date_str: string}|null}
+ */
 export function getNepDateObj() {
+    const todayStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })).toISOString().split('T')[0];
+    if (calendarMap && calendarMap[todayStr]) {
+        const today = calendarMap[todayStr];
+        return { year: today.nep_year, month: today.nep_month, day: today.nep_day, nep_date_str: today.nep_date_str };
+    }
+    // Fallback for when calendarMap isn't loaded (should be rare)
+    console.warn("getNepDateObj: calendarMap not ready, using approximation.");
     const d = new Date();
-    let y = d.getFullYear() + 56;
-    const m = d.getMonth(); 
-    const date = d.getDate();
-    if (m > 3 || (m === 3 && date > 13)) y += 1;
-    const engToNepMap = [9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8];
-    let nepMonthIdx = engToNepMap[m];
-    if (date > 14) nepMonthIdx = (nepMonthIdx + 1) % 12;
-    return { year: y, month: nepaliMonths[nepMonthIdx] };
+    const y = d.getFullYear() + (d.getMonth() > 3 || (d.getMonth() === 3 && d.getDate() > 13) ? 57 : 56);
+    return { year: y, month: "Baisakh", day: 1, nep_date_str: `${y}.01.01` };
 }
 
 export function showNotification(msg, isError = false) {
@@ -1704,14 +1710,20 @@ function renderMCETable() {
         return map[m.toLowerCase().trim()] ?? -1;
     };
 
-    allMCE.sort((a, b) => Number(b.year) - Number(a.year) || getMonthIdx(b.month) - getMonthIdx(a.month)).forEach(d => {
+    const { year: currentNepYear, month: currentNepMonth } = getNepDateObj();
+    const currentMonthIndex = getMonthIdx(currentNepMonth);
+
+    const sortedAndFilteredMCE = allMCE.filter(d => {
+        // Always show past or current entries
+        if (d.year < currentNepYear || (d.year == currentNepYear && getMonthIdx(d.month) <= currentMonthIndex)) return true;
+        // For future entries, only show them if they have contract energy data
+        return d.contract_energy != null && d.contract_energy > 0;
+    }).sort((a, b) => Number(b.year) - Number(a.year) || getMonthIdx(b.month) - getMonthIdx(a.month));
+
+    sortedAndFilteredMCE.forEach(d => {
         const row = document.createElement('tr');
         row.innerHTML = d.id === editingMCEId ? createMCEEditRow(d) : createMCEDisplayRow(d);
-        if (d.id === editingMCEId) {
-            row.classList.add('bg-indigo-50');
-        } else {
-            row.classList.add('hover:bg-slate-50');
-        }
+        row.classList.add(d.id === editingMCEId ? 'bg-indigo-50' : 'hover:bg-slate-50');
         mceBody.appendChild(row);
     });
 }

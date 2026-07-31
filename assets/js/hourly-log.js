@@ -1,5 +1,6 @@
 import './hourly-log-tools.js';
 import { supabase, initializeApplication, safeUpsert, parseToUTCDate, showNotification } from './core-app.js';
+import { calendarMap } from './plant-data.js';
 
 const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
 
@@ -728,7 +729,8 @@ document.getElementById('hourly-form').addEventListener('submit', async function
             if (main_exp_mwh !== null) {
                 await window.validateBalanchMath(engDate, main_exp_mwh);
             }
-                        
+            
+            console.log("Attempting 12:00 PM 3-Way Sync...");
             // FETCH EXISTING DATA to preserve other fields
             const [{ data: curPlant }, { data: curBalanch }] = await Promise.all([
                 supabase.from('plant_data').select('*').eq('id', engDate).maybeSingle(),

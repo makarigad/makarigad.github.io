@@ -1,4 +1,5 @@
 import { supabase, initializeApplication, showNotification, safeUpsert } from './core-app.js';
+import { calendarMap } from './plant-data.js';
 
 let currentUser = null, userRole = 'operator', currentUserName = '';
 

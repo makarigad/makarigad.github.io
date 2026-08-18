@@ -1,0 +1,215 @@
+/**
+ * Makari Gad Hydropower - Offline Data Queue & Sync Manager
+ * Ensures zero data loss when plant operators log entries without network connectivity.
+ */
+
+class OfflineSyncManager {
+  constructor() {
+    this.dbName = 'MakariGadOfflineDB';
+    this.storeName = 'mutation_queue';
+    this.db = null;
+    this.isSyncing = false;
+    this.initDB();
+    this.setupNetworkListeners();
+  }
+
+  // Initialize IndexedDB
+  async initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          db.createObjectStore(this.storeName, { keyPath: 'queueId', autoIncrement: true });
+        }
+      };
+      request.onsuccess = (event) => {
+        this.db = event.target.result;
+        this.updateOfflineUI();
+        if (navigator.onLine) {
+          this.syncPendingMutations();
+        }
+        resolve(this.db);
+      };
+      request.onerror = (err) => {
+        console.error('[OfflineSync] Failed to open IndexedDB:', err);
+        reject(err);
+      };
+    });
+  }
+
+  // Setup Event Listeners for Connectivity Status
+  setupNetworkListeners() {
+    window.addEventListener('online', () => {
+      console.log('[OfflineSync] Connection restored. Replaying offline queue...');
+      this.updateOfflineUI();
+      this.syncPendingMutations();
+    });
+
+    window.addEventListener('offline', () => {
+      console.warn('[OfflineSync] Device is now offline.');
+      this.updateOfflineUI();
+    });
+  }
+
+  // Update Offline Banner UI
+  updateOfflineUI() {
+    let banner = document.getElementById('offline-status-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'offline-status-banner';
+      banner.className = 'fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 text-sm font-medium transition-all duration-300';
+      document.body.appendChild(banner);
+    }
+
+    if (!navigator.onLine) {
+      banner.className = banner.className.replace(/hidden|bg-\w+-\d+/g, '') + ' bg-amber-600 text-white block';
+      banner.innerHTML = `
+        <i class="fa-solid fa-wifi-slash animate-pulse"></i>
+        <span>Offline Mode Active — Data entries are saved locally and will auto-sync when online.</span>
+      `;
+    } else {
+      this.getPendingCount().then((count) => {
+        if (count > 0) {
+          banner.className = banner.className.replace(/hidden|bg-\w+-\d+/g, '') + ' bg-blue-600 text-white block';
+          banner.innerHTML = `
+            <i class="fa-solid fa-rotate spin"></i>
+            <span>Syncing ${count} pending offline records to database...</span>
+          `;
+        } else {
+          banner.className = banner.className.replace(/block|bg-\w+-\d+/g, '') + ' hidden';
+        }
+      });
+    }
+  }
+
+  // Queue Mutation locally when offline or if Supabase write fails
+  async enqueueMutation(table, action, payload) {
+    if (!this.db) await this.initDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([this.storeName], 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+      const item = {
+        table,
+        action,
+        payload,
+        createdAt: new Date().toISOString()
+      };
+
+      const request = store.add(item);
+      request.onsuccess = () => {
+        console.log(`[OfflineSync] Queued ${action} operation for table '${table}' in IndexedDB.`);
+        this.updateOfflineUI();
+        this.showNotification('Data Saved Locally', 'Entry saved offline. It will automatically upload when network returns.', 'warning');
+        resolve(true);
+      };
+      request.onerror = (err) => {
+        console.error('[OfflineSync] Failed to queue offline record:', err);
+        reject(err);
+      };
+    });
+  }
+
+  // Sync Pending Mutations to Supabase
+  async syncPendingMutations() {
+    if (this.isSyncing || !navigator.onLine || !this.db) return;
+    this.isSyncing = true;
+
+    try {
+      const pendingItems = await this.getAllPending();
+      if (pendingItems.length === 0) {
+        this.isSyncing = false;
+        this.updateOfflineUI();
+        return;
+      }
+
+      console.log(`[OfflineSync] Uploading ${pendingItems.length} records to Supabase...`);
+      let successCount = 0;
+
+      for (const item of pendingItems) {
+        try {
+          if (window.supabaseClient) {
+            let result;
+            if (item.action === 'insert') {
+              result = await window.supabaseClient.from(item.table).insert([item.payload]);
+            } else if (item.action === 'update' && item.payload.id) {
+              result = await window.supabaseClient.from(item.table).update(item.payload).eq('id', item.payload.id);
+            }
+
+            if (!result.error) {
+              await this.removeQueuedItem(item.queueId);
+              successCount++;
+            } else {
+              console.warn('[OfflineSync] Supabase sync error for item:', item, result.error);
+            }
+          }
+        } catch (itemErr) {
+          console.error('[OfflineSync] Error syncing individual item:', itemErr);
+        }
+      }
+
+      if (successCount > 0) {
+        this.showNotification('Sync Complete', `Successfully uploaded ${successCount} offline records to database.`, 'success');
+      }
+    } catch (err) {
+      console.error('[OfflineSync] Sync iteration error:', err);
+    } finally {
+      this.isSyncing = false;
+      this.updateOfflineUI();
+    }
+  }
+
+  // Helper: Get Count of Pending Mutations
+  async getPendingCount() {
+    if (!this.db) return 0;
+    return new Promise((resolve) => {
+      const transaction = this.db.transaction([this.storeName], 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const countRequest = store.count();
+      countRequest.onsuccess = () => resolve(countRequest.result);
+      countRequest.onerror = () => resolve(0);
+    });
+  }
+
+  // Helper: Get All Pending Mutations
+  async getAllPending() {
+    return new Promise((resolve) => {
+      const transaction = this.db.transaction([this.storeName], 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => resolve([]);
+    });
+  }
+
+  // Helper: Remove Item from Queue after successful upload
+  async removeQueuedItem(queueId) {
+    return new Promise((resolve) => {
+      const transaction = this.db.transaction([this.storeName], 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.delete(queueId);
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => resolve(false);
+    });
+  }
+
+  // Toast Notification
+  showNotification(title, message, type = 'info') {
+    const toast = document.createElement('div');
+    const colorClass = type === 'success' ? 'bg-emerald-600' : type === 'warning' ? 'bg-amber-600' : 'bg-blue-600';
+    toast.className = `fixed top-5 right-5 z-50 p-4 rounded-lg shadow-xl text-white ${colorClass} max-w-sm transition-all duration-300 transform translate-y-0`;
+    toast.innerHTML = `
+      <div class="font-bold text-sm mb-1">${title}</div>
+      <div class="text-xs opacity-90">${message}</div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  }
+}
+
+// Global Singleton Instance
+window.offlineSyncManager = new OfflineSyncManager();

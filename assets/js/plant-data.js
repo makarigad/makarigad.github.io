@@ -48,14 +48,25 @@ async function loadCalendarMappings() {
     }
 }
 
-// Global Event Listener for Date Auto-Fill
+/**
+ * Gets today's date string in 'YYYY-MM-DD' format for the Nepal timezone.
+ * @returns {string}
+ */
+function getNepalToday() {
+    const n = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+}
+
+// --- Event Delegation for Dynamic Date Inputs ---
 document.addEventListener('change', (e) => {
-    if (e.target.id === 'new-date') {
+    const targetId = e.target.id;
+    if (targetId === 'new-date' || targetId === 'new-balanch-date' || targetId === 'new-outage-date') {
         const engDate = e.target.value;
-        const nepInput = document.getElementById('new-nepali_date');
-        if (nepInput && calendarMap[engDate]) {
-            nepInput.value = calendarMap[engDate].nep_date_str;
-        }
+        let nepInputId;
+        if (targetId === 'new-date') nepInputId = 'new-nepali_date';
+        if (targetId === 'new-balanch-date') nepInputId = 'new-balanch-nep';
+        const nepInput = nepInputId ? document.getElementById(nepInputId) : null;
+        if (nepInput && calendarMap[engDate] && calendarMap[engDate].nep_date_str) nepInput.value = calendarMap[engDate].nep_date_str;
     }
 });
 
@@ -109,12 +120,6 @@ export function showNotification(msg, isError = false) {
     }, 4500);
 }
 
-const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
-const confirmTitle = document.getElementById('confirm-title');
-const confirmMessage = document.getElementById('confirm-message');
-const confirmActionBtn = document.getElementById('confirm-action-btn');
-const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
-
 export function showConfirmation(title, message, onConfirm) {
     if(!confirmModalBackdrop) return;
     confirmTitle.textContent = title;
@@ -126,6 +131,12 @@ export function showConfirmation(title, message, onConfirm) {
         hideConfirmation();
     };
 }
+
+const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
+const confirmTitle = document.getElementById('confirm-title');
+const confirmMessage = document.getElementById('confirm-message');
+const confirmActionBtn = document.getElementById('confirm-action-btn');
+const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
 
 function hideConfirmation() {
     if(!confirmModalBackdrop) return;
@@ -168,11 +179,6 @@ export function formatNumber(num, decimals = 3) {
     if (num === null || typeof num === 'undefined' || isNaN(parseFloat(num))) return '';
     const factor = Math.pow(10, decimals);
     return Math.round(num * factor) / factor;
-}
-
-function getTodayStr() {
-    const d = new Date();
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 }
 
 // =====================================
@@ -636,9 +642,7 @@ const dataBody = document.getElementById("data-body");
 
 function createInputRow() {
     if (['staff', 'normal'].includes(userRole)) return '';
-    const today = new Date();
-    const localToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60 * 1000));
-    const dateString = localToday.toISOString().split('T')[0];
+    const dateString = getNepalToday();
 
     return `<tr id="add-new-row" class="bg-indigo-50/60 sticky top-[40px] z-20 shadow-sm border-b-2 border-indigo-200">
         <td><input type="date" id="new-date" class="input-cell" value="${dateString}" required /></td>
@@ -809,8 +813,8 @@ dataBody?.addEventListener('click', e => {
 async function loadAndListenData() {
     if (isLoadingData) return;
     isLoadingData = true;
-    let data = [], page = 0, more = true;
-    const todayStr = getTodayStr(); 
+    let data = [], page = 0, more = true; 
+    const todayStr = getNepalToday();
 
     while (more) {
         try {
@@ -1056,7 +1060,7 @@ const balanchCols = ['main_import', 'main_export', 'check_import', 'check_export
 
 function createBalanchInputRow() {
     return `<tr class="bg-indigo-50/60 sticky top-[64px] shadow-sm border-b-2 border-indigo-200 z-10">
-        <td class="tight-cell-input"><input type="date" id="new-balanch-date" class="input-cell font-bold" value="${getTodayStr()}" required /><\/td>
+        <td class="tight-cell-input"><input type="date" id="new-balanch-date" class="input-cell font-bold" value="${getNepalToday()}" required /><\/td>
         <td class="tight-cell-input"><input type="text" id="new-balanch-nep" class="input-cell" placeholder="YYYY.MM.DD" /><\/td>
         ${balanchCols.map(c => `<td class="tight-cell-input"><input type="number" id="new-balanch-${c}" step="any" class="input-cell font-bold ${c.includes('export') ? 'text-indigo-700' : 'text-emerald-700'}" /><\/td>`).join('')}
         <td class="tight-cell-input"><input type="text" id="new-balanch-rem" class="input-cell" placeholder="Notes..." /><\/td>
@@ -1113,8 +1117,8 @@ function renderBalanchTable() {
 async function loadBalanchData() {
     if (isLoadingBalanch) return;
     isLoadingBalanch = true;
-    let data = [], page = 0, more = true;
-    const todayStr = getTodayStr(); 
+    let data = [], page = 0, more = true; 
+    const todayStr = getNepalToday();
 
     while (more) {
         try {
@@ -1346,7 +1350,7 @@ const outageFields = [
 function createOutageInputRow() {
     let inputCells = outageFields.map(f => `<td class="tight-cell-input"><input type="${f.type}" id="new-out-${f.key}" step="any" class="input-cell ${f.key === 'total_energy_loss' ? 'font-bold text-red-700' : ''}" /><\/td>`).join('');
     return `<tr id="add-new-outage-row" class="bg-indigo-50/60 sticky top-[42px] shadow-sm border-b-2 border-indigo-200 z-10">
-        <td class="tight-cell-input"><input type="date" id="new-outage-date" class="input-cell font-bold" value="${getTodayStr()}" required /><\/td>
+        <td class="tight-cell-input"><input type="date" id="new-outage-date" class="input-cell font-bold" value="${getNepalToday()}" required /><\/td>
         ${inputCells}
         <td class="tight-cell text-xs text-gray-500 truncate max-w-[100px]">${getUserName()}<\/td>
         <td class="tight-cell-input"><button id="add-outage-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Add<\/button><\/td>
@@ -1399,8 +1403,8 @@ function renderOutagesTable() {
 async function loadOutagesData() {
     if (isLoadingOutages) return;
     isLoadingOutages = true;
-    let data = [], page = 0, more = true;
-    const todayStr = getTodayStr(); 
+    let data = [], page = 0, more = true; 
+    const todayStr = getNepalToday();
 
     while (more) {
         try {
@@ -2432,6 +2436,25 @@ async function initAuth() {
             loadOutagesData();
             loadRainfallData(); // This is now triggering from rainfall.js!
             loadExpensesData();
+
+            // --- Set Default Dates AFTER all data is loaded ---
+            const { year: nepYear, month: nepMonth } = getNepDateObj();
+            const todayEng = getNepalToday();
+
+            // Set Nepali date for new rows
+            if (calendarMap[todayEng]) {
+                const nepDateStr = calendarMap[todayEng].nep_date_str;
+                if (document.getElementById('new-nepali_date')) document.getElementById('new-nepali_date').value = nepDateStr;
+                if (document.getElementById('new-balanch-nep')) document.getElementById('new-balanch-nep').value = nepDateStr;
+            }
+
+            // Set default for SCADA History Tab
+            if(document.getElementById('historical-year')) document.getElementById('historical-year').value = new Date().getFullYear();
+            if(document.getElementById('historical-month')) document.getElementById('historical-month').value = new Date().getMonth() + 1;
+
+            // Set default for MCE "Add New" row
+            if(document.getElementById('new-mce-year')) document.getElementById('new-mce-year').value = nepYear;
+            if(document.getElementById('new-mce-month')) document.getElementById('new-mce-month').value = nepMonth;
                       
         } else {
             window.location.href = "index.html";

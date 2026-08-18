@@ -588,3 +588,115 @@ setInterval(async () => {
         }
     }
 }, 15_000);
+
+/**
+ * Core Application Initializer & Utilities
+ * Makari Gad Hydroelectric Project
+ */
+
+// Global Supabase Client
+window.supabaseClient = null;
+
+// Initialize Supabase Client Safely
+function initSupabaseClient(supabaseUrl, supabaseKey) {
+  if (typeof supabase !== 'undefined' && supabase.createClient) {
+    window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+    console.log('[CoreApp] Supabase client initialized.');
+  } else {
+    console.warn('[CoreApp] Supabase SDK not yet loaded. Will retry on demand.');
+  }
+}
+
+// Safe Supabase Mutation Wrapper (Supports Offline Persistence)
+async function safeSupabaseMutation(table, action, payload) {
+  // If device is offline, route directly to IndexedDB local queue
+  if (!navigator.onLine) {
+    if (window.offlineSyncManager) {
+      return await window.offlineSyncManager.enqueueMutation(table, action, payload);
+    }
+    return { error: 'Device is offline' };
+  }
+
+  // If online, attempt direct Supabase request
+  try {
+    if (window.supabaseClient) {
+      let response;
+      if (action === 'insert') {
+        response = await window.supabaseClient.from(table).insert([payload]);
+      } else if (action === 'update' && payload.id) {
+        response = await window.supabaseClient.from(table).update(payload).eq('id', payload.id);
+      }
+
+      if (response && response.error) {
+        console.warn('[CoreApp] Supabase API returned error, queueing offline:', response.error);
+        if (window.offlineSyncManager) {
+          await window.offlineSyncManager.enqueueMutation(table, action, payload);
+          return { data: payload, queuedOffline: true };
+        }
+        return response;
+      }
+      return response;
+    }
+  } catch (netErr) {
+    console.warn('[CoreApp] Network fetch error during mutation, queueing offline:', netErr);
+    if (window.offlineSyncManager) {
+      await window.offlineSyncManager.enqueueMutation(table, action, payload);
+      return { data: payload, queuedOffline: true };
+    }
+  }
+}
+
+// Component Loader for Header & Footer (Supports Offline Caching)
+async function loadComponent(elementId, componentPath) {
+  const container = document.getElementById(elementId);
+  if (!container) return;
+
+  try {
+    const response = await fetch(componentPath);
+    if (response.ok) {
+      const html = await response.text();
+      container.innerHTML = html;
+      if (elementId === 'header-container') {
+        highlightActiveNavLink();
+      }
+    }
+  } catch (err) {
+    console.warn(`[CoreApp] Component load failed for ${componentPath}:`, err);
+  }
+}
+
+// Highlight Active Navigation Tab in Header
+function highlightActiveNavLink() {
+  const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+  const navLinks = document.querySelectorAll('#header-container a');
+  
+  navLinks.forEach((link) => {
+    const linkPath = link.getAttribute('href');
+    if (linkPath && (linkPath === currentPath || (currentPath === '' && linkPath === 'index.html'))) {
+      link.classList.add('bg-primary-700', 'text-white', 'font-bold');
+      link.classList.remove('text-primary-100', 'hover:bg-primary-600');
+    }
+  });
+}
+
+// Register PWA Service Worker
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((reg) => console.log('[CoreApp] Service Worker registered with scope:', reg.scope))
+        .catch((err) => console.warn('[CoreApp] Service Worker registration failed:', err));
+    });
+  }
+}
+
+// Auto Initialize Core Features
+document.addEventListener('DOMContentLoaded', () => {
+  loadComponent('header-container', './components/header.html');
+  loadComponent('footer-container', './components/footer.html');
+  registerServiceWorker();
+});
+
+// Export Utilities Globally
+window.initSupabaseClient = initSupabaseClient;
+window.safeSupabaseMutation = safeSupabaseMutation;

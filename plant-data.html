@@ -298,42 +298,62 @@
         </section>
 
        <section id="rainfall-tab" class="hidden-tab h-full flex flex-col overflow-y-auto custom-scroll">
-            <div class="flex justify-between items-center mb-3 shrink-0 p-4">
+            <div class="flex flex-wrap justify-between items-center mb-3 shrink-0 p-4 gap-3">
                 <div>
-                    <h2 class="text-xl font-bold text-slate-800">Monthly Rain & Weather Dashboard</h2>
-                    <p class="text-xs text-slate-500 font-medium">Log site rain, track hourly temps, and compare with Apihimal satellite data.</p>
+                    <h2 class="text-xl font-bold text-slate-800">Rainfall Data Dashboard</h2>
+                    <p class="text-xs text-slate-500 font-medium">Dam/Headworks vs Powerhouse comparison with historical trends.</p>
                 </div>
-                <div class="flex items-center space-x-2">
-    <button id="sync-api-btn" class="bg-sky-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-sky-700 transition" title="Download & Save satellite data for the entire selected year">Sync Year API</button>
-    <input type="file" id="rf-file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
-    <button id="rf-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Import</button>
-    <button id="rf-download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export</button>
-</div>
+                <div class="flex items-center flex-wrap gap-2">
+                    <input type="file" id="rf-file-upload" class="hidden" accept=".xlsx, .xls, .csv"/>
+                    <button id="rf-upload-btn" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-indigo-700 transition role-hidden">Import Excel</button>
+                    <button id="rf-download-btn" class="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-emerald-700 transition">Export</button>
+                </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-slate-300 p-4 mx-4 mb-4 shrink-0">
-                <div class="flex flex-wrap justify-between items-center mb-3 gap-3">
-                    <h3 class="font-bold text-lg text-slate-800">Monthly Weather & Sensor Log</h3>
-                    <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Period:</span>
-                        <select id="grid-rf-year" class="input-cell w-24 font-bold text-indigo-700 bg-white"></select>
-                        <select id="grid-rf-month" class="input-cell w-32 font-bold text-indigo-700 bg-white"></select>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mx-4 mb-4 shrink-0 space-y-3">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">View Mode:</span>
+                            <select id="rf-view-mode" class="input-cell w-44 font-bold text-indigo-700 bg-white">
+                                <option value="monthly">📅 Monthly Detail (One Year)</option>
+                                <option value="compare">📊 Year-over-Year Compare</option>
+                                <option value="historical">📈 Historical Summary (All)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Month:</span>
+                            <select id="grid-rf-month" class="input-cell w-32 font-bold text-indigo-700 bg-white"></select>
+                        </div>
+                        <div id="rf-year-container" class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Year:</span>
+                            <select id="grid-rf-year" class="input-cell w-24 font-bold text-indigo-700 bg-white"></select>
+                        </div>
                     </div>
+                    <label class="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg border border-indigo-200 cursor-pointer transition">
+                        <input type="checkbox" id="rf-show-prediction" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500">
+                        <span class="text-xs font-bold text-indigo-800 uppercase tracking-wider">Show Predictions (API)</span>
+                    </label>
                 </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                    <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
-                        <h4 class="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Rainfall Trends (Site vs Satellite)</h4>
-                        <div class="relative h-48 w-full"><canvas id="rainfall-trend-chart"></canvas></div>
+                <div id="rf-compare-controls" class="hidden bg-indigo-50/60 rounded-xl border border-indigo-100 p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">📊 Years to Compare (select up to 6):</span>
+                        <button id="rf-compare-select-all" class="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline">Select All Available</button>
                     </div>
-                    <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
-                        <h4 class="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Temperature Trends (°C)</h4>
-                        <div class="relative h-48 w-full"><canvas id="temp-trend-chart"></canvas></div>
-                    </div>
+                    <div id="rf-year-chips" class="flex flex-wrap gap-2 max-h-24 overflow-y-auto custom-scroll"></div>
                 </div>
+            </div>
 
-                <div class="overflow-auto max-h-[65vh] border border-slate-200 rounded custom-scroll relative z-10 bg-white">
-                <table class="w-full text-center border-collapse text-[11px] whitespace-nowrap" id="rainfall-grid-table"></table>
+            <div id="rf-summary-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mx-4 mb-4 shrink-0"></div>
+
+            <div id="rf-charts-container" class="grid grid-cols-1 lg:grid-cols-2 gap-4 mx-4 mb-4 shrink-0"></div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-300 mx-4 mb-4 shrink-0 flex-grow overflow-hidden flex flex-col">
+                <div class="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                    <h3 id="rf-table-title" class="font-bold text-sm text-slate-800 uppercase tracking-wider">Rainfall Data</h3>
+                </div>
+                <div class="overflow-auto max-h-[55vh] custom-scroll relative z-10 bg-white">
+                    <table class="w-full text-center border-collapse text-[11px] whitespace-nowrap" id="rainfall-grid-table"></table>
                 </div>
             </div>
         </section>

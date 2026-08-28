@@ -110,7 +110,10 @@ self.addEventListener('fetch', (event) => {
                         caches.open(CACHE_NAME).then(c => c.put(request, resClone));
                     }
                     return res;
-                }).catch(() => new Response('', { status: 503 }));
+                }).catch(err => {
+            console.warn('[SW] Failed to fetch external resource:', err);
+            throw err; // Let the browser handle the failure naturally
+        });
             })
         );
         return;

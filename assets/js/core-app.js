@@ -13,6 +13,11 @@ const SYNC_QUEUE_KEY = 'makarigad_sync_queue';
 /** Offline-only bootstrap when DB role cache is empty (online role always comes from user_roles). */
 const OFFLINE_ADMIN_EMAILS = ['upenjyo@gmail.com'];
 
+export const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
+export let calendarMap = {};
+let calendarPromise = null;
+let hasLoggedDateWarning = false;
+
 // ============================================================
 // Notification toast
 // ============================================================
@@ -46,6 +51,38 @@ export function showNotification(msg, isError = false) {
     }, isError ? 6000 : 4500);
 }
 
+export function showConfirmation(title, message, onConfirm) {
+    const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
+    const confirmTitle = document.getElementById('confirm-title');
+    const confirmMessage = document.getElementById('confirm-message');
+    const confirmActionBtn = document.getElementById('confirm-action-btn');
+
+    if(!confirmModalBackdrop || !confirmTitle || !confirmMessage || !confirmActionBtn) {
+        if(window.confirm(`${title}\n\n${message}`)) {
+            onConfirm();
+        }
+        return;
+    }
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    confirmModalBackdrop.classList.remove('hidden');
+    document.getElementById('confirm-modal')?.classList.remove('opacity-0', 'scale-95');
+    
+    const newBtn = confirmActionBtn.cloneNode(true);
+    confirmActionBtn.parentNode.replaceChild(newBtn, confirmActionBtn);
+
+    newBtn.onclick = () => {
+        onConfirm();
+        hideConfirmation();
+    };
+}
+
+function hideConfirmation() {
+    const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
+    if(!confirmModalBackdrop) return;
+    confirmModalBackdrop.classList.add('hidden');
+    document.getElementById('confirm-modal')?.classList.add('opacity-0', 'scale-95');
+}
 // ============================================================
 // Universal UTC date parser  (supports string / Date / Excel serial)
 // ============================================================
@@ -79,6 +116,67 @@ export function parseToUTCDate(dateInput) {
     return null;
 }
 
+async function loadCalendarMappings() {
+    if (calendarPromise) return calendarPromise;
+
+    calendarPromise = (async () => {
+        try {
+            const { data, error } = await supabase.from('calendar_mappings').select('*');
+            if (error) throw error;
+            if (data && data.length > 0) {
+                data.forEach(d => {
+                    calendarMap[d.eng_date] = d;
+                });
+            } else {
+                console.warn('[Calendar] No data returned from calendar_mappings table.');
+            }
+        } catch (e) {
+            console.error("Failed to load calendar mappings:", e.message);
+        }
+    })();
+    return calendarPromise;
+}
+
+export function getNepDateObj() {
+    const todayStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })).toISOString().split('T')[0];
+    
+    // Case 1: Ideal - Today's date is in the map.
+    if (calendarMap && calendarMap[todayStr]) {
+        const today = calendarMap[todayStr];
+        hasLoggedDateWarning = false; // Reset on successful find
+        return { year: today.nep_year, month: today.nep_month, day: today.nep_day, nep_date_str: today.nep_date_str };
+    }
+    
+    // Case 2: Map is loaded, but date is missing (e.g., a future date not in DB). Use latest available date.
+    if (calendarMap && Object.keys(calendarMap).length > 0) {
+        const latestEngDate = Object.keys(calendarMap).sort().pop();
+        
+        if (!hasLoggedDateWarning) {
+            let warningMessage = `getNepDateObj: calendarMap is missing an entry for ${todayStr}.`;
+            if (latestEngDate && todayStr > latestEngDate) {
+                warningMessage += ` This may be because your system clock is set to a future date.`;
+            }
+            warningMessage += ` Using latest available date (${latestEngDate || 'N/A'}) as fallback.`;
+            console.warn(warningMessage);
+            hasLoggedDateWarning = true;
+        }
+
+        if (latestEngDate && calendarMap[latestEngDate]) {
+            const latestNep = calendarMap[latestEngDate];
+            return { year: latestNep.nep_year, month: latestNep.nep_month, day: latestNep.nep_day, nep_date_str: latestNep.nep_date_str };
+        }
+    }
+    
+    // Case 3: Map not loaded or empty. Fallback to rough approximation.
+    if (!hasLoggedDateWarning) {
+        console.warn(`getNepDateObj: calendarMap not ready. Using approximation.`);
+        hasLoggedDateWarning = true;
+    }
+    const d = new Date();
+    const y = d.getFullYear() + (d.getMonth() > 3 || (d.getMonth() === 3 && d.getDate() > 13) ? 57 : 56);
+    return { year: y, month: "Baisakh", day: 1, nep_date_str: `${y}.01.01` };
+}
+
 // ============================================================
 // Fetch with timeout + exponential back-off retries
 // ============================================================
@@ -109,6 +207,8 @@ export async function fetchWithTimeout(promise, ms = 8000, retries = 1) {
 // ============================================================
 export async function initializeApplication(requireAuth = true) {
     await loadGlobalUI();
+
+    await loadCalendarMappings();
 
     try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -234,6 +334,16 @@ async function loadGlobalUI() {
     }));
 
     initHeaderUI();
+    initConfirmationModal();
+}
+
+function initConfirmationModal() {
+    const confirmModalBackdrop = document.getElementById('confirm-modal-backdrop');
+    const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+    if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', hideConfirmation);
+    if (confirmModalBackdrop) confirmModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === confirmModalBackdrop) hideConfirmation();
+    });
 }
 
 export function initHeaderUI() {
@@ -341,7 +451,7 @@ function handleUnauthenticated(requireAuth) {
     const path = window.location.pathname;
     const onPublicPage = path.endsWith('index.html') || path.endsWith('signin.html') || path === '/';
     if (requireAuth && !onPublicPage) {
-        window.location.replace('index.html');
+        window.location.replace('signin.html');
     }
 }
 
@@ -557,24 +667,28 @@ document.addEventListener('click', async (e) => {
     e.preventDefault();
     logoutBtn.textContent = 'Checking out...';
     logoutBtn.disabled = true;
-    
-    // 1. Grab user and attempt Auto Check-Out safely
+
+    // 1. Failsafe: Force redirect after 2 seconds even if Supabase network hangs
+    const forceLogoutTimer = setTimeout(async () => {
+        localStorage.removeItem('makarigad_offline_role');
+        window.location.replace('signin.html');
+    }, 2000);
+
+    // 2. Grab user and attempt Auto Check-Out (Run in background, DO NOT await)
     try {
         const { data: { user } } = await supabase.auth.getUser();
-       if (user) {
-    await Promise.race([
-        performAutoAttendance(user.email, 'OUT'),
-        new Promise(res => setTimeout(res, 2500)) // Force logout to proceed after 2.5 seconds
-    ]);
-}
+        if (user) {
+            performAutoAttendance(user.email, 'OUT').catch(() => {});
+        }
     } catch (err) {
-        console.warn('Could not process auto check-out (likely offline):', err.message);
+        console.warn('Could not process auto check-out:', err.message);
     }
 
-    // 2. Log out of Supabase and refresh (Guaranteed to run)
+    // 3. Log out immediately 
     await supabase.auth.signOut();
-    localStorage.removeItem(ROLE_CACHE_KEY);
-    window.location.href = 'index.html';
+    clearTimeout(forceLogoutTimer);
+    localStorage.removeItem('makarigad_offline_role');
+    window.location.replace('signin.html');
 });
 
 // ============================================================
@@ -591,115 +705,3 @@ setInterval(async () => {
         }
     }
 }, 15_000);
-
-/**
- * Core Application Initializer & Utilities
- * Makari Gad Hydroelectric Project
- */
-
-// Global Supabase Client
-window.supabaseClient = null;
-
-// Initialize Supabase Client Safely
-function initSupabaseClient(supabaseUrl, supabaseKey) {
-  if (typeof supabase !== 'undefined' && supabase.createClient) {
-    window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-    console.log('[CoreApp] Supabase client initialized.');
-  } else {
-    console.warn('[CoreApp] Supabase SDK not yet loaded. Will retry on demand.');
-  }
-}
-
-// Safe Supabase Mutation Wrapper (Supports Offline Persistence)
-async function safeSupabaseMutation(table, action, payload) {
-  // If device is offline, route directly to IndexedDB local queue
-  if (!navigator.onLine) {
-    if (window.offlineSyncManager) {
-      return await window.offlineSyncManager.enqueueMutation(table, action, payload);
-    }
-    return { error: 'Device is offline' };
-  }
-
-  // If online, attempt direct Supabase request
-  try {
-    if (window.supabaseClient) {
-      let response;
-      if (action === 'insert') {
-        response = await window.supabaseClient.from(table).insert([payload]);
-      } else if (action === 'update' && payload.id) {
-        response = await window.supabaseClient.from(table).update(payload).eq('id', payload.id);
-      }
-
-      if (response && response.error) {
-        console.warn('[CoreApp] Supabase API returned error, queueing offline:', response.error);
-        if (window.offlineSyncManager) {
-          await window.offlineSyncManager.enqueueMutation(table, action, payload);
-          return { data: payload, queuedOffline: true };
-        }
-        return response;
-      }
-      return response;
-    }
-  } catch (netErr) {
-    console.warn('[CoreApp] Network fetch error during mutation, queueing offline:', netErr);
-    if (window.offlineSyncManager) {
-      await window.offlineSyncManager.enqueueMutation(table, action, payload);
-      return { data: payload, queuedOffline: true };
-    }
-  }
-}
-
-// Component Loader for Header & Footer (Supports Offline Caching)
-async function loadComponent(elementId, componentPath) {
-  const container = document.getElementById(elementId);
-  if (!container) return;
-
-  try {
-    const response = await fetch(componentPath);
-    if (response.ok) {
-      const html = await response.text();
-      container.innerHTML = html;
-      if (elementId === 'header-container') {
-        highlightActiveNavLink();
-      }
-    }
-  } catch (err) {
-    console.warn(`[CoreApp] Component load failed for ${componentPath}:`, err);
-  }
-}
-
-// Highlight Active Navigation Tab in Header
-function highlightActiveNavLink() {
-  const currentPath = window.location.pathname.split('/').pop() || 'index.html';
-  const navLinks = document.querySelectorAll('#header-container a');
-  
-  navLinks.forEach((link) => {
-    const linkPath = link.getAttribute('href');
-    if (linkPath && (linkPath === currentPath || (currentPath === '' && linkPath === 'index.html'))) {
-      link.classList.add('bg-primary-700', 'text-white', 'font-bold');
-      link.classList.remove('text-primary-100', 'hover:bg-primary-600');
-    }
-  });
-}
-
-// Register PWA Service Worker
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then((reg) => console.log('[CoreApp] Service Worker registered with scope:', reg.scope))
-        .catch((err) => console.warn('[CoreApp] Service Worker registration failed:', err));
-    });
-  }
-}
-
-// Auto Initialize Core Features
-document.addEventListener('DOMContentLoaded', () => {
-  loadComponent('header-container', './components/header.html');
-  loadComponent('footer-container', './components/footer.html');
-  registerServiceWorker();
-});
-
-// Export Utilities Globally
-window.initSupabaseClient = initSupabaseClient;
-window.safeSupabaseMutation = safeSupabaseMutation;

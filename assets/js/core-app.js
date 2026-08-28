@@ -333,7 +333,7 @@ function handleUnauthenticated(requireAuth) {
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
             } else {
-                window.location.href = 'index.html';
+                window.location.href = 'signin.html';
             }
         };
     }
@@ -561,9 +561,12 @@ document.addEventListener('click', async (e) => {
     // 1. Grab user and attempt Auto Check-Out safely
     try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            await performAutoAttendance(user.email, 'OUT');
-        }
+       if (user) {
+    await Promise.race([
+        performAutoAttendance(user.email, 'OUT'),
+        new Promise(res => setTimeout(res, 2500)) // Force logout to proceed after 2.5 seconds
+    ]);
+}
     } catch (err) {
         console.warn('Could not process auto check-out (likely offline):', err.message);
     }

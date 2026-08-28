@@ -1,6 +1,5 @@
 import './hourly-log-tools.js';
 import { supabase, initializeApplication, safeUpsert, parseToUTCDate, showNotification } from './core-app.js';
-import { calendarMap } from './plant-data.js';
 
 const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
 

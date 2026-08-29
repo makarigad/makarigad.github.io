@@ -255,9 +255,8 @@ async function saveMonth(idx,silent=false){
         nd++;
     }
     const{error:e1}=await supabase.from('calendar_mappings').upsert(cp,{onConflict:'eng_date'});
-    if(e1){if(silent)throw e1;notify('DB Error: '+e1.message,true);return;}
-    const{error:e2}=await supabase.from('plant_data').upsert(pp,{onConflict:'id'});
-    if(e2){if(silent)throw e2;notify('DB Error: '+e2.message,true);return;}
+    if(e1){if(!silent)notify('DB Error: '+e1.message,true);else throw e1;}
+    await supabase.from('plant_data').upsert(pp,{onConflict:'id'});
     sts[idx]='VERIFIED';
     if(!silent){renderGrid();notify(`✅ ${M[idx].n} ${NY} — ${nd-1} days saved.`);}
 }

@@ -116,22 +116,93 @@ class ModalQueueManager {
 
 window.ActionModals = new ModalQueueManager();
 
-// Background Polling for Missing Data (Runs every 10 minutes)
-setInterval(checkMissingHourlyData, 600000); 
+// Web Audio Soft Reminder Chime
+function playReminderChime() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } catch(e) { /* ignore audio permission block */ }
+}
+
+// Background Polling for Missing Data (Checks every 60 seconds)
+setInterval(checkMissingHourlyData, 60000); 
 
 async function checkMissingHourlyData() {
     if (window.userRole === 'staff') return; // Read-only staff don't need prompts
     
     const now = new Date();
-    const hour = now.getHours();
-    const todayEng = document.getElementById('log-date').value;
+    const currentHour = now.getHours();
+    const todayEng = document.getElementById('log-date') ? document.getElementById('log-date').value : '';
     if (!todayEng) return;
 
-    // 1. Check 08:00 AM Rainfall if current time is past 8 AM
-    if (hour >= 8) {
+    // Get today's local ISO string
+    const nepalTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
+    const yyyy = nepalTime.getFullYear();
+    const mm = String(nepalTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(nepalTime.getDate()).padStart(2, '0');
+    const todayLocalISO = `${yyyy}-${mm}-${dd}`;
+    const isToday = (todayEng === todayLocalISO);
+
+    // 1. MASTER INPUTS MISSING HOURLY CHECK
+    const loggedHoursSet = new Set((window.currentDayLogs || []).map(l => l.log_time ? l.log_time.substring(0, 5) : ''));
+    
+    // For today, check all hours up to current hour (inclusive). For past dates, check all 24 hours.
+    const maxHourToCheck = isToday ? currentHour : 23;
+    const missingHours = [];
+    
+    for (let h = 0; h <= maxHourToCheck; h++) {
+        const timeStr = String(h).padStart(2, '0') + ':00';
+        if (!loggedHoursSet.has(timeStr)) {
+            missingHours.push(timeStr);
+        }
+    }
+
+    // Update the Missing Hours Alert Banner in UI
+    renderMissingHoursUI(missingHours, isToday);
+
+    // Trigger Hourly Reminder Modal if hours are missing
+    if (missingHours.length > 0) {
+        const postponeHourly = parseInt(localStorage.getItem('postpone_hourly_master_until') || '0');
+        if (now.getTime() > postponeHourly) {
+            playReminderChime();
+            const firstMissing = missingHours[0];
+            const listStr = missingHours.slice(0, 6).join(', ') + (missingHours.length > 6 ? ` (+${missingHours.length - 6} more)` : '');
+            
+            window.ActionModals.add(
+                "⏰ Missing Master Hourly Log", 
+                `Master input data is missing for <b>${listStr}</b> on <b>${todayEng}</b>.<br><br>Please input the hourly generation and electrical readings.`, 
+                [
+                    { 
+                        text: `Input ${firstMissing} Now`, 
+                        colorClass: "bg-indigo-600 text-white hover:bg-indigo-700 font-bold", 
+                        action: () => selectMissingHour(firstMissing) 
+                    },
+                    { 
+                        text: "Postpone 1 Hour", 
+                        colorClass: "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200", 
+                        action: () => localStorage.setItem('postpone_hourly_master_until', now.getTime() + 3600000) 
+                    }
+                ]
+            );
+        }
+    }
+
+    // 2. Check 08:00 AM Rainfall if current time is past 8 AM
+    if (isToday && currentHour >= 8) {
         const postponeRain = parseInt(localStorage.getItem('postpone_rain_until') || '0');
         if (now.getTime() > postponeRain) {
-            // Find Nepali Date ID for Rainfall
             const { data: cal } = await supabase.from('calendar_mappings').select('*').eq('eng_date', todayEng).maybeSingle();
             if (cal) {
                 const rainId = `${cal.nep_year}_${cal.nep_month}_${String(cal.nep_day).padStart(2, '0')}`;
@@ -139,9 +210,9 @@ async function checkMissingHourlyData() {
                 if (!rData || rData.headworks === null) {
                     window.ActionModals.add(
                         "🌧️ Rainfall Missing", 
-                        "08:00 AM Rainfall data has not been entered for today. Please input the data (it can be 0).", 
+                        "08:00 AM Rainfall data has not been entered for today. Please input the rainfall data (it can be 0).", 
                         [
-                            { text: "Input Data Now", colorClass: "bg-blue-600 text-white hover:bg-blue-700", action: () => openDailyTab('08:00') },
+                            { text: "Input Rainfall Now", colorClass: "bg-blue-600 text-white hover:bg-blue-700", action: () => openDailyTab('08:00') },
                             { text: "Postpone 1 Hour", colorClass: "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200", action: () => localStorage.setItem('postpone_rain_until', now.getTime() + 3600000) }
                         ]
                     );
@@ -150,23 +221,224 @@ async function checkMissingHourlyData() {
         }
     }
 
-    // 2. Check 12:00 PM Balanch if current time is past 12 PM
-    if (hour >= 12) {
+    // 3. Check 12:00 PM Balanch & Daily 12:00 PM Nepali Month Data Audit
+    if (isToday && currentHour >= 12) {
         const postponeBal = parseInt(localStorage.getItem('postpone_bal_until') || '0');
         if (now.getTime() > postponeBal) {
             const { data: bData } = await supabase.from('balanch_readings').select('main_export').eq('eng_date', todayEng).maybeSingle();
             if (!bData || bData.main_export === null) {
                 window.ActionModals.add(
                     "⚡ Balanch Missing", 
-                    "12:00 PM Substation Balanch data is required.", 
+                    "12:00 PM Substation Balanch data is required for 24-hour smart synchronization.", 
                     [
-                        { text: "Input Data Now", colorClass: "bg-emerald-600 text-white hover:bg-emerald-700", action: () => openDailyTab('12:00') },
+                        { text: "Input Balanch Now", colorClass: "bg-emerald-600 text-white hover:bg-emerald-700", action: () => openDailyTab('12:00') },
                         { text: "Postpone 1 Hour", colorClass: "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200", action: () => localStorage.setItem('postpone_bal_until', now.getTime() + 3600000) }
                     ]
                 );
             }
         }
+
+        // Daily 12:00 PM Nepali Month Missing Data Audit
+        const lastAuditDate = localStorage.getItem('last_monthly_audit_date');
+        if (lastAuditDate !== todayEng) {
+            runMonthlyDataAudit(false);
+            localStorage.setItem('last_monthly_audit_date', todayEng);
+        }
     }
+}
+
+// ==========================================
+// MONTHLY DATA INTEGRITY AUDIT (12:00 PM AUTO-CHECK)
+// ==========================================
+window.runMonthlyDataAudit = async function(isManual = false) {
+    const statusEl = document.getElementById('monthly-audit-status');
+    if (statusEl && isManual) {
+        statusEl.className = 'mt-3 text-xs p-3 rounded-xl font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 block';
+        statusEl.innerHTML = '⏳ Scanning Nepali month records for missing hourly master data...';
+    }
+
+    try {
+        const todayEng = document.getElementById('log-date')?.value || new Date().toISOString().split('T')[0];
+        // Determine current Nepali year and month
+        const { data: curMapping } = await supabase.from('calendar_mappings').select('*').eq('eng_date', todayEng).maybeSingle();
+        if (!curMapping) {
+            if (statusEl && isManual) statusEl.innerHTML = '⚠️ Calendar mapping not found for current date.';
+            return;
+        }
+
+        const nepYear = curMapping.nep_year;
+        const nepMonth = curMapping.nep_month;
+        const currentNepDay = parseInt(curMapping.nep_day);
+
+        // Fetch all calendar dates in this Nepali month up to current day
+        const { data: monthDays, error: daysErr } = await supabase
+            .from('calendar_mappings')
+            .select('eng_date, nep_day, nep_date_str')
+            .eq('nep_year', nepYear)
+            .eq('nep_month', nepMonth)
+            .order('nep_day', { ascending: true });
+
+        if (daysErr || !monthDays || monthDays.length === 0) {
+            if (statusEl && isManual) statusEl.innerHTML = '⚠️ Could not load Nepali month days.';
+            return;
+        }
+
+        // Only inspect days up to today (or entire month if past month)
+        const daysToAudit = monthDays.filter(d => parseInt(d.nep_day) <= currentNepDay);
+        const engDateList = daysToAudit.map(d => d.eng_date);
+
+        // Fetch all hourly logs for these dates
+        const { data: monthHourlyLogs, error: logsErr } = await supabase
+            .from('hourly_logs')
+            .select('log_date, log_time')
+            .in('log_date', engDateList);
+
+        if (logsErr) throw logsErr;
+
+        // Group logged hours by eng_date
+        const loggedByDate = {};
+        (monthHourlyLogs || []).forEach(l => {
+            if (!loggedByDate[l.log_date]) loggedByDate[l.log_date] = new Set();
+            if (l.log_time) loggedByDate[l.log_date].add(l.log_time.substring(0, 5));
+        });
+
+        const missingReport = [];
+        let totalMissingHours = 0;
+
+        daysToAudit.forEach(d => {
+            const isTodayDate = (d.eng_date === todayEng);
+            const maxHour = isTodayDate ? new Date().getHours() : 23;
+            const dayLogs = loggedByDate[d.eng_date] || new Set();
+            const dayMissing = [];
+
+            for (let h = 0; h <= maxHour; h++) {
+                const tStr = String(h).padStart(2, '0') + ':00';
+                if (!dayLogs.has(tStr)) {
+                    dayMissing.push(tStr);
+                }
+            }
+
+            if (dayMissing.length > 0) {
+                totalMissingHours += dayMissing.length;
+                missingReport.push({
+                    engDate: d.eng_date,
+                    nepDate: d.nep_date_str || `Day ${d.nep_day}`,
+                    nepDay: d.nep_day,
+                    missing: dayMissing
+                });
+            }
+        });
+
+        if (missingReport.length > 0) {
+            const summaryHtml = `
+                <div class="space-y-2 max-h-48 overflow-y-auto custom-scroll pr-1 mt-2 text-left">
+                    ${missingReport.map(r => `
+                        <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-amber-200 text-xs shadow-2xs">
+                            <span class="font-bold text-amber-900">${r.nepDate} (${r.engDate}):</span>
+                            <span class="text-rose-600 font-bold">${r.missing.length} hrs missing (${r.missing.slice(0, 3).join(', ')}${r.missing.length > 3 ? '...' : ''})</span>
+                            <button type="button" onclick="loadDateAndHour('${r.engDate}', '${r.missing[0]}')" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-0.5 rounded font-bold text-[10px]">Fill</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            if (statusEl) {
+                statusEl.className = 'mt-3 text-xs p-3 rounded-xl font-medium bg-amber-50 text-amber-900 border border-amber-200 block';
+                statusEl.innerHTML = `<b>⚠️ ${totalMissingHours} Missing Hour(s) Found across ${missingReport.length} day(s) in ${nepMonth} ${nepYear}:</b>${summaryHtml}`;
+            }
+
+            window.ActionModals.add(
+                "🔍 12:00 PM Monthly Data Audit",
+                `Found <b>${totalMissingHours} missing hourly records</b> across <b>${missingReport.length} day(s)</b> for <b>${nepMonth} ${nepYear}</b>.<br><br>Please fill in missing records before generating admin monthly exports.${summaryHtml}`,
+                [
+                    {
+                        text: `Fill ${missingReport[0].nepDate}`,
+                        colorClass: "bg-indigo-600 text-white hover:bg-indigo-700 font-bold",
+                        action: () => window.loadDateAndHour(missingReport[0].engDate, missingReport[0].missing[0])
+                    },
+                    {
+                        text: "Acknowledge",
+                        colorClass: "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200 font-bold",
+                        action: () => {}
+                    }
+                ]
+            );
+        } else {
+            if (statusEl) {
+                statusEl.className = 'mt-3 text-xs p-3 rounded-xl font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+                statusEl.innerHTML = `✅ Complete! No missing data found for ${nepMonth} ${nepYear} (All ${daysToAudit.length} days verified).`;
+            }
+            if (isManual) {
+                showNotification(`✅ Perfect! All hourly logs are complete for ${nepMonth} ${nepYear}.`);
+            }
+        }
+    } catch(err) {
+        console.error("Monthly audit error:", err);
+        if (statusEl && isManual) {
+            statusEl.className = 'mt-3 text-xs p-3 rounded-xl font-bold bg-rose-50 text-rose-800 border border-rose-200 block';
+            statusEl.innerHTML = `❌ Audit Error: ${err.message}`;
+        }
+    }
+};
+
+window.loadDateAndHour = function(engDate, hourStr) {
+    const dateEl = document.getElementById('log-date');
+    const timeEl = document.getElementById('log-time');
+    if (dateEl) {
+        dateEl.value = engDate;
+        dateEl.dispatchEvent(new Event('change'));
+    }
+    if (timeEl && hourStr) {
+        timeEl.value = hourStr.length === 5 ? hourStr + ':00' : hourStr;
+        timeEl.dispatchEvent(new Event('change'));
+    }
+    const formTab = document.querySelector('[data-target="hourly-form"]');
+    if (formTab) formTab.click();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+function selectMissingHour(timeStr) {
+    const timeSelect = document.getElementById('log-time');
+    if (timeSelect) {
+        timeSelect.value = timeStr.length === 5 ? timeStr + ':00' : timeStr;
+        timeSelect.dispatchEvent(new Event('change'));
+    }
+    const formTab = document.querySelector('[data-target="hourly-form"]');
+    if (formTab) formTab.click();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderMissingHoursUI(missingHours, isToday) {
+    const banner = document.getElementById('missing-hours-banner');
+    const countEl = document.getElementById('missing-hours-count');
+    const descEl = document.getElementById('missing-hours-desc');
+    const chipsContainer = document.getElementById('missing-hours-chips');
+    if (!banner || !countEl || !chipsContainer) return;
+
+    if (missingHours.length === 0) {
+        banner.classList.add('hidden');
+        chipsContainer.innerHTML = '';
+        return;
+    }
+
+    banner.classList.remove('hidden');
+    countEl.innerText = `${missingHours.length} hour${missingHours.length > 1 ? 's' : ''}`;
+    if (descEl) {
+        descEl.innerText = isToday 
+            ? `Missing readings up to current time. Click any hour to load and record data:`
+            : `Missing logs for this date (${missingHours.length} total). Click an hour to fill:`;
+    }
+
+    chipsContainer.innerHTML = '';
+    missingHours.forEach(h => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'px-2.5 py-1 text-xs font-bold rounded-lg bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 active:scale-95 transition shadow-xs cursor-pointer flex items-center gap-1';
+        btn.innerHTML = `<span>⚡</span> <span>${h}</span>`;
+        btn.title = `Click to enter master log for ${h}`;
+        btn.onclick = () => selectMissingHour(h);
+        chipsContainer.appendChild(btn);
+    });
 }
 
 function openDailyTab(timeStr) {
@@ -337,6 +609,9 @@ window.fetchLogs = async function() {
         if (existingLog) window.editLog(currentTime, false);
         else window.clearMasterFormInputsOnly();
 
+        // Run missing hours check whenever logs are fetched/refreshed
+        checkMissingHourlyData();
+
     } catch (error) {
         console.error("Fetch logs error:", error);
     }
@@ -433,26 +708,54 @@ window.validateForm = function() {
     });
 
     const TH = window.validationThresholds || {};
-    const maxUnitMw  = TH.max_unit_mw  ?? 5.3;
-    const maxOutMw   = TH.max_out_mw   ?? 10.6;
-    const hzMin      = TH.hz_min       ?? 49.5;
-    const hzMax      = TH.hz_max       ?? 50.5;
-    const genVMin    = TH.gen_v_min    ?? 6.3;
-    const genVMax    = TH.gen_v_max    ?? 6.9;
-    const lineVMin   = TH.line_v_min   ?? 31.9;
-    const lineVMax   = TH.line_v_max   ?? 34.1;
-    const genAMin    = TH.gen_a_min    ?? 50;
-    const genAMax    = TH.gen_a_max    ?? 470;
-    const transTMax  = TH.trans_t_max ?? 70;
+    const maxUnitMw   = TH.max_unit_mw   ?? 5.3;
+    const maxOutMw    = TH.max_out_mw    ?? 10.6;
+    const hzMin       = TH.hz_min        ?? 49.5;
+    const hzMax       = TH.hz_max        ?? 50.5;
+    const kvarMin     = TH.kvar_min      ?? -3000;
+    const kvarMax     = TH.kvar_max      ?? 3000;
+    const genVMin     = TH.gen_v_min     ?? 6.3;
+    const genVMax     = TH.gen_v_max     ?? 6.9;
+    const lineVMin    = TH.line_v_min    ?? 31.9;
+    const lineVMax    = TH.line_v_max    ?? 34.1;
+    const genAMin     = TH.gen_a_min     ?? 50;
+    const genAMax     = TH.gen_a_max     ?? 470;
+    const lineAMin    = TH.line_a_min    ?? 10;
+    const lineAMax    = TH.line_a_max    ?? 190;
+    const transTMin   = TH.trans_t_min   ?? 15;
+    const transTMax   = TH.trans_t_max   ?? 70;
+    const transLvlMin = TH.trans_lvl_min ?? 3.0;
     const transLvlMax = TH.trans_lvl_max ?? 9.5;
+    const transAuxLvlMin = TH.trans_aux_lvl_min ?? 70;
+    const transAuxLvlMax = TH.trans_aux_lvl_max ?? 90;
+    const bearingTMin = TH.bearing_t_min ?? 15;
+    const bearingTMax = TH.bearing_t_max ?? 95;
+    const govHydTMin  = TH.gov_hyd_t_min ?? 15;
+    const govHydTMax  = TH.gov_hyd_t_max ?? 60;
+    const tempOutMin  = TH.temp_out_min  ?? 10;
+    const tempOutMax  = TH.temp_out_max  ?? 50;
+    const tempInMin   = TH.temp_in_min   ?? 10;
+    const tempInMax   = TH.temp_in_max   ?? 50;
+    const tempIntakeMin = TH.temp_intake_min ?? -5;
+    const tempIntakeMax = TH.temp_intake_max ?? 30;
+    const pressureMin = TH.pressure_min  ?? 830;
+    const pressureMax = TH.pressure_max  ?? 900;
+    const flowMin     = TH.flow_min      ?? 40;
+    const flowMax     = TH.flow_max      ?? 50;
+    const waterLvlMin = TH.water_lvl_min ?? 0;
+    const waterLvlMax = TH.water_lvl_max ?? 1500;
+    const dgBattMin   = TH.dg_batt_min   ?? 11.0;
+    const dgBattMax   = TH.dg_batt_max   ?? 14.3;
+    const dgFuelMin   = TH.dg_fuel_min   ?? 10;
+    const dgFuelMax   = TH.dg_fuel_max   ?? 100;
 
     const u1Mw = val('e_u1_mw'), u2Mw = val('e_u2_mw'), outMw = val('e_out_mw');
     if (u1Mw !== null && (u1Mw < 0 || u1Mw > maxUnitMw)) { errors.push(`U1 Load (MW) must be between 0 and ${maxUnitMw}.`); markErr('e_u1_mw'); markErr('u1-load'); }
     if (u2Mw !== null && (u2Mw < 0 || u2Mw > maxUnitMw)) { errors.push(`U2 Load (MW) must be between 0 and ${maxUnitMw}.`); markErr('e_u2_mw'); markErr('u2-load'); }
     if (outMw !== null && (outMw < 0 || outMw > maxOutMw)) { errors.push(`Outgoing Load (MW) must be between 0 and ${maxOutMw}.`); markErr('e_out_mw'); markErr('outgoing-kwh'); }
 
-    ['tr_1_temp', 'tr_2_temp', 'tr_aux_temp'].forEach(id => chk(id, 15, transTMax, 'Transformer Temp'));
-    ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, 3, transLvlMax, 'Trans Oil Level'));
+    ['tr_1_temp', 'tr_2_temp', 'tr_aux_temp'].forEach(id => chk(id, transTMin, transTMax, 'Transformer Temp'));
+    ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, transLvlMin, transLvlMax, 'Trans Oil Level'));
 
     const checkFreqPf = (mwId, hzId, pfId, name) => {
         const m = val(mwId), h = val(hzId), p = val(pfId);
@@ -469,7 +772,7 @@ window.validateForm = function() {
     checkFreqPf('e_out_mw', 'e_out_hz', 'e_out_cos', 'Outgoing Line');
 
     ['e_u1_kvar', 'e_u2_kvar', 'e_out_kvar'].forEach(id => {
-        if (val(id) !== null && (val(id) < -3000 || val(id) > 3000)) { errors.push(`kVAR must be between -3000 and 3000.`); markErr(id); }
+        if (val(id) !== null && (val(id) < kvarMin || val(id) > kvarMax)) { errors.push(`kVAR must be between ${kvarMin} and ${kvarMax}.`); markErr(id); }
     });
 
     const checkVolts = (ryId, ybId, brId, isLine, name) => {
@@ -510,7 +813,7 @@ window.validateForm = function() {
             if (u1z && u2z) {
                 if (!allZero) { errors.push(`Outgoing Currents must be 0 since both U1 & U2 are 0.`); markErr(i1Id); markErr(i2Id); markErr(i3Id); }
             } else if (!allZero) {
-                if (i1<10||i1>190 || i2<10||i2>190 || i3<10||i3>190) { errors.push(`Outgoing Currents must be between 10 and 190.`); markErr(i1Id); markErr(i2Id); markErr(i3Id); }
+                if (i1<lineAMin||i1>lineAMax || i2<lineAMin||i2>lineAMax || i3<lineAMin||i3>lineAMax) { errors.push(`Outgoing Currents must be between ${lineAMin} and ${lineAMax}.`); markErr(i1Id); markErr(i2Id); markErr(i3Id); }
                 const avg = (i1+i2+i3)/3;
                 if (Math.abs(i1-avg) > 15 || Math.abs(i2-avg) > 15 || Math.abs(i3-avg) > 15) { errors.push(`Outgoing Currents vary by > 15 from average.`); markErr(i1Id); markErr(i2Id); markErr(i3Id); }
             }
@@ -559,25 +862,33 @@ window.validateForm = function() {
 
     const curTime = document.getElementById('log-time').value.substring(0,5);
     let prevLog = null;
+    let elapsedHours = 1;
     for (let i = window.currentDayLogs.length - 1; i >= 0; i--) {
-        if (window.currentDayLogs[i].log_time && window.currentDayLogs[i].log_time.substring(0,5) < curTime) { prevLog = window.currentDayLogs[i]; break; }
+        if (window.currentDayLogs[i].log_time && window.currentDayLogs[i].log_time.substring(0,5) < curTime) { 
+            prevLog = window.currentDayLogs[i];
+            const curH = parseInt(curTime.split(':')[0], 10);
+            const prevH = parseInt(prevLog.log_time.substring(0,2), 10);
+            if (!isNaN(curH) && !isNaN(prevH) && curH > prevH) {
+                elapsedHours = curH - prevH;
+            }
+            break; 
+        }
     }
-    const pmuMaxDelta  = TH.pmu_max_delta  ?? 0.00535;
-    const outMaxDelta  = TH.out_max_delta  ?? 10.65;
-    const hourCounterMult = TH.hour_counter_max_mult ?? 1.1;
+    const pmuMaxDelta  = (TH.pmu_max_delta  ?? 0.00535) * elapsedHours;
+    const outMaxDelta  = (TH.out_max_delta  ?? 10.65) * elapsedHours;
 
     if (prevLog) {
         if (u1Gwh !== null && prevLog.u1_pmu_reading != null) {
-            if (u1Gwh < prevLog.u1_pmu_reading) { errors.push(`U1 Energy cannot be less than previous hour (${prevLog.u1_pmu_reading}).`); markErr('e_u1_gwh'); markErr('u1-pmu'); }
-            if (u1Gwh > prevLog.u1_pmu_reading + pmuMaxDelta) { errors.push(`U1 Energy increased by more than max allowed (${(pmuMaxDelta*1000).toFixed(2)} MWh).`); markErr('e_u1_gwh'); markErr('u1-pmu'); }
+            if (u1Gwh < prevLog.u1_pmu_reading) { errors.push(`U1 Energy (${u1Gwh}) cannot be less than previous logged hour (${prevLog.u1_pmu_reading}).`); markErr('e_u1_gwh'); markErr('u1-pmu'); }
+            if (u1Gwh > prevLog.u1_pmu_reading + pmuMaxDelta) { errors.push(`U1 Energy increased by more than max allowed (${(pmuMaxDelta*1000).toFixed(2)} MWh for ${elapsedHours}h interval).`); markErr('e_u1_gwh'); markErr('u1-pmu'); }
         }
         if (u2Gwh !== null && prevLog.u2_pmu_reading != null) {
-            if (u2Gwh < prevLog.u2_pmu_reading) { errors.push(`U2 Energy cannot be less than previous hour (${prevLog.u2_pmu_reading}).`); markErr('e_u2_gwh'); markErr('u2-pmu'); }
-            if (u2Gwh > prevLog.u2_pmu_reading + pmuMaxDelta) { errors.push(`U2 Energy increased by more than max allowed (${(pmuMaxDelta*1000).toFixed(2)} MWh).`); markErr('e_u2_gwh'); markErr('u2-pmu'); }
+            if (u2Gwh < prevLog.u2_pmu_reading) { errors.push(`U2 Energy (${u2Gwh}) cannot be less than previous logged hour (${prevLog.u2_pmu_reading}).`); markErr('e_u2_gwh'); markErr('u2-pmu'); }
+            if (u2Gwh > prevLog.u2_pmu_reading + pmuMaxDelta) { errors.push(`U2 Energy increased by more than max allowed (${(pmuMaxDelta*1000).toFixed(2)} MWh for ${elapsedHours}h interval).`); markErr('e_u2_gwh'); markErr('u2-pmu'); }
         }
         if (outMwh !== null && prevLog.outgoing != null) {
-            if (outMwh < prevLog.outgoing) { errors.push(`Outgoing Energy cannot be less than previous hour (${prevLog.outgoing}).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
-            if (outMwh > prevLog.outgoing + outMaxDelta) { errors.push(`Outgoing Energy increased by more than max allowed (${outMaxDelta} MWh).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
+            if (outMwh < prevLog.outgoing) { errors.push(`Outgoing Energy (${outMwh}) cannot be less than previous logged hour (${prevLog.outgoing}).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
+            if (outMwh > prevLog.outgoing + outMaxDelta) { errors.push(`Outgoing Energy increased by more than max allowed (${outMaxDelta.toFixed(2)} MWh for ${elapsedHours}h interval).`); markErr('e_out_mwh'); markErr('outgoing-kwh'); }
         }
         ['u1', 'u2'].forEach(u => {
             const hcurEl = document.getElementById(`${u}-hour`);
@@ -589,14 +900,18 @@ window.validateForm = function() {
                 if (!isNaN(hcurVal)) {
                     if (hcurVal === 0 && stat === 'O') { errors.push(`${u.toUpperCase()} Hour Counter cannot be 0 while unit is running (O).`); markErr(`${u}-hour`); }
                     if (hcurVal < prevHour) { errors.push(`${u.toUpperCase()} Hour Counter (${hcurVal}) cannot be less than previous hour (${prevHour}).`); markErr(`${u}-hour`); }
-                    if (hcurVal > prevHour * hourCounterMult) { errors.push(`${u.toUpperCase()} Hour Counter (${hcurVal}) exceeds previous × ${hourCounterMult} (max: ${(prevHour * hourCounterMult).toFixed(3)}).`); markErr(`${u}-hour`); }
+                    const maxAllowedRuntime = prevHour + elapsedHours + 0.15;
+                    if (hcurVal > maxAllowedRuntime && prevHour > 0) { 
+                        errors.push(`${u.toUpperCase()} Hour Counter (${hcurVal}) increased by more than elapsed interval (${elapsedHours}h). Max: ${maxAllowedRuntime.toFixed(3)}.`); 
+                        markErr(`${u}-hour`); 
+                    }
                 }
             }
         });
     }
 
     const waterLvl = val('water-level');
-    if (waterLvl !== null && (waterLvl < 0 || waterLvl > 1500)) { errors.push(`Water Level (${waterLvl} cm) is out of expected range (0–1500 cm).`); markErr('water-level'); }
+    if (waterLvl !== null && (waterLvl < waterLvlMin || waterLvl > waterLvlMax)) { errors.push(`Water Level (${waterLvl} cm) must be between ${waterLvlMin} and ${waterLvlMax} cm.`); markErr('water-level'); }
 
     const g_m_e = val('inp-bal-main-exp'); if (g_m_e !== null && (g_m_e < 0 || g_m_e > 1000000)) { errors.push('Main Export must be between 0-100,000 MWh'); markErr('inp-bal-main-exp'); }
     const g_m_i = val('inp-bal-main-imp'); if (g_m_i !== null && (g_m_i < 0 || g_m_i > 1000000)) { errors.push('Main Import must be between 0-100,000 MWh'); markErr('inp-bal-main-imp'); }
@@ -604,13 +919,17 @@ window.validateForm = function() {
     const g_c_i = val('inp-bal-check-imp'); if (g_c_i !== null && (g_c_i < 0 || g_c_i > 1000000)) { errors.push('Check Import must be between 0-100,000 MWh'); markErr('inp-bal-check-imp'); }
 
     function chk(id, min, max, name) { const v=val(id); if(v!==null && (v<min || v>max)) { errors.push(`${name} must be between ${min} and ${max}.`); markErr(id); } }
-    ['t_u1_u', 't_u1_v', 't_u1_w', 't_u1_de', 't_u1_nde', 't_u2_u', 't_u2_v', 't_u2_w', 't_u2_de', 't_u2_nde'].forEach(id => chk(id, 15, 95, id.toUpperCase() + ' Temp'));
-    ['t_u1_gov', 't_u1_hyd', 't_u2_gov', 't_u2_hyd'].forEach(id => chk(id, 15, 60, 'Governor/Hyd Temp'));
-    chk('t_temp_out', 10, 50, 'Outside Temp'); chk('t_temp_in', 10, 50, 'Inside Temp'); chk('t_temp_intake', -5, 30, 'Intake Temp');
-    chk('t_pressure', 830, 900, 'Pressure');
-    ['tr_1_temp', 'tr_2_temp', 'tr_aux_temp'].forEach(id => chk(id, 15, 70, 'Transformer Temp'));
-    ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, 3, 9.5, 'Trans Oil Level')); chk('tr_aux_lvl', 70, 90, 'Aux Oil Level');
-    chk('dg_batt', 11, 14.3, 'DG Battery'); chk('dg_fuel', 10, 100, 'DG Fuel %');
+    ['t_u1_u', 't_u1_v', 't_u1_w', 't_u1_de', 't_u1_nde', 't_u2_u', 't_u2_v', 't_u2_w', 't_u2_de', 't_u2_nde'].forEach(id => chk(id, bearingTMin, bearingTMax, id.toUpperCase() + ' Temp'));
+    ['t_u1_gov', 't_u1_hyd', 't_u2_gov', 't_u2_hyd'].forEach(id => chk(id, govHydTMin, govHydTMax, 'Governor/Hyd Temp'));
+    chk('t_temp_out', tempOutMin, tempOutMax, 'Outside Temp');
+    chk('t_temp_in', tempInMin, tempInMax, 'Inside Temp');
+    chk('t_temp_intake', tempIntakeMin, tempIntakeMax, 'Intake Temp');
+    chk('t_pressure', pressureMin, pressureMax, 'Pressure');
+    ['tr_1_temp', 'tr_2_temp', 'tr_aux_temp'].forEach(id => chk(id, transTMin, transTMax, 'Transformer Temp'));
+    ['tr_1_lvl', 'tr_2_lvl'].forEach(id => chk(id, transLvlMin, transLvlMax, 'Trans Oil Level'));
+    chk('tr_aux_lvl', transAuxLvlMin, transAuxLvlMax, 'Aux Oil Level');
+    chk('dg_batt', dgBattMin, dgBattMax, 'DG Battery (V)');
+    chk('dg_fuel', dgFuelMin, dgFuelMax, 'DG Fuel %');
 
     ['t_u1_flow', 't_u2_flow'].forEach(id => {
         const v = val(id);
@@ -618,8 +937,8 @@ window.validateForm = function() {
         const stat = document.getElementById(`u${unitNum}-status`)?.value;
         if (v !== null) {
             if ((stat === 'S' || stat === 'B') && v === 0) {
-            } else if (v < 40 || v > 50) {
-                errors.push(`Unit ${unitNum} Oil Flow must be between 40 and 50 (or 0 if Unit Status is S/B).`);
+            } else if (v < flowMin || v > flowMax) {
+                errors.push(`Unit ${unitNum} Oil Flow must be between ${flowMin} and ${flowMax} (or 0 if Unit Status is S/B).`);
                 markErr(id);
             }
         }
@@ -787,6 +1106,9 @@ document.getElementById('hourly-form').addEventListener('submit', async function
                 await safeUpsert('balanch_readings', balanchPayload);
             }
             console.log("✅ 12:00 PM Smart Sync Complete!");
+
+            // Run 12:00 PM Nepali Month Missing Data Audit
+            runMonthlyDataAudit(false);
         }
 
         // 5. TRIGGER 08:00 AM SYNC TO RAINFALL
@@ -1030,27 +1352,18 @@ async function startPage() {
             const logOpEl = document.getElementById('log-operator');
             if (logOpEl) logOpEl.value = fullName; 
 
-            const _role = sessionData.role;
-            const _isAdmin = _role === 'admin';
-            const _isReadOnly = _role === 'staff' || _role === 'management';
-
-            // SCADA audit is a read-only viewer — visible to all elevated roles.
-            if (_isAdmin || _isReadOnly) {
-                document.getElementById('scada-audit-btn')?.classList.remove('role-hidden');
+            if (sessionData.role === 'staff') {
+                document.querySelectorAll('#hourly-form input, #hourly-form select, #hourly-form textarea').forEach(el => { el.disabled = true; el.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-70'); });
+                document.querySelectorAll('#hourly-form button[type="submit"], #save-btn, .delete-btn, #scada-audit-btn').forEach(btn => { if (btn) btn.style.display = 'none'; });
+                const banner = document.createElement('div'); banner.className = 'fixed top-0 left-0 w-full bg-amber-500 text-white text-center text-[11px] font-black py-2.5 z-[9999] tracking-widest uppercase shadow-lg';
+                banner.innerText = '⚠️ READ-ONLY MODE: Management Staff cannot edit Hourly Logs.'; document.body.appendChild(banner);
             }
 
-            // Destructive / admin controls (delete-all-day, admin tabs, thresholds) are ADMIN-ONLY.
-            if (_isAdmin) {
+            if (sessionData.role === 'admin' || sessionData.role === 'staff' || sessionData.role === 'management') {
+                document.getElementById('scada-audit-btn')?.classList.remove('role-hidden');
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden'));
             }
-
-            // Read-only roles (staff, management) cannot edit or run any write/destructive action.
-            if (_isReadOnly) {
-                document.querySelectorAll('#hourly-form input, #hourly-form select, #hourly-form textarea').forEach(el => { el.disabled = true; el.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-70'); });
-                document.querySelectorAll('#hourly-form button[type="submit"], #save-btn, .delete-btn, .admin-only').forEach(btn => { if (btn) btn.style.display = 'none'; });
-                const banner = document.createElement('div'); banner.className = 'fixed top-0 left-0 w-full bg-amber-500 text-white text-center text-[11px] font-black py-2.5 z-[9999] tracking-widest uppercase shadow-lg';
-                banner.innerText = '⚠️ READ-ONLY MODE: Management staff cannot edit Hourly Logs.'; banner.setAttribute('role', 'status'); document.body.appendChild(banner);
-            }
+            loadThresholds();
             updateDates(); 
         } else {
             const userNameEl = document.getElementById('hourly-user-name');
@@ -2555,6 +2868,19 @@ window.downloadPDF = async function() {
                     if (t === '21:00' && l.remarks) shiftC = l.remarks;
                 });
 
+                const allRemarkOps = dayData.map(l => l.remarks).filter(Boolean);
+                const distinctOps = [...new Set(allRemarkOps)].filter(n => n !== shiftA && n !== shiftB && n !== shiftC);
+
+                if (shiftA && shiftB && shiftA.trim().toLowerCase() === shiftB.trim().toLowerCase()) {
+                    shiftB = distinctOps.length > 0 ? distinctOps.shift() : `${shiftB} (Relief / Shift B)`;
+                }
+                if (shiftA && shiftC && shiftA.trim().toLowerCase() === shiftC.trim().toLowerCase()) {
+                    shiftC = distinctOps.length > 0 ? distinctOps.shift() : `${shiftC} (Relief / Shift C)`;
+                }
+                if (shiftB && shiftC && shiftB.trim().toLowerCase() === shiftC.trim().toLowerCase()) {
+                    shiftC = distinctOps.length > 0 ? distinctOps.shift() : `${shiftC} (Relief / Shift C)`;
+                }
+
                 doc.autoTable({ 
                     html: table, startY: startY, theme: 'grid', useCss: false, 
                     styles: { font: 'times', fontSize: 7, cellPadding: 1.5, textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.5, halign: 'center', valign: 'middle' },
@@ -3038,46 +3364,94 @@ const DEFAULT_THRESHOLDS = {
     max_unit_mw: 5.3,
     max_out_mw: 10.6,
     hour_counter_max_mult: 1.1,
-    pmu_max_delta: 0.006,
+    pmu_max_delta: 0.00535,
     out_max_delta: 10.65,
+    hz_min: 49.5,
+    hz_max: 50.5,
+    kvar_min: -3000,
+    kvar_max: 3000,
     gen_v_min: 6.3,
     gen_v_max: 6.9,
     line_v_min: 31.9,
     line_v_max: 34.1,
-    hz_min: 49.5,
-    hz_max: 50.5,
     gen_a_min: 50,
     gen_a_max: 470,
+    line_a_min: 10,
+    line_a_max: 190,
     bearing_t_min: 15,
     bearing_t_max: 95,
+    gov_hyd_t_min: 15,
+    gov_hyd_t_max: 60,
+    temp_out_min: 10,
+    temp_out_max: 50,
+    temp_in_min: 10,
+    temp_in_max: 50,
+    temp_intake_min: -5,
+    temp_intake_max: 30,
+    trans_t_min: 15,
+    trans_t_max: 70,
+    trans_lvl_min: 3.0,
+    trans_lvl_max: 9.5,
+    trans_aux_lvl_min: 70,
+    trans_aux_lvl_max: 90,
     pressure_min: 830,
     pressure_max: 900,
-    trans_t_max: 70,
-    trans_lvl_max: 9.5
+    flow_min: 40,
+    flow_max: 50,
+    water_lvl_min: 0,
+    water_lvl_max: 1500,
+    dg_batt_min: 11.0,
+    dg_batt_max: 14.3,
+    dg_fuel_min: 10,
+    dg_fuel_max: 100
 };
 
 window.validationThresholds = { ...DEFAULT_THRESHOLDS };
 
 const THRESHOLD_FIELD_MAP = {
-    'th-max-unit-mw':          'max_unit_mw',
-    'th-max-out-mw':           'max_out_mw',
-    'th-hour-counter-max-mult':'hour_counter_max_mult',
-    'th-pmu-max-delta':        'pmu_max_delta',
-    'th-out-max-delta':        'out_max_delta',
-    'th-gen-v-min':            'gen_v_min',
-    'th-gen-v-max':            'gen_v_max',
-    'th-line-v-min':           'line_v_min',
-    'th-line-v-max':           'line_v_max',
-    'th-hz-min':               'hz_min',
-    'th-hz-max':               'hz_max',
-    'th-gen-a-min':            'gen_a_min',
-    'th-gen-a-max':            'gen_a_max',
-    'th-bearing-t-min':        'bearing_t_min',
-    'th-bearing-t-max':        'bearing_t_max',
-    'th-pressure-min':         'pressure_min',
-    'th-pressure-max':         'pressure_max',
-    'th-trans-t-max':          'trans_t_max',
-    'th-trans-lvl-max':        'trans_lvl_max'
+    'th-max-unit-mw':           'max_unit_mw',
+    'th-max-out-mw':            'max_out_mw',
+    'th-hour-counter-max-mult': 'hour_counter_max_mult',
+    'th-pmu-max-delta':         'pmu_max_delta',
+    'th-out-max-delta':         'out_max_delta',
+    'th-hz-min':                'hz_min',
+    'th-hz-max':                'hz_max',
+    'th-kvar-min':              'kvar_min',
+    'th-kvar-max':              'kvar_max',
+    'th-gen-v-min':             'gen_v_min',
+    'th-gen-v-max':             'gen_v_max',
+    'th-line-v-min':            'line_v_min',
+    'th-line-v-max':            'line_v_max',
+    'th-gen-a-min':             'gen_a_min',
+    'th-gen-a-max':             'gen_a_max',
+    'th-line-a-min':            'line_a_min',
+    'th-line-a-max':            'line_a_max',
+    'th-bearing-t-min':         'bearing_t_min',
+    'th-bearing-t-max':         'bearing_t_max',
+    'th-gov-hyd-t-min':         'gov_hyd_t_min',
+    'th-gov-hyd-t-max':         'gov_hyd_t_max',
+    'th-temp-out-min':          'temp_out_min',
+    'th-temp-out-max':          'temp_out_max',
+    'th-temp-in-min':           'temp_in_min',
+    'th-temp-in-max':           'temp_in_max',
+    'th-temp-intake-min':       'temp_intake_min',
+    'th-temp-intake-max':       'temp_intake_max',
+    'th-trans-t-min':           'trans_t_min',
+    'th-trans-t-max':           'trans_t_max',
+    'th-trans-lvl-min':         'trans_lvl_min',
+    'th-trans-lvl-max':         'trans_lvl_max',
+    'th-trans-aux-lvl-min':     'trans_aux_lvl_min',
+    'th-trans-aux-lvl-max':     'trans_aux_lvl_max',
+    'th-pressure-min':          'pressure_min',
+    'th-pressure-max':          'pressure_max',
+    'th-flow-min':              'flow_min',
+    'th-flow-max':              'flow_max',
+    'th-water-lvl-min':         'water_lvl_min',
+    'th-water-lvl-max':         'water_lvl_max',
+    'th-dg-batt-min':           'dg_batt_min',
+    'th-dg-batt-max':           'dg_batt_max',
+    'th-dg-fuel-min':           'dg_fuel_min',
+    'th-dg-fuel-max':           'dg_fuel_max'
 };
 
 async function loadThresholds() {

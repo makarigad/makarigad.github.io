@@ -13,6 +13,44 @@ window.generateTableHTML = function(logs, nepD, dateEng, monthName, isPdf = fals
         if (t === '21:00' && l.remarks) shiftC = l.remarks;
     });
 
+    // Handle operator shift overlap / common name conflict resolution:
+    // If an operator logged in multiple shifts, differentiate with secondary logged operators or distinct designation
+    const allRemarkOperators = logs.map(l => l.remarks).filter(Boolean);
+    const distinctOperators = [...new Set(allRemarkOperators)];
+
+    const resolveDuplicateShifts = (sA, sB, sC, pool) => {
+        let resA = sA, resB = sB, resC = sC;
+        const available = pool.filter(n => n && n !== resA && n !== resB && n !== resC);
+
+        if (resA && resB && resA.trim().toLowerCase() === resB.trim().toLowerCase()) {
+            if (available.length > 0) {
+                resB = available.shift();
+            } else {
+                resB = `${resB} (Relief / Shift B)`;
+            }
+        }
+        if (resA && resC && resA.trim().toLowerCase() === resC.trim().toLowerCase()) {
+            if (available.length > 0) {
+                resC = available.shift();
+            } else {
+                resC = `${resC} (Relief / Shift C)`;
+            }
+        }
+        if (resB && resC && resB.trim().toLowerCase() === resC.trim().toLowerCase()) {
+            if (available.length > 0) {
+                resC = available.shift();
+            } else {
+                resC = `${resC} (Relief / Shift C)`;
+            }
+        }
+        return { shiftA: resA, shiftB: resB, shiftC: resC };
+    };
+
+    const resolved = resolveDuplicateShifts(shiftA, shiftB, shiftC, distinctOperators);
+    shiftA = resolved.shiftA;
+    shiftB = resolved.shiftB;
+    shiftC = resolved.shiftC;
+
     const monthSelect = document.getElementById('export-month');
     let monthNum = 1;
     if (monthSelect && monthSelect.value) {

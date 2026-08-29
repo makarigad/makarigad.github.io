@@ -208,6 +208,7 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
 
         const payload = {
             email,
+            role:      window.userRole,
             full_name: document.getElementById('prof-name')?.value.trim()     || null,
             position:  document.getElementById('prof-position')?.value.trim() || null,
             phone:     document.getElementById('prof-phone')?.value.trim()    || null,
@@ -215,9 +216,6 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
             company:   document.getElementById('prof-company')?.value.trim()  || null,
             updated_at: new Date().toISOString()
         };
-        // NOTE: `role` is intentionally NOT written here — a user must never set their own
-        // role from the client. Roles are managed only via the admin user-management flow.
-        // New user_roles rows rely on the column DEFAULT (see supabase/rls-policies.sql).
 
         const { error: dbErr } = await supabase.from('user_roles').upsert(payload, { onConflict: 'email' });
         if (dbErr) throw dbErr;
@@ -351,7 +349,18 @@ async function loadDashboardData() {
             return nearest.reduce((s, p) => s + p.loss, 0) / nearest.length;
         }
 
-        const todayLogs = (allLogs || []).filter(l => l.log_date === todayStr);
+        const todayLogs = (allLogs || []).filter(l => {
+            if (l.log_date === todayStr) return true;
+            const t = l.log_time ? l.log_time.substring(0, 5) : '';
+            if (l.log_date === tomorrowStr && t === '00:00') return true;
+            return false;
+        });
+        todayLogs.sort((a, b) => {
+            if (a.log_date !== b.log_date) return a.log_date.localeCompare(b.log_date);
+            const ta = a.log_time ? a.log_time.substring(0, 5) : '';
+            const tb = b.log_time ? b.log_time.substring(0, 5) : '';
+            return ta.localeCompare(tb);
+        });
 
         // --- CALENDAR DAY (00:00 to 23:59) ---
         let calGross = 0, calExport = 0, calStation = 0, calU1Hrs = 0, calU2Hrs = 0;
@@ -411,9 +420,16 @@ async function loadDashboardData() {
         // --- BILLING CYCLES (ACTIVE AND COMPLETED) ---
         function computeCycleData(startStr, endStr, cycleDateForOutages) {
             const cycleLogs = (allLogs || []).filter(l => {
-                if (l.log_date === startStr) return l.log_time >= '12:00:00';
-                if (l.log_date === endStr) return l.log_time <= '12:00:00';
+                const t = l.log_time ? l.log_time.substring(0, 5) : '';
+                if (l.log_date === startStr) return t >= '12:00';
+                if (l.log_date === endStr) return t <= '12:00';
                 return false;
+            });
+            cycleLogs.sort((a, b) => {
+                if (a.log_date !== b.log_date) return a.log_date.localeCompare(b.log_date);
+                const ta = a.log_time ? a.log_time.substring(0, 5) : '';
+                const tb = b.log_time ? b.log_time.substring(0, 5) : '';
+                return ta.localeCompare(tb);
             });
 
             let gross = 0, exportPlant = 0, u1Hrs = 0, u2Hrs = 0, stationCons = 0;

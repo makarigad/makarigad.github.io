@@ -47,8 +47,8 @@
             </div>
             <div class="section-tab active" data-tab="tab-checkin">⚡ Check In/Out</div>
             <div class="section-tab" data-tab="tab-monthly">📅 Monthly View</div>
-            <div class="section-tab staff-only role-hidden text-rose-600" data-tab="tab-manage">⚙️ Admin Control</div>
-            <div class="section-tab staff-only role-hidden text-emerald-600" data-tab="tab-zones">🗺️ Polygon Geofencing</div>
+            <div class="section-tab staff-only text-rose-600" data-tab="tab-manage">⚙️ Admin Control & Staff Records</div>
+            <div class="section-tab staff-only text-emerald-600" data-tab="tab-zones">🗺️ Polygon Geofencing Editor</div>
         </div>
 
         <div class="p-6 flex-grow relative">
@@ -109,9 +109,13 @@
                     <div>
                         <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nepali Year</label>
                         <select id="att-nep-year" class="w-24 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700 outline-none cursor-pointer shadow-sm">
+                            <option value="2080">2080</option>
                             <option value="2081">2081</option>
-                            <option value="2082" selected>2082</option>
+                            <option value="2082">2082</option>
                             <option value="2083">2083</option>
+                            <option value="2084">2084</option>
+                            <option value="2085">2085</option>
+                            <option value="2086">2086</option>
                         </select>
                     </div>
                     <div>
@@ -127,8 +131,14 @@
                             <option value="Mangsir">Mangsir</option>
                             <option value="Poush">Poush</option>
                             <option value="Magh">Magh</option>
-                            <option value="Falgun" selected>Falgun</option>
+                            <option value="Falgun">Falgun</option>
                             <option value="Chaitra">Chaitra</option>
+                        </select>
+                    </div>
+                    <div id="monthly-staff-select-wrap">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Staff Member</label>
+                        <select id="monthly-staff-select" class="min-w-[180px] p-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-700 outline-none cursor-pointer shadow-sm">
+                            <option value="current">👤 My Records</option>
                         </select>
                     </div>
                     <button id="load-att-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-sm transition flex items-center gap-2">
@@ -138,9 +148,10 @@
                 
                 <div id="att-grid-wrap" class="overflow-x-auto rounded-xl border border-slate-200">
                     <table class="att-grid w-full text-left">
-                        <thead>
+                        <thead id="att-table-head">
                             <tr>
                                 <th>Date</th>
+                                <th>Staff Name / Email</th>
                                 <th>First In</th>
                                 <th>Last Out</th>
                                 <th>Total Hrs</th>
@@ -148,82 +159,191 @@
                             </tr>
                         </thead>
                         <tbody id="att-table-body">
-                            <tr><td colspan="5" class="text-center text-slate-400 py-8 italic text-sm">Select a month and click "Load Record"</td></tr>
+                            <tr><td colspan="6" class="text-center text-slate-400 py-8 italic text-sm">Select a month and click "Load Record"</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div id="tab-zones" class="tab-content hidden h-[65vh]">
-                <div class="flex flex-col h-full bg-slate-50/50 p-4 rounded-xl border border-slate-200">
-                    <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
-                        <div>
-                            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Polygon Work Zones</h2>
-                            <p class="text-xs text-slate-500 mt-1">Click multiple points on the map to draw exact property boundaries.</p>
+            <!-- POLYGON GEOFENCING TAB -->
+            <div id="tab-zones" class="tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Left Sidebar: Zone Management & Point Editor -->
+                    <div class="lg:col-span-5 flex flex-col gap-4">
+                        
+                        <!-- Zone Editor Card -->
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col gap-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div>
+                                    <h2 id="zone-editor-title" class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                        <span>Polygon Points Editor</span>
+                                    </h2>
+                                    <p id="zone-editor-subtitle" class="text-xs text-slate-500 mt-0.5">Click on the map or edit coordinates below.</p>
+                                </div>
+                                <button id="new-zone-btn" class="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-3 py-1.5 rounded-md transition flex items-center gap-1">
+                                    + New Zone
+                                </button>
+                            </div>
+
+                            <input type="hidden" id="editing-zone-id" value="">
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Zone Name</label>
+                                <input type="text" id="zone-name" placeholder="e.g. Powerhouse & Switchyard" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition">
+                            </div>
+
+                            <!-- Vertex Points Table -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                        Polygon Vertices (<span id="vertex-count">0</span> points)
+                                    </label>
+                                    <div class="flex items-center gap-2">
+                                        <button id="add-manual-point-btn" class="text-[10px] text-indigo-600 font-bold hover:underline">+ Add Point</button>
+                                        <button id="clear-shape-btn" class="text-[10px] text-rose-600 font-bold hover:underline">Clear Points</button>
+                                    </div>
+                                </div>
+                                <div id="vertex-points-list" class="max-h-48 overflow-y-auto custom-scroll border border-slate-200 rounded-lg divide-y divide-slate-100 bg-slate-50/50 p-1">
+                                    <div class="text-center text-xs text-slate-400 py-4 italic">No points drawn yet. Click anywhere on the map to place polygon vertices.</div>
+                                </div>
+                            </div>
+
+                            <!-- Editor Action Buttons -->
+                            <div class="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+                                <button id="save-zone-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs transition shadow-sm flex items-center justify-center gap-1.5">
+                                    <span>💾 Save Zone</span>
+                                </button>
+                                <button id="delete-zone-btn" class="hidden bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2.5 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1">
+                                    <span>🗑️ Delete</span>
+                                </button>
+                                <button id="cancel-edit-btn" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-3 rounded-lg text-xs transition flex items-center justify-center">
+                                    <span>Cancel</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="flex gap-2 items-center bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
-                            <input type="text" id="zone-name" placeholder="Zone Name (e.g. Dam Area)" class="border-none bg-transparent px-2 text-sm font-medium outline-none w-48">
-                            <div class="w-px h-5 bg-slate-200"></div>
-                            <button id="clear-shape-btn" class="text-xs font-semibold text-slate-500 hover:text-rose-600 transition px-2">↩ Clear Points</button>
-                            <button id="save-zone-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-md text-xs font-semibold transition">Save Zone</button>
+
+                        <!-- Active Saved Zones List -->
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col flex-grow">
+                            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center justify-between">
+                                <span>Active Work Zones (<span id="zones-total-badge">0</span>)</span>
+                                <span class="text-[10px] font-normal text-slate-400">Click a zone to edit points</span>
+                            </h3>
+                            <div id="saved-zones-list" class="space-y-2 max-h-56 overflow-y-auto custom-scroll pr-1">
+                                <div class="text-center text-xs text-slate-400 py-6 italic">Loading work zones...</div>
+                            </div>
                         </div>
+
                     </div>
-                    <div id="geofence-map" class="flex-grow rounded-xl border border-slate-300 z-0 overflow-hidden shadow-inner cursor-crosshair"></div>
+
+                    <!-- Right Main: Interactive Leaflet Map -->
+                    <div class="lg:col-span-7 flex flex-col h-[650px] bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-3">
+                        <div class="flex items-center justify-between mb-2 px-1">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span class="text-xs font-bold text-slate-700">Interactive Map Canvas</span>
+                                <span class="text-[11px] text-slate-400">(Drag vertex markers to reposition, click marker to remove)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="map-locate-btn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded transition">📍 My GPS</button>
+                                <button id="map-reset-btn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded transition">🗺️ Fit All</button>
+                            </div>
+                        </div>
+                        <div id="geofence-map" class="flex-grow rounded-lg border border-slate-200 z-0 overflow-hidden cursor-crosshair"></div>
+                    </div>
                 </div>
             </div>
             
+            <!-- ADMIN CONTROL & ALL STAFF RECORDS TAB -->
             <div id="tab-manage" class="tab-content hidden">
-                <div class="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-5 border-b border-slate-200 pb-3 flex items-center gap-2">
-                        <span class="text-lg">⚙️</span> Employee Attendance Management
-                    </h2>
+                <div class="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
+                    
+                    <div class="flex flex-wrap items-center justify-between border-b border-slate-200 pb-4 gap-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                                <span class="text-indigo-600">⚙️</span> All Staff Attendance & Geofencing Records
+                            </h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Comprehensive audit logs, verification status, and monthly employee hour summaries.</p>
+                        </div>
+                        
+                        <!-- View Mode Switcher -->
+                        <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">
+                            <button id="admin-view-summary-btn" class="px-3 py-1.5 rounded-md transition text-slate-600 hover:text-slate-900 active-view-tab bg-white text-indigo-700 shadow-sm">
+                                📊 Staff Monthly Roster
+                            </button>
+                            <button id="admin-view-logs-btn" class="px-3 py-1.5 rounded-md transition text-slate-600 hover:text-slate-900">
+                                📋 Detailed Log Events
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- KPI Metric Cards -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Staff Registered</div>
+                            <div id="admin-kpi-total-staff" class="text-2xl font-black text-slate-800 mt-1">0</div>
+                        </div>
+                        <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-100">
+                            <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Checked In Today</div>
+                            <div id="admin-kpi-today-in" class="text-2xl font-black text-emerald-700 mt-1">0</div>
+                        </div>
+                        <div class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-100">
+                            <div class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Total Month Hours</div>
+                            <div id="admin-kpi-month-hours" class="text-2xl font-black text-indigo-700 mt-1">0.0 hrs</div>
+                        </div>
+                        <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-100">
+                            <div class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Geofence Compliance</div>
+                            <div id="admin-kpi-compliance" class="text-2xl font-black text-amber-700 mt-1">100%</div>
+                        </div>
+                    </div>
             
-                    <div class="flex flex-wrap items-end gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <!-- Filter Controls -->
+                    <div class="flex flex-wrap items-end gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nepali Year</label>
-                            <select id="admin-nep-year" class="p-2 border border-slate-300 rounded-md text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500 w-24">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nepali Year</label>
+                            <select id="admin-nep-year" class="p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500 w-24">
+                                <option value="2080">2080</option>
                                 <option value="2081">2081</option>
-                                <option value="2082" selected>2082</option>
+                                <option value="2082">2082</option>
                                 <option value="2083">2083</option>
+                                <option value="2084">2084</option>
+                                <option value="2085">2085</option>
+                                <option value="2086">2086</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nepali Month</label>
-                            <select id="admin-nep-month" class="p-2 border border-slate-300 rounded-md text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500 w-32">
-                                <option value="1">Baisakh</option><option value="2">Jestha</option><option value="3">Ashadh</option>
-                                <option value="4">Shrawan</option><option value="5">Bhadra</option><option value="6">Ashoj</option>
-                                <option value="7">Kartik</option><option value="8">Mangsir</option><option value="9">Poush</option>
-                                <option value="10">Magh</option><option value="11" selected>Falgun</option><option value="12">Chaitra</option>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nepali Month</label>
+                            <select id="admin-nep-month" class="p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500 w-32">
+                                <option value="Baisakh">Baisakh</option><option value="Jestha">Jestha</option><option value="Ashadh">Ashadh</option>
+                                <option value="Shrawan">Shrawan</option><option value="Bhadra">Bhadra</option><option value="Ashoj">Ashoj</option>
+                                <option value="Kartik">Kartik</option><option value="Mangsir">Mangsir</option><option value="Poush">Poush</option>
+                                <option value="Magh">Magh</option><option value="Falgun">Falgun</option><option value="Chaitra">Chaitra</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Select Employee</label>
-                            <select id="admin-emp-select" class="p-2 border border-slate-300 rounded-md text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500 w-48 lg:w-64">
-                                <option value="">-- All Staff --</option>
-                                </select>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Employee</label>
+                            <select id="admin-emp-select" class="p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-indigo-500 min-w-[200px]">
+                                <option value="">-- All Staff Members --</option>
+                            </select>
                         </div>
-                        <div class="flex gap-3 ml-auto">
-                            <button id="admin-load-btn" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-md text-sm font-semibold transition shadow-sm">Load Data</button>
-                            <button id="admin-export-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition shadow-sm flex items-center gap-2">
-                                📊 Export CSV
+                        <div class="flex gap-2 ml-auto">
+                            <button id="admin-load-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                <span>🔍 Load Records</span>
+                            </button>
+                            <button id="admin-export-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                <span>📊 Export CSV</span>
                             </button>
                         </div>
                     </div>
             
-                    <div class="flex-grow overflow-x-auto rounded-lg border border-slate-200 max-h-[50vh] custom-scroll">
+                    <!-- Data Table Section -->
+                    <div id="admin-data-container" class="flex-grow overflow-x-auto rounded-xl border border-slate-200 max-h-[50vh] custom-scroll">
                         <table class="att-grid w-full text-left">
-                            <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                <tr>
-                                    <th>Eng Date</th>
-                                    <th>Employee Info</th>
-                                    <th>Type</th>
-                                    <th>Time</th>
-                                    <th>Work Zone</th>
-                                    <th>GPS Status</th>
-                                </tr>
+                            <thead id="admin-table-head" class="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                <!-- Populated dynamically based on View Mode -->
                             </thead>
                             <tbody id="admin-table-body">
-                                <tr><td colspan="6" class="text-center text-slate-400 py-8 italic text-sm">Select month and click "Load Data" to view logs.</td></tr>
+                                <tr><td colspan="7" class="text-center text-slate-400 py-8 italic text-sm">Select month and click "Load Records" to view logs.</td></tr>
                             </tbody>
                         </table>
                     </div>

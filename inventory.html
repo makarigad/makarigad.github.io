@@ -962,7 +962,7 @@ function renderStoreChips() {
 
     wrap.innerHTML = chips.map(c => {
         const active = (selectedStoreId || '') === c.id;
-        return `<button type="button" data-store="${c.id}" class="store-chip shrink-0 px-3 py-2 rounded-xl text-xs font-bold border transition ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}">${escapeHTML(c.name)}</button>`;
+        return `<button type="button" data-store="${c.id}" class="store-chip shrink-0 px-3 py-2 rounded-xl text-xs font-bold border transition ${active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}">${c.name}</button>`;
     }).join('');
     
     if (!wrap.dataset.listener) {
@@ -1002,8 +1002,7 @@ function renderItemCards(items) {
     
     grid.innerHTML = items.map(item => {
         const stock = Number(item.current_stock);
-        // Preserve a legitimate min_stock of 0 (=> "never low"); only default when unset.
-        const minStock = (item.min_stock === null || item.min_stock === undefined || item.min_stock === '') ? 20 : Number(item.min_stock);
+        const minStock = Number(item.min_stock || 20);
         const isZero = stock <= 0;
         const isLow = stock > 0 && stock <= minStock; 
 
@@ -1020,10 +1019,10 @@ function renderItemCards(items) {
         const loc = item.store_id ? storeName(item.store_id) : (item.store_location || '—');
         
         return `<button type="button" data-item-id="${item.id}" class="item-card text-left glass-panel rounded-2xl p-4 border transition active:scale-[0.98] ${isZero ? 'border-rose-400 shadow-[0_0_15px_rgba(225,29,72,0.15)]' : 'border-slate-100 hover:border-indigo-300'}">
-          ${item.photo_url ? `<img src="${escapeHTML(item.photo_url)}" alt="" class="w-full h-24 object-cover rounded-xl mb-2 bg-slate-100" onerror="this.classList.add('hidden')">` : ''}
-
+          ${item.photo_url ? `<img src="${item.photo_url}" alt="" class="w-full h-24 object-cover rounded-xl mb-2 bg-slate-100" onerror="this.classList.add('hidden')">` : ''}
+          
           <div class="flex justify-between items-start mb-1">
-            <div class="text-[10px] font-bold uppercase ${catBadge(item.category)} inline-block px-2 py-0.5 rounded">${escapeHTML(item.category)}</div>
+            <div class="text-[10px] font-bold uppercase ${catBadge(item.category)} inline-block px-2 py-0.5 rounded">${item.category}</div>
             <div class="text-[10px] font-black px-1.5 py-0.5 rounded border ${statusColors}">${statusDot} ${isZero ? 'OUT OF STOCK' : (isLow ? 'LOW STOCK' : 'IN STOCK')}</div>
           </div>
           
@@ -1031,7 +1030,7 @@ function renderItemCards(items) {
           <div class="text-xs text-slate-500 mt-1 truncate">📍 ${escapeHTML(loc)}</div>
           
           <div class="mt-4 flex justify-between items-end">
-            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">${escapeHTML(item.unit)}</span>
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">${item.unit}</span>
             <span class="text-2xl font-black ${isZero ? 'text-rose-600' : 'text-slate-800'} tabular-nums leading-none">${stock.toLocaleString()}</span>
           </div>
         </button>`;
@@ -1043,7 +1042,7 @@ function renderItemCards(items) {
     if (tbody) {
         tbody.innerHTML = items.map(item => `<tr class="cursor-pointer hover:bg-indigo-50" data-item-id="${item.id}">
           <td class="px-3 py-2 font-bold">${escapeHTML(item.item_name)}</td>
-          <td class="px-2 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${catBadge(item.category)}">${escapeHTML(item.category)}</span></td>
+          <td class="px-2 py-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${catBadge(item.category)}">${item.category}</span></td>
           <td class="px-2 py-2 text-slate-500">${escapeHTML(item.store_id ? storeName(item.store_id) : item.store_location || '—')}</td>
           <td class="px-2 py-2 text-right font-black">${Number(item.current_stock).toLocaleString()}</td>
         </tr>`).join('');
@@ -1080,7 +1079,7 @@ function setupFilters() {
 function setupSearch() { $('search-inventory')?.addEventListener('input', filterAndSearch); }
 
 function populateSelects() {
-    const storeOpts = stores.map(s => `<option value="${s.id}">${escapeHTML(s.name)}</option>`).join('');
+    const storeOpts = stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
     ['ni-store', 'ff-to-store', 'ff-from-store', 'ff-to-store-t', 'ff-store-consume', 'new-eq-store', 'mi-global-store', 'txn-to-store', 'qt-to-store'].forEach(id => {
         const el = $(id);
         if (el) {
@@ -1091,7 +1090,7 @@ function populateSelects() {
     });
     
     const pumpEl = $('ff-pump');
-    if (pumpEl) pumpEl.innerHTML = pumps.map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('') || '<option value="">Add pumps in setup</option>';
+    if (pumpEl) pumpEl.innerHTML = pumps.map(p => `<option value="${p.id}">${p.name}</option>`).join('') || '<option value="">Add pumps in setup</option>';
     
     const qt = $('qt-item');
     if (qt) qt.innerHTML = allItems.map(i => `<option value="${i.id}">${escapeHTML(i.item_name)} (${Number(i.current_stock)} ${escapeHTML(i.unit)}) - ${escapeHTML(i.store_location || 'No Store')}</option>`).join('');
@@ -1104,7 +1103,7 @@ function refreshEquipmentSelect(fuelType) {
     if (!el) return;
     let list = equipment;
     if (fuelType) list = list.filter(e => e.fuel_type === fuelType);
-    el.innerHTML = list.map(e => `<option value="${e.id}">${escapeHTML(e.name)} (${escapeHTML(e.fuel_type)})</option>`).join('') || '<option value="">Add equipment in setup</option>';
+    el.innerHTML = list.map(e => `<option value="${e.id}">${e.name} (${e.fuel_type})</option>`).join('') || '<option value="">Add equipment in setup</option>';
 }
 
 // --- Shared Utility ---
@@ -1153,11 +1152,11 @@ async function openItemDetail(itemId) {
     const loc = item.store_id ? storeName(item.store_id) : (item.store_location || '—');
     let html = `
       <div class="grid grid-cols-2 gap-3">
-        <div class="bg-slate-50 rounded-xl p-3"><div class="text-[10px] font-bold text-slate-400 uppercase">In stock</div><div class="text-2xl font-black text-indigo-600">${Number(item.current_stock).toLocaleString()} ${escapeHTML(item.unit)}</div></div>
-        <div class="bg-slate-50 rounded-xl p-3"><div class="text-[10px] font-bold text-slate-400 uppercase">Store</div><div class="text-sm font-bold text-slate-800">${escapeHTML(loc)}</div></div>
+        <div class="bg-slate-50 rounded-xl p-3"><div class="text-[10px] font-bold text-slate-400 uppercase">In stock</div><div class="text-2xl font-black text-indigo-600">${Number(item.current_stock).toLocaleString()} ${item.unit}</div></div>
+        <div class="bg-slate-50 rounded-xl p-3"><div class="text-[10px] font-bold text-slate-400 uppercase">Store</div><div class="text-sm font-bold text-slate-800">${loc}</div></div>
       </div>
-      ${item.photo_url ? `<img src="${escapeHTML(item.photo_url)}" class="w-full max-h-48 object-contain rounded-xl border bg-slate-50" alt="">` : ''}
-      ${item.description ? `<p class="text-sm text-slate-600">${escapeHTML(item.description)}</p>` : ''}
+      ${item.photo_url ? `<img src="${item.photo_url}" class="w-full max-h-48 object-contain rounded-xl border bg-slate-50" alt="">` : ''}
+      ${item.description ? `<p class="text-sm text-slate-600">${item.description}</p>` : ''}
       
       <div class="flex flex-wrap gap-2 staff-only role-hidden hidden">
         <button type="button" id="detail-in" class="flex-1 min-w-[120px] py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-black">Receive IN</button>
@@ -1171,7 +1170,7 @@ async function openItemDetail(itemId) {
             <div class="flex gap-2 mt-1">
                 <select id="detail-store-select" class="flex-grow p-2 border rounded-lg text-xs font-bold text-slate-700 bg-slate-50">
                     <option value="">-- No specific store --</option>
-                    ${stores.map(s => `<option value="${s.id}" ${item.store_id === s.id ? 'selected' : ''}>${escapeHTML(s.name)}</option>`).join('')}
+                    ${stores.map(s => `<option value="${s.id}" ${item.store_id === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
                 </select>
                 <button type="button" id="detail-save-store" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black">Update</button>
             </div>
@@ -1179,7 +1178,7 @@ async function openItemDetail(itemId) {
         <div>
             <label class="text-[10px] font-bold text-slate-500 uppercase">Photo URL</label>
             <div class="flex gap-2 mt-1">
-                <input id="detail-photo-url" type="url" value="${escapeHTML(item.photo_url || '')}" class="flex-grow p-2 border rounded-lg text-xs">
+                <input id="detail-photo-url" type="url" value="${item.photo_url || ''}" class="flex-grow p-2 border rounded-lg text-xs">
                 <button type="button" id="detail-save-photo" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black">Save</button>
             </div>
         </div>
@@ -1196,13 +1195,13 @@ async function openItemDetail(itemId) {
     (logs || []).forEach(log => {
         const pump = pumps.find(p => p.id === log.pump_id);
         const eq = equipment.find(e => e.id === log.equipment_id);
-        const who = escapeHTML(log.created_by_name || log.created_by_email || '—');
+        const who = log.created_by_name || log.created_by_email || '—';
         const when = log.created_at ? new Date(log.created_at).toLocaleString('en-NP', { timeZone: 'Asia/Kathmandu' }) : log.log_date;
         const canEdit = canEditLog(log);
-
-        let descHtml = log.purpose ? escapeHTML(log.purpose) : '';
-        if (log.notes) descHtml += ` <span class="text-slate-400 italic">(${escapeHTML(log.notes)})</span>`;
-        if (!descHtml) descHtml = escapeHTML(log.txn_subtype || '—');
+        
+        let descHtml = log.purpose ? log.purpose : '';
+        if (log.notes) descHtml += ` <span class="text-slate-400 italic">(${log.notes})</span>`;
+        if (!descHtml) descHtml = log.txn_subtype || '—';
 
         html += `<div class="border rounded-xl p-3 text-xs ${log.txn_type === 'IN' ? 'border-emerald-100 bg-emerald-50/50' : 'border-rose-100 bg-rose-50/50'}">
           <div class="flex justify-between gap-2">
@@ -1210,11 +1209,11 @@ async function openItemDetail(itemId) {
             <span class="text-slate-500">${log.log_date}</span>
           </div>
           <p class="text-slate-600 mt-1">${descHtml}</p>
-          ${pump ? `<p>⛽ Pump: <b>${escapeHTML(pump.name)}</b></p>` : ''}
-          ${eq ? `<p>🔧 Equipment: <b>${escapeHTML(eq.name)}</b></p>` : ''}
-          ${log.from_store_id || log.to_store_id ? `<p>↔ ${log.from_store_id ? 'From ' + escapeHTML(storeName(log.from_store_id)) : ''} ${log.to_store_id ? '→ ' + escapeHTML(storeName(log.to_store_id)) : ''}</p>` : ''}
-          <p class="text-slate-400 mt-1">By ${who} · ${when}${log.geo_label ? ' · 📍 ' + escapeHTML(log.geo_label) : ''}</p>
-          ${log.modified_by_email ? `<p class="text-amber-700">Edited by ${escapeHTML(log.modified_by_name || log.modified_by_email)}</p>` : ''}
+          ${pump ? `<p>⛽ Pump: <b>${pump.name}</b></p>` : ''}
+          ${eq ? `<p>🔧 Equipment: <b>${eq.name}</b></p>` : ''}
+          ${log.from_store_id || log.to_store_id ? `<p>↔ ${log.from_store_id ? 'From ' + storeName(log.from_store_id) : ''} ${log.to_store_id ? '→ ' + storeName(log.to_store_id) : ''}</p>` : ''}
+          <p class="text-slate-400 mt-1">By ${who} · ${when}${log.geo_label ? ' · 📍 ' + log.geo_label : ''}</p>
+          ${log.modified_by_email ? `<p class="text-amber-700">Edited by ${log.modified_by_name || log.modified_by_email}</p>` : ''}
           ${canEdit ? `<button type="button" class="edit-log-btn mt-2 text-indigo-600 font-bold" data-log-id="${log.id}">Edit</button>` : ''}
         </div>`;
     });
@@ -1225,7 +1224,7 @@ async function openItemDetail(itemId) {
     if (audits?.length) {
         html += '<h4 class="font-black text-slate-700 text-sm mt-4">Change log</h4><ul class="text-xs space-y-1 text-slate-500">';
         audits.forEach(a => {
-            html += `<li>${new Date(a.created_at).toLocaleString('en-NP', { timeZone: 'Asia/Kathmandu' })} — <b>${escapeHTML(a.user_name || a.user_email)}</b>: ${escapeHTML(a.summary)}</li>`;
+            html += `<li>${new Date(a.created_at).toLocaleString('en-NP', { timeZone: 'Asia/Kathmandu' })} — <b>${a.user_name || a.user_email}</b>: ${a.summary}</li>`;
         });
         html += '</ul>';
     }
@@ -1455,10 +1454,6 @@ function setupFuelFlowModal() {
         const fuelType = $('ff-fuel-type').value;
         const date = $('ff-date').value;
         const qty = parseFloat($('ff-qty').value);
-        if (!Number.isFinite(qty) || qty <= 0) {
-            showToast('Enter a valid quantity greater than zero.', 'error');
-            btn.disabled = false; btn.textContent = origText; return;
-        }
         const notes = $('ff-notes').value;
         
         try {
@@ -1589,7 +1584,7 @@ function setupAdminSetup() {
 
 function renderSetupLists() {
     const sl = $('setup-store-list');
-    if (sl) sl.innerHTML = stores.map(s => `<li class="flex justify-between border-b py-2"><span>${escapeHTML(s.name)}${s.is_temporary ? ' <span class="text-amber-600 text-[10px]">(temp)</span>' : ''}</span>${isAdmin() ? `<button type="button" class="text-rose-600 text-[10px] font-bold del-store" data-id="${s.id}">Remove</button>` : ''}</li>`).join('');
+    if (sl) sl.innerHTML = stores.map(s => `<li class="flex justify-between border-b py-2"><span>${s.name}${s.is_temporary ? ' <span class="text-amber-600 text-[10px]">(temp)</span>' : ''}</span>${isAdmin() ? `<button type="button" class="text-rose-600 text-[10px] font-bold del-store" data-id="${s.id}">Remove</button>` : ''}</li>`).join('');
     
     sl?.querySelectorAll('.del-store').forEach(btn => btn.addEventListener('click', async () => {
         if (!confirm('Deactivate this store?')) return;
@@ -1599,10 +1594,10 @@ function renderSetupLists() {
     }));
     
     const pumpList = $('setup-pump-list');
-    if (pumpList) pumpList.innerHTML = pumps.map(p => `<li class="border-b py-2">${escapeHTML(p.name)}</li>`).join('');
+    if (pumpList) pumpList.innerHTML = pumps.map(p => `<li class="border-b py-2">${p.name}</li>`).join('');
     
     const eqList = $('setup-equipment-list');
-    if (eqList) eqList.innerHTML = equipment.map(e => `<li class="border-b py-2">${escapeHTML(e.name)} <span class="text-slate-400">(${escapeHTML(e.fuel_type)})</span></li>`).join('');
+    if (eqList) eqList.innerHTML = equipment.map(e => `<li class="border-b py-2">${e.name} <span class="text-slate-400">(${e.fuel_type})</span></li>`).join('');
 }
 
 function setupForms() {
@@ -1630,7 +1625,6 @@ function setupForms() {
             }
             const type = $('txn-type').value;
             const qty = parseFloat($('txn-qty').value);
-            if (!Number.isFinite(qty) || qty <= 0) throw new Error('Enter a valid quantity greater than zero.');
             
             let checkStock = Number(currentItem.current_stock);
             if (oldLog && oldLog.txn_type === 'OUT') checkStock += Number(oldLog.quantity);
@@ -1756,13 +1750,11 @@ function setupForms() {
         currentItem = allItems.find(i => i.id === itemId);
         try {
             const geo = await captureGeo();
-            const qtyVal = parseFloat($('qt-qty').value);
-            if (!Number.isFinite(qtyVal) || qtyVal <= 0) throw new Error('Enter a valid quantity greater than zero.');
             await insertLog({
                 item_id: itemId,
                 log_date: $('qt-date').value,
                 txn_type: $('qt-type').value,
-                quantity: qtyVal,
+                quantity: parseFloat($('qt-qty').value),
                 purpose: $('qt-purpose').value || null
             }, geo);
             showToast('Entry saved');
@@ -2076,8 +2068,8 @@ function setupFuelImporter() {
 
         const buildTableHTML = (defaultTitle, data, internalKey) => {
             if(data.length === 0) return '';
-            const fuelOptions = fuelItems.map(i => `<option value="${i.id}" ${i.item_name === defaultTitle ? 'selected' : ''}>${escapeHTML(i.item_name)}</option>`).join('');
-            const storeOptions = stores.map(s => `<option value="${s.id}">${escapeHTML(s.name)}</option>`).join('');
+            const fuelOptions = fuelItems.map(i => `<option value="${i.id}" ${i.item_name === defaultTitle ? 'selected' : ''}>${i.item_name}</option>`).join('');
+            const storeOptions = stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
             let html = `
             <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col min-h-[250px] mb-4">
@@ -2115,7 +2107,7 @@ function setupFuelImporter() {
                 const badge = r.isDupe ? `<span class="ml-1 text-[7px] bg-amber-200 text-amber-800 px-1 rounded">Skip (Exists)</span>` : '';
                 const checkedStr = r.isDupe ? '' : 'checked';
                 
-                html += `<tr class="${isOp} ${isDup} hover:bg-slate-50 transition"><td class="px-2 py-1 border-r border-slate-100"><input type="checkbox" class="row-cb accent-indigo-600" data-id="${r.id}" ${checkedStr}></td><td class="px-2 py-1">${escapeHTML(r.rawDate)}</td><td class="px-2 py-1 truncate max-w-[120px]" title="${escapeHTML(r.desc)}">${escapeHTML(r.desc)} ${badge}</td><td class="px-2 py-1 text-right font-bold">${r.rec || ''}</td><td class="px-2 py-1 text-right font-bold">${r.iss || ''}</td></tr>`;
+                html += `<tr class="${isOp} ${isDup} hover:bg-slate-50 transition"><td class="px-2 py-1 border-r border-slate-100"><input type="checkbox" class="row-cb accent-indigo-600" data-id="${r.id}" ${checkedStr}></td><td class="px-2 py-1">${r.rawDate}</td><td class="px-2 py-1 truncate max-w-[120px]" title="${r.desc}">${r.desc} ${badge}</td><td class="px-2 py-1 text-right font-bold">${r.rec || ''}</td><td class="px-2 py-1 text-right font-bold">${r.iss || ''}</td></tr>`;
             });
             html += `</tbody></table></div></div>`;
             return html;
@@ -2145,7 +2137,7 @@ function setupFuelImporter() {
                             if (error) throw error;
                             allItems.push(data);
                             showToast(`New tank "${newName}" created!`);
-                            const newOptions = allItems.filter(i => i.category === 'Fuel').map(i => `<option value="${i.id}" ${i.id === data.id ? 'selected' : ''}>${escapeHTML(i.item_name)}</option>`).join('');
+                            const newOptions = allItems.filter(i => i.category === 'Fuel').map(i => `<option value="${i.id}" ${i.id === data.id ? 'selected' : ''}>${i.item_name}</option>`).join('');
                             e.target.innerHTML = newOptions + `<option value="CREATE_NEW" class="text-indigo-600">+ Create New Tank</option>`;
                         } catch(err) {
                             showToast("Error creating tank: " + err.message, 'error');
@@ -2363,13 +2355,13 @@ function setupMaterialsImporter() {
             html += `<tr class="hover:bg-slate-50 transition border-b border-slate-100">
                 <td class="px-3 py-2"><input type="checkbox" class="mat-row-cb accent-indigo-600 w-3.5 h-3.5" data-sn="${item.sn}" checked></td>
                 <td class="px-3 py-2 font-bold text-slate-500">${item.sn}</td>
-                <td class="px-3 py-2 truncate max-w-[200px] font-bold" title="${escapeHTML(item.name)}">${escapeHTML(item.name)}</td>
-                <td class="px-3 py-2 text-slate-500">${escapeHTML(item.unit)}</td>
+                <td class="px-3 py-2 truncate max-w-[200px] font-bold" title="${item.name.replace(/"/g, '&quot;')}">${item.name}</td>
+                <td class="px-3 py-2 text-slate-500">${item.unit}</td>
                 <td class="px-3 py-2 font-black text-indigo-600 text-center">${item.txns.length}</td>
                 <td class="px-3 py-2">
                     <select class="mat-store-select border border-slate-300 rounded p-1 text-[10px] w-full" data-sn="${item.sn}">
                         <option value="">-- No specific store --</option>
-                        ${stores.map(s => `<option value="${s.id}">${escapeHTML(s.name)}</option>`).join('')}
+                        ${stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
                     </select>
                 </td>
                 <td class="px-3 py-2">
@@ -2601,12 +2593,12 @@ function setupReports() {
             const buildHTML = (title, itemObj, data) => {
                 const itemName = itemObj.item_name;
                 const safeName = itemName.replace(/"/g, '&quot;');
-                const unitStr = `(${escapeHTML(itemObj.unit)})`;
+                const unitStr = `(${itemObj.unit})`;
                 
                 let html = `
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 break-inside-avoid">
                     <div class="flex justify-between items-center mb-3">
-                        <h4 class="text-sm font-black text-indigo-900">${escapeHTML(title)}</h4>
+                        <h4 class="text-sm font-black text-indigo-900">${title}</h4>
                         <div class="flex gap-2 print-hide">
                             <button type="button" class="report-txn-btn px-2.5 py-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded text-[9px] font-bold shadow-sm transition" data-type="IN" data-item="${safeName}">+ IN</button>
                             <button type="button" class="report-txn-btn px-2.5 py-1 bg-rose-100 text-rose-700 hover:bg-rose-200 rounded text-[9px] font-bold shadow-sm transition" data-type="OUT" data-item="${safeName}">+ OUT</button>
@@ -2640,7 +2632,7 @@ function setupReports() {
                                 <button type="button" onclick="deleteTxn('${r.id}')" class="px-1.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded transition font-bold text-[9px]">Del</button>
                             </div>
                         </td>` : ''}
-                        <td>${i+1}</td><td>${r.date}</td><td>${escapeHTML(r.desc)}</td><td class="text-right text-emerald-600 font-bold">${formatNum(r.rec)}</td><td class="text-right text-rose-600 font-bold">${formatNum(r.iss)}</td><td class="text-right font-black">${formatNum(r.bal)}</td><td class="text-slate-500">${escapeHTML(r.req || '')}</td><td class="text-slate-500">${escapeHTML(r.app || '')}</td><td class="text-slate-500">${escapeHTML(r.rem || '')}</td>
+                        <td>${i+1}</td><td>${r.date}</td><td>${r.desc}</td><td class="text-right text-emerald-600 font-bold">${formatNum(r.rec)}</td><td class="text-right text-rose-600 font-bold">${formatNum(r.iss)}</td><td class="text-right font-black">${formatNum(r.bal)}</td><td class="text-slate-500">${r.req || ''}</td><td class="text-slate-500">${r.app || ''}</td><td class="text-slate-500">${r.rem || ''}</td>
                     </tr>`;
                 });
                 
@@ -2694,7 +2686,7 @@ function setupReports() {
                 summaryRows.forEach(row => {
                     rightHtml += `
                         <tr>
-                            <td class="font-bold whitespace-nowrap">${escapeHTML(row.name)}</td>
+                            <td class="font-bold whitespace-nowrap">${row.name}</td>
                             <td class="text-right text-indigo-600">${formatNum(row.opening)}</td>
                             <td class="text-right text-emerald-600">${formatNum(row.received)}</td>
                             <td class="text-right text-rose-600">${formatNum(row.consumed)}</td>

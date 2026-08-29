@@ -91,8 +91,16 @@
             </select>
           </div>
           <div>
-            <label class="form-label">Operator Name <span class="text-slate-400 font-normal lowercase">(auto-filled)</span></label>
-            <input id="entry-operator" type="text" class="form-input bg-slate-50" readonly>
+            <label class="form-label flex justify-between items-center">
+              <span>Operator Name</span>
+              <button type="button" id="btn-toggle-operator-override" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">Change / Select Other</button>
+            </label>
+            <div class="relative">
+              <input id="entry-operator" type="text" class="form-input bg-slate-50" readonly>
+              <select id="entry-operator-select" class="form-input hidden">
+                <option value="">-- Choose Operator from List --</option>
+              </select>
+            </div>
           </div>
           <div>
             <label class="form-label">Weather (select)</label>

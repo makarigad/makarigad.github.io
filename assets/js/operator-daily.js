@@ -1,4 +1,4 @@
-import { supabase, initializeApplication, showNotification, safeUpsert, escapeHtml } from './core-app.js';
+import { supabase, initializeApplication, showNotification, safeUpsert } from './core-app.js';
 import { calendarMap } from './plant-data.js';
 
 let currentUser = null, userRole = 'operator', currentUserName = '';
@@ -96,15 +96,15 @@ async function loadShiftEntries(date) {
       <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 hover:border-indigo-200 transition">
         <div class="flex items-start justify-between gap-3 mb-2">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">${e.shift ? escapeHtml(e.shift) + ' Shift' : ''}</span>
-            <span class="text-xs font-bold text-slate-700">${escapeHtml(e.operator_name || 'Unknown')}</span>
-            ${e.weather ? `<span class="text-xs text-slate-500 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">${escapeHtml(e.weather)}${e.weather_from ? ' ' + escapeHtml(e.weather_from) + '–' + escapeHtml(e.weather_to) : ''}</span>` : ''}
+            <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">${e.shift ? e.shift + ' Shift' : ''}</span>
+            <span class="text-xs font-bold text-slate-700">${e.operator_name || 'Unknown'}</span>
+            ${e.weather ? `<span class="text-xs text-slate-500 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">${e.weather}${e.weather_from ? ' ' + e.weather_from + '–' + e.weather_to : ''}</span>` : ''}
           </div>
           <span class="text-[10px] text-slate-400 shrink-0">${new Date(e.created_at).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}</span>
         </div>
-        ${e.major_task ? `<p class="text-sm text-slate-700 mb-1"><span class="font-bold text-slate-500">Task:</span> ${escapeHtml(e.major_task)}</p>` : ''}
-        ${e.remark ? `<p class="text-sm text-amber-700 mb-1"><span class="font-bold">Remark:</span> ${escapeHtml(e.remark)}</p>` : ''}
-        ${e.note_for_management ? `<p class="text-sm text-indigo-700"><span class="font-bold">Note:</span> ${escapeHtml(e.note_for_management)}</p>` : ''}
+        ${e.major_task ? `<p class="text-sm text-slate-700 mb-1"><span class="font-bold text-slate-500">Task:</span> ${e.major_task}</p>` : ''}
+        ${e.remark ? `<p class="text-sm text-amber-700 mb-1"><span class="font-bold">Remark:</span> ${e.remark}</p>` : ''}
+        ${e.note_for_management ? `<p class="text-sm text-indigo-700"><span class="font-bold">Note:</span> ${e.note_for_management}</p>` : ''}
       </div>
     `).join('');
   } catch(e) {
@@ -115,6 +115,53 @@ async function loadShiftEntries(date) {
 document.getElementById('btn-load-entries')?.addEventListener('click', () => {
   const d = document.getElementById('view-date')?.value;
   if (d) loadShiftEntries(d);
+});
+
+let allStaffList = [];
+
+async function loadStaffOptions() {
+    try {
+        const { data } = await supabase.from('user_roles').select('full_name, email').order('full_name');
+        if (data) {
+            allStaffList = data;
+            const select = document.getElementById('maint-staff');
+            if(select) {
+                select.innerHTML = data.map(u => 
+                    `<option value="${u.full_name || u.email}">${u.full_name || u.email}</option>`
+                ).join('');
+            }
+            const opSelect = document.getElementById('entry-operator-select');
+            if (opSelect) {
+                opSelect.innerHTML = '<option value="">-- Choose Operator from List --</option>' + 
+                    data.map(u => `<option value="${u.full_name || u.email}">${u.full_name || u.email}</option>`).join('');
+            }
+        }
+    } catch (e) { console.error('Failed to load staff', e); }
+}
+
+// Toggle operator override selection
+document.getElementById('btn-toggle-operator-override')?.addEventListener('click', () => {
+    const input = document.getElementById('entry-operator');
+    const select = document.getElementById('entry-operator-select');
+    const btn = document.getElementById('btn-toggle-operator-override');
+    if (!input || !select) return;
+
+    if (select.classList.contains('hidden')) {
+        select.classList.remove('hidden');
+        input.classList.add('hidden');
+        if (btn) btn.textContent = 'Use My Name';
+        if (input.value) select.value = input.value;
+    } else {
+        select.classList.add('hidden');
+        input.classList.remove('hidden');
+        if (btn) btn.textContent = 'Change / Select Other';
+        input.value = currentUserName;
+    }
+});
+
+document.getElementById('entry-operator-select')?.addEventListener('change', (e) => {
+    const input = document.getElementById('entry-operator');
+    if (input && e.target.value) input.value = e.target.value;
 });
 
 document.getElementById('daily-form')?.addEventListener('submit', async (e) => {
@@ -128,19 +175,66 @@ document.getElementById('daily-form')?.addEventListener('submit', async (e) => {
   const shift = document.getElementById('entry-shift')?.value;
   const major_task = document.getElementById('entry-task')?.value.trim();
   
-  if (!entry_date || !shift || !major_task) {
-    toast('⚠️ Date, Shift, and Major Task are required.', true);
+  const opSelect = document.getElementById('entry-operator-select');
+  const chosenOperator = (opSelect && !opSelect.classList.contains('hidden') && opSelect.value) 
+    ? opSelect.value 
+    : (document.getElementById('entry-operator')?.value || currentUserName);
+
+  if (!entry_date || !shift || !major_task || !chosenOperator) {
+    toast('⚠️ Date, Shift, Operator, and Major Task are required.', true);
     if(btn) btn.disabled = false; 
     if(spinner) spinner.classList.add('hidden');
     return;
+  }
+
+  // Check for duplicate / conflicting operator across other shifts for the same date
+  try {
+    const { data: existingDayEntries } = await supabase
+      .from('operator_daily_logs')
+      .select('id, shift, operator_name')
+      .eq('entry_date', entry_date);
+
+    if (existingDayEntries && existingDayEntries.length > 0) {
+      const conflict = existingDayEntries.find(entry => 
+        entry.operator_name && 
+        entry.operator_name.trim().toLowerCase() === chosenOperator.trim().toLowerCase() && 
+        entry.shift !== shift
+      );
+
+      if (conflict) {
+        const proceed = confirm(
+          `⚠️ OPERATOR CONFLICT DETECTED:\n\nOperator "${chosenOperator}" is already logged in Shift ${conflict.shift} on ${entry_date}.\n\n` +
+          `Do you want to continue duty and log "${chosenOperator}" in Shift ${shift} as well?\n\n` +
+          `Click 'OK' to save with this operator, or 'Cancel' to select another operator name.`
+        );
+        if (!proceed) {
+          // Automatically switch UI to operator selection dropdown
+          const input = document.getElementById('entry-operator');
+          const select = document.getElementById('entry-operator-select');
+          const toggleBtn = document.getElementById('btn-toggle-operator-override');
+          if (select && input) {
+            select.classList.remove('hidden');
+            input.classList.add('hidden');
+            if (toggleBtn) toggleBtn.textContent = 'Use My Name';
+            select.focus();
+          }
+          toast('Please select a different operator name from the list.', true);
+          if(btn) btn.disabled = false;
+          if(spinner) spinner.classList.add('hidden');
+          return;
+        }
+      }
+    }
+  } catch(err) {
+    console.warn("Shift conflict check warning:", err);
   }
   
   const payload = {
     entry_date,
     shift,
-    operator_name: currentUserName,
-    operator_email: currentUser?.email || null,
-    operator_uid: currentUser?.id || null,
+    operator_name: chosenOperator,
+    operator_email: (chosenOperator === currentUserName) ? (currentUser?.email || null) : null,
+    operator_uid: (chosenOperator === currentUserName) ? (currentUser?.id || null) : null,
     weather: document.getElementById('entry-weather')?.value || null,
     weather_from: document.getElementById('weather-from')?.value || null,
     weather_to: document.getElementById('weather-to')?.value || null,
@@ -158,6 +252,17 @@ document.getElementById('daily-form')?.addEventListener('submit', async (e) => {
     document.getElementById('daily-form')?.reset();
     document.getElementById('entry-date').value = entry_date;
     document.getElementById('entry-operator').value = currentUserName;
+    
+    // Reset operator selector view
+    const opSelectReset = document.getElementById('entry-operator-select');
+    const opInputReset = document.getElementById('entry-operator');
+    const toggleBtnReset = document.getElementById('btn-toggle-operator-override');
+    if (opSelectReset && opInputReset) {
+        opSelectReset.classList.add('hidden');
+        opInputReset.classList.remove('hidden');
+        if (toggleBtnReset) toggleBtnReset.textContent = 'Change / Select Other';
+    }
+
     selectedWeather = '';
     document.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('selected'));
     document.getElementById('view-date').value = entry_date;
@@ -247,11 +352,11 @@ function renderMaintTable(records) {
   }
   tbody.innerHTML = records.map(r => `
     <tr class="hover:bg-slate-50 transition">
-      <td class="font-bold text-slate-700">${escapeHtml(r.maint_date || '—')}</td>
-      <td class="text-slate-600">${escapeHtml(r.start_time || '')}${r.end_time ? '–'+escapeHtml(r.end_time) : ''}</td>
-      <td class="text-slate-700">${escapeHtml(r.work_done || '—')}</td>
-      <td class="text-indigo-700 font-medium">${escapeHtml(r.staff_involved || '—')}</td>
-      <td class="text-slate-500 text-xs">${escapeHtml(r.remarks || '—')}</td>
+      <td class="font-bold text-slate-700">${r.maint_date || '—'}</td>
+      <td class="text-slate-600">${r.start_time || ''}${r.end_time ? '–'+r.end_time : ''}</td>
+      <td class="text-slate-700">${r.work_done || '—'}</td>
+      <td class="text-indigo-700 font-medium">${r.staff_involved || '—'}</td>
+      <td class="text-slate-500 text-xs">${r.remarks || '—'}</td>
       <td class="text-center">
         ${userRole === 'admin' ? `<button onclick="window.editMaint('${r.id}')" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 mr-1">Edit</button>
         <button onclick="window.deleteMaint('${r.id}')" class="text-[10px] font-bold text-rose-500 hover:text-rose-700">Del</button>` : '<span class="text-slate-400 text-xs">—</span>'}
@@ -322,12 +427,12 @@ async function loadWeatherLog(month) {
     }
     container.innerHTML = data.map(r => `
       <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 hover:border-sky-200 transition">
-        <div class="text-2xl shrink-0">${escapeHtml(r.weather.split(' ')[0] || '⛅')}</div>
+        <div class="text-2xl shrink-0">${r.weather.split(' ')[0] || '⛅'}</div>
         <div>
-          <div class="text-xs font-black text-slate-700">${escapeHtml(r.entry_date)} · ${escapeHtml(r.shift || '?')} Shift</div>
-          <div class="text-sm font-bold text-sky-700">${escapeHtml(r.weather)}</div>
-          ${r.weather_from ? `<div class="text-[10px] text-slate-400">${escapeHtml(r.weather_from)}–${escapeHtml(r.weather_to || '?')}</div>` : ''}
-          <div class="text-[10px] text-slate-400 mt-0.5">${escapeHtml(r.operator_name || '')}</div>
+          <div class="text-xs font-black text-slate-700">${r.entry_date} · ${r.shift || '?'} Shift</div>
+          <div class="text-sm font-bold text-sky-700">${r.weather}</div>
+          ${r.weather_from ? `<div class="text-[10px] text-slate-400">${r.weather_from}–${r.weather_to || '?'}</div>` : ''}
+          <div class="text-[10px] text-slate-400 mt-0.5">${r.operator_name || ''}</div>
         </div>
       </div>
     `).join('');
@@ -378,19 +483,19 @@ function renderComplaintList(container, items, isAdmin = false) {
     return `<div class="complaint-card relative">
       <div class="flex items-start justify-between gap-2 mb-1">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-xs font-black text-amber-800">${escapeHtml(c.category || '—')}</span>
-          <span class="text-[10px] font-bold border px-2 py-0.5 rounded-full ${sc}">${escapeHtml(c.status || 'New')}</span>
+          <span class="text-xs font-black text-amber-800">${c.category || '—'}</span>
+          <span class="text-[10px] font-bold border px-2 py-0.5 rounded-full ${sc}">${c.status || 'New'}</span>
           ${c.priority === 'Urgent' ? '<span class="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">🔴 URGENT</span>' : ''}
-          ${c.is_anonymous ? '<span class="text-[10px] text-slate-500 italic">Anonymous</span>' : `<span class="text-[10px] text-slate-500">${escapeHtml(c.submitted_by_name || '')}</span>`}
+          ${c.is_anonymous ? '<span class="text-[10px] text-slate-500 italic">Anonymous</span>' : `<span class="text-[10px] text-slate-500">${c.submitted_by_name || ''}</span>`}
         </div>
         <span class="text-[10px] text-slate-400 shrink-0">${new Date(c.created_at).toLocaleDateString()}</span>
       </div>
-      <p class="text-sm text-slate-700 mt-1">${escapeHtml(c.description)}</p>
+      <p class="text-sm text-slate-700 mt-1">${c.description}</p>
       ${isAdmin ? `<div class="flex items-center gap-2 mt-2">
         <select onchange="window.updateComplaintStatus('${c.id}', this.value)" class="text-xs border border-slate-300 rounded p-1 font-bold bg-white outline-none">
           ${['New','In Progress','Resolved','Closed'].map(s => `<option value="${s}" ${c.status===s?'selected':''}>${s}</option>`).join('')}
         </select>
-        ${c.admin_response ? `<span class="text-xs text-indigo-600 italic">"${escapeHtml(c.admin_response)}"</span>` : `<input type="text" placeholder="Add response..." onkeydown="if(event.key==='Enter'){window.addComplaintResponse('${c.id}',this.value);}" class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none">`}
+        ${c.admin_response ? `<span class="text-xs text-indigo-600 italic">"${c.admin_response}"</span>` : `<input type="text" placeholder="Add response..." onkeydown="if(event.key==='Enter'){window.addComplaintResponse('${c.id}',this.value);}" class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none">`}
       </div>` : ''}
     </div>`;
   }).join('');
@@ -494,7 +599,7 @@ async function loadNoticeHistory() {
           <span class="text-xs font-black text-indigo-700 uppercase tracking-wider">Latest Notice</span>
           <span class="text-[10px] text-indigo-400">${new Date(data.updated_at).toLocaleString()}</span>
         </div>
-        <p class="text-sm text-slate-800 font-medium">${escapeHtml(n.message || 'No message')}</p>
+        <p class="text-sm text-slate-800 font-medium">${n.message || 'No message'}</p>
         <div class="flex gap-2 mt-2">
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${n.active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}">${n.active ? 'Active' : 'Inactive'}</span>
           ${n.expires_at ? `<span class="text-[10px] text-slate-500">Expires: ${new Date(n.expires_at).toLocaleString()}</span>` : ''}
@@ -504,20 +609,6 @@ async function loadNoticeHistory() {
       el.innerHTML = '<p class="text-slate-400 italic text-sm">No notice history.</p>';
     }
   } catch(e) { el.innerHTML = `<p class="text-rose-500 text-sm">Error: ${e.message}</p>`; }
-}
-
-async function loadStaffOptions() {
-    try {
-        const { data } = await supabase.from('user_roles').select('full_name, email').order('full_name');
-        if (data) {
-            const select = document.getElementById('maint-staff');
-            if(select) {
-                select.innerHTML = data.map(u => 
-                    `<option value="${escapeHtml(u.full_name || u.email)}">${escapeHtml(u.full_name || u.email)}</option>`
-                ).join('');
-            }
-        }
-    } catch (e) { console.error('Failed to load staff', e); }
 }
 
 // ─── PAGE START ───

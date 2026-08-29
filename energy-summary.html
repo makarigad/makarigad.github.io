@@ -14,7 +14,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,700&family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&display=swap');
     body { font-family: 'Inter', sans-serif; }
     
     /* Main Table Styles */
@@ -26,6 +26,35 @@
     th.sticky-col { background-color: #f1f5f9; z-index: 30; }
     .bg-green-light { background-color: #ecfdf5; color: #065f46; font-weight: 600; }
     tr:hover td { background-color: #f1f5f9; }
+    
+    /* Management View Strict Styles - Exactly Matching Garamond Presentation */
+    #dr-management-sheet {
+        font-family: 'EB Garamond', Garamond, Georgia, 'Times New Roman', serif !important;
+        font-weight: 700 !important;
+        color: #000000 !important;
+    }
+    #dr-management-sheet th, 
+    #dr-management-sheet td {
+        padding: 0.5px 3.5px !important;
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+        font-family: 'EB Garamond', Garamond, Georgia, 'Times New Roman', serif !important;
+        font-weight: 700 !important;
+        color: #000000 !important;
+        border: none;
+    }
+    #dr-management-sheet tr:hover td {
+        background-color: inherit !important;
+    }
+    #dr-management-sheet .mgmt-dot-r { border-right: 1px dotted #000000 !important; }
+    #dr-management-sheet .mgmt-dot-b { border-bottom: 1px dotted #000000 !important; }
+    #dr-management-sheet .mgmt-dot-l { border-left: 1px dotted #000000 !important; }
+    #dr-management-sheet .mgmt-dot-t { border-top: 1px dotted #000000 !important; }
+    #dr-management-sheet .mgmt-solid-b { border-bottom: 1.5px solid #000000 !important; }
+    #dr-management-sheet .mgmt-solid-b-2 { border-bottom: 2px solid #000000 !important; }
+    #dr-management-sheet .mgmt-solid-r-2 { border-right: 2px solid #000000 !important; }
+    #dr-management-sheet .mgmt-solid-t-2 { border-top: 2px solid #000000 !important; }
+    .mgmt-box-border { border: 2.5px solid #000000 !important; }
     
     /* Navigation & Utility */
     .role-hidden, .hidden-tab { display: none !important; }
@@ -159,334 +188,363 @@
                     <!-- OPTION 1: MANAGEMENT VIEW (EXACT MATCH TO PRESENTATION SHEET) -->
                     <!-- ============================================================ -->
                     <div id="dr-management-view" class="w-full overflow-x-auto pb-4">
-                        <div id="dr-management-sheet" class="bg-white p-6 mx-auto border-2 border-black shadow-none" style="width: 1120px; min-width: 1120px; font-family: Calibri, Arial, sans-serif; box-sizing: border-box;">
+                        <div id="dr-management-sheet" class="p-2 mx-auto mgmt-box-border shadow-none font-bold" style="background-color: #e7e6e6; width: 1140px; min-width: 1140px; font-family: 'EB Garamond', Garamond, Georgia, 'Times New Roman', serif; box-sizing: border-box;">
                             
-                            <!-- Top Presentation Titles -->
-                            <div class="grid grid-cols-2 gap-4 mb-3">
+                            <!-- Top Presentation Titles (Single line each on light grey background) -->
+                            <div class="grid grid-cols-2 gap-3 mb-1">
                                 <div class="text-center">
-                                    <h2 class="text-2xl font-bold text-black" style="font-family: Georgia, 'Times New Roman', serif; text-decoration: underline; text-underline-offset: 3px;">
+                                    <h2 class="text-[20px] font-bold text-black whitespace-nowrap" style="font-family: 'EB Garamond', Garamond, Georgia, serif; text-decoration: underline; text-underline-offset: 3px;">
                                         Makari Gad Hydropower Limited
                                     </h2>
                                 </div>
                                 <div class="text-center">
-                                    <h2 class="text-2xl font-bold text-black" style="font-family: Georgia, 'Times New Roman', serif; text-decoration: underline; text-underline-offset: 3px;">
+                                    <h2 class="text-[20px] font-bold text-black whitespace-nowrap" style="font-family: 'EB Garamond', Garamond, Georgia, serif; text-decoration: underline; text-underline-offset: 3px;">
                                         Makari Gad Hydroelectric Project (10 MW)
                                     </h2>
                                 </div>
                             </div>
 
                             <!-- 2-Column Layout matching presentation sheet: TOP HALF -->
-                            <div class="grid grid-cols-2 gap-4 items-stretch mb-3.5">
+                            <div class="grid grid-cols-2 gap-2 items-stretch mb-1.5 font-bold">
                                 
-                                <!-- LEFT TOP: Table 1 (Energy Summary of the Day) -->
-                                <div class="border border-black bg-white flex flex-col justify-between">
-                                    <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                <!-- LEFT TOP: Table 1 (Energy Summary of the Day - Light Green Background) -->
+                                <div class="mgmt-box-border flex flex-col justify-between" style="background-color: #e2efda;">
+                                    <table class="w-full border-collapse table-fixed font-bold">
                                         <colgroup>
-                                            <col style="width: 14%;">
-                                            <col style="width: 25%;">
-                                            <col style="width: 25%;">
-                                            <col style="width: 24%;">
+                                            <col style="width: 67%;">
+                                            <col style="width: 21%;">
                                             <col style="width: 12%;">
                                         </colgroup>
                                         <thead>
                                             <tr style="background-color: #e2efda;">
-                                                <th colspan="5" class="py-1 px-2 text-center font-bold text-black border-b border-black text-[13px]" style="font-family: Georgia, serif;">
+                                                <th colspan="3" class="text-center font-bold text-black mgmt-solid-b-2 text-[13px]" style="font-family: 'EB Garamond', Garamond, serif;">
                                                     Energy Summary of the Day
                                                 </th>
                                             </tr>
                                         </thead>
-                                        <tbody class="divide-y divide-dashed divide-gray-400">
+                                        <tbody class="font-bold" style="background-color: #e2efda;">
                                             <!-- Row 1: Date & Time Period -->
-                                            <tr class="border-b border-black font-bold">
-                                                <td class="py-1.5 px-2 text-black text-center border-r border-dashed border-gray-400 whitespace-nowrap">Date</td>
-                                                <td id="mgmt-val-date-eng" class="py-1.5 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">29-Aug-26</td>
-                                                <td id="mgmt-val-date-nep" colspan="2" class="py-1.5 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">2083.05.13</td>
-                                                <td class="py-1.5 px-1 text-center text-black text-[9.5px] leading-tight whitespace-nowrap">12:00 hrs to<br>12:00 hrs</td>
+                                            <tr class="mgmt-dot-b font-bold">
+                                                <td class="p-0 mgmt-dot-r font-bold" style="padding: 0 !important;">
+                                                    <table class="w-full border-collapse table-fixed font-bold">
+                                                        <colgroup>
+                                                            <col style="width: 26%;">
+                                                            <col style="width: 37%;">
+                                                            <col style="width: 37%;">
+                                                        </colgroup>
+                                                        <tr>
+                                                            <td class="text-black text-left mgmt-dot-r whitespace-nowrap font-bold">Date</td>
+                                                            <td id="mgmt-val-date-eng" class="text-center text-black mgmt-dot-r whitespace-nowrap font-bold">29-Aug-26</td>
+                                                            <td id="mgmt-val-date-nep" class="text-center text-black whitespace-nowrap font-bold">2083.05.13</td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                                <td colspan="2" class="text-center text-black whitespace-nowrap font-bold mgmt-dot-l" style="font-size: 11px !important;">1200 hrs to 1200 hrs</td>
                                             </tr>
                                             <!-- Row 2: Avg Plant Load Generator -->
-                                            <tr>
-                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Average Plant Load at Generator Terminal in Powerhouse</td>
-                                                <td id="mgmt-val-avg-load-gen" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">10,412.80</td>
-                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">kW</td>
+                                            <tr class="mgmt-dot-b">
+                                                <td class="text-black text-left mgmt-dot-r whitespace-nowrap font-bold">Average Plant Load at Generator Terminal in Powerhouse</td>
+                                                <td id="mgmt-val-avg-load-gen" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">10,412.80</td>
+                                                <td class="text-center text-black whitespace-nowrap font-bold">kW</td>
                                             </tr>
                                             <!-- Row 3: Avg Plant Load Substation -->
-                                            <tr>
-                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Average Plant Load at Metering Terminal in Balanch Substation</td>
-                                                <td id="mgmt-val-avg-load-sub" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">9,887.96</td>
-                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">kW</td>
+                                            <tr class="mgmt-dot-b">
+                                                <td class="text-black text-left mgmt-dot-r whitespace-nowrap font-bold">Average Plant Load at Metering Terminal in Balanch Substation</td>
+                                                <td id="mgmt-val-avg-load-sub" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">9,887.96</td>
+                                                <td class="text-center text-black whitespace-nowrap font-bold">kW</td>
                                             </tr>
                                             <!-- Row 4: Dispatch Substation -->
-                                            <tr>
-                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Energy Dispatch (at Substation)</td>
-                                                <td id="mgmt-val-export-sub" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">235.50</td>
-                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                            <tr class="mgmt-dot-b">
+                                                <td class="text-black text-left mgmt-dot-r whitespace-nowrap font-bold">Energy Dispatch (at Substation)</td>
+                                                <td id="mgmt-val-export-sub" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">235.50</td>
+                                                <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                             </tr>
                                             <!-- Row 5: Dispatch Plant Feeder -->
-                                            <tr>
-                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Energy Dispatch (at Plant OF)</td>
-                                                <td id="mgmt-val-export-plant" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">245.10</td>
-                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                            <tr class="mgmt-dot-b">
+                                                <td class="text-black text-left mgmt-dot-r whitespace-nowrap font-bold">Energy Dispatch (at Plant OF)</td>
+                                                <td id="mgmt-val-export-plant" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">245.10</td>
+                                                <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                             </tr>
                                             <!-- Row 6: Energy Generation -->
-                                            <tr>
-                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Energy Generation (at Generator Terminal)</td>
-                                                <td id="mgmt-val-generation" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">248.00</td>
-                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                            <tr class="mgmt-dot-b">
+                                                <td class="text-black text-left mgmt-dot-r whitespace-nowrap font-bold">Energy Generation (at Generator Terminal)</td>
+                                                <td id="mgmt-val-generation" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">248.00</td>
+                                                <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                             </tr>
                                             <!-- Row 7: Plant Factor -->
-                                            <tr>
-                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Plant Factor</td>
-                                                <td id="mgmt-val-plant-factor" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">98.13</td>
-                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">%</td>
+                                            <tr class="mgmt-dot-b">
+                                                <td class="text-black text-left mgmt-dot-r whitespace-nowrap font-bold">Plant Factor</td>
+                                                <td id="mgmt-val-plant-factor" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">98.13</td>
+                                                <td class="text-center text-black whitespace-nowrap font-bold">%</td>
                                             </tr>
-                                            <!-- Row 8: Unit 1 Running Hours Day -->
-                                            <tr>
-                                                <td rowspan="2" colspan="2" class="py-1 px-1 text-center text-black border-r border-dashed border-gray-400 align-middle text-[10px] leading-tight">Unit Running<br>Hours (for the<br>Day)</td>
-                                                <td class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">Unit # 01</td>
-                                                <td id="mgmt-val-unit1-hr-day" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">23.8</td>
-                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">Hrs</td>
+                                            <!-- Row 8 & 9: Unit Running Hours Day -->
+                                            <tr class="mgmt-dot-b">
+                                                <td rowspan="2" class="p-0 mgmt-dot-r align-middle font-bold" style="padding: 0 !important;">
+                                                    <table class="w-full border-collapse table-fixed h-full font-bold">
+                                                        <colgroup>
+                                                            <col style="width: 58%;">
+                                                            <col style="width: 42%;">
+                                                        </colgroup>
+                                                        <tr>
+                                                            <td rowspan="2" class="text-left text-black align-middle whitespace-nowrap font-bold mgmt-dot-r" style="border: none !important; border-right: 1px dotted #000000 !important;">
+                                                                Unit Running Hours (for the Day)
+                                                            </td>
+                                                            <td class="text-center text-black whitespace-nowrap font-bold mgmt-dot-b" style="border-left: none !important;">Unit # 01</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="text-center text-black whitespace-nowrap font-bold" style="border-left: none !important;">Unit # 02</td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                                <td id="mgmt-val-unit1-hr-day" class="text-center text-black font-bold mgmt-dot-r mgmt-dot-b whitespace-nowrap">23.8</td>
+                                                <td class="text-center text-black whitespace-nowrap font-bold mgmt-dot-b">Hrs</td>
                                             </tr>
-                                            <!-- Row 9: Unit 2 Running Hours Day -->
                                             <tr>
-                                                <td class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">Unit # 02</td>
-                                                <td id="mgmt-val-unit2-hr-day" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">23.8</td>
-                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">Hrs</td>
+                                                <td id="mgmt-val-unit2-hr-day" class="text-center text-black font-bold mgmt-dot-r whitespace-nowrap">23.8</td>
+                                                <td class="text-center text-black whitespace-nowrap font-bold">Hrs</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
 
                                 <!-- RIGHT TOP: Table 2 (Cumulative Unit Running Hours) + Table 3 (Grid Failures / Outages) -->
-                                <div class="flex flex-col justify-between space-y-3">
-                                    <!-- Table 2: Cumulative Unit Running Hours -->
-                                    <div class="border border-black bg-white" style="background-color: #fce4d6;">
-                                        <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                <div class="flex flex-col justify-between space-y-1.5 font-bold">
+                                    <!-- Table 2: Cumulative Unit Running Hours (Light Pink Background) -->
+                                    <div class="mgmt-box-border" style="background-color: #fce4d6;">
+                                        <table class="w-full border-collapse table-fixed font-bold">
                                             <colgroup>
-                                                <col style="width: 39%;">
+                                                <col style="width: 42%;">
                                                 <col style="width: 25%;">
-                                                <col style="width: 24%;">
+                                                <col style="width: 21%;">
                                                 <col style="width: 12%;">
                                             </colgroup>
-                                            <tbody class="divide-y divide-dashed divide-gray-400">
-                                                <tr>
-                                                    <td rowspan="2" class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 align-middle text-[11px] leading-tight font-medium">Unit Running Hours<br>(Cummulative)</td>
-                                                    <td class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">Unit # 01</td>
-                                                    <td id="mgmt-val-cum-unit1-hr" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">24,155.20</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">Hrs</td>
+                                            <tbody class="font-bold">
+                                                <tr class="mgmt-dot-b">
+                                                    <td rowspan="2" class="text-center text-black mgmt-dot-r align-middle font-bold leading-tight">Unit Running Hours<br>(Cummulative)</td>
+                                                    <td class="text-center text-black mgmt-dot-r mgmt-dot-b whitespace-nowrap font-bold">Unit # 01</td>
+                                                    <td id="mgmt-val-cum-unit1-hr" class="text-right text-black font-bold mgmt-dot-r mgmt-dot-b whitespace-nowrap pr-1">24,155.20</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold mgmt-dot-b">Hrs</td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">Unit # 02</td>
-                                                    <td id="mgmt-val-cum-unit2-hr" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">24,117.30</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">Hrs</td>
+                                                    <td class="text-center text-black mgmt-dot-r whitespace-nowrap font-bold">Unit # 02</td>
+                                                    <td id="mgmt-val-cum-unit2-hr" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap pr-1">24,117.30</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">Hrs</td>
                                                 </tr>
                                             </tbody>
                                         </table>
                                     </div>
 
-                                    <!-- Table 3: Outages & Grid Failures -->
-                                    <div class="border border-black flex-1 flex flex-col justify-between" style="background-color: #e2efda;">
-                                        <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                    <!-- Table 3: Outages & Grid Failures (Light Green Background) -->
+                                    <div class="mgmt-box-border flex-1 flex flex-col justify-between" style="background-color: #e2efda;">
+                                        <table class="w-full border-collapse table-fixed font-bold">
                                             <colgroup>
-                                                <col style="width: 64%;">
-                                                <col style="width: 24%;">
+                                                <col style="width: 67%;">
+                                                <col style="width: 21%;">
                                                 <col style="width: 12%;">
                                             </colgroup>
-                                            <tbody class="divide-y divide-dashed divide-gray-400">
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">No of Grid Failures</td>
-                                                    <td id="mgmt-val-grid-failures" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">Nos</td>
+                                            <tbody class="font-bold">
+                                                <tr class="mgmt-dot-b" style="background-color: #e2efda;">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">No of Grid Failures</td>
+                                                    <td id="mgmt-val-grid-failures" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">2</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">Nos</td>
                                                 </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Generation Loss due to Grid Failures</td>
-                                                    <td id="mgmt-val-loss-grid" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">1.89</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                <tr class="mgmt-dot-b" style="background-color: #e2efda;">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Generation Loss due to Grid Failures</td>
+                                                    <td id="mgmt-val-loss-grid" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">1.89</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Generation Loss due to Planed / Forced Outages</td>
-                                                    <td id="mgmt-val-loss-forced" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">0.00</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                <tr class="mgmt-dot-b" style="background-color: #e2efda;">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Generation Loss due to Planed / Forced Outages</td>
+                                                    <td id="mgmt-val-loss-forced" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">0.00</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
-                                                <tr class="border-b border-black">
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">NEA Curtailed Energy</td>
-                                                    <td id="mgmt-val-loss-curtail" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">0.00</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                <tr class="mgmt-solid-b-2" style="background-color: #e2efda;">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">NEA Curtailed Energy</td>
+                                                    <td id="mgmt-val-loss-curtail" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">0.00</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
-                                                <tr>
-                                                    <td colspan="3" class="py-1 px-2 text-black bg-white">
-                                                        <div class="text-right font-bold underline mb-0.5 text-xs text-black">Major Events / Comments</div>
-                                                        <div id="mgmt-val-events-text" class="text-right font-bold text-[11px] whitespace-pre-wrap leading-tight text-red-600">Grid Fault + high voltage and low voltage</div>
+                                                <tr style="background-color: #e2efda;">
+                                                    <td colspan="3" class="text-black" style="background-color: #e2efda; padding: 2px 4px !important;">
+                                                        <div class="text-left font-bold underline mb-0.5 text-[11.5px] text-black" style="text-decoration: underline;">Major Events / Comments</div>
+                                                        <div id="mgmt-val-events-text" class="text-left font-bold text-[11px] whitespace-pre-wrap leading-tight text-red-600">Grid Fault + high voltage and low voltage</div>
                                                     </td>
                                                 </tr>
                                             </tbody>
                                         </table>
-                                        <!-- Clean Pastel Extension Filler matching Excel screenshot -->
-                                        <div class="h-14 w-full" style="background-color: #e2efda; border-top: 1px solid #999;"></div>
+                                        <!-- Soft green spacer matching height -->
+                                        <div class="flex-1 w-full" style="background-color: #e2efda; min-height: 6px;"></div>
                                     </div>
                                 </div>
 
                             </div>
 
                             <!-- 2-Column Layout matching presentation sheet: BOTTOM HALF -->
-                            <div class="grid grid-cols-2 gap-4 items-stretch">
+                            <div class="grid grid-cols-2 gap-2 items-stretch font-bold">
                                 
                                 <!-- LEFT BOTTOM: Table 4 (Current Month Energy Summary) + Remaining days bar -->
-                                <div class="flex flex-col justify-between space-y-3">
-                                    <div class="border border-black">
-                                        <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                <div class="flex flex-col justify-between space-y-1.5 font-bold">
+                                    <div class="mgmt-box-border" style="background-color: #fff2cc;">
+                                        <table class="w-full border-collapse table-fixed font-bold">
                                             <colgroup>
-                                                <col style="width: 64%;">
-                                                <col style="width: 24%;">
+                                                <col style="width: 67%;">
+                                                <col style="width: 21%;">
                                                 <col style="width: 12%;">
                                             </colgroup>
                                             <thead>
-                                                <tr style="background-color: #ffffff;">
-                                                    <th colspan="3" class="py-1 px-2 text-center font-bold text-black border-b border-black text-[13px]" style="font-family: Georgia, serif;">
+                                                <tr style="background-color: #fce4d6;">
+                                                    <th colspan="3" class="text-center font-bold text-black mgmt-solid-b-2 text-[13px]" style="font-family: 'EB Garamond', Garamond, serif;">
                                                         Current Month Energy Summary - <span id="mgmt-val-month-title" class="font-bold text-green-700">Bhadra 2083</span>
                                                     </th>
                                                 </tr>
                                             </thead>
-                                            <tbody class="divide-y divide-dashed divide-gray-400" style="background-color: #fff2cc;">
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Cummulative Energy Export</td>
-                                                    <td id="mgmt-val-cum-export" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2,846.59</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                            <tbody class="font-bold" style="background-color: #fff2cc;">
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Cummulative Energy Export</td>
+                                                    <td id="mgmt-val-cum-export" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">2,846.59</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Guaranteed Energy (as per PPA)</td>
-                                                    <td id="mgmt-val-ppa-energy" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">7,070.98</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Guaranteed Energy (as per PPA)</td>
+                                                    <td id="mgmt-val-ppa-energy" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">7,070.98</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Availability Decleration as per Schedule 9</td>
-                                                    <td id="mgmt-val-ad-energy" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">7,070.98</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Availability Decleration as per Schedule 9</td>
+                                                    <td id="mgmt-val-ad-energy" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">7,070.98</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Energy Difference (AD as per Schedule 9 - Cummulative)</td>
-                                                    <td id="mgmt-val-energy-diff" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">4,224.39</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Energy Difference (AD as per Schedule 9 - Cummulative)</td>
+                                                    <td id="mgmt-val-energy-diff" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">4,224.39</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Monthly Plant Factor</td>
-                                                    <td id="mgmt-val-monthly-pf" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">38.26</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">%</td>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Monthly Plant Factor</td>
+                                                    <td id="mgmt-val-monthly-pf" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">38.26</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">%</td>
                                                 </tr>
-                                                <tr class="border-b-2 border-black">
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 font-bold whitespace-nowrap">Plant Factor till date</td>
-                                                    <td id="mgmt-val-pf-till-date" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">98.84</td>
-                                                    <td class="py-1 px-1 text-center text-black font-bold whitespace-nowrap">%</td>
+                                                <tr class="mgmt-dot-b font-bold">
+                                                    <td class="text-left text-black mgmt-dot-r font-bold whitespace-nowrap">Plant Factor till date</td>
+                                                    <td id="mgmt-val-pf-till-date" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">98.84</td>
+                                                    <td class="text-center text-black font-bold whitespace-nowrap">%</td>
+                                                </tr>
+
+                                                <!-- Empty Row between Plant Factor till date and Losses Breakdown -->
+                                                <tr class="mgmt-dot-b" style="height: 10px; background-color: #fff2cc;">
+                                                    <td class="mgmt-dot-r">&nbsp;</td>
+                                                    <td class="mgmt-dot-r">&nbsp;</td>
+                                                    <td>&nbsp;</td>
                                                 </tr>
 
                                                 <!-- Losses Breakdown Group -->
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Energy Generation from Both Units</td>
-                                                    <td id="mgmt-val-cum-gen" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2,995.00</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Energy Generation from Both Units</td>
+                                                    <td id="mgmt-val-cum-gen" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">2,995.00</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
+                                                </tr>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Energy Dispatch from Powerhouse</td>
+                                                    <td id="mgmt-val-cum-dispatch-ph" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">2,961.90</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
+                                                </tr>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Transformer losses at Powerhouse</td>
+                                                    <td id="mgmt-val-cum-transf-loss" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">31.09</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
+                                                </tr>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Station Consumption</td>
+                                                    <td id="mgmt-val-cum-st-cons" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">2.01</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
+                                                </tr>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Transmission Loss + Substation Transformer Loss</td>
+                                                    <td id="mgmt-val-cum-transm-loss" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">115.31</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
+                                                </tr>
+                                                <tr class="mgmt-dot-b">
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">NEA curtailed energy</td>
+                                                    <td id="mgmt-val-cum-nea-curtail" class="text-center text-black font-bold mgmt-dot-r whitespace-nowrap">-</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Energy Dispatch from Powerhouse</td>
-                                                    <td id="mgmt-val-cum-dispatch-ph" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2,961.90</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Transformer losses at Powerhouse</td>
-                                                    <td id="mgmt-val-cum-transf-loss" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">31.09</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Station Consumption</td>
-                                                    <td id="mgmt-val-cum-st-cons" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2.01</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Transmission Loss + Substation Transformer Loss</td>
-                                                    <td id="mgmt-val-cum-transm-loss" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">115.31</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">NEA curtailed energy</td>
-                                                    <td id="mgmt-val-cum-nea-curtail" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">-</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Other Losses (Grid Failures, Breakdown, Schedule Outages)</td>
-                                                    <td id="mgmt-val-cum-other-loss" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">6.37</td>
-                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                    <td class="text-left text-black mgmt-dot-r whitespace-nowrap font-bold">Other Losses (Grid Failures, Breakdown, Schedule Outages)</td>
+                                                    <td id="mgmt-val-cum-other-loss" class="text-right text-black font-bold mgmt-dot-r whitespace-nowrap">6.37</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">MWh</td>
                                                 </tr>
                                             </tbody>
                                         </table>
                                     </div>
 
-                                    <!-- Bottom Bar: Remaining dispatch days -->
-                                    <div class="border border-black text-xs" style="background-color: #e2efda;">
-                                        <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                    <!-- Bottom Bar: Remaining dispatch days (Light Yellow Background matching reference) -->
+                                    <div class="mgmt-box-border" style="background-color: #fff2cc;">
+                                        <table class="w-full border-collapse table-fixed font-bold">
                                             <colgroup>
-                                                <col style="width: 64%;">
-                                                <col style="width: 24%;">
+                                                <col style="width: 67%;">
+                                                <col style="width: 21%;">
                                                 <col style="width: 12%;">
                                             </colgroup>
                                             <tbody>
                                                 <tr>
-                                                    <td class="py-1.5 px-2 font-bold text-black border-r border-dashed border-gray-400 text-right whitespace-nowrap">
+                                                    <td class="font-bold text-black mgmt-dot-r text-left whitespace-nowrap">
                                                         Remaining dispatch days out of <span id="mgmt-val-total-month-days">31</span> days for this month
                                                     </td>
-                                                    <td id="mgmt-val-remaining-days" class="py-1.5 px-2 text-center font-bold text-black border-r border-dashed border-gray-400 whitespace-nowrap">19</td>
-                                                    <td class="py-1.5 px-1 text-center text-black whitespace-nowrap">days</td>
+                                                    <td id="mgmt-val-remaining-days" class="text-right font-bold text-black mgmt-dot-r whitespace-nowrap pr-2">19</td>
+                                                    <td class="text-center text-black whitespace-nowrap font-bold">days</td>
                                                 </tr>
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
 
-                                <!-- RIGHT BOTTOM: Monthly Generation/Dispatch Summary Card (Pie Chart & Callouts) -->
-                                <div class="border border-black bg-white flex flex-col justify-between p-2">
-                                    <h3 class="text-center font-bold text-sm text-black pt-1 pb-2" style="font-family: Georgia, serif;">
+                                <!-- RIGHT BOTTOM: Monthly Generation/Dispatch Summary Card (White Background Only) -->
+                                <div class="mgmt-box-border bg-white flex flex-col justify-between p-1 relative">
+                                    <h3 class="text-center font-bold text-[14px] text-black pt-0 pb-0.5" style="font-family: 'EB Garamond', Garamond, Georgia, serif;">
                                         Monthly Generation/Dispatch Summary (MWh)
                                     </h3>
                                     
-                                    <!-- Main Chart & Callout badges area matching Excel -->
-                                    <div class="flex items-center justify-between gap-1 px-1 flex-1 my-1 relative">
-                                        <!-- Left Side Callout: Dispatched -->
-                                        <div class="flex items-center justify-center w-[28%] z-10">
-                                            <div class="text-[11px] font-bold px-2 py-1.5 border border-black shadow-sm text-center w-full leading-tight" style="background-color: #1f4e78; color: #ffffff;">
-                                                Dispatched=<br><span id="mgmt-callout-val-disp">2,846.59</span>=<span id="mgmt-callout-pct-disp">94.84%</span>
+                                    <!-- Main Chart & Callout badges area (without leader lines) -->
+                                    <div class="flex items-center justify-between gap-1 px-1 flex-1 my-0 relative" style="min-height: 165px;">
+                                        <!-- Left Side Callout: Dispatched (In ONE line) -->
+                                        <div class="flex items-center justify-center w-[25%] z-10">
+                                            <div class="text-[10px] font-bold px-1.5 py-0.5 border border-black text-center whitespace-nowrap leading-tight" style="background-color: #1f4e78; color: #ff0000; font-family: 'EB Garamond', Garamond, serif;">
+                                                Dispatched= <span id="mgmt-callout-val-disp" class="text-red-500 font-bold">2,846.59</span> =<span id="mgmt-callout-pct-disp" class="text-red-500 font-bold">94.84%</span>
                                             </div>
                                         </div>
 
                                         <!-- Center Pie Canvas -->
-                                        <div class="relative w-[44%] h-[260px] flex items-center justify-center">
+                                        <div class="relative w-[38%] h-[155px] flex items-center justify-center z-10">
                                             <canvas id="dr-mgmt-pie-chart"></canvas>
                                         </div>
 
-                                        <!-- Right Side Callouts: Breakdown with fixed heights & border -->
-                                        <div class="flex flex-col justify-center space-y-1.5 w-[28%] text-[10px] font-bold z-10">
-                                            <div class="px-1.5 py-1 border border-black text-center whitespace-nowrap leading-tight" style="background-color: #ed7d31; color: #ffffff;">
-                                                Transformer loss@PH=<br><span id="mgmt-callout-val-transf">31.09</span> =<span id="mgmt-callout-pct-transf">1.04%</span>
+                                        <!-- Right Side Callouts: Each in ONE single line with fixed border & fill -->
+                                        <div class="flex flex-col justify-center space-y-0.5 w-[37%] text-[9.5px] font-bold z-10" style="font-family: 'EB Garamond', Garamond, serif;">
+                                            <div class="px-1.5 py-0.5 border border-black text-black text-left whitespace-nowrap leading-tight" style="background-color: #ed7d31;">
+                                                Transformer loss@PH= <span id="mgmt-callout-val-transf" class="font-bold">31.09</span> =<span id="mgmt-callout-pct-transf" class="font-bold">1.04%</span>
                                             </div>
-                                            <div class="px-1.5 py-1 border border-black text-black text-center whitespace-nowrap leading-tight" style="background-color: #bfbfbf;">
-                                                Station Consumption=<br><span id="mgmt-callout-val-st">2.01</span> =<span id="mgmt-callout-pct-st">0.07%</span>
+                                            <div class="px-1.5 py-0.5 border border-black text-black text-left whitespace-nowrap leading-tight" style="background-color: #bfbfbf;">
+                                                Station Consumption= <span id="mgmt-callout-val-st" class="font-bold">2.01</span> =<span id="mgmt-callout-pct-st" class="font-bold">0.07%</span>
                                             </div>
-                                            <div class="px-1.5 py-1 border border-black text-black text-center whitespace-nowrap leading-tight" style="background-color: #ffc000;">
-                                                Transmission Loss=<br><span id="mgmt-callout-val-transm">115.31</span> =<span id="mgmt-callout-pct-transm">3.84%</span>
+                                            <div class="px-1.5 py-0.5 border border-black text-black text-left whitespace-nowrap leading-tight" style="background-color: #ffc000;">
+                                                Transmission Loss= <span id="mgmt-callout-val-transm" class="font-bold">115.31</span> =<span id="mgmt-callout-pct-transm" class="font-bold">3.84%</span>
                                             </div>
-                                            <div class="px-1.5 py-1 border border-black text-black text-center whitespace-nowrap leading-tight" style="background-color: #00b0f0;">
-                                                NEA Curtailed=<span id="mgmt-callout-val-curt">-</span><br>=<span id="mgmt-callout-pct-curt">0.00%</span>
+                                            <div class="px-1.5 py-0.5 border border-black text-black text-left whitespace-nowrap leading-tight" style="background-color: #00b0f0;">
+                                                NEA Curtailed= <span id="mgmt-callout-val-curt" class="font-bold">-</span> =<span id="mgmt-callout-pct-curt" class="font-bold">0.00%</span>
                                             </div>
-                                            <div class="px-1.5 py-1 border border-black text-black text-center whitespace-nowrap leading-tight" style="background-color: #a9d18e;">
-                                                Other Losses= <span id="mgmt-callout-val-other">6.37</span><br>=<span id="mgmt-callout-pct-other">0.21%</span>
+                                            <div class="px-1.5 py-0.5 border border-black text-black text-left whitespace-nowrap leading-tight" style="background-color: #a9d18e;">
+                                                Other Losses= <span id="mgmt-callout-val-other" class="font-bold">6.37</span> =<span id="mgmt-callout-pct-other" class="font-bold">0.21%</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     <!-- Bottom Legend: Displayed in single row with fixed height and neat boxes matching presentation -->
-                                    <div class="flex flex-nowrap items-center justify-center gap-x-2 text-[9.5px] font-normal py-1 border-t border-black bg-white mt-1">
-                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #1f4e78;"></span> Dispatched</span>
-                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #ed7d31;"></span> Transformer loss@PH</span>
-                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #bfbfbf;"></span> Station Consumption</span>
-                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #ffc000;"></span> Transmission Loss</span>
-                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #00b0f0;"></span> NEA Curtailed</span>
-                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #a9d18e;"></span> Other Losses</span>
+                                    <div class="flex flex-nowrap items-center justify-center gap-x-2 text-[9px] font-bold py-0.5 border-t border-black bg-white mt-0.5" style="font-family: 'EB Garamond', Garamond, serif;">
+                                        <span class="flex items-center gap-1 whitespace-nowrap"><span class="w-2.5 h-2.5 inline-block border border-black" style="background-color: #1f4e78;"></span> Dispatched</span>
+                                        <span class="flex items-center gap-1 whitespace-nowrap"><span class="w-2.5 h-2.5 inline-block border border-black" style="background-color: #ed7d31;"></span> Transformer loss@PH</span>
+                                        <span class="flex items-center gap-1 whitespace-nowrap"><span class="w-2.5 h-2.5 inline-block border border-black" style="background-color: #bfbfbf;"></span> Station Consumption</span>
+                                        <span class="flex items-center gap-1 whitespace-nowrap"><span class="w-2.5 h-2.5 inline-block border border-black" style="background-color: #ffc000;"></span> Transmission Loss</span>
+                                        <span class="flex items-center gap-1 whitespace-nowrap"><span class="w-2.5 h-2.5 inline-block border border-black" style="background-color: #00b0f0;"></span> NEA Curtailed</span>
+                                        <span class="flex items-center gap-1 whitespace-nowrap"><span class="w-2.5 h-2.5 inline-block border border-black" style="background-color: #a9d18e;"></span> Other Losses</span>
                                     </div>
                                 </div>
 
@@ -2803,73 +2861,6 @@ let nepaliDateMap = {};
         const elPctOther = document.getElementById('mgmt-callout-pct-other');
         if (elPctOther) elPctOther.textContent = `${pctOther}%`;
 
-        // Custom Plugin to draw Excel-style leader lines from pie chart slices to the callout boxes
-        const leaderLinesPlugin = {
-            id: 'mgmtLeaderLines',
-            afterDraw: (chart) => {
-                const { ctx, chartArea } = chart;
-                const meta = chart.getDatasetMeta(0);
-                if (!meta || !meta.data || meta.data.length === 0) return;
-
-                ctx.save();
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = '#555555';
-
-                meta.data.forEach((element, index) => {
-                    if (rawValues[index] <= 0 && index !== 4) return; // skip 0 values unless placeholder
-                    
-                    const midAngle = (element.startAngle + element.endAngle) / 2;
-                    const radius = element.outerRadius;
-                    const centerX = element.x;
-                    const centerY = element.y;
-
-                    // Point on slice edge
-                    const edgeX = centerX + Math.cos(midAngle) * radius;
-                    const edgeY = centerY + Math.sin(midAngle) * radius;
-
-                    // Knee point slightly outside
-                    const kneeDistance = radius + 12;
-                    const kneeX = centerX + Math.cos(midAngle) * kneeDistance;
-                    const kneeY = centerY + Math.sin(midAngle) * kneeDistance;
-
-                    // Target callout element position
-                    let targetElId = '';
-                    if (index === 0) targetElId = 'mgmt-callout-val-disp';
-                    else if (index === 1) targetElId = 'mgmt-callout-val-transf';
-                    else if (index === 2) targetElId = 'mgmt-callout-val-st';
-                    else if (index === 3) targetElId = 'mgmt-callout-val-transm';
-                    else if (index === 4) targetElId = 'mgmt-callout-val-curt';
-                    else if (index === 5) targetElId = 'mgmt-callout-val-other';
-
-                    const targetEl = document.getElementById(targetElId)?.closest('div');
-                    if (targetEl && canvas) {
-                        const canvasRect = canvas.getBoundingClientRect();
-                        const targetRect = targetEl.getBoundingClientRect();
-                        
-                        let targetX, targetY;
-                        if (index === 0) {
-                            // Left side badge: target the right edge of the badge
-                            targetX = (targetRect.right - canvasRect.left);
-                            targetY = (targetRect.top + targetRect.height / 2 - canvasRect.top);
-                        } else {
-                            // Right side badges: target the left edge of the badge
-                            targetX = (targetRect.left - canvasRect.left);
-                            targetY = (targetRect.top + targetRect.height / 2 - canvasRect.top);
-                        }
-
-                        // Draw leader line: slice edge -> knee -> callout box
-                        ctx.beginPath();
-                        ctx.moveTo(edgeX, edgeY);
-                        ctx.lineTo(kneeX, kneeY);
-                        ctx.lineTo(targetX, targetY);
-                        ctx.stroke();
-                    }
-                });
-
-                ctx.restore();
-            }
-        };
-
         const config = {
             type: 'pie',
             data: {
@@ -2878,20 +2869,20 @@ let nepaliDateMap = {};
                     data: rawValues,
                     backgroundColor: colors,
                     borderColor: '#ffffff',
-                    borderWidth: 1.5,
-                    hoverOffset: 6
+                    borderWidth: 1,
+                    hoverOffset: 4
                 }]
             },
-            plugins: [leaderLinesPlugin],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                rotation: 95, // Angles the thin loss slices towards 3 o'clock (East), directly facing the right-hand legend callout boxes
                 layout: {
-                    padding: { left: 5, right: 5, top: 5, bottom: 5 }
+                    padding: { left: 4, right: 4, top: 4, bottom: 4 }
                 },
                 plugins: {
                     legend: {
-                        display: false // Using custom bottom legend matching Excel
+                        display: false // Using custom bottom legend in single line
                     },
                     tooltip: {
                         backgroundColor: 'rgba(0,0,0,0.85)',

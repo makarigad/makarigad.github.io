@@ -553,7 +553,7 @@
 <div id="report-container" class="hidden"></div>
 
 <script type="module">
-import { supabase, initializeApplication, safeUpsert } from './assets/js/core-app.js';
+import { supabase, initializeApplication, safeUpsert, getCurrentNepaliDate, NEPALI_MONTHS } from './assets/js/core-app.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const CANONICAL_MONTHS = ["Baisakh","Jestha","Ashar","Shrawan","Bhadra","Ashoj","Kartik","Mangshir","Poush","Magh","Falgun","Chaitra"];
@@ -612,6 +612,29 @@ let R = { year:null, month:null, monthIndex:null, plantData:[], balanchData:[], 
 // ── Init ───────────────────────────────────────────────────────────────────
 (async () => {
     await initializeApplication(true);
+    
+    // Set default year and month to today's Nepali year and month
+    const nepToday = getCurrentNepaliDate();
+    const ySel = document.getElementById('sel-year');
+    const mSel = document.getElementById('sel-month');
+    
+    if (ySel) {
+        ySel.innerHTML = '';
+        const maxYear = Math.max(nepToday.year + 2, 2085);
+        for (let y = 2079; y <= maxYear; y++) {
+            ySel.add(new Option(y, y));
+        }
+        ySel.value = nepToday.year;
+    }
+    
+    if (mSel) {
+        // Find matching option (accounting for Ashadh/Ashar, Mangsir/Mangshir)
+        const match = Array.from(mSel.options).find(opt => 
+            opt.value.toLowerCase().startsWith(nepToday.month.toLowerCase().slice(0, 4))
+        );
+        if (match) mSel.value = match.value;
+    }
+
     ['sel-year','sel-month'].forEach(id => document.getElementById(id).addEventListener('change', loadNarratives));
     await loadNarratives();
     document.getElementById('btn-generate').addEventListener('click', generateReport);

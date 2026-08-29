@@ -82,7 +82,7 @@
 <div id="deck" class="deck hidden"></div>
 
 <script type="module">
-import { supabase, initializeApplication } from '/assets/js/core-app.js';
+import { supabase, initializeApplication, getCurrentNepaliDate } from '/assets/js/core-app.js';
 
 const CAL = ["Baisakh", "Jestha", "Ashar", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangshir", "Poush", "Magh", "Falgun", "Chaitra"];
 const PPA_DAYS = [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30]; 
@@ -96,7 +96,9 @@ const pN = (v) => { const n = parseFloat(String(v).replace(/,/g,'')); return isN
 
 (async () => {
     try { await initializeApplication(true); } catch(e) {}
-    let opts = ''; for(let y = 2079; y<=2085; y++) opts += `<option value="${y}" ${y===2082?'selected':''}>${y}</option>`;
+    const curYear = getCurrentNepaliDate().year;
+    const maxYear = Math.max(curYear + 2, 2085);
+    let opts = ''; for(let y = 2079; y <= maxYear; y++) opts += `<option value="${y}" ${y === curYear ? 'selected' : ''}>${y}</option>`;
     document.getElementById('sel-year').innerHTML = opts;
     document.getElementById('btn-generate').addEventListener('click', generateReport);
 })();

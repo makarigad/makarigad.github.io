@@ -434,17 +434,47 @@ function fmtEngDate(s) { return s ? s.replace(/-/g,'') : ''; }
 
 function getCurrentNepPeriod() {
   const today = new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Kathmandu"}));
-  const y = today.getFullYear(), m = today.getMonth()+1, d = today.getDate();
-  const boundaries = [
-    [2026,5,15,2083,2],[2026,4,14,2083,1],[2025,12,16,2082,9],[2025,11,16,2082,8],
-    [2025,10,17,2082,7],[2025,9,17,2082,6],[2025,8,17,2082,5],[2025,7,17,2082,4],
-    [2025,6,15,2082,3],[2025,5,15,2082,2],[2025,4,14,2082,1]
-  ];
-  const cur = new Date(y,m-1,d);
-  for(const [by,bm,bd,ny,nm] of boundaries){
-    if(cur >= new Date(by,bm-1,bd)) return {year:ny, month:nm};
+  const y = today.getFullYear(), m = today.getMonth() + 1, d = today.getDate();
+  
+  let nepYear, nepMonthIdx;
+  if (m === 1) {
+    if (d < 15) { nepYear = y + 56; nepMonthIdx = 9; }
+    else { nepYear = y + 56; nepMonthIdx = 10; }
+  } else if (m === 2) {
+    if (d < 13) { nepYear = y + 56; nepMonthIdx = 10; }
+    else { nepYear = y + 56; nepMonthIdx = 11; }
+  } else if (m === 3) {
+    if (d < 15) { nepYear = y + 56; nepMonthIdx = 11; }
+    else { nepYear = y + 56; nepMonthIdx = 12; }
+  } else if (m === 4) {
+    if (d < 14) { nepYear = y + 56; nepMonthIdx = 12; }
+    else { nepYear = y + 57; nepMonthIdx = 1; }
+  } else if (m === 5) {
+    if (d < 15) { nepYear = y + 57; nepMonthIdx = 1; }
+    else { nepYear = y + 57; nepMonthIdx = 2; }
+  } else if (m === 6) {
+    if (d < 15) { nepYear = y + 57; nepMonthIdx = 2; }
+    else { nepYear = y + 57; nepMonthIdx = 3; }
+  } else if (m === 7) {
+    if (d < 17) { nepYear = y + 57; nepMonthIdx = 3; }
+    else { nepYear = y + 57; nepMonthIdx = 4; }
+  } else if (m === 8) {
+    if (d < 17) { nepYear = y + 57; nepMonthIdx = 4; }
+    else { nepYear = y + 57; nepMonthIdx = 5; }
+  } else if (m === 9) {
+    if (d < 17) { nepYear = y + 57; nepMonthIdx = 5; }
+    else { nepYear = y + 57; nepMonthIdx = 6; }
+  } else if (m === 10) {
+    if (d < 18) { nepYear = y + 57; nepMonthIdx = 6; }
+    else { nepYear = y + 57; nepMonthIdx = 7; }
+  } else if (m === 11) {
+    if (d < 17) { nepYear = y + 57; nepMonthIdx = 7; }
+    else { nepYear = y + 57; nepMonthIdx = 8; }
+  } else {
+    if (d < 16) { nepYear = y + 57; nepMonthIdx = 8; }
+    else { nepYear = y + 57; nepMonthIdx = 9; }
   }
-  return {year:2083, month:2};
+  return { year: nepYear, month: nepMonthIdx };
 }
 
 function slope(arr) {

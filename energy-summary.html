@@ -108,124 +108,491 @@
 
   <main id="main-content" class="flex-grow flex flex-col overflow-hidden p-4 relative">
 
-    <div id="tab-daily" class="rounded-xl table-container flex-grow custom-scroll bg-slate-100 overflow-y-auto p-4 relative">
+    <div id="tab-daily" class="rounded-xl table-container flex-grow custom-scroll bg-slate-100 overflow-y-auto p-3 sm:p-4 relative">
             <div class="data-card max-w-7xl mx-auto">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-200">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 pb-3 border-b border-gray-200 gap-3">
                     <div>
                         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Daily Generation Report</h1>
-                        <p class="text-sm text-gray-500 mt-1">Select a date to view the detailed summary</p>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-0.5">Select date and format (Management presentation or Webpage dashboard)</p>
                     </div>
-                    <div class="mt-4 sm:mt-0 flex flex-wrap items-center gap-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- View Format Selector -->
                         <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Report Date (Eng / Nep)</label>
-                        <div class="flex items-center gap-2">
-                            <input type="date" id="dr-report-date" class="mt-1 table-input font-bold text-indigo-700 w-36">
-                            <div class="flex gap-1">
-                                <select id="dr-nep-year" class="mt-1 table-input font-bold text-emerald-700 w-20 text-xs px-1"></select>
-                                <select id="dr-nep-month" class="mt-1 table-input font-bold text-emerald-700 w-24 text-xs px-1"></select>
-                                <select id="dr-nep-day" class="mt-1 table-input font-bold text-emerald-700 w-16 text-xs px-1"></select>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Report Format</label>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <select id="dr-view-mode" class="table-input font-bold text-indigo-800 bg-white border-2 border-indigo-200 rounded px-2.5 py-1 text-xs shadow-sm cursor-pointer hover:border-indigo-400 transition">
+                                    <option value="management" selected>👔 Management View</option>
+                                    <option value="webpage">🌐 Webpage View</option>
+                                </select>
+                                <button id="dr-toggle-view-btn" type="button" class="px-2.5 py-1 text-xs font-bold rounded border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 transition shadow-sm flex items-center gap-1" title="Toggle between Management and Webpage view">
+                                    <span id="dr-toggle-view-label">Webpage View</span> 🔄
+                                </button>
                             </div>
                         </div>
-                    </div>
-                        <button id="dr-download-jpg" class="bg-emerald-600 text-white px-4 py-2.5 rounded-md hover:bg-emerald-700 flex items-center space-x-2 mt-5 shadow-sm transition font-bold">
-                            <span id="dr-download-spinner" class="spinner hidden"></span>
-                            <span>📸 Download JPG</span>
-                        </button>
+
+                        <!-- Date Pickers -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Report Date (Eng / Nep)</label>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <input type="date" id="dr-report-date" class="table-input font-bold text-indigo-700 w-32 text-xs py-1">
+                                <div class="flex gap-1">
+                                    <select id="dr-nep-year" class="table-input font-bold text-emerald-700 w-16 text-xs px-1 py-1"></select>
+                                    <select id="dr-nep-month" class="table-input font-bold text-emerald-700 w-20 text-xs px-1 py-1"></select>
+                                    <select id="dr-nep-day" class="table-input font-bold text-emerald-700 w-14 text-xs px-1 py-1"></select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Download JPG -->
+                        <div class="self-end">
+                            <button id="dr-download-jpg" class="bg-emerald-600 text-white px-3.5 py-1.5 rounded hover:bg-emerald-700 flex items-center space-x-1.5 shadow-sm transition font-bold text-xs">
+                                <span id="dr-download-spinner" class="spinner hidden"></span>
+                                <span>📸 Download JPG</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
                 <div id="dr-report-content" class="hidden">
-                    <div id="dr-dynamic-message-container" class="mb-6 p-4 rounded-md bg-blue-50 border border-blue-200 hidden">
-                    <h3 class="text-sm font-bold text-blue-900 mb-1 flex items-center">📊 Daily Performance Insight</h3>
-                    <p id="dr-dynamic-message-text" class="text-xs text-blue-800 leading-relaxed"></p>
-                    </div>
-                    <div class="mb-6 p-4 rounded-md bg-indigo-50 border border-indigo-200 text-center">
-                        <h2 class="text-xl font-semibold text-gray-800">
-                            Energy Summary for the month of <span id="dr-display-nepali-month" class="text-indigo-600 font-bold"></span>
-                            <br><span class="text-sm font-medium text-gray-500">Report Date: <span id="dr-display-nepali-date" class="text-slate-800 font-bold"></span></span>
-                        </h2>
-                        <p class="text-xs text-indigo-500 font-bold mt-2 uppercase tracking-wider">Reporting Period: 12:00 PM (D-1) → 12:00 PM (D) · Date advances after noon Nepal time</p>
-                    </div>
+                    
+                    <!-- ============================================================ -->
+                    <!-- OPTION 1: MANAGEMENT VIEW (EXACT MATCH TO PRESENTATION SHEET) -->
+                    <!-- ============================================================ -->
+                    <div id="dr-management-view" class="w-full overflow-x-auto pb-4">
+                        <div id="dr-management-sheet" class="bg-white p-6 mx-auto border-2 border-black shadow-none" style="width: 1120px; min-width: 1120px; font-family: Calibri, Arial, sans-serif; box-sizing: border-box;">
+                            
+                            <!-- Top Presentation Titles -->
+                            <div class="grid grid-cols-2 gap-4 mb-3">
+                                <div class="text-center">
+                                    <h2 class="text-2xl font-bold text-black" style="font-family: Georgia, 'Times New Roman', serif; text-decoration: underline; text-underline-offset: 3px;">
+                                        Makari Gad Hydropower Limited
+                                    </h2>
+                                </div>
+                                <div class="text-center">
+                                    <h2 class="text-2xl font-bold text-black" style="font-family: Georgia, 'Times New Roman', serif; text-decoration: underline; text-underline-offset: 3px;">
+                                        Makari Gad Hydroelectric Project (10 MW)
+                                    </h2>
+                                </div>
+                            </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="lg:col-span-2 space-y-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="data-card">
-                                    <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Daily Performance</h3>
-                                    <div class="space-y-4">
-                                        <div><p class="data-label">Avg Load at Generator</p><p class="data-value"><span id="dr-val-avg-load-powerhouse">0.00</span><span class="data-unit">kW</span></p></div>
-                                        <div><p class="data-label">Avg Load at Substation</p><p class="data-value"><span id="dr-val-avg-load-substation">0.00</span><span class="data-unit">kW</span></p></div>
-                                        <div><p class="data-label">Daily Plant Factor</p><p class="data-value"><span id="dr-val-plant-factor">0.00</span><span class="data-unit">%</span></p></div>
+                            <!-- 2-Column Layout matching presentation sheet: TOP HALF -->
+                            <div class="grid grid-cols-2 gap-4 items-stretch mb-3.5">
+                                
+                                <!-- LEFT TOP: Table 1 (Energy Summary of the Day) -->
+                                <div class="border border-black bg-white flex flex-col justify-between">
+                                    <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                        <colgroup>
+                                            <col style="width: 14%;">
+                                            <col style="width: 25%;">
+                                            <col style="width: 25%;">
+                                            <col style="width: 24%;">
+                                            <col style="width: 12%;">
+                                        </colgroup>
+                                        <thead>
+                                            <tr style="background-color: #e2efda;">
+                                                <th colspan="5" class="py-1 px-2 text-center font-bold text-black border-b border-black text-[13px]" style="font-family: Georgia, serif;">
+                                                    Energy Summary of the Day
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-dashed divide-gray-400">
+                                            <!-- Row 1: Date & Time Period -->
+                                            <tr class="border-b border-black font-bold">
+                                                <td class="py-1.5 px-2 text-black text-center border-r border-dashed border-gray-400 whitespace-nowrap">Date</td>
+                                                <td id="mgmt-val-date-eng" class="py-1.5 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">29-Aug-26</td>
+                                                <td id="mgmt-val-date-nep" colspan="2" class="py-1.5 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">2083.05.13</td>
+                                                <td class="py-1.5 px-1 text-center text-black text-[9.5px] leading-tight whitespace-nowrap">12:00 hrs to<br>12:00 hrs</td>
+                                            </tr>
+                                            <!-- Row 2: Avg Plant Load Generator -->
+                                            <tr>
+                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Average Plant Load at Generator Terminal in Powerhouse</td>
+                                                <td id="mgmt-val-avg-load-gen" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">10,412.80</td>
+                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">kW</td>
+                                            </tr>
+                                            <!-- Row 3: Avg Plant Load Substation -->
+                                            <tr>
+                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Average Plant Load at Metering Terminal in Balanch Substation</td>
+                                                <td id="mgmt-val-avg-load-sub" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">9,887.96</td>
+                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">kW</td>
+                                            </tr>
+                                            <!-- Row 4: Dispatch Substation -->
+                                            <tr>
+                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Energy Dispatch (at Substation)</td>
+                                                <td id="mgmt-val-export-sub" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">235.50</td>
+                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                            </tr>
+                                            <!-- Row 5: Dispatch Plant Feeder -->
+                                            <tr>
+                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Energy Dispatch (at Plant OF)</td>
+                                                <td id="mgmt-val-export-plant" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">245.10</td>
+                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                            </tr>
+                                            <!-- Row 6: Energy Generation -->
+                                            <tr>
+                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Energy Generation (at Generator Terminal)</td>
+                                                <td id="mgmt-val-generation" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">248.00</td>
+                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                            </tr>
+                                            <!-- Row 7: Plant Factor -->
+                                            <tr>
+                                                <td colspan="3" class="py-1 px-2 text-black text-right border-r border-dashed border-gray-400 whitespace-nowrap">Plant Factor</td>
+                                                <td id="mgmt-val-plant-factor" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">98.13</td>
+                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">%</td>
+                                            </tr>
+                                            <!-- Row 8: Unit 1 Running Hours Day -->
+                                            <tr>
+                                                <td rowspan="2" colspan="2" class="py-1 px-1 text-center text-black border-r border-dashed border-gray-400 align-middle text-[10px] leading-tight">Unit Running<br>Hours (for the<br>Day)</td>
+                                                <td class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">Unit # 01</td>
+                                                <td id="mgmt-val-unit1-hr-day" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">23.8</td>
+                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">Hrs</td>
+                                            </tr>
+                                            <!-- Row 9: Unit 2 Running Hours Day -->
+                                            <tr>
+                                                <td class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">Unit # 02</td>
+                                                <td id="mgmt-val-unit2-hr-day" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">23.8</td>
+                                                <td class="py-1 px-1 text-center text-black whitespace-nowrap">Hrs</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- RIGHT TOP: Table 2 (Cumulative Unit Running Hours) + Table 3 (Grid Failures / Outages) -->
+                                <div class="flex flex-col justify-between space-y-3">
+                                    <!-- Table 2: Cumulative Unit Running Hours -->
+                                    <div class="border border-black bg-white" style="background-color: #fce4d6;">
+                                        <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                            <colgroup>
+                                                <col style="width: 39%;">
+                                                <col style="width: 25%;">
+                                                <col style="width: 24%;">
+                                                <col style="width: 12%;">
+                                            </colgroup>
+                                            <tbody class="divide-y divide-dashed divide-gray-400">
+                                                <tr>
+                                                    <td rowspan="2" class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 align-middle text-[11px] leading-tight font-medium">Unit Running Hours<br>(Cummulative)</td>
+                                                    <td class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">Unit # 01</td>
+                                                    <td id="mgmt-val-cum-unit1-hr" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">24,155.20</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">Hrs</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-center text-black border-r border-dashed border-gray-400 whitespace-nowrap">Unit # 02</td>
+                                                    <td id="mgmt-val-cum-unit2-hr" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">24,117.30</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">Hrs</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Table 3: Outages & Grid Failures -->
+                                    <div class="border border-black flex-1 flex flex-col justify-between" style="background-color: #e2efda;">
+                                        <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                            <colgroup>
+                                                <col style="width: 64%;">
+                                                <col style="width: 24%;">
+                                                <col style="width: 12%;">
+                                            </colgroup>
+                                            <tbody class="divide-y divide-dashed divide-gray-400">
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">No of Grid Failures</td>
+                                                    <td id="mgmt-val-grid-failures" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">Nos</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Generation Loss due to Grid Failures</td>
+                                                    <td id="mgmt-val-loss-grid" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">1.89</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Generation Loss due to Planed / Forced Outages</td>
+                                                    <td id="mgmt-val-loss-forced" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">0.00</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr class="border-b border-black">
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">NEA Curtailed Energy</td>
+                                                    <td id="mgmt-val-loss-curtail" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">0.00</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" class="py-1 px-2 text-black bg-white">
+                                                        <div class="text-right font-bold underline mb-0.5 text-xs text-black">Major Events / Comments</div>
+                                                        <div id="mgmt-val-events-text" class="text-right font-bold text-[11px] whitespace-pre-wrap leading-tight text-red-600">Grid Fault + high voltage and low voltage</div>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <!-- Clean Pastel Extension Filler matching Excel screenshot -->
+                                        <div class="h-14 w-full" style="background-color: #e2efda; border-top: 1px solid #999;"></div>
                                     </div>
                                 </div>
+
+                            </div>
+
+                            <!-- 2-Column Layout matching presentation sheet: BOTTOM HALF -->
+                            <div class="grid grid-cols-2 gap-4 items-stretch">
+                                
+                                <!-- LEFT BOTTOM: Table 4 (Current Month Energy Summary) + Remaining days bar -->
+                                <div class="flex flex-col justify-between space-y-3">
+                                    <div class="border border-black">
+                                        <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                            <colgroup>
+                                                <col style="width: 64%;">
+                                                <col style="width: 24%;">
+                                                <col style="width: 12%;">
+                                            </colgroup>
+                                            <thead>
+                                                <tr style="background-color: #ffffff;">
+                                                    <th colspan="3" class="py-1 px-2 text-center font-bold text-black border-b border-black text-[13px]" style="font-family: Georgia, serif;">
+                                                        Current Month Energy Summary - <span id="mgmt-val-month-title" class="font-bold text-green-700">Bhadra 2083</span>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-dashed divide-gray-400" style="background-color: #fff2cc;">
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Cummulative Energy Export</td>
+                                                    <td id="mgmt-val-cum-export" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2,846.59</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Guaranteed Energy (as per PPA)</td>
+                                                    <td id="mgmt-val-ppa-energy" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">7,070.98</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Availability Decleration as per Schedule 9</td>
+                                                    <td id="mgmt-val-ad-energy" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">7,070.98</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Energy Difference (AD as per Schedule 9 - Cummulative)</td>
+                                                    <td id="mgmt-val-energy-diff" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">4,224.39</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Monthly Plant Factor</td>
+                                                    <td id="mgmt-val-monthly-pf" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">38.26</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">%</td>
+                                                </tr>
+                                                <tr class="border-b-2 border-black">
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 font-bold whitespace-nowrap">Plant Factor till date</td>
+                                                    <td id="mgmt-val-pf-till-date" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">98.84</td>
+                                                    <td class="py-1 px-1 text-center text-black font-bold whitespace-nowrap">%</td>
+                                                </tr>
+
+                                                <!-- Losses Breakdown Group -->
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Energy Generation from Both Units</td>
+                                                    <td id="mgmt-val-cum-gen" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2,995.00</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Energy Dispatch from Powerhouse</td>
+                                                    <td id="mgmt-val-cum-dispatch-ph" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2,961.90</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Transformer losses at Powerhouse</td>
+                                                    <td id="mgmt-val-cum-transf-loss" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">31.09</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Station Consumption</td>
+                                                    <td id="mgmt-val-cum-st-cons" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">2.01</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Transmission Loss + Substation Transformer Loss</td>
+                                                    <td id="mgmt-val-cum-transm-loss" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">115.31</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">NEA curtailed energy</td>
+                                                    <td id="mgmt-val-cum-nea-curtail" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">-</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="py-1 px-2 text-right text-black border-r border-dashed border-gray-400 whitespace-nowrap">Other Losses (Grid Failures, Breakdown, Schedule Outages)</td>
+                                                    <td id="mgmt-val-cum-other-loss" class="py-1 px-2 text-right text-black font-bold border-r border-dashed border-gray-400 whitespace-nowrap">6.37</td>
+                                                    <td class="py-1 px-1 text-center text-black whitespace-nowrap">MWh</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Bottom Bar: Remaining dispatch days -->
+                                    <div class="border border-black text-xs" style="background-color: #e2efda;">
+                                        <table class="w-full border-collapse table-fixed text-[11px] leading-snug">
+                                            <colgroup>
+                                                <col style="width: 64%;">
+                                                <col style="width: 24%;">
+                                                <col style="width: 12%;">
+                                            </colgroup>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="py-1.5 px-2 font-bold text-black border-r border-dashed border-gray-400 text-right whitespace-nowrap">
+                                                        Remaining dispatch days out of <span id="mgmt-val-total-month-days">31</span> days for this month
+                                                    </td>
+                                                    <td id="mgmt-val-remaining-days" class="py-1.5 px-2 text-center font-bold text-black border-r border-dashed border-gray-400 whitespace-nowrap">19</td>
+                                                    <td class="py-1.5 px-1 text-center text-black whitespace-nowrap">days</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- RIGHT BOTTOM: Monthly Generation/Dispatch Summary Card (Pie Chart & Callouts) -->
+                                <div class="border border-black bg-white flex flex-col justify-between p-2">
+                                    <h3 class="text-center font-bold text-sm text-black pt-1 pb-2" style="font-family: Georgia, serif;">
+                                        Monthly Generation/Dispatch Summary (MWh)
+                                    </h3>
+                                    
+                                    <!-- Main Chart & Callout badges area matching Excel -->
+                                    <div class="flex items-center justify-between gap-1 px-1 flex-1 my-1 relative">
+                                        <!-- Left Side Callout: Dispatched -->
+                                        <div class="flex items-center justify-center w-[28%] z-10">
+                                            <div class="text-[11px] font-bold px-2 py-1.5 border border-black shadow-sm text-center w-full leading-tight" style="background-color: #1f4e78; color: #ffffff;">
+                                                Dispatched=<br><span id="mgmt-callout-val-disp">2,846.59</span>=<span id="mgmt-callout-pct-disp">94.84%</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Center Pie Canvas -->
+                                        <div class="relative w-[44%] h-[260px] flex items-center justify-center">
+                                            <canvas id="dr-mgmt-pie-chart"></canvas>
+                                        </div>
+
+                                        <!-- Right Side Callouts: Breakdown with fixed heights & border -->
+                                        <div class="flex flex-col justify-center space-y-1.5 w-[28%] text-[10px] font-bold z-10">
+                                            <div class="px-1.5 py-1 border border-black text-center whitespace-nowrap leading-tight" style="background-color: #ed7d31; color: #ffffff;">
+                                                Transformer loss@PH=<br><span id="mgmt-callout-val-transf">31.09</span> =<span id="mgmt-callout-pct-transf">1.04%</span>
+                                            </div>
+                                            <div class="px-1.5 py-1 border border-black text-black text-center whitespace-nowrap leading-tight" style="background-color: #bfbfbf;">
+                                                Station Consumption=<br><span id="mgmt-callout-val-st">2.01</span> =<span id="mgmt-callout-pct-st">0.07%</span>
+                                            </div>
+                                            <div class="px-1.5 py-1 border border-black text-black text-center whitespace-nowrap leading-tight" style="background-color: #ffc000;">
+                                                Transmission Loss=<br><span id="mgmt-callout-val-transm">115.31</span> =<span id="mgmt-callout-pct-transm">3.84%</span>
+                                            </div>
+                                            <div class="px-1.5 py-1 border border-black text-black text-center whitespace-nowrap leading-tight" style="background-color: #00b0f0;">
+                                                NEA Curtailed=<span id="mgmt-callout-val-curt">-</span><br>=<span id="mgmt-callout-pct-curt">0.00%</span>
+                                            </div>
+                                            <div class="px-1.5 py-1 border border-black text-black text-center whitespace-nowrap leading-tight" style="background-color: #a9d18e;">
+                                                Other Losses= <span id="mgmt-callout-val-other">6.37</span><br>=<span id="mgmt-callout-pct-other">0.21%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Bottom Legend: Displayed in single row with fixed height and neat boxes matching presentation -->
+                                    <div class="flex flex-nowrap items-center justify-center gap-x-2 text-[9.5px] font-normal py-1 border-t border-black bg-white mt-1">
+                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #1f4e78;"></span> Dispatched</span>
+                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #ed7d31;"></span> Transformer loss@PH</span>
+                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #bfbfbf;"></span> Station Consumption</span>
+                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #ffc000;"></span> Transmission Loss</span>
+                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #00b0f0;"></span> NEA Curtailed</span>
+                                        <span class="flex items-center gap-1"><span class="w-3 h-3 inline-block border border-black" style="background-color: #a9d18e;"></span> Other Losses</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================ -->
+                    <!-- OPTION 2: WEBPAGE VIEW (EXISTING INTERACTIVE WEB DASHBOARD)  -->
+                    <!-- ============================================================ -->
+                    <div id="dr-webpage-view" class="space-y-6 hidden">
+                        <div id="dr-dynamic-message-container" class="p-4 rounded-md bg-blue-50 border border-blue-200 hidden">
+                            <h3 class="text-sm font-bold text-blue-900 mb-1 flex items-center">📊 Daily Performance Insight</h3>
+                            <p id="dr-dynamic-message-text" class="text-xs text-blue-800 leading-relaxed"></p>
+                        </div>
+                        <div class="p-4 rounded-md bg-indigo-50 border border-indigo-200 text-center">
+                            <h2 class="text-xl font-semibold text-gray-800">
+                                Energy Summary for the month of <span id="dr-display-nepali-month" class="text-indigo-600 font-bold"></span>
+                                <br><span class="text-sm font-medium text-gray-500">Report Date: <span id="dr-display-nepali-date" class="text-slate-800 font-bold"></span></span>
+                            </h2>
+                            <p class="text-xs text-indigo-500 font-bold mt-2 uppercase tracking-wider">Reporting Period: 12:00 PM (D-1) → 12:00 PM (D) · Date advances after noon Nepal time</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 space-y-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="data-card">
+                                        <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Daily Performance</h3>
+                                        <div class="space-y-4">
+                                            <div><p class="data-label">Avg Load at Generator</p><p class="data-value"><span id="dr-val-avg-load-powerhouse">0.00</span><span class="data-unit">kW</span></p></div>
+                                            <div><p class="data-label">Avg Load at Substation</p><p class="data-value"><span id="dr-val-avg-load-substation">0.00</span><span class="data-unit">kW</span></p></div>
+                                            <div><p class="data-label">Daily Plant Factor</p><p class="data-value"><span id="dr-val-plant-factor">0.00</span><span class="data-unit">%</span></p></div>
+                                        </div>
+                                    </div>
+                                    <div class="data-card">
+                                        <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Daily Energy</h3>
+                                        <div class="space-y-4">
+                                            <div><p class="data-label">Generation (Generator Term.)</p><p class="data-value text-indigo-700"><span id="dr-val-generation">0.00</span><span class="data-unit">MWh</span></p></div>
+                                            <div><p class="data-label">Dispatch (Plant Feeder)</p><p class="data-value text-blue-700"><span id="dr-val-export-plant">0.00</span><span class="data-unit">MWh</span></p></div>
+                                            <div><p class="data-label">Dispatch (Substation)</p><p class="data-value text-emerald-700"><span id="dr-val-export-substation">0.00</span><span class="data-unit">MWh</span></p></div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="data-card">
-                                    <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Daily Energy</h3>
-                                    <div class="space-y-4">
-                                        <div><p class="data-label">Generation (Generator Term.)</p><p class="data-value text-indigo-700"><span id="dr-val-generation">0.00</span><span class="data-unit">MWh</span></p></div>
-                                        <div><p class="data-label">Dispatch (Plant Feeder)</p><p class="data-value text-blue-700"><span id="dr-val-export-plant">0.00</span><span class="data-unit">MWh</span></p></div>
-                                        <div><p class="data-label">Dispatch (Substation)</p><p class="data-value text-emerald-700"><span id="dr-val-export-substation">0.00</span><span class="data-unit">MWh</span></p></div>
+                                    <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Monthly PPA Summary</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <p class="data-label">Cumulative Energy Export</p><p class="data-value text-emerald-700"><span id="dr-val-cumulative-export-month">0.00</span><span class="data-unit">MWh</span></p>
+                                            <p class="data-label mt-4">Guaranteed Energy (PPA)</p><p class="data-value"><span id="dr-val-guaranteed-energy">0.00</span><span class="data-unit">MWh</span></p>
+                                            <p class="data-label mt-4">Availability Declaration</p><p class="data-value"><span id="dr-val-availability-declaration">0.00</span><span class="data-unit">MWh</span></p>
+                                            <p class="data-label mt-4">Energy Difference</p><p class="data-value"><span id="dr-val-energy-difference">0.00</span><span class="data-unit">MWh</span></p>
+                                        </div>
+                                        <div>
+                                            <p class="data-label">Monthly Plant Factor</p><p class="data-value"><span id="dr-val-monthly-plant-factor">0.00</span><span class="data-unit">%</span></p>
+                                            <p class="data-label mt-4">Plant Factor (Till Date)</p><p class="data-value text-indigo-600"><span id="dr-val-plant-factor-till-date">0.00</span><span class="data-unit">%</span></p>
+                                            <p class="data-label mt-4">Remaining Days in Month</p><p class="data-value"><span id="dr-val-remaining-days">0</span><span class="data-unit">days</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="data-card bg-orange-50 border border-orange-100">
+                                    <h3 class="font-bold text-lg mb-3 text-orange-900 border-b border-orange-200 pb-2">Monthly Losses & Consumption (Cumulative)</h3>
+                                    <div class="grid grid-cols-2 gap-4 pt-2">
+                                        <div><p class="data-label text-orange-800">Transformer losses at PH</p><p class="data-value text-orange-700"><span id="dr-val-transformer-loss-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                        <div><p class="data-label text-orange-800">Station Consumption</p><p class="data-value text-orange-700"><span id="dr-val-station-consumption-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                        <div><p class="data-label text-red-800">Transmission Loss</p><p class="data-value text-red-600"><span id="dr-val-transmission-loss-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                        <div><p class="data-label text-red-800">NEA Curtailed</p><p class="data-value text-red-600"><span id="dr-val-nea-curtailed-month">0.00</span><span class="data-unit">MWh</span></p></div>
+                                        <div class="col-span-2 pt-2 border-t border-orange-200">
+                                            <p class="data-label text-red-800">Other Faults & Losses</p><p class="data-value text-red-600"><span id="dr-val-other-losses-month">0.00</span><span class="data-unit">MWh</span></p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="data-card">
-                                <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Monthly PPA Summary</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <p class="data-label">Cumulative Energy Export</p><p class="data-value text-emerald-700"><span id="dr-val-cumulative-export-month">0.00</span><span class="data-unit">MWh</span></p>
-                                        <p class="data-label mt-4">Guaranteed Energy (PPA)</p><p class="data-value"><span id="dr-val-guaranteed-energy">0.00</span><span class="data-unit">MWh</span></p>
-                                        <p class="data-label mt-4">Availability Declaration</p><p class="data-value"><span id="dr-val-availability-declaration">0.00</span><span class="data-unit">MWh</span></p>
-                                        <p class="data-label mt-4">Energy Difference</p><p class="data-value"><span id="dr-val-energy-difference">0.00</span><span class="data-unit">MWh</span></p>
-                                    </div>
-                                    <div>
-                                        <p class="data-label">Monthly Plant Factor</p><p class="data-value"><span id="dr-val-monthly-plant-factor">0.00</span><span class="data-unit">%</span></p>
-                                        <p class="data-label mt-4">Plant Factor (Till Date)</p><p class="data-value text-indigo-600"><span id="dr-val-plant-factor-till-date">0.00</span><span class="data-unit">%</span></p>
-                                        <p class="data-label mt-4">Remaining Days in Month</p><p class="data-value"><span id="dr-val-remaining-days">0</span><span class="data-unit">days</span></p>
-                                    </div>
+                            <div class="lg:col-span-1 space-y-6">
+                                <div class="data-card">
+                                    <h3 class="font-bold text-lg mb-3 text-gray-800 text-center border-b pb-2">Monthly Energy Fate</h3>
+                                    <div class="relative h-[450px] w-full"><canvas id="dr-energy-pie-chart"></canvas></div>
+                                </div>
+                                <div class="data-card bg-slate-50">
+                                    <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Major Events / Comments</h3>
+                                    <p id="dr-val-major-events" class="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed italic"></p>
+                                </div>
+                                <div class="data-card">
+                                    <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Unit Running Hours</h3>
+                                    <div class="flex justify-between items-end mb-2"><p class="data-label">Unit 1 (For the Day)</p><p class="data-value text-lg"><span id="dr-val-unit1-hours-day">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
+                                    <div class="flex justify-between items-end mb-4"><p class="data-label">Unit 2 (For the Day)</p><p class="data-value text-lg"><span id="dr-val-unit2-hours-day">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
+                                    <div class="flex justify-between items-end mb-2 pt-3 border-t border-slate-200"><p class="data-label text-xs">Unit 1 (Cumulative)</p><p class="data-value text-sm text-slate-600"><span id="dr-val-unit1-counter">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
+                                    <div class="flex justify-between items-end"><p class="data-label text-xs">Unit 2 (Cumulative)</p><p class="data-value text-sm text-slate-600"><span id="dr-val-unit2-counter">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
                                 </div>
                             </div>
                             
-                            <div class="data-card bg-orange-50 border border-orange-100">
-                                <h3 class="font-bold text-lg mb-3 text-orange-900 border-b border-orange-200 pb-2">Monthly Losses & Consumption (Cumulative)</h3>
-                                <div class="grid grid-cols-2 gap-4 pt-2">
-                                    <div><p class="data-label text-orange-800">Transformer losses at PH</p><p class="data-value text-orange-700"><span id="dr-val-transformer-loss-month">0.00</span><span class="data-unit">MWh</span></p></div>
-                                    <div><p class="data-label text-orange-800">Station Consumption</p><p class="data-value text-orange-700"><span id="dr-val-station-consumption-month">0.00</span><span class="data-unit">MWh</span></p></div>
-                                    <div><p class="data-label text-red-800">Transmission Loss</p><p class="data-value text-red-600"><span id="dr-val-transmission-loss-month">0.00</span><span class="data-unit">MWh</span></p></div>
-                                    <div><p class="data-label text-red-800">NEA Curtailed</p><p class="data-value text-red-600"><span id="dr-val-nea-curtailed-month">0.00</span><span class="data-unit">MWh</span></p></div>
-                                    <div class="col-span-2 pt-2 border-t border-orange-200">
-                                        <p class="data-label text-red-800">Other Faults & Losses</p><p class="data-value text-red-600"><span id="dr-val-other-losses-month">0.00</span><span class="data-unit">MWh</span></p>
-                                    </div>
+                            <div class="data-card lg:col-span-3 mt-6">
+                                <div class="flex items-center justify-between border-b pb-2 mb-3">
+                                    <h3 class="font-bold text-lg text-gray-800">Daily Dispatch Trend — Current Nepali Month</h3>
+                                    <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">12:00 PM → 12:00 PM window</span>
                                 </div>
+                                <div class="relative h-80 w-full"><canvas id="dr-daily-trend-chart"></canvas></div>
                             </div>
-                        </div>
-
-                        <div class="lg:col-span-1 space-y-6">
-                            <div class="data-card">
-                                <h3 class="font-bold text-lg mb-3 text-gray-800 text-center border-b pb-2">Monthly Energy Fate</h3>
-                                <div class="relative h-[450px] w-full"><canvas id="dr-energy-pie-chart"></canvas></div>
-                            </div>
-                            <div class="data-card bg-slate-50">
-                                <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Major Events / Comments</h3>
-                                <p id="dr-val-major-events" class="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed italic"></p>
-                            </div>
-                            <div class="data-card">
-                                <h3 class="font-bold text-lg mb-3 text-gray-800 border-b pb-2">Unit Running Hours</h3>
-                                <div class="flex justify-between items-end mb-2"><p class="data-label">Unit 1 (For the Day)</p><p class="data-value text-lg"><span id="dr-val-unit1-hours-day">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
-                                <div class="flex justify-between items-end mb-4"><p class="data-label">Unit 2 (For the Day)</p><p class="data-value text-lg"><span id="dr-val-unit2-hours-day">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
-                                <div class="flex justify-between items-end mb-2 pt-3 border-t border-slate-200"><p class="data-label text-xs">Unit 1 (Cumulative)</p><p class="data-value text-sm text-slate-600"><span id="dr-val-unit1-counter">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
-                                <div class="flex justify-between items-end"><p class="data-label text-xs">Unit 2 (Cumulative)</p><p class="data-value text-sm text-slate-600"><span id="dr-val-unit2-counter">0.00</span><span class="data-unit text-xs">hrs</span></p></div>
-                            </div>
-                        </div>
-                        
-                        <div class="data-card lg:col-span-3 mt-6">
-                            <div class="flex items-center justify-between border-b pb-2 mb-3">
-                                <h3 class="font-bold text-lg text-gray-800">Daily Dispatch Trend — Current Nepali Month</h3>
-                                <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">12:00 PM → 12:00 PM window</span>
-                            </div>
-                            <div class="relative h-80 w-full"><canvas id="dr-daily-trend-chart"></canvas></div>
                         </div>
                     </div>
+
                 </div>
+            </div>
+        </div>
             </div>
         </div>
         
@@ -594,7 +961,7 @@
 
   <script type="module">
 
-import { supabase, initializeApplication } from './assets/js/core-app.js';
+import { supabase, initializeApplication, getCurrentNepaliDate } from './assets/js/core-app.js';
 
 async function startPage() {
     const sessionData = await initializeApplication(true);
@@ -799,12 +1166,18 @@ startPage();
                 if(!data || data.length < 1000) oMore = false; else oPage++;
             }
             outagesData = oData.map(d => ({
-                id: String(d.id||d.date||d.eng_date).split('T')[0],
-                totalEnergyLoss: parseFloat(d.total_energy_loss)||0, lossTimeMin: parseFloat(d.loss_time_min)||0, 
-                lossU1Min: parseFloat(d.loss_time_u1_min)||0, lossU2Min: parseFloat(d.loss_time_u2_min)||0,
-                neaTripLossMin: parseFloat(d.nea_trip_loss_time_min)||0, // <-- Added this line
-                reason: d.reason || d.remarks || ''
-            }));
+                id: String(d.id||d.date||d.eng_date).split('T')[0],
+                totalEnergyLoss: parseFloat(d.total_energy_loss)||0, 
+                lossTimeMin: parseFloat(d.loss_time_min)||0, 
+                lossU1Min: parseFloat(d.loss_time_u1_min)||0, 
+                lossU2Min: parseFloat(d.loss_time_u2_min)||0,
+                neaTripLossMin: parseFloat(d.nea_trip_loss_time_min)||0,
+                noOfTrippings: parseFloat(d.no_of_trippings)||0,
+                neaCurtailedEnergy: parseFloat(d.nea_curtailed_energy)||0,
+                energyLossLineTrip: parseFloat(d.energy_loss_line_trip)||0,
+                energyLossOther: parseFloat(d.energy_loss_other)||0,
+                reason: d.reason || d.remarks || ''
+            }));
             
            // 1. Find the exact Maximum Year and Month that has actual powerhouse data
             let maxNepYear = 2079;
@@ -1091,20 +1464,20 @@ let totalPlantFm = fm33kv + fmPenstock + fmEquip;
    function populateReportDropdowns() {
         const ySel = document.getElementById('rep-year'); const mSel = document.getElementById('rep-month');
         const currY = ySel.value; const currM = mSel.value;
+        const nepToday = getCurrentNepaliDate();
         
-        // Find max year dynamically instead of hardcoding 2086
-        let maxYear = 2079;
+        // Find max year dynamically
+        let maxYear = Math.max(nepToday.year + 2, 2085);
         if(window.combinedData && window.combinedData.length > 0) {
-            maxYear = Math.max(...window.combinedData.map(d => Number(d.year)));
+            maxYear = Math.max(maxYear, ...window.combinedData.map(d => Number(d.year)));
         }
         
         ySel.innerHTML = ''; for(let y=2079; y<=maxYear; y++) ySel.add(new Option(y, y));
         mSel.innerHTML = ''; nepaliMonths.forEach(m => mSel.add(new Option(m, m)));
         
-        if(!currY && !currM && window.combinedData && window.combinedData.length > 0) {
-            const latest = window.combinedData[0];
-            ySel.value = latest.year;
-            mSel.value = nepaliMonths.find(c => c.toLowerCase() === String(latest.month).toLowerCase()) || latest.month;
+        if(!currY && !currM) {
+            ySel.value = nepToday.year;
+            mSel.value = nepToday.month;
         } else {
             if(currY) ySel.value = currY;
             if(currM) mSel.value = currM;
@@ -1590,7 +1963,12 @@ let totalPlantFm = fm33kv + fmPenstock + fmEquip;
     function populateComparisonDropdowns() {
         const cM = document.getElementById('comp-month'); const cYContainer = document.getElementById('comp-years-container');
         if(!cM || !cYContainer) return;
-        if (cM.options.length === 0) canonicalMonths.forEach(m => cM.add(new Option(m, m)));
+        const nepToday = getCurrentNepaliDate();
+        if (cM.options.length === 0) {
+            canonicalMonths.forEach(m => cM.add(new Option(m, m)));
+            const match = canonicalMonths.find(m => m.toLowerCase().startsWith(nepToday.month.toLowerCase().slice(0, 4)));
+            if (match) cM.value = match;
+        }
         const years = [...new Set(window.combinedData.map(d => d.year))].sort((a,b) => b-a);
         cYContainer.innerHTML = ''; years.forEach((y, idx) => { cYContainer.innerHTML += `<label class="inline-flex items-center"><input type="checkbox" class="comp-year-chk w-4 h-4 text-indigo-600 border-gray-300 rounded" value="${y}" ${idx < 2 ? 'checked':''}> <span class="ml-2">${y}</span></label>`; });
     }
@@ -1658,9 +2036,12 @@ let totalPlantFm = fm33kv + fmPenstock + fmEquip;
       const tm = document.getElementById('trend-nepali-month'); 
       if(!ty || !tm) return;
       ty.innerHTML = ''; tm.innerHTML = '';
-      const currentNepaliYear = new Date().getFullYear() + 57;
+      const nepToday = getCurrentNepaliDate();
+      const currentNepaliYear = nepToday.year;
       for (let i = 0; i < 10; i++) { const year = currentNepaliYear - i; ty.add(new Option(year, year)); }
       nepaliMonths.forEach(month => tm.add(new Option(month, month)));
+      ty.value = currentNepaliYear;
+      tm.value = nepToday.month;
 
       const optCont = document.getElementById('trend-chart-options'); optCont.innerHTML = '';
       trendSeries.forEach((field, idx) => {
@@ -1876,10 +2257,64 @@ let totalPlantFm = fm33kv + fmPenstock + fmEquip;
     // ==========================================
     // MODULE 7: DAILY REPORT GENERATOR
     // ==========================================
+    let currentDailyReportView = 'management';
+    let drMgmtPieChartInstance = null;
     let drPieChartInstance = null;
     let drTrendChartInstance = null;
+    let lastMonthlyDataCache = null;
+    
+    function setDailyReportView(mode) {
+        currentDailyReportView = mode;
+        const mgmtView = document.getElementById('dr-management-view');
+        const webView = document.getElementById('dr-webpage-view');
+        const viewSelect = document.getElementById('dr-view-mode');
+        const toggleLabel = document.getElementById('dr-toggle-view-label');
+
+        if (viewSelect && viewSelect.value !== mode) {
+            viewSelect.value = mode;
+        }
+
+        if (mode === 'management') {
+            if (mgmtView) mgmtView.classList.remove('hidden');
+            if (webView) webView.classList.add('hidden');
+            if (toggleLabel) toggleLabel.textContent = 'Webpage View';
+            if (lastMonthlyDataCache) {
+                setTimeout(() => drUpdateMgmtPieChart(lastMonthlyDataCache), 50);
+            }
+        } else {
+            if (mgmtView) mgmtView.classList.add('hidden');
+            if (webView) webView.classList.remove('hidden');
+            if (toggleLabel) toggleLabel.textContent = 'Management View';
+            if (lastMonthlyDataCache) {
+                setTimeout(() => drUpdatePieChart(lastMonthlyDataCache), 50);
+            }
+        }
+    }
+
+    document.getElementById('dr-view-mode')?.addEventListener('change', (e) => {
+        setDailyReportView(e.target.value);
+    });
+
+    document.getElementById('dr-toggle-view-btn')?.addEventListener('click', () => {
+        const nextMode = currentDailyReportView === 'management' ? 'webpage' : 'management';
+        setDailyReportView(nextMode);
+    });
     
     document.getElementById('dr-report-date').addEventListener('change', (e) => generateDailyReport(e.target.value));
+
+    // Helper: format YYYY-MM-DD to DD-Mon-YY (e.g. 29-Aug-26)
+    function formatEngDateDisplay(engDateStr) {
+        if (!engDateStr) return '';
+        const parts = engDateStr.split('-');
+        if (parts.length === 3) {
+            const yr = parts[0].slice(-2);
+            const mIdx = parseInt(parts[1], 10) - 1;
+            const day = parts[2];
+            const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${day}-${mNames[mIdx] || parts[1]}-${yr}`;
+        }
+        return engDateStr;
+    }
 
     // ============================================================
     // DAILY REPORT: 12:00 PM → 12:00 PM (next day) window
@@ -2032,14 +2467,16 @@ let nepaliDateMap = {};
             daily.transmissionLoss = Math.max(0, daily.exportPlant - daily.exportSubstation);
             daily.transformerLoss = Math.max(0, daily.generation - daily.exportPlant - daily.stationConsumption);
             
-            const rDayOutage = outagesData.find(o => o.id === pYesterday.id) || { lossTimeMin: 0, lossU1Min: 0, lossU2Min: 0 };
-            let activeMins = 1440.01 - rDayOutage.lossTimeMin - ((rDayOutage.lossU1Min + rDayOutage.lossU2Min) / 2);
+            // Find daily outage for the reporting day (or fallback to today/yesterday id)
+            const rDayOutage = outagesData.find(o => o.id === pYesterday.id) || outagesData.find(o => o.id === pToday.id) || { lossTimeMin: 0, lossU1Min: 0, lossU2Min: 0, noOfTrippings: 0, energyLossLineTrip: 0, energyLossOther: 0, neaCurtailedEnergy: 0, reason: '' };
+            let activeMins = 1440.01 - (rDayOutage.lossTimeMin || 0) - (((rDayOutage.lossU1Min || 0) + (rDayOutage.lossU2Min || 0)) / 2);
             if (activeMins <= 0) activeMins = 1440.01;
             
             daily.avgLoadPowerhouse = (daily.generation * 1000 * 60) / activeMins; 
             daily.avgLoadSubstation = (daily.exportSubstation * 1000 * 60) / activeMins; 
             
-            daily.plantFactor = (daily.generation / 240) * 100; 
+            // Plant Factor is calculated from Energy dispatch at substation (10 MW * 24 hrs = 240 MWh capacity)
+            daily.plantFactor = (daily.exportSubstation / 240) * 100; 
             
             daily.unit1Hours = Math.max(0, pToday.unit1_counter - pYesterday.unit1_counter);
             daily.unit2Hours = Math.max(0, pToday.unit2_counter - pYesterday.unit2_counter);
@@ -2070,18 +2507,21 @@ let nepaliDateMap = {};
                 }).join('\n');
             }
 
-            monthly.cumulativeNeaCurtailed = mOutages.reduce((s, r) => r.reason.toLowerCase().includes('curtail') ? s + r.totalEnergyLoss : s, 0);
-            monthly.cumulativeOtherLosses = mOutages.reduce((s, r) => !r.reason.toLowerCase().includes('curtail') ? s + r.totalEnergyLoss : s, 0);
+            monthly.cumulativeNeaCurtailed = mOutages.reduce((s, r) => s + (parseFloat(r.neaCurtailedEnergy) || (r.reason && r.reason.toLowerCase().includes('curtail') ? (parseFloat(r.totalEnergyLoss) || 0) : 0)), 0);
+            monthly.cumulativeOtherLosses = mOutages.reduce((s, r) => s + ((parseFloat(r.energyLossLineTrip) || 0) + (parseFloat(r.energyLossOther) || 0) || (r.reason && !r.reason.toLowerCase().includes('curtail') ? (parseFloat(r.totalEnergyLoss) || 0) : 0)), 0);
             monthly.cumulativeTransmissionLoss = monthly.cumulativePlantExport - monthly.cumulativeExport;
             monthly.cumulativeTransformerLoss = monthly.cumulativeGeneration - monthly.cumulativePlantExport - monthly.cumulativeStationConsumption;
             
-            const cInfo = contractData.find(c => Number(c.year) === yYear && c.month === nepaliMonthName);
+            // PPA contract fallback lookup
+            const mIdx = yMonth - 1;
+            const defaultPpaEnergy = (typeof PPA_CONSTANTS !== 'undefined' && PPA_CONSTANTS[mIdx] && PPA_CONSTANTS[mIdx].energy) ? PPA_CONSTANTS[mIdx].energy : 0;
+            const cInfo = contractData.find(c => Number(c.year) === yYear && (c.month === nepaliMonthName || getMIdx(c.month) === mIdx));
             
             // 1. Get the actual total calendar days for the correct reporting month
             const actualMonthDays = getActualDays(yYear, yMonth - 1);
             
-            monthly.guaranteedEnergy = cInfo ? cInfo.contract_energy : 0;
-            monthly.availabilityDeclaration = cInfo ? cInfo.total_ad : 0;
+            monthly.guaranteedEnergy = (cInfo && cInfo.contract_energy != null && cInfo.contract_energy > 0) ? cInfo.contract_energy : defaultPpaEnergy;
+            monthly.availabilityDeclaration = (cInfo && cInfo.total_ad != null && cInfo.total_ad > 0) ? cInfo.total_ad : monthly.guaranteedEnergy;
             
             monthly.energyDifference = Math.max(0, monthly.availabilityDeclaration - monthly.cumulativeExport);
             
@@ -2094,8 +2534,9 @@ let nepaliDateMap = {};
                 correctElapsedDays = Math.max(1, rawClickedDay - 1);
             }
             
-            monthly.monthlyPlantFactor = actualMonthDays > 0 ? (monthly.cumulativeGeneration / (240 * actualMonthDays)) * 100 : 0;
-            monthly.plantFactorTillDate = (monthly.cumulativeGeneration / (240 * correctElapsedDays)) * 100;
+            // Plant factors calculated from Energy dispatch at substation
+            monthly.monthlyPlantFactor = actualMonthDays > 0 ? (monthly.cumulativeExport / (240 * actualMonthDays)) * 100 : 0;
+            monthly.plantFactorTillDate = (monthly.cumulativeExport / (240 * correctElapsedDays)) * 100;
             
             monthly.remainingDays = Math.max(0, actualMonthDays - correctElapsedDays);
             // ---------------------------------------
@@ -2149,6 +2590,94 @@ let nepaliDateMap = {};
             // 3. Render Updates
             document.getElementById('dr-report-content').classList.remove('hidden');
             
+            // Cache monthly calculation
+            lastMonthlyDataCache = monthly;
+
+            // --- A. POPULATE MANAGEMENT VIEW (Matching Presentation Sheet) ---
+            const elDateEng = document.getElementById('mgmt-val-date-eng');
+            if (elDateEng) elDateEng.textContent = formatEngDateDisplay(englishDateStr);
+            const elDateNep = document.getElementById('mgmt-val-date-nep');
+            if (elDateNep) elDateNep.textContent = displayNepaliDate;
+            
+            const elAvgGen = document.getElementById('mgmt-val-avg-load-gen');
+            if (elAvgGen) elAvgGen.textContent = n(daily.avgLoadPowerhouse, 2);
+            const elAvgSub = document.getElementById('mgmt-val-avg-load-sub');
+            if (elAvgSub) elAvgSub.textContent = n(daily.avgLoadSubstation, 2);
+            const elExpSub = document.getElementById('mgmt-val-export-sub');
+            if (elExpSub) elExpSub.textContent = n(daily.exportSubstation, 2);
+            const elExpPlt = document.getElementById('mgmt-val-export-plant');
+            if (elExpPlt) elExpPlt.textContent = n(daily.exportPlant, 2);
+            const elGenDay = document.getElementById('mgmt-val-generation');
+            if (elGenDay) elGenDay.textContent = n(daily.generation, 2);
+            const elPfDay = document.getElementById('mgmt-val-plant-factor');
+            if (elPfDay) elPfDay.textContent = n(daily.plantFactor, 2);
+            
+            const elU1HrDay = document.getElementById('mgmt-val-unit1-hr-day');
+            if (elU1HrDay) elU1HrDay.textContent = n(daily.unit1Hours, 1);
+            const elU2HrDay = document.getElementById('mgmt-val-unit2-hr-day');
+            if (elU2HrDay) elU2HrDay.textContent = n(daily.unit2Hours, 1);
+            
+            const elCumU1Hr = document.getElementById('mgmt-val-cum-unit1-hr');
+            if (elCumU1Hr) elCumU1Hr.textContent = n(pToday.unit1_counter, 2);
+            const elCumU2Hr = document.getElementById('mgmt-val-cum-unit2-hr');
+            if (elCumU2Hr) elCumU2Hr.textContent = n(pToday.unit2_counter, 2);
+
+            const elGridFail = document.getElementById('mgmt-val-grid-failures');
+            if (elGridFail) elGridFail.textContent = rDayOutage.noOfTrippings != null ? rDayOutage.noOfTrippings : (rDayOutage.gridTrips || 0);
+            const elLossGrid = document.getElementById('mgmt-val-loss-grid');
+            if (elLossGrid) elLossGrid.textContent = n(rDayOutage.energyLossLineTrip || 0, 2);
+            const elLossForced = document.getElementById('mgmt-val-loss-forced');
+            if (elLossForced) elLossForced.textContent = n(rDayOutage.energyLossOther || 0, 2);
+            const elLossCurtail = document.getElementById('mgmt-val-loss-curtail');
+            if (elLossCurtail) elLossCurtail.textContent = n(rDayOutage.neaCurtailedEnergy || 0, 2);
+            
+            const elEventsText = document.getElementById('mgmt-val-events-text');
+            if (elEventsText) {
+                if (rDayOutage.reason && rDayOutage.reason.trim() !== '') {
+                    elEventsText.textContent = rDayOutage.reason;
+                } else if (validOutages.length > 0) {
+                    elEventsText.textContent = validOutages.map(o => o.reason).join('\n');
+                } else {
+                    elEventsText.textContent = 'Grid Faults';
+                }
+            }
+
+            const elMonthTitle = document.getElementById('mgmt-val-month-title');
+            if (elMonthTitle) elMonthTitle.textContent = `${nepaliMonthName} ${yYear}`;
+            const elCumExp = document.getElementById('mgmt-val-cum-export');
+            if (elCumExp) elCumExp.textContent = n(monthly.cumulativeExport, 2);
+            const elPpaEn = document.getElementById('mgmt-val-ppa-energy');
+            if (elPpaEn) elPpaEn.textContent = n(monthly.guaranteedEnergy, 2);
+            const elAdEn = document.getElementById('mgmt-val-ad-energy');
+            if (elAdEn) elAdEn.textContent = n(monthly.availabilityDeclaration, 2);
+            const elEnDiff = document.getElementById('mgmt-val-energy-diff');
+            if (elEnDiff) elEnDiff.textContent = n(monthly.energyDifference, 2);
+            const elMonPf = document.getElementById('mgmt-val-monthly-pf');
+            if (elMonPf) elMonPf.textContent = n(monthly.monthlyPlantFactor, 2);
+            const elPfTill = document.getElementById('mgmt-val-pf-till-date');
+            if (elPfTill) elPfTill.textContent = n(monthly.plantFactorTillDate, 2);
+
+            const elCumGen = document.getElementById('mgmt-val-cum-gen');
+            if (elCumGen) elCumGen.textContent = n(monthly.cumulativeGeneration, 2);
+            const elCumDispPh = document.getElementById('mgmt-val-cum-dispatch-ph');
+            if (elCumDispPh) elCumDispPh.textContent = n(monthly.cumulativePlantExport, 2);
+            const elCumTransf = document.getElementById('mgmt-val-cum-transf-loss');
+            if (elCumTransf) elCumTransf.textContent = n(monthly.cumulativeTransformerLoss, 2);
+            const elCumStCons = document.getElementById('mgmt-val-cum-st-cons');
+            if (elCumStCons) elCumStCons.textContent = n(monthly.cumulativeStationConsumption, 2);
+            const elCumTransm = document.getElementById('mgmt-val-cum-transm-loss');
+            if (elCumTransm) elCumTransm.textContent = n(monthly.cumulativeTransmissionLoss, 2);
+            const elCumNeaCurt = document.getElementById('mgmt-val-cum-nea-curtail');
+            if (elCumNeaCurt) elCumNeaCurt.textContent = monthly.cumulativeNeaCurtailed > 0 ? n(monthly.cumulativeNeaCurtailed, 2) : '-';
+            const elCumOther = document.getElementById('mgmt-val-cum-other-loss');
+            if (elCumOther) elCumOther.textContent = n(monthly.cumulativeOtherLosses, 2);
+
+            const elTotDays = document.getElementById('mgmt-val-total-month-days');
+            if (elTotDays) elTotDays.textContent = actualMonthDays;
+            const elRemDays = document.getElementById('mgmt-val-remaining-days');
+            if (elRemDays) elRemDays.textContent = monthly.remainingDays;
+
+            // --- B. POPULATE WEBPAGE VIEW ---
             document.getElementById('dr-display-nepali-month').textContent = `${nepaliMonthName} ${yYear}`;
             document.getElementById('dr-display-nepali-date').textContent = displayNepaliDate;
             document.getElementById('dr-val-major-events').textContent = majorEvents;
@@ -2186,8 +2715,12 @@ let nepaliDateMap = {};
                 syncNepaliDropdowns(englishDateStr);
             }
 
+            // Update Both Charts and ensure correct active view
+            drUpdateMgmtPieChart(monthly);
             drUpdatePieChart(monthly);
             drUpdateTrendChart(pIdx, yYear, yMonth);
+
+            setDailyReportView(currentDailyReportView);
             
         } catch (error) {
             console.error('Report Error:', error);
@@ -2195,6 +2728,195 @@ let nepaliDateMap = {};
         }
     }
 
+    // ============================================================
+    // MANAGEMENT VIEW PIE CHART (Exact Replica of Presentation)
+    // ============================================================
+    function drUpdateMgmtPieChart(monthly) {
+        const canvas = document.getElementById('dr-mgmt-pie-chart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        const rawValues = [
+            Math.max(0, monthly.cumulativeExport || 0),
+            Math.max(0, monthly.cumulativeTransformerLoss || 0),
+            Math.max(0, monthly.cumulativeStationConsumption || 0),
+            Math.max(0, monthly.cumulativeTransmissionLoss || 0),
+            Math.max(0, monthly.cumulativeNeaCurtailed || 0),
+            Math.max(0, monthly.cumulativeOtherLosses || 0)
+        ];
+        const total = rawValues.reduce((a, b) => a + b, 0) || 1;
+        
+        // Exact matching colors from management template image
+        const colors = [
+            '#1f4e78', // Dispatched (Deep navy blue)
+            '#ed7d31', // Transformer loss@PH (Orange)
+            '#bfbfbf', // Station Consumption (Gray)
+            '#ffc000', // Transmission Loss (Yellow/Gold)
+            '#00b0f0', // NEA Curtailed (Sky blue)
+            '#a9d18e'  // Other Losses (Light green)
+        ];
+        
+        const itemLabels = [
+            'Dispatched',
+            'Transformer loss@PH',
+            'Station Consumption',
+            'Transmission Loss',
+            'NEA Curtailed',
+            'Other Losses'
+        ];
+
+        // Update Left and Right Callout badges
+        const pctDisp = (((monthly.cumulativeExport || 0) / total) * 100).toFixed(2);
+        const pctTransf = (((monthly.cumulativeTransformerLoss || 0) / total) * 100).toFixed(2);
+        const pctSt = (((monthly.cumulativeStationConsumption || 0) / total) * 100).toFixed(2);
+        const pctTransm = (((monthly.cumulativeTransmissionLoss || 0) / total) * 100).toFixed(2);
+        const pctCurt = (((monthly.cumulativeNeaCurtailed || 0) / total) * 100).toFixed(2);
+        const pctOther = (((monthly.cumulativeOtherLosses || 0) / total) * 100).toFixed(2);
+
+        const elValDisp = document.getElementById('mgmt-callout-val-disp');
+        if (elValDisp) elValDisp.textContent = n(monthly.cumulativeExport, 2);
+        const elPctDisp = document.getElementById('mgmt-callout-pct-disp');
+        if (elPctDisp) elPctDisp.textContent = `${pctDisp}%`;
+
+        const elValTransf = document.getElementById('mgmt-callout-val-transf');
+        if (elValTransf) elValTransf.textContent = n(monthly.cumulativeTransformerLoss, 2);
+        const elPctTransf = document.getElementById('mgmt-callout-pct-transf');
+        if (elPctTransf) elPctTransf.textContent = `${pctTransf}%`;
+
+        const elValSt = document.getElementById('mgmt-callout-val-st');
+        if (elValSt) elValSt.textContent = n(monthly.cumulativeStationConsumption, 2);
+        const elPctSt = document.getElementById('mgmt-callout-pct-st');
+        if (elPctSt) elPctSt.textContent = `${pctSt}%`;
+
+        const elValTransm = document.getElementById('mgmt-callout-val-transm');
+        if (elValTransm) elValTransm.textContent = n(monthly.cumulativeTransmissionLoss, 2);
+        const elPctTransm = document.getElementById('mgmt-callout-pct-transm');
+        if (elPctTransm) elPctTransm.textContent = `${pctTransm}%`;
+
+        const elValCurt = document.getElementById('mgmt-callout-val-curt');
+        if (elValCurt) elValCurt.textContent = monthly.cumulativeNeaCurtailed > 0 ? n(monthly.cumulativeNeaCurtailed, 2) : '-';
+        const elPctCurt = document.getElementById('mgmt-callout-pct-curt');
+        if (elPctCurt) elPctCurt.textContent = `${pctCurt}%`;
+
+        const elValOther = document.getElementById('mgmt-callout-val-other');
+        if (elValOther) elValOther.textContent = n(monthly.cumulativeOtherLosses, 2);
+        const elPctOther = document.getElementById('mgmt-callout-pct-other');
+        if (elPctOther) elPctOther.textContent = `${pctOther}%`;
+
+        // Custom Plugin to draw Excel-style leader lines from pie chart slices to the callout boxes
+        const leaderLinesPlugin = {
+            id: 'mgmtLeaderLines',
+            afterDraw: (chart) => {
+                const { ctx, chartArea } = chart;
+                const meta = chart.getDatasetMeta(0);
+                if (!meta || !meta.data || meta.data.length === 0) return;
+
+                ctx.save();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = '#555555';
+
+                meta.data.forEach((element, index) => {
+                    if (rawValues[index] <= 0 && index !== 4) return; // skip 0 values unless placeholder
+                    
+                    const midAngle = (element.startAngle + element.endAngle) / 2;
+                    const radius = element.outerRadius;
+                    const centerX = element.x;
+                    const centerY = element.y;
+
+                    // Point on slice edge
+                    const edgeX = centerX + Math.cos(midAngle) * radius;
+                    const edgeY = centerY + Math.sin(midAngle) * radius;
+
+                    // Knee point slightly outside
+                    const kneeDistance = radius + 12;
+                    const kneeX = centerX + Math.cos(midAngle) * kneeDistance;
+                    const kneeY = centerY + Math.sin(midAngle) * kneeDistance;
+
+                    // Target callout element position
+                    let targetElId = '';
+                    if (index === 0) targetElId = 'mgmt-callout-val-disp';
+                    else if (index === 1) targetElId = 'mgmt-callout-val-transf';
+                    else if (index === 2) targetElId = 'mgmt-callout-val-st';
+                    else if (index === 3) targetElId = 'mgmt-callout-val-transm';
+                    else if (index === 4) targetElId = 'mgmt-callout-val-curt';
+                    else if (index === 5) targetElId = 'mgmt-callout-val-other';
+
+                    const targetEl = document.getElementById(targetElId)?.closest('div');
+                    if (targetEl && canvas) {
+                        const canvasRect = canvas.getBoundingClientRect();
+                        const targetRect = targetEl.getBoundingClientRect();
+                        
+                        let targetX, targetY;
+                        if (index === 0) {
+                            // Left side badge: target the right edge of the badge
+                            targetX = (targetRect.right - canvasRect.left);
+                            targetY = (targetRect.top + targetRect.height / 2 - canvasRect.top);
+                        } else {
+                            // Right side badges: target the left edge of the badge
+                            targetX = (targetRect.left - canvasRect.left);
+                            targetY = (targetRect.top + targetRect.height / 2 - canvasRect.top);
+                        }
+
+                        // Draw leader line: slice edge -> knee -> callout box
+                        ctx.beginPath();
+                        ctx.moveTo(edgeX, edgeY);
+                        ctx.lineTo(kneeX, kneeY);
+                        ctx.lineTo(targetX, targetY);
+                        ctx.stroke();
+                    }
+                });
+
+                ctx.restore();
+            }
+        };
+
+        const config = {
+            type: 'pie',
+            data: {
+                labels: itemLabels,
+                datasets: [{
+                    data: rawValues,
+                    backgroundColor: colors,
+                    borderColor: '#ffffff',
+                    borderWidth: 1.5,
+                    hoverOffset: 6
+                }]
+            },
+            plugins: [leaderLinesPlugin],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: { left: 5, right: 5, top: 5, bottom: 5 }
+                },
+                plugins: {
+                    legend: {
+                        display: false // Using custom bottom legend matching Excel
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        titleFont: { size: 11, weight: 'bold' },
+                        bodyFont: { size: 11 },
+                        padding: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const idx = context.dataIndex;
+                                const val = rawValues[idx];
+                                const pct = ((val / total) * 100).toFixed(2);
+                                return ` ${itemLabels[idx]}: ${n(val, 2)} MWh (${pct}%)`;
+                            }
+                        }
+                    }
+                },
+                animation: { duration: 300 }
+            }
+        };
+
+        if (drMgmtPieChartInstance) {
+            drMgmtPieChartInstance.destroy();
+        }
+        drMgmtPieChartInstance = new Chart(ctx, config);
+    }
     
     function drUpdatePieChart(monthly) {
         const ctx = document.getElementById('dr-energy-pie-chart').getContext('2d');
@@ -2392,7 +3114,7 @@ let nepaliDateMap = {};
                         borderWidth: 2,
                         pointRadius: 2,
                         tension: 0.2,
-                        yAxisID: 'y-loss', // <--- CHANGED THIS
+                        yAxisID: 'y-loss',
                         order: 2
                     },
                     {
@@ -2403,7 +3125,7 @@ let nepaliDateMap = {};
                         borderWidth: 2,
                         pointRadius: 2,
                         tension: 0.2,
-                        yAxisID: 'y-loss', // <--- CHANGED THIS
+                        yAxisID: 'y-loss',
                         order: 3
                     },
                     {
@@ -2414,7 +3136,7 @@ let nepaliDateMap = {};
                         borderWidth: 2,
                         pointRadius: 2,
                         tension: 0.2,
-                        yAxisID: 'y-loss', // <--- CHANGED THIS
+                        yAxisID: 'y-loss',
                         order: 4
                     }
                 ]
@@ -2450,14 +3172,12 @@ let nepaliDateMap = {};
                         grid: { drawOnChartArea: false },
                         ticks: { color: '#d97706', font: { size: 10 } }
                     },
-                    // --- ADD THIS NEW LOSS AXIS ---
                     'y-loss': {
                         type: 'linear', position: 'right', beginAtZero: true,
                         title: { display: true, text: 'Losses (MWh)', color: '#ef4444', font: { weight: 'bold', size: 10 } },
                         grid: { drawOnChartArea: false },
                         ticks: { color: '#ef4444', font: { size: 10 } }
                     }
-                    // ------------------------------
                 }
             }
         };
@@ -2471,13 +3191,26 @@ let nepaliDateMap = {};
         document.getElementById('dr-download-spinner').classList.remove('hidden');
         btn.disabled = true;
         try {
-            const canvas = await html2canvas(document.getElementById('dr-report-content'), { scale: 2, useCORS: true });
+            const targetEl = currentDailyReportView === 'management'
+                ? (document.getElementById('dr-management-sheet') || document.getElementById('dr-management-view'))
+                : document.getElementById('dr-webpage-view');
+            
+            const nepDateStr = (document.getElementById('dr-display-nepali-date')?.textContent || 'Daily').replace(/[\/\s]/g, '.');
+            const viewSuffix = currentDailyReportView === 'management' ? 'Management' : 'Webpage';
+
+            const canvas = await html2canvas(targetEl || document.getElementById('dr-report-content'), { 
+                scale: 2, 
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            });
             const link = document.createElement('a');
-            link.download = `Makari_Gad_Daily_${document.getElementById('dr-display-nepali-date').textContent.replace(/ /g, '_')}.jpg`;
-            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.download = `Makari_Gad_Daily_${nepDateStr}_${viewSuffix}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
             link.click();
-        } catch (error) { alert('Could not generate the image.'); } 
-        finally {
+        } catch (error) { 
+            console.error(error);
+            alert('Could not generate the image.'); 
+        } finally {
             document.getElementById('dr-download-spinner').classList.add('hidden');
             btn.disabled = false;
         }

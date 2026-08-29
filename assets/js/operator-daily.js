@@ -616,9 +616,20 @@ async function startPage() {
   const today = getNepaliToday();
   if(document.getElementById('entry-date')) document.getElementById('entry-date').value = today;
   if(document.getElementById('view-date')) document.getElementById('view-date').value = today;
+  if(document.getElementById('maint-date')) document.getElementById('maint-date').value = today;
+  if(document.getElementById('maint-filter-date')) document.getElementById('maint-filter-date').value = today;
   
   const m = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
   if(document.getElementById('weather-filter-month')) document.getElementById('weather-filter-month').value = `${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,'0')}`;
+
+  const currentHour = String(m.getHours()).padStart(2, '0');
+  const nextHour = String((m.getHours() + 1) % 24).padStart(2, '0');
+  if(document.getElementById('weather-from') && !document.getElementById('weather-from').value) {
+    document.getElementById('weather-from').value = `${currentHour}:00`;
+  }
+  if(document.getElementById('weather-to') && !document.getElementById('weather-to').value) {
+    document.getElementById('weather-to').value = `${nextHour}:00`;
+  }
 
   const sessionData = await initializeApplication(true);
   if (sessionData) {

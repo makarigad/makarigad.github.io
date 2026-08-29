@@ -1,4 +1,4 @@
-import { supabase, initializeApplication } from './core-app.js';
+import { supabase, initializeApplication, getCurrentNepaliDate } from './core-app.js';
 
 const M=[
     {n:'Baisakh', em:3, yo:-57, acc:'a-spring',  sl:'Pre-Monsoon'},
@@ -53,13 +53,15 @@ async function init(){
     currentUser=sd.user;userRole=sd.role;
     if(userRole!=='admin'){alert('Only Administrators can modify the Calendar Matrix.');return window.location.href='plant-data.html';}
     const ys=document.getElementById('year-select');
-    const cy=new Date().getFullYear()+57;
+    const cy=getCurrentNepaliDate().year;
     for(let y=2079;y<=cy+5;y++)ys.add(new Option(y,y));
     ys.value=cy;NY=cy;
+    ys.addEventListener('change', loadYear);
     document.getElementById('edit-all-btn').addEventListener('click',enableEditAll);
     document.getElementById('approve-all-btn').addEventListener('click',saveAll);
     document.getElementById('cancel-all-btn').addEventListener('click',cancelAll);
     document.getElementById('load-year-btn').addEventListener('click',loadYear);
+    loadYear();
 }
 
 function updateStats(){

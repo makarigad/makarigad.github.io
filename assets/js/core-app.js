@@ -137,44 +137,103 @@ async function loadCalendarMappings() {
     return calendarPromise;
 }
 
-export function getNepDateObj() {
-    const todayStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })).toISOString().split('T')[0];
-    
-    // Case 1: Ideal - Today's date is in the map.
-    if (calendarMap && calendarMap[todayStr]) {
-        const today = calendarMap[todayStr];
-        hasLoggedDateWarning = false; // Reset on successful find
-        return { year: today.nep_year, month: today.nep_month, day: today.nep_day, nep_date_str: today.nep_date_str };
-    }
-    
-    // Case 2: Map is loaded, but date is missing (e.g., a future date not in DB). Use latest available date.
-    if (calendarMap && Object.keys(calendarMap).length > 0) {
-        const latestEngDate = Object.keys(calendarMap).sort().pop();
-        
-        if (!hasLoggedDateWarning) {
-            let warningMessage = `getNepDateObj: calendarMap is missing an entry for ${todayStr}.`;
-            if (latestEngDate && todayStr > latestEngDate) {
-                warningMessage += ` This may be because your system clock is set to a future date.`;
-            }
-            warningMessage += ` Using latest available date (${latestEngDate || 'N/A'}) as fallback.`;
-            console.warn(warningMessage);
-            hasLoggedDateWarning = true;
-        }
+export const NEPALI_MONTHS = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashoj', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
 
-        if (latestEngDate && calendarMap[latestEngDate]) {
-            const latestNep = calendarMap[latestEngDate];
-            return { year: latestNep.nep_year, month: latestNep.nep_month, day: latestNep.nep_day, nep_date_str: latestNep.nep_date_str };
+export function getNepalToday() {
+    return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })).toISOString().split('T')[0];
+}
+
+export function getCurrentHourString() {
+    const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
+    return String(d.getHours()).padStart(2, '0') + ':00:00';
+}
+
+export function getNepaliDateFromGregorian(dateInput) {
+    let d;
+    if (typeof dateInput === 'string') {
+        const parts = dateInput.split('T')[0].split('-');
+        if (parts.length === 3) {
+            d = new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2]));
+        } else {
+            d = new Date(dateInput);
         }
+    } else if (dateInput instanceof Date) {
+        d = dateInput;
+    } else {
+        d = new Date();
     }
-    
-    // Case 3: Map not loaded or empty. Fallback to rough approximation.
-    if (!hasLoggedDateWarning) {
-        console.warn(`getNepDateObj: calendarMap not ready. Using approximation.`);
-        hasLoggedDateWarning = true;
+
+    const npt = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' }));
+    const engDateStr = npt.toISOString().split('T')[0];
+
+    // Case 1: Check database calendarMap if present
+    if (calendarMap && calendarMap[engDateStr]) {
+        const entry = calendarMap[engDateStr];
+        const monthIdx = NEPALI_MONTHS.indexOf(entry.nep_month) !== -1 ? NEPALI_MONTHS.indexOf(entry.nep_month) + 1 : 1;
+        return {
+            year: Number(entry.nep_year),
+            month: entry.nep_month,
+            monthIdx: monthIdx,
+            day: Number(entry.nep_day),
+            nep_date_str: entry.nep_date_str
+        };
     }
-    const d = new Date();
-    const y = d.getFullYear() + (d.getMonth() > 3 || (d.getMonth() === 3 && d.getDate() > 13) ? 57 : 56);
-    return { year: y, month: "Baisakh", day: 1, nep_date_str: `${y}.01.01` };
+
+    // Case 2: Accurate algorithmic BS calculation
+    const y = npt.getFullYear();
+    const m = npt.getMonth() + 1; // 1-12
+    const day = npt.getDate();
+
+    let nepYear, nepMonthIdx, nepDay;
+    if (m === 1) {
+        if (day < 15) { nepYear = y + 56; nepMonthIdx = 9; nepDay = day + 16; }
+        else { nepYear = y + 56; nepMonthIdx = 10; nepDay = day - 14; }
+    } else if (m === 2) {
+        if (day < 13) { nepYear = y + 56; nepMonthIdx = 10; nepDay = day + 17; }
+        else { nepYear = y + 56; nepMonthIdx = 11; nepDay = day - 12; }
+    } else if (m === 3) {
+        if (day < 15) { nepYear = y + 56; nepMonthIdx = 11; nepDay = day + 16; }
+        else { nepYear = y + 56; nepMonthIdx = 12; nepDay = day - 14; }
+    } else if (m === 4) {
+        if (day < 14) { nepYear = y + 56; nepMonthIdx = 12; nepDay = day + 17; }
+        else { nepYear = y + 57; nepMonthIdx = 1; nepDay = day - 13; }
+    } else if (m === 5) {
+        if (day < 15) { nepYear = y + 57; nepMonthIdx = 1; nepDay = day + 17; }
+        else { nepYear = y + 57; nepMonthIdx = 2; nepDay = day - 14; }
+    } else if (m === 6) {
+        if (day < 15) { nepYear = y + 57; nepMonthIdx = 2; nepDay = day + 17; }
+        else { nepYear = y + 57; nepMonthIdx = 3; nepDay = day - 14; }
+    } else if (m === 7) {
+        if (day < 17) { nepYear = y + 57; nepMonthIdx = 3; nepDay = day + 16; }
+        else { nepYear = y + 57; nepMonthIdx = 4; nepDay = day - 16; }
+    } else if (m === 8) {
+        if (day < 17) { nepYear = y + 57; nepMonthIdx = 4; nepDay = day + 15; }
+        else { nepYear = y + 57; nepMonthIdx = 5; nepDay = day - 16; }
+    } else if (m === 9) {
+        if (day < 17) { nepYear = y + 57; nepMonthIdx = 5; nepDay = day + 15; }
+        else { nepYear = y + 57; nepMonthIdx = 6; nepDay = day - 16; }
+    } else if (m === 10) {
+        if (day < 18) { nepYear = y + 57; nepMonthIdx = 6; nepDay = day + 14; }
+        else { nepYear = y + 57; nepMonthIdx = 7; nepDay = day - 17; }
+    } else if (m === 11) {
+        if (day < 17) { nepYear = y + 57; nepMonthIdx = 7; nepDay = day + 14; }
+        else { nepYear = y + 57; nepMonthIdx = 8; nepDay = day - 16; }
+    } else {
+        if (day < 16) { nepYear = y + 57; nepMonthIdx = 8; nepDay = day + 14; }
+        else { nepYear = y + 57; nepMonthIdx = 9; nepDay = day - 15; }
+    }
+
+    const monthName = NEPALI_MONTHS[nepMonthIdx - 1];
+    const nep_date_str = nepYear + '.' + String(nepMonthIdx).padStart(2, '0') + '.' + String(nepDay).padStart(2, '0');
+    return { year: nepYear, month: monthName, monthIdx: nepMonthIdx, day: nepDay, nep_date_str };
+}
+
+export function getCurrentNepaliDate() {
+    return getNepaliDateFromGregorian(new Date());
+}
+
+export function getNepDateObj() {
+    return getCurrentNepaliDate();
 }
 
 // ============================================================

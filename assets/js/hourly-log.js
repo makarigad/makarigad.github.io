@@ -1,5 +1,5 @@
 import './hourly-log-tools.js';
-import { supabase, initializeApplication, safeUpsert, parseToUTCDate, showNotification } from './core-app.js';
+import { supabase, initializeApplication, safeUpsert, parseToUTCDate, showNotification, getCurrentNepaliDate } from './core-app.js';
 
 const nepaliMonths = ["Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj", "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"];
 
@@ -1306,17 +1306,42 @@ tabs.forEach(tab => {
 
 async function startPage() {
     try {
+        const nepalTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
+        const yyyy = nepalTime.getFullYear();
+        const mm = String(nepalTime.getMonth() + 1).padStart(2, '0');
+        const dd = String(nepalTime.getDate()).padStart(2, '0');
+        const todayLocalISO = `${yyyy}-${mm}-${dd}`;
+
         if (!dateInput.value) {
-            const nepalTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kathmandu"}));
-            const yyyy = nepalTime.getFullYear();
-            const mm = String(nepalTime.getMonth() + 1).padStart(2, '0');
-            const dd = String(nepalTime.getDate()).padStart(2, '0');
-            
-            const todayLocalISO = `${yyyy}-${mm}-${dd}`;
             dateInput.value = todayLocalISO;
-            if(document.getElementById('dd-entry-date')) document.getElementById('dd-entry-date').value = todayLocalISO;
-            if(document.getElementById('summary-date-picker')) document.getElementById('summary-date-picker').value = todayLocalISO;
         }
+        if(document.getElementById('dd-entry-date')) document.getElementById('dd-entry-date').value = todayLocalISO;
+        if(document.getElementById('summary-date-picker')) document.getElementById('summary-date-picker').value = todayLocalISO;
+
+        // Initialize Nepali Summary and Export dropdowns to today's Nepali period
+        const nepToday = getCurrentNepaliDate();
+        const sumYr = document.getElementById('summary-month-year');
+        const sumMo = document.getElementById('summary-month-select');
+        const expYr = document.getElementById('export-year');
+        const expMo = document.getElementById('export-month');
+        const expDay = document.getElementById('export-day');
+
+        if (sumYr) {
+            sumYr.innerHTML = '';
+            const maxY = Math.max(nepToday.year + 2, 2085);
+            for (let y = 2079; y <= maxY; y++) sumYr.add(new Option(y, y));
+            sumYr.value = nepToday.year;
+        }
+        if (sumMo) sumMo.value = String(nepToday.monthIdx);
+
+        if (expYr) {
+            expYr.innerHTML = '';
+            const maxY = Math.max(nepToday.year + 2, 2085);
+            for (let y = 2079; y <= maxY; y++) expYr.add(new Option(y, y));
+            expYr.value = nepToday.year;
+        }
+        if (expMo) expMo.value = String(nepToday.monthIdx);
+        if (expDay) expDay.value = nepToday.day;
         
         window.setCurrentHour(); loadDraft(); setTimeout(applyDefaultsAndSyncs, 50);
         

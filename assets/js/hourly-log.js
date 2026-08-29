@@ -1030,16 +1030,26 @@ async function startPage() {
             const logOpEl = document.getElementById('log-operator');
             if (logOpEl) logOpEl.value = fullName; 
 
-            if (sessionData.role === 'staff') {
-                document.querySelectorAll('#hourly-form input, #hourly-form select, #hourly-form textarea').forEach(el => { el.disabled = true; el.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-70'); });
-                document.querySelectorAll('#hourly-form button[type="submit"], #save-btn, .delete-btn, #scada-audit-btn').forEach(btn => { if (btn) btn.style.display = 'none'; });
-                const banner = document.createElement('div'); banner.className = 'fixed top-0 left-0 w-full bg-amber-500 text-white text-center text-[11px] font-black py-2.5 z-[9999] tracking-widest uppercase shadow-lg';
-                banner.innerText = '⚠️ READ-ONLY MODE: Management Staff cannot edit Hourly Logs.'; document.body.appendChild(banner);
+            const _role = sessionData.role;
+            const _isAdmin = _role === 'admin';
+            const _isReadOnly = _role === 'staff' || _role === 'management';
+
+            // SCADA audit is a read-only viewer — visible to all elevated roles.
+            if (_isAdmin || _isReadOnly) {
+                document.getElementById('scada-audit-btn')?.classList.remove('role-hidden');
             }
 
-        if (sessionData.role === 'admin' || sessionData.role === 'staff' || sessionData.role === 'management') {
-                document.getElementById('scada-audit-btn')?.classList.remove('role-hidden');
+            // Destructive / admin controls (delete-all-day, admin tabs, thresholds) are ADMIN-ONLY.
+            if (_isAdmin) {
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('role-hidden'));
+            }
+
+            // Read-only roles (staff, management) cannot edit or run any write/destructive action.
+            if (_isReadOnly) {
+                document.querySelectorAll('#hourly-form input, #hourly-form select, #hourly-form textarea').forEach(el => { el.disabled = true; el.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-70'); });
+                document.querySelectorAll('#hourly-form button[type="submit"], #save-btn, .delete-btn, .admin-only').forEach(btn => { if (btn) btn.style.display = 'none'; });
+                const banner = document.createElement('div'); banner.className = 'fixed top-0 left-0 w-full bg-amber-500 text-white text-center text-[11px] font-black py-2.5 z-[9999] tracking-widest uppercase shadow-lg';
+                banner.innerText = '⚠️ READ-ONLY MODE: Management staff cannot edit Hourly Logs.'; banner.setAttribute('role', 'status'); document.body.appendChild(banner);
             }
             updateDates(); 
         } else {

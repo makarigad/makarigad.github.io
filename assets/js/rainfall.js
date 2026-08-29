@@ -1,4 +1,4 @@
-import { supabase, safeUpsert } from './core-app.js';
+import { supabase, safeUpsert, escapeHtml } from './core-app.js';
 import {
     showNotification,
     showConfirmation,
@@ -657,7 +657,7 @@ function renderCompareSummary() {
         const avg = t.days > 0 ? ((t.hw + t.ph) / 2) : 0;
         cards += `
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">${m} ${y} Rainfall</div>
+            <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">${m} ${escapeHtml(y)} Rainfall</div>
             <div class="grid grid-cols-2 gap-2 text-xs">
                 <div>
                     <span class="text-[9px] text-blue-500 block">Dam / Headworks</span>
@@ -779,7 +779,7 @@ function renderCompareGrid() {
     let head2 = '<tr><th class="p-2 border font-semibold text-slate-600 bg-slate-50 sticky left-0 outline outline-1 outline-slate-200 z-40">-</th>';
     
     years.slice(-6).forEach(y => {
-        head1 += `<th colspan="${showPred ? 3 : 2}" class="p-2 border font-bold bg-indigo-50 text-indigo-900">🌧️ ${y}</th>`;
+        head1 += `<th colspan="${showPred ? 3 : 2}" class="p-2 border font-bold bg-indigo-50 text-indigo-900">🌧️ ${escapeHtml(y)}</th>`;
         head2 += '<th class="p-2 border font-semibold bg-blue-50 text-blue-800 text-[10px]">Dam Rain (mm)</th>';
         head2 += '<th class="p-2 border font-semibold bg-emerald-50 text-emerald-800 text-[10px]">PH Rain (mm)</th>';
         if (showPred) head2 += '<th class="p-2 border font-semibold bg-amber-50 text-amber-800 text-[10px]">Pred Avg</th>';
@@ -840,7 +840,7 @@ function renderHistoricalSummary() {
         const t = yearlyTotals.get(y);
         cards += `
         <div class="bg-white rounded-xl shadow-sm border border-indigo-100 p-4">
-            <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">📅 Year ${y} Rainfall</div>
+            <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1">📅 Year ${escapeHtml(y)} Rainfall</div>
             <div class="grid grid-cols-2 gap-2 text-xs">
                 <div>
                     <span class="text-[9px] text-blue-500 block">Dam / Headworks</span>
@@ -960,7 +960,7 @@ function renderHistoricalGrid() {
     const cols = years.slice(-6);
     
     let head1 = '<tr><th rowspan="2" class="p-2 border font-black text-slate-700 bg-slate-200 z-50 left-0 sticky outline outline-1 outline-slate-300">🌧️ Month</th>';
-    cols.forEach(y => { head1 += `<th colspan="2" class="p-2 border font-bold bg-indigo-50 text-indigo-900">${y} Rainfall</th>`; });
+    cols.forEach(y => { head1 += `<th colspan="2" class="p-2 border font-bold bg-indigo-50 text-indigo-900">${escapeHtml(y)} Rainfall</th>`; });
     head1 += '</tr>';
     let head2 = '<tr>';
     cols.forEach(y => {

@@ -1,4 +1,4 @@
-import { supabase, safeUpsert } from './core-app.js';   
+import { supabase, safeUpsert, escapeHtml } from './core-app.js';
 import { loadRainfallData, initRainfallEvents } from './rainfall.js';
 
 // --- Global Variables ---
@@ -96,7 +96,7 @@ const notificationMessage = document.getElementById('notification-message');
  * @returns {{year: number, month: string, day: number, nep_date_str: string}|null}
  */
 export function getNepDateObj() {
-    const todayStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })).toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' }); // Kathmandu calendar date, YYYY-MM-DD, no UTC round-trip
     if (calendarMap && calendarMap[todayStr]) {
         const today = calendarMap[todayStr];
         return { year: today.nep_year, month: today.nep_month, day: today.nep_day, nep_date_str: today.nep_date_str };
@@ -344,10 +344,10 @@ function renderExpensesTables() {
             tableHtml += `
             <tr class="hover:bg-indigo-50/30 group">
                 <td class="py-1.5 px-2 text-center text-slate-400">${idx + 1}<\/td>
-                <td class="py-1.5 px-2 text-slate-700 font-medium">${d.description || '-'}<\/td>
-                ${isFuel ? `<td class="py-1.5 px-2 text-center text-slate-500">${d.unit||'-'}<\/td><td class="py-1.5 px-2 text-right text-slate-500">${d.rate?numFmt(d.rate):'-'}<\/td><td class="py-1.5 px-2 text-right text-slate-600 font-bold">${d.quantity!==null?d.quantity:'-'}<\/td>` : ''}
+                <td class="py-1.5 px-2 text-slate-700 font-medium">${escapeHtml(d.description || '-')}<\/td>
+                ${isFuel ? `<td class="py-1.5 px-2 text-center text-slate-500">${escapeHtml(d.unit||'-')}<\/td><td class="py-1.5 px-2 text-right text-slate-500">${d.rate?numFmt(d.rate):'-'}<\/td><td class="py-1.5 px-2 text-right text-slate-600 font-bold">${d.quantity!==null?d.quantity:'-'}<\/td>` : ''}
                 <td class="py-1.5 px-2 text-right font-bold text-slate-800">${numFmt(d.amount)}<\/td>
-                <td class="py-1.5 px-2 text-slate-500 truncate max-w-[80px]" title="${d.remarks||''}">${d.remarks || ''}<\/td>
+                <td class="py-1.5 px-2 text-slate-500 truncate max-w-[80px]" title="${escapeHtml(d.remarks||'')}">${escapeHtml(d.remarks || '')}<\/td>
                 <td class="py-1.5 px-1 text-center ${canEdit ? '' : 'hidden'}"><button class="delete-exp-btn text-red-600 font-black hover:text-red-800 bg-red-100 px-2 py-0.5 rounded" data-id="${d.id}">X<\/button><\/td>
             <\/tr>`;
         });
@@ -422,8 +422,8 @@ expensesContainer?.addEventListener('click', async (e) => {
         const fm = document.getElementById('filter-exp-month')?.value;
         
         const payload = {
-            nepali_year: parseInt(fy === 'All' ? getCurrentNepaliDate().year : fy),
-            nepali_month: fm === 'All' ? getCurrentNepaliDate().month : fm,
+            nepali_year: parseInt(fy === 'All' ? getNepDateObj().year : fy),
+            nepali_month: fm === 'All' ? getNepDateObj().month : fm,
             category: document.getElementById('new-exp-category')?.value,
             description: document.getElementById('new-exp-description')?.value || null,
             unit: document.getElementById('new-exp-unit')?.value || null,
@@ -617,7 +617,7 @@ async function processAndUploadWorkbookExpenses(workbook) {
             await supabase.from('site_expense_items')
                 .delete()
                 .eq('nepali_year', p.year)
-                .in('nepali_month', [p.month, p.rawMonthUploaded, 'Mangshir']);
+                .in('nepali_month', [p.month, p.rawMonthUploaded]);
         }
 
         let totalInserted = 0;
@@ -660,7 +660,7 @@ function createInputRow() {
         
         <td><input type="number" id="new-unit1_counter" step="any" class="input-cell" /></td>
         <td><input type="number" id="new-unit2_counter" step="any" class="input-cell" /></td>
-        <td class="truncate-text text-slate-500 text-xs" title="${currentUser?.email || ''}">${getUserName()}</td>
+        <td class="truncate-text text-slate-500 text-xs" title="${escapeHtml(currentUser?.email || '')}">${escapeHtml(getUserName())}</td>
         <td class="col-actions"><button id="add-entry-btn" class="w-full bg-indigo-600 text-white font-bold py-1 px-3 rounded shadow hover:bg-indigo-700 transition">Save Row</button></td>
     </tr>`;
 }

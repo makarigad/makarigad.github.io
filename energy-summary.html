@@ -594,7 +594,7 @@
 
   <script type="module">
 
-import { supabase, initializeApplication } from './assets/js/core-app.js';
+import { supabase, initializeApplication, safeUpsert, userRole } from './assets/js/core-app.js';
 
 async function startPage() {
     const sessionData = await initializeApplication(true);
@@ -1212,7 +1212,7 @@ let totalPlantFm = fm33kv + fmPenstock + fmEquip;
         document.getElementById('doc-highlights-list').innerHTML = formatBulletPoints(document.getElementById('inp-highlights').value) || "<li class='doc-li'>Continuous standard operation maintained throughout the period with optimal alignment to LDC dispatch schedules.</li>";
         document.getElementById('doc-problems-list').innerHTML = formatBulletPoints(document.getElementById('inp-problems').value) || "<li class='doc-li'>No critical prolonged faults recorded.</li>";
         document.getElementById('doc-maint-done-list').innerHTML = formatBulletPoints(document.getElementById('inp-completed-maint').value) || "<li class='doc-li'>Routine mechanical and electrical maintenance executed safely.</li>";
-        document.getElementById('doc-hse-text').innerText = document.getElementById('inp-hse').value || "100% compliance with HSE protocols; zero LTI (Lost Time Incidents) recorded.";
+        document.getElementById('doc-hse-list').innerHTML = formatBulletPoints(document.getElementById('inp-hse').value) || "<li class='doc-li'>100% compliance with HSE protocols; zero LTI (Lost Time Incidents) recorded.</li>";
 
         // --- 2. NARRATIVE: GENERATION & YOY ---
         let maxGen = 0, minGen = 999999, avgGen = 0, maxDay = '-', minDay = '-';

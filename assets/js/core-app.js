@@ -19,6 +19,21 @@ let calendarPromise = null;
 let hasLoggedDateWarning = false;
 
 // ============================================================
+// HTML escaping — REQUIRED for any database/user text rendered via innerHTML
+// or interpolated into an HTML attribute. Escapes both element and attribute
+// contexts (both quote styles).
+// ============================================================
+export function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ============================================================
 // Notification toast
 // ============================================================
 export function openProfileModal() {
@@ -138,7 +153,7 @@ async function loadCalendarMappings() {
 }
 
 export function getNepDateObj() {
-    const todayStr = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kathmandu' })).toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' }); // Kathmandu calendar date, YYYY-MM-DD, no UTC round-trip
     
     // Case 1: Ideal - Today's date is in the map.
     if (calendarMap && calendarMap[todayStr]) {

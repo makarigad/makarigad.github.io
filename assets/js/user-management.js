@@ -125,8 +125,24 @@ document.getElementById('user-form')?.addEventListener('submit', async (e) => {
     try {
         if (password.length > 0) {
             if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+            // Client-side signUp auto-signs-in as the NEW user when email confirmation
+            // is disabled, which silently hijacks the admin's session. Capture the admin
+            // session first and restore it if signUp swapped it out. The durable fix is to
+            // create users from a service-role Edge Function / admin API instead of here.
+            const { data: { session: adminSession } } = await supabase.auth.getSession();
             const { error: authError } = await supabase.auth.signUp({ email: email, password: password });
             if (authError && authError.message !== "User already registered") throw authError;
+            if (adminSession) {
+                const { data: { session: nowSession } } = await supabase.auth.getSession();
+                if (!nowSession || nowSession.user?.email !== adminSession.user?.email) {
+                    try {
+                        await supabase.auth.setSession({
+                            access_token: adminSession.access_token,
+                            refresh_token: adminSession.refresh_token
+                        });
+                    } catch (_) { /* if restore fails, the admin simply needs to sign in again */ }
+                }
+            }
         }
 
         const userPermissions = {

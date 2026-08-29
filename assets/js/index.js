@@ -208,7 +208,6 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
 
         const payload = {
             email,
-            role:      window.userRole,
             full_name: document.getElementById('prof-name')?.value.trim()     || null,
             position:  document.getElementById('prof-position')?.value.trim() || null,
             phone:     document.getElementById('prof-phone')?.value.trim()    || null,
@@ -216,6 +215,9 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
             company:   document.getElementById('prof-company')?.value.trim()  || null,
             updated_at: new Date().toISOString()
         };
+        // NOTE: `role` is intentionally NOT written here — a user must never set their own
+        // role from the client. Roles are managed only via the admin user-management flow.
+        // New user_roles rows rely on the column DEFAULT (see supabase/rls-policies.sql).
 
         const { error: dbErr } = await supabase.from('user_roles').upsert(payload, { onConflict: 'email' });
         if (dbErr) throw dbErr;

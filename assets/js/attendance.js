@@ -1,4 +1,4 @@
-import { supabase, initializeApplication, showNotification } from './core-app.js';
+import { supabase, initializeApplication, showNotification, escapeHtml } from './core-app.js';
 
 /**
  * ATTENDANCE MODULE - MAKARI GAD
@@ -420,7 +420,7 @@ function renderLogs() {
                 <div class="text-xs font-bold text-slate-700">${new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
             </div>
             <div class="text-right">
-                <div class="text-[10px] text-slate-500 font-semibold">${log.zone_name || 'Unknown Location'}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">${escapeHtml(log.zone_name || 'Unknown Location')}</div>
                 <div class="text-[9px] flex items-center justify-end gap-1 ${log.is_valid ? 'text-emerald-500' : 'text-rose-500'} font-bold">
                     <span>${log.is_valid ? '●' : '⚠'}</span>
                     ${log.is_valid ? 'Verified Location' : 'Outside Geofence'}
@@ -541,14 +541,14 @@ async function loadMonthlyAttendance() {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="font-bold text-slate-700">${date}</td>
+                <td class="font-bold text-slate-700">${escapeHtml(date)}</td>
                 <td class="text-emerald-600 font-semibold">${formatTime(firstIn)}</td>
                 <td class="text-amber-600 font-semibold">${formatTime(lastOut)}</td>
                 <td class="font-bold ${hours >= 8 ? 'text-indigo-600' : 'text-slate-600'}">${hours > 0 ? hours.toFixed(2) + 'h' : '—'}</td>
                 <td>
                     <div class="flex items-center gap-1.5 text-xs font-semibold">
                         <span class="${allValid ? 'text-emerald-500' : 'text-rose-500'}">●</span> 
-                        <span class="text-slate-600">${primaryZone}</span>
+                        <span class="text-slate-600">${escapeHtml(primaryZone)}</span>
                     </div>
                 </td>
             `;
@@ -647,11 +647,11 @@ async function loadAdminAttendance() {
             
             return `
                 <tr>
-                    <td class="font-bold text-slate-700">${log.date}</td>
-                    <td class="text-slate-600 font-semibold">${log.email}</td>
-                    <td><span class="font-bold text-[10px] uppercase tracking-wider ${typeClass}">${log.type}</span></td>
+                    <td class="font-bold text-slate-700">${escapeHtml(log.date)}</td>
+                    <td class="text-slate-600 font-semibold">${escapeHtml(log.email)}</td>
+                    <td><span class="font-bold text-[10px] uppercase tracking-wider ${typeClass}">${escapeHtml(log.type)}</span></td>
                     <td class="font-semibold text-slate-700">${timeStr}</td>
-                    <td class="text-slate-600 text-xs font-medium">${log.zone_name}</td>
+                    <td class="text-slate-600 text-xs font-medium">${escapeHtml(log.zone_name)}</td>
                     <td class="font-bold text-xs ${validClass} flex items-center gap-1">
                         <span>${log.is_valid ? '● Valid' : '⚠ Out of Bounds'}</span>
                     </td>
